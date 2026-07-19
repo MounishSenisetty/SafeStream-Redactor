@@ -1,0 +1,35 @@
+name: Bug report
+description: Something is broken or a detection is wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Also tell us what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: >
+        The smallest input text + command / code that shows the problem.
+        Replace any real PII with realistic fakes.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: safestream-redactor version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version & OS
+      placeholder: "3.12 on Ubuntu 24.04"
+    validations:
+      required: true
