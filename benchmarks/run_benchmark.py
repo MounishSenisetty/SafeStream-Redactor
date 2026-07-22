@@ -34,22 +34,37 @@ def spans_match(pred: tuple[int, int], gold: tuple[int, int]) -> bool:
 
 
 def score(predictions: list[dict], gold: list[dict]) -> dict[str, float]:
-    matched_gold: set[int] = set()
+    # Bucket gold spans by type and sort by start so each prediction only probes
+    # a small local window (near-linear overall) instead of scanning all gold.
+    import bisect
+    from collections import defaultdict
+
+    buckets: dict[str, list[tuple[int, int]]] = defaultdict(list)
+    for g in gold:
+        buckets[g["type"]].append((g["start"], g["end"]))
+    starts: dict[str, list[int]] = {}
+    matched: dict[str, set[int]] = {}
+    for t, spans in buckets.items():
+        spans.sort()
+        buckets[t] = spans
+        starts[t] = [s for s, _ in spans]
+        matched[t] = set()
+
     tp = 0
     for pred in predictions:
-        hit = next(
-            (
-                i
-                for i, g in enumerate(gold)
-                if i not in matched_gold
-                and g["type"] == pred["type"]
-                and spans_match((pred["start"], pred["end"]), (g["start"], g["end"]))
-            ),
-            None,
-        )
-        if hit is not None:
-            matched_gold.add(hit)
-            tp += 1
+        spans = buckets.get(pred["type"])
+        if not spans:
+            continue
+        # candidate gold spans start at most at pred_end; scan back from there
+        j = bisect.bisect_right(starts[pred["type"]], pred["end"]) - 1
+        while j >= 0 and spans[j][1] > pred["start"]:  # while gold_end could overlap
+            if j not in matched[pred["type"]] and spans_match(
+                (pred["start"], pred["end"]), spans[j]
+            ):
+                matched[pred["type"]].add(j)
+                tp += 1
+                break
+            j -= 1
     fp = len(predictions) - tp
     fn = len(gold) - tp
     precision = tp / (tp + fp) if tp + fp else 0.0

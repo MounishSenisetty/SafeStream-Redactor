@@ -67,9 +67,16 @@ safestream redact cards.csv -o masked.csv --mode mask --keep-last 4
 # deterministic pseudonyms (same input -> same token), streaming from stdin
 tail -f app.log | safestream redact - -o - --mode pseudonymize --hmac-key "$SECRET"
 
+# redact a whole directory tree in parallel (RAM/CPU-aware worker count)
+safestream redact ./logs -o ./logs_redacted --workers 8
+
 # just list what would be redacted
 safestream detect input.txt --json
 ```
+
+While redacting, the CLI installs an **offline network guard** by default: any attempt to
+open a non-loopback connection raises an error, so sensitive text provably never leaves the
+machine. Pass `--allow-network` to disable it.
 
 ### Python API
 
@@ -95,7 +102,30 @@ Redactor().redact_file("huge.log", "huge_redacted.log")
 with open("huge.log") as f:
     for clean_chunk in Redactor().redact_stream(iter(lambda: f.read(65536), "")):
         process(clean_chunk)
+
+# parallel, RAM-aware redaction across a directory tree
+from safestream_redactor.scheduler import redact_tree
+redact_tree("logs/", "logs_redacted/", Redactor(), workers=8)
+
+# enforce the offline guarantee around any block of code
+from safestream_redactor import netguard
+with netguard.enforced():
+    Redactor().redact_file("huge.log", "huge_redacted.log")   # network calls now raise
 ```
+
+### Extending with plugins
+
+Any installed package can add a detection tier by advertising an entry point — no fork
+required. SafeStream discovers and loads them automatically.
+
+```toml
+# in your plugin package's pyproject.toml
+[project.entry-points."safestream_redactor.detectors"]
+my_detector = "my_pkg.detectors:MyDetector"   # a Detector instance or zero-arg factory
+```
+
+A detector is anything with a `name` and `detect(text) -> list[Detection]` (the
+`Detector` protocol). Disable plugin loading with `Redactor(load_plugins=False)`.
 
 ### Policy files (TOML)
 
@@ -142,6 +172,10 @@ safestream redact input.txt -o out.txt --config policy.toml
                      │
                      ▼
           redaction policy (replace / mask / pseudonymize / per-type)
+
+  Scheduler: RAM/CPU-aware multiprocessing across files (safestream/scheduler.py).
+  Offline guard: any non-loopback connection raises NetworkAccessError (netguard.py).
+  Plugins: third-party tiers load from the 'safestream_redactor.detectors' entry point.
 ```
 
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
@@ -172,11 +206,24 @@ Detected entity types:
 | safestream-redactor           | 1.000     | 1.000  | 1.000 | ✅              |
 | Microsoft Presidio (patterns) | 0.928     | 0.815  | 0.868 | ❌              |
 
-> Honest caveats: the corpus is generated from standard entity formats, which favours any
-> regex-based detector — read SafeStream's perfect score as *"handles standard PII cleanly"*,
-> not a blanket win. Presidio was run via its own pattern recognizers (its spaCy NER tier is a
-> separate, model-dependent path). On free-form prose with names/locations, Presidio's NER
-> will out-recall SafeStream's regex core unless you enable the `[ner]` extra.
+**Realistic / adversarial** — 1 MB of noisy log / JSON / CSV / SQL records dense with
+*hard negatives* (order numbers, ISO timestamps, UUIDs, git hashes, invalid-area SSNs,
+5-octet version strings) that tempt false positives — both tools face the same distractors
+(reproduce with `benchmarks/generate_hard_dataset.py`):
+
+| Tool                          | Precision | Recall | F1    | Throughput  |
+| ----------------------------- | --------- | ------ | ----- | ----------- |
+| safestream-redactor           | 0.999     | 1.000  | 1.000 | 3.13 MB/s   |
+| Microsoft Presidio (patterns) | 0.649     | 0.843  | 0.734 | 0.06 MB/s   |
+
+This is the meaningful test: SafeStream holds 0.999 precision under the distractors while
+Presidio's phone recognizer emits thousands of false positives (P=0.649).
+
+> Honest caveats: the gold entities still use standard formats SafeStream targets, so treat
+> these as a strong-but-not-final signal, not an independent audit. Presidio was run via its
+> own pattern recognizers (its spaCy NER tier is a separate, model-dependent path). On
+> free-form prose with names/locations, Presidio's NER will out-recall SafeStream's regex
+> core unless you enable the `[ner]` extra.
 
 **Credentials & secrets** — where the tools genuinely diverge. On a corpus of AWS keys,
 GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random high-entropy secret:

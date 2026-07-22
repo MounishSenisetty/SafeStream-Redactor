@@ -20,6 +20,18 @@ def test_phone_international():
     assert EntityType.PHONE not in types_in("room 12-34")
 
 
+def test_phone_rejects_date_and_ssn_shapes():
+    # ISO dates and SSN-shaped groups must never be flagged as phone numbers
+    assert EntityType.PHONE not in types_in("event on 2024-02-04 happened")
+    assert EntityType.PHONE not in types_in("value 000-21-7955 in column")
+
+
+def test_bare_phone_needs_context():
+    # a bare grouped number is ambiguous with ids -> only fires with a phone cue
+    assert EntityType.PHONE not in types_in("row 415 555 0132 end")
+    assert EntityType.PHONE in types_in("call 415 555 0132 now")
+
+
 def test_credit_card_luhn():
     assert luhn_ok("4111111111111111")
     assert not luhn_ok("4111111111111112")

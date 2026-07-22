@@ -41,6 +41,9 @@ class Redactor:
         published format (on by default).
     extra_detectors:
         Any additional objects implementing the :class:`Detector` protocol.
+    load_plugins:
+        Discover and load third-party detectors registered under the
+        ``safestream_redactor.detectors`` entry-point group (on by default).
     """
 
     def __init__(
@@ -54,6 +57,7 @@ class Redactor:
         ner_model: str = "en_core_web_sm",
         use_entropy: bool = True,
         extra_detectors: Iterable[Detector] = (),
+        load_plugins: bool = True,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
     ) -> None:
@@ -83,6 +87,11 @@ class Redactor:
 
             self._detectors.append(EntropyDetector())
         self._detectors.extend(extra_detectors)
+        # third-party detectors registered via entry points
+        if load_plugins:
+            from safestream_redactor.detectors.registry import load_plugins as _load_plugins
+
+            self._detectors.extend(_load_plugins())
         # contextual tier also contributes trigger-gated detections of its own
         if resolved_types is None or EntityType.SSN in resolved_types:
             self._detectors.append(self._scorer)

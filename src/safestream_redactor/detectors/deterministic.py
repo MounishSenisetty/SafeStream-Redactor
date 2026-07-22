@@ -42,7 +42,15 @@ def ssn_ok(match_text: str) -> bool:
     return group != "00" and serial != "0000"
 
 
+# shapes that a naive phone regex swallows but which are never phone numbers
+_DATE_SHAPE = re.compile(r"\A(?:19|20)\d{2}-\d{2}-\d{2}\Z")  # ISO date
+_SSN_SHAPE = re.compile(r"\A\d{3}-\d{2}-\d{4}\Z")  # SSN grouping
+
+
 def phone_ok(match_text: str) -> bool:
+    stripped = match_text.strip()
+    if _DATE_SHAPE.match(stripped) or _SSN_SHAPE.match(stripped):
+        return False
     digits = re.sub(r"\D", "", match_text)
     return 7 <= len(digits) <= 15
 
@@ -172,13 +180,24 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.9,
         validator=ipv6_ok,
     ),
+    # structured phone: a leading + country code or a (area code) is a strong
+    # signal, so this scores high enough to stand on its own.
     Pattern(
         EntityType.PHONE,
         re.compile(
-            r"(?<![\w.-])(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{2,4}(?:[ .-]?\d{2,4}){1,4}"
-            r"(?![\w-])(?!\.\d)"
+            r"(?<![\w.-])(?:\+\d{1,3}[ .-]?(?:\(\d{1,4}\)[ .-]?)?|\(\d{1,4}\)[ .-]?)"
+            r"\d{2,4}(?:[ .-]?\d{2,4}){1,4}(?![\w-])(?!\.\d)"
         ),
         0.6,
+        validator=phone_ok,
+    ),
+    # bare phone: separated digit groups with no + or parens are ambiguous with
+    # dates/ids, so this scores below the default threshold and only survives
+    # when the contextual tier finds a nearby phone cue ("call", "tel", ...).
+    Pattern(
+        EntityType.PHONE,
+        re.compile(r"(?<![\w.+(-])\d{2,4}(?:[ .-]\d{2,4}){2,4}(?![\w-])(?!\.\d)"),
+        0.45,
         validator=phone_ok,
     ),
 )
