@@ -100,6 +100,43 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.98,
     ),
     Pattern(
+        EntityType.SLACK_TOKEN,
+        re.compile(r"\bxox[baprs]-[0-9A-Za-z]{10,48}(?:-[0-9A-Za-z]{10,48}){0,3}\b"),
+        0.98,
+    ),
+    Pattern(
+        EntityType.SLACK_WEBHOOK,
+        re.compile(
+            r"https://hooks\.slack\.com/services/T[A-Z0-9]{8,}/B[A-Z0-9]{8,}/[A-Za-z0-9]{16,}"
+        ),
+        0.98,
+    ),
+    Pattern(
+        EntityType.STRIPE_KEY,
+        re.compile(r"\b[sr]k_(?:live|test)_[0-9A-Za-z]{16,99}\b"),
+        0.97,
+    ),
+    Pattern(
+        EntityType.GOOGLE_API_KEY,
+        re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
+        0.95,
+    ),
+    Pattern(
+        EntityType.SENDGRID_KEY,
+        re.compile(r"\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b"),
+        0.98,
+    ),
+    Pattern(
+        EntityType.TWILIO_KEY,
+        re.compile(r"\bSK[0-9a-f]{32}\b"),
+        0.9,
+    ),
+    Pattern(
+        EntityType.NPM_TOKEN,
+        re.compile(r"\bnpm_[A-Za-z0-9]{36}\b"),
+        0.98,
+    ),
+    Pattern(
         EntityType.API_KEY,
         re.compile(
             r"(?i)\b(?:api[_-]?key|apikey|secret[_-]?key|secret|access[_-]?token|auth[_-]?token"

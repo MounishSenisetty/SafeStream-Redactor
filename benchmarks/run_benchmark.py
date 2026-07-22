@@ -77,20 +77,38 @@ PRESIDIO_TYPE_MAP = {
 
 
 def bench_presidio(text: str) -> tuple[list[dict], float] | None:
+    """Run Presidio's pattern recognizers directly.
+
+    The compared types (email/phone/credit_card/ssn/ipv4) are pattern- and
+    ``phonenumbers``-based in Presidio and do not use the spaCy NLP model, so
+    running the recognizers directly is a faithful measure of Presidio for
+    these types — and works fully offline (no ~600 MB model download).
+    """
     try:
-        from presidio_analyzer import AnalyzerEngine
+        from presidio_analyzer.predefined_recognizers import (
+            CreditCardRecognizer,
+            EmailRecognizer,
+            IpRecognizer,
+            PhoneRecognizer,
+            UsSsnRecognizer,
+        )
     except ImportError:
         return None
-    analyzer = AnalyzerEngine()
+    recognizers = [
+        EmailRecognizer(),
+        PhoneRecognizer(),
+        CreditCardRecognizer(),
+        UsSsnRecognizer(),
+        IpRecognizer(),
+    ]
     t0 = time.perf_counter()
-    results = analyzer.analyze(text=text, language="en", entities=list(PRESIDIO_TYPE_MAP))
-    elapsed = time.perf_counter() - t0
     preds = [
         {"start": r.start, "end": r.end, "type": PRESIDIO_TYPE_MAP[r.entity_type]}
-        for r in results
+        for rec in recognizers
+        for r in rec.analyze(text, entities=rec.supported_entities, nlp_artifacts=None)
         if r.entity_type in PRESIDIO_TYPE_MAP
     ]
-    return preds, elapsed
+    return preds, time.perf_counter() - t0
 
 
 def report(name: str, metrics: dict[str, float], seconds: float, size_mb: float) -> None:

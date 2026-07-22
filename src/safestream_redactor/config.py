@@ -78,6 +78,7 @@ def redactor_from_config(path: str | os.PathLike[str]) -> Redactor:
         custom_patterns=custom.get("patterns", ()),
         use_ner=detection.get("use_ner", False),
         ner_model=detection.get("ner_model", "en_core_web_sm"),
+        use_entropy=detection.get("use_entropy", True),
         chunk_size=streaming.get("chunk_size", DEFAULT_CHUNK_SIZE),
         overlap=streaming.get("overlap", DEFAULT_OVERLAP),
     )

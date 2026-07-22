@@ -36,6 +36,9 @@ class Redactor:
         Extra literal words/phrases and regexes to always redact.
     use_ner:
         Enable the optional spaCy tier (requires the ``ner`` extra).
+    use_entropy:
+        Enable the statistical tier that flags high-entropy secrets with no
+        published format (on by default).
     extra_detectors:
         Any additional objects implementing the :class:`Detector` protocol.
     """
@@ -49,6 +52,7 @@ class Redactor:
         custom_patterns: Iterable[str] = (),
         use_ner: bool = False,
         ner_model: str = "en_core_web_sm",
+        use_entropy: bool = True,
         extra_detectors: Iterable[Detector] = (),
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
@@ -73,6 +77,11 @@ class Redactor:
             from safestream_redactor.detectors.ner import NERDetector
 
             self._detectors.append(NERDetector(ner_model))
+        # statistical tier: generic high-entropy secrets (on by default)
+        if use_entropy and (resolved_types is None or EntityType.SECRET in resolved_types):
+            from safestream_redactor.detectors.entropy import EntropyDetector
+
+            self._detectors.append(EntropyDetector())
         self._detectors.extend(extra_detectors)
         # contextual tier also contributes trigger-gated detections of its own
         if resolved_types is None or EntityType.SSN in resolved_types:

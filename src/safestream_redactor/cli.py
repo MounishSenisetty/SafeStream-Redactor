@@ -55,6 +55,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     common.add_argument("--min-confidence", type=float, default=None)
     common.add_argument("--ner", action="store_true", help="enable the spaCy NER tier")
+    common.add_argument(
+        "--no-entropy",
+        dest="entropy",
+        action="store_false",
+        default=True,
+        help="disable the high-entropy secret detector (on by default)",
+    )
     common.add_argument("--chunk-size", type=int, default=None, metavar="BYTES")
     common.add_argument("--overlap", type=int, default=None, metavar="CHARS")
 
@@ -121,6 +128,7 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
             custom_words=args.custom_word,
             custom_patterns=args.custom_regex,
             use_ner=args.ner,
+            use_entropy=args.entropy,
             chunk_size=args.chunk_size or DEFAULT_CHUNK_SIZE,
             overlap=args.overlap if args.overlap is not None else DEFAULT_OVERLAP,
         )
@@ -135,6 +143,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         )
     if args.min_confidence is not None:
         redactor.min_confidence = args.min_confidence
+    if not args.entropy:
+        redactor._detectors = [d for d in redactor._detectors if d.name != "entropy"]
     if args.custom_word or args.custom_regex:
         from safestream_redactor.detectors.custom import CustomDetector
 
