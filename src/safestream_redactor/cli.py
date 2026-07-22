@@ -128,7 +128,9 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
     # config file provided: overlay any explicitly passed flags
     redactor.policy = policy
     if args.types:
-        redactor._detectors[0] = type(redactor._detectors[0])(
+        from safestream_redactor.detectors.deterministic import DeterministicDetector
+
+        redactor._detectors[0] = DeterministicDetector(
             [EntityType.from_name(t) for t in args.types.split(",")]
         )
     if args.min_confidence is not None:
