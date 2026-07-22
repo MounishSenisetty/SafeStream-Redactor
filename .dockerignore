@@ -1,0 +1,16 @@
+# keep the build context small and reproducible
+.git
+.github
+benchmarks/data
+docs
+tests
+dist
+build
+*.egg-info
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.venv
+venv

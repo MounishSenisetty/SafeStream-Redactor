@@ -42,7 +42,15 @@ def ssn_ok(match_text: str) -> bool:
     return group != "00" and serial != "0000"
 
 
+# shapes that a naive phone regex swallows but which are never phone numbers
+_DATE_SHAPE = re.compile(r"\A(?:19|20)\d{2}-\d{2}-\d{2}\Z")  # ISO date
+_SSN_SHAPE = re.compile(r"\A\d{3}-\d{2}-\d{4}\Z")  # SSN grouping
+
+
 def phone_ok(match_text: str) -> bool:
+    stripped = match_text.strip()
+    if _DATE_SHAPE.match(stripped) or _SSN_SHAPE.match(stripped):
+        return False
     digits = re.sub(r"\D", "", match_text)
     return 7 <= len(digits) <= 15
 
@@ -100,6 +108,43 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.98,
     ),
     Pattern(
+        EntityType.SLACK_TOKEN,
+        re.compile(r"\bxox[baprs]-[0-9A-Za-z]{10,48}(?:-[0-9A-Za-z]{10,48}){0,3}\b"),
+        0.98,
+    ),
+    Pattern(
+        EntityType.SLACK_WEBHOOK,
+        re.compile(
+            r"https://hooks\.slack\.com/services/T[A-Z0-9]{8,}/B[A-Z0-9]{8,}/[A-Za-z0-9]{16,}"
+        ),
+        0.98,
+    ),
+    Pattern(
+        EntityType.STRIPE_KEY,
+        re.compile(r"\b[sr]k_(?:live|test)_[0-9A-Za-z]{16,99}\b"),
+        0.97,
+    ),
+    Pattern(
+        EntityType.GOOGLE_API_KEY,
+        re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
+        0.95,
+    ),
+    Pattern(
+        EntityType.SENDGRID_KEY,
+        re.compile(r"\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b"),
+        0.98,
+    ),
+    Pattern(
+        EntityType.TWILIO_KEY,
+        re.compile(r"\bSK[0-9a-f]{32}\b"),
+        0.9,
+    ),
+    Pattern(
+        EntityType.NPM_TOKEN,
+        re.compile(r"\bnpm_[A-Za-z0-9]{36}\b"),
+        0.98,
+    ),
+    Pattern(
         EntityType.API_KEY,
         re.compile(
             r"(?i)\b(?:api[_-]?key|apikey|secret[_-]?key|secret|access[_-]?token|auth[_-]?token"
@@ -135,13 +180,24 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.9,
         validator=ipv6_ok,
     ),
+    # structured phone: a leading + country code or a (area code) is a strong
+    # signal, so this scores high enough to stand on its own.
     Pattern(
         EntityType.PHONE,
         re.compile(
-            r"(?<![\w.-])(?:\+\d{1,3}[ .-]?)?(?:\(\d{1,4}\)[ .-]?)?\d{2,4}(?:[ .-]?\d{2,4}){1,4}"
-            r"(?![\w-])(?!\.\d)"
+            r"(?<![\w.-])(?:\+\d{1,3}[ .-]?(?:\(\d{1,4}\)[ .-]?)?|\(\d{1,4}\)[ .-]?)"
+            r"\d{2,4}(?:[ .-]?\d{2,4}){1,4}(?![\w-])(?!\.\d)"
         ),
         0.6,
+        validator=phone_ok,
+    ),
+    # bare phone: separated digit groups with no + or parens are ambiguous with
+    # dates/ids, so this scores below the default threshold and only survives
+    # when the contextual tier finds a nearby phone cue ("call", "tel", ...).
+    Pattern(
+        EntityType.PHONE,
+        re.compile(r"(?<![\w.+(-])\d{2,4}(?:[ .-]\d{2,4}){2,4}(?![\w-])(?!\.\d)"),
+        0.45,
         validator=phone_ok,
     ),
 )

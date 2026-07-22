@@ -11,14 +11,21 @@ python benchmarks/generate_dataset.py --size-mb 10
 # 2. run
 python benchmarks/run_benchmark.py
 
-# optional: include Presidio in the comparison
+# optional: include Presidio in the comparison (no model download needed —
+# the compared types are pattern-based in Presidio and run fully offline)
 pip install 'safestream-redactor[bench]'
-python -m spacy download en_core_web_lg
 python benchmarks/run_benchmark.py
 ```
 
 The dataset generator is seeded (`--seed`) so runs are reproducible. Entities covered by
-both tools are benchmarked: email, phone, credit card, SSN, IPv4.
+both tools are benchmarked: email, phone, credit card, SSN, IPv4. Presidio is exercised
+through its own pattern recognizers, so no ~600 MB spaCy model is required.
 
-Caveat: synthetic text is much friendlier than real-world data — treat absolute scores as
-an upper bound and the tool-to-tool comparison as the meaningful signal.
+Caveats:
+
+- Synthetic text is much friendlier than real-world data, and the corpus is generated from
+  standard entity formats, which favours any regex-based detector. Treat SafeStream's
+  scores as *"handles standard PII cleanly"* rather than a blanket accuracy claim.
+- This benchmark covers **structured PII only**. SafeStream's credential/secret tiers
+  (AWS/GitHub/Slack/Stripe/entropy secrets) have no Presidio equivalent and are its main
+  differentiator — see the credentials comparison in the top-level README.

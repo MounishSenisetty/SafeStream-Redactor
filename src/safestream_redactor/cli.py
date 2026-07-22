@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections.abc import Iterator
 
@@ -55,11 +56,33 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     common.add_argument("--min-confidence", type=float, default=None)
     common.add_argument("--ner", action="store_true", help="enable the spaCy NER tier")
+    common.add_argument(
+        "--no-entropy",
+        dest="entropy",
+        action="store_false",
+        default=True,
+        help="disable the high-entropy secret detector (on by default)",
+    )
     common.add_argument("--chunk-size", type=int, default=None, metavar="BYTES")
     common.add_argument("--overlap", type=int, default=None, metavar="CHARS")
+    common.add_argument(
+        "--allow-network",
+        dest="offline_guard",
+        action="store_false",
+        default=True,
+        help="disable the offline network guard (allowed by default: any outbound "
+        "non-loopback connection is blocked while redacting)",
+    )
 
     redact = sub.add_parser("redact", parents=[common], help="redact a file or stdin")
     redact.add_argument("-o", "--output", required=True, help="output path, or '-' for stdout")
+    redact.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        metavar="N",
+        help="parallel workers when INPUT is a directory (default: RAM/CPU-aware)",
+    )
     redact.add_argument(
         "--mode",
         choices=["replace", "mask", "pseudonymize"],
@@ -121,6 +144,7 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
             custom_words=args.custom_word,
             custom_patterns=args.custom_regex,
             use_ner=args.ner,
+            use_entropy=args.entropy,
             chunk_size=args.chunk_size or DEFAULT_CHUNK_SIZE,
             overlap=args.overlap if args.overlap is not None else DEFAULT_OVERLAP,
         )
@@ -135,6 +159,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         )
     if args.min_confidence is not None:
         redactor.min_confidence = args.min_confidence
+    if not args.entropy:
+        redactor._detectors = [d for d in redactor._detectors if d.name != "entropy"]
     if args.custom_word or args.custom_regex:
         from safestream_redactor.detectors.custom import CustomDetector
 
@@ -158,6 +184,8 @@ def _input_chunks(path: str, chunk_size: int) -> Iterator[str]:
 
 def _cmd_redact(args: argparse.Namespace) -> int:
     redactor = _build_redactor(args)
+    if args.input not in ("-", None) and os.path.isdir(args.input):
+        return _redact_directory(args, redactor)
     chunks = _input_chunks(args.input, redactor.chunk_size)
     if args.output == "-":
         for piece in redactor.redact_stream(chunks):
@@ -169,6 +197,26 @@ def _cmd_redact(args: argparse.Namespace) -> int:
                 out.write(piece)
     else:
         redactor.redact_file(args.input, args.output)
+    return 0
+
+
+def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
+    from safestream_redactor.scheduler import redact_tree
+
+    if args.output in ("-", None):
+        raise SystemExit("directory input requires an output directory (-o DIR)")
+    results = redact_tree(
+        args.input,
+        args.output,
+        redactor,
+        workers=args.workers,
+        offline_guard=getattr(args, "offline_guard", True),
+    )
+    total = sum(r.bytes_written for r in results)
+    print(
+        f"-- redacted {len(results)} file(s), {total} bytes written to {args.output}",
+        file=sys.stderr,
+    )
     return 0
 
 
@@ -204,6 +252,10 @@ def _cmd_detect(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    if getattr(args, "offline_guard", True):
+        from safestream_redactor import netguard
+
+        netguard.install()
     try:
         if args.command == "redact":
             return _cmd_redact(args)

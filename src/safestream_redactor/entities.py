@@ -20,6 +20,15 @@ class EntityType(str, Enum):
     API_KEY = "api_key"
     JWT = "jwt"
     PRIVATE_KEY = "private_key"
+    SLACK_TOKEN = "slack_token"
+    SLACK_WEBHOOK = "slack_webhook"
+    STRIPE_KEY = "stripe_key"
+    GOOGLE_API_KEY = "google_api_key"
+    SENDGRID_KEY = "sendgrid_key"
+    TWILIO_KEY = "twilio_key"
+    NPM_TOKEN = "npm_token"
+    # generic high-entropy secret (no published format)
+    SECRET = "secret"
     # NER tier
     PERSON = "person"
     ORG = "org"

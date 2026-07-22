@@ -20,6 +20,18 @@ def test_phone_international():
     assert EntityType.PHONE not in types_in("room 12-34")
 
 
+def test_phone_rejects_date_and_ssn_shapes():
+    # ISO dates and SSN-shaped groups must never be flagged as phone numbers
+    assert EntityType.PHONE not in types_in("event on 2024-02-04 happened")
+    assert EntityType.PHONE not in types_in("value 000-21-7955 in column")
+
+
+def test_bare_phone_needs_context():
+    # a bare grouped number is ambiguous with ids -> only fires with a phone cue
+    assert EntityType.PHONE not in types_in("row 415 555 0132 end")
+    assert EntityType.PHONE in types_in("call 415 555 0132 now")
+
+
 def test_credit_card_luhn():
     assert luhn_ok("4111111111111111")
     assert not luhn_ok("4111111111111112")
@@ -110,3 +122,70 @@ def test_contextual_suppression():
 def test_overlap_resolution_card_beats_phone():
     dets = Redactor().detect("card 4111 1111 1111 1111 ok")
     assert [d.entity_type for d in dets] == [EntityType.CREDIT_CARD]
+
+
+# --- expanded credential patterns ---------------------------------------
+
+
+def test_slack_token():
+    assert EntityType.SLACK_TOKEN in types_in(
+        "tok xoxb-2345678901-2345678901-AbCdEfGhIjKlMnOpQrStUvWx"
+    )
+    assert EntityType.SLACK_TOKEN not in types_in("tok xoxb-123")
+
+
+def test_slack_webhook():
+    hook = "https://hooks.slack.com/services/T01234567/B01234567/abcdefghijklmnopqrstuvwx"
+    assert EntityType.SLACK_WEBHOOK in types_in(f"post to {hook}")
+
+
+def test_stripe_key():
+    assert EntityType.STRIPE_KEY in types_in("key sk_live_abcdefghijklmnop1234567890")
+    assert EntityType.STRIPE_KEY in types_in("key rk_test_ABCDEFGHIJKLMNOP1234567890")
+
+
+def test_google_api_key():
+    key = "AIza" + "Sy0123456789abcdefghijklmnopqrstuvw"[:35]
+    assert EntityType.GOOGLE_API_KEY in types_in(f"gkey {key} end")
+
+
+def test_sendgrid_key():
+    key = "SG.abcdefghijklmnopqrstuv.abcdefghijklmnopqrstuvwxyz0123456789ABCDEXY"
+    assert EntityType.SENDGRID_KEY in types_in(f"send {key}")
+
+
+def test_twilio_key():
+    assert EntityType.TWILIO_KEY in types_in("sid SK0123456789abcdef0123456789abcdef end")
+
+
+def test_npm_token():
+    assert EntityType.NPM_TOKEN in types_in("npm_abcdefghijklmnopqrstuvwxyz0123456789")
+
+
+# --- entropy / statistical tier -----------------------------------------
+
+
+def test_entropy_detects_high_entropy_secret():
+    assert EntityType.SECRET in types_in("secret Zx9Kq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0")
+    # 32-char high-entropy hex
+    assert EntityType.SECRET in types_in("digest a3f5e8d9c2b1046789abcdef01234567")
+
+
+def test_entropy_ignores_low_entropy_and_words():
+    # a UUID is structured/low-entropy, and a plain word is prose
+    assert EntityType.SECRET not in types_in("id 123e4567-e89b-12d3-a456-426614174000")
+    assert EntityType.SECRET not in types_in("thisisalongwordwithoutanynumbers")
+    # short tokens are below the length floor
+    assert EntityType.SECRET not in types_in("tok Zx9Kq2mVp7")
+
+
+def test_entropy_can_be_disabled():
+    text = "secret Zx9Kq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0"
+    assert EntityType.SECRET not in types_in(text, use_entropy=False)
+
+
+def test_named_credential_beats_entropy():
+    # a Stripe key is also high-entropy; the specific label must win
+    dets = Redactor().detect("key sk_live_abcdefghijklmnop1234567890XYZ end")
+    stripe = [d for d in dets if d.entity_type is EntityType.STRIPE_KEY]
+    assert stripe and not any(d.entity_type is EntityType.SECRET for d in dets)
