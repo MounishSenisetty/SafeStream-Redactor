@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ner = ["spacy>=3.5"]
-dev = ["pytest>=7.0", "ruff>=0.4"]
+dev = ["pytest>=7.0", "ruff>=0.4", "mypy>=1.8"]
 bench = ["presidio-analyzer>=2.2"]
 
 [project.urls]
@@ -68,3 +68,15 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+# spaCy has no type stubs and is an optional dependency; the NER tier is
+# imported lazily so the core install can skip it entirely. tomli is only
+# installed on Python < 3.11 (stdlib tomllib elsewhere) and ships no stubs.
+module = ["spacy", "tomli"]
+ignore_missing_imports = true

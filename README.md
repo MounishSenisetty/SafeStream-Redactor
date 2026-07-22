@@ -150,7 +150,8 @@ cd SafeStream-Redactor
 pip install -e '.[dev]'
 pytest                                   # fast suite
 SAFESTREAM_MEMTEST_MB=100 pytest -m memory -o addopts=''   # constant-memory proof
-ruff check . && ruff format --check .
+ruff check . && ruff format --check .       # lint + format
+mypy                                        # strict type check
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Good first issues live in

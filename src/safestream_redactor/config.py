@@ -45,7 +45,8 @@ from safestream_redactor.redactor import Redactor
 
 def load_config(path: str | os.PathLike[str]) -> dict[str, Any]:
     with open(path, "rb") as f:
-        return tomllib.load(f)
+        data: dict[str, Any] = tomllib.load(f)
+    return data
 
 
 def policy_from_config(data: dict[str, Any]) -> RedactionPolicy:
