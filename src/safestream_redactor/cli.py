@@ -347,6 +347,16 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
     if args.output in ("-", None):
         raise SystemExit("directory input requires an output directory (-o DIR)")
     started = time.monotonic()
+
+    # live progress only on an interactive stderr; a carriage-return line would
+    # just be noise in CI logs or a redirected file
+    progress = None
+    if sys.stderr.isatty():
+
+        def progress(done: int, total: int) -> None:
+            end = "\n" if done == total else "\r"
+            print(f"-- redacting: {done}/{total} files", end=end, file=sys.stderr, flush=True)
+
     results = redact_tree(
         args.input,
         args.output,
@@ -354,6 +364,7 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
         workers=args.workers,
         encoding=getattr(args, "encoding", "utf-8"),
         offline_guard=getattr(args, "offline_guard", True),
+        progress=progress,
     )
     stats = RedactionStats()
     for r in results:

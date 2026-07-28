@@ -10,7 +10,8 @@ when present) so peak memory stays bounded no matter how large the corpus is.
 from __future__ import annotations
 
 import os
-from concurrent.futures import ProcessPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -105,12 +106,15 @@ def redact_tree(
     workers: int | None = None,
     encoding: str = "utf-8",
     offline_guard: bool = True,
+    progress: Callable[[int, int], None] | None = None,
 ) -> list[RedactResult]:
     """Redact every file under ``input_dir`` into ``output_dir`` in parallel.
 
     The output tree mirrors the input tree. Returns one :class:`RedactResult`
-    per file. Uses a process pool sized by :func:`ram_aware_workers`; falls back
-    to in-process execution when a single worker suffices.
+    per file, in sorted input-path order regardless of completion order. Uses a
+    process pool sized by :func:`ram_aware_workers`; falls back to in-process
+    execution when a single worker suffices. ``progress``, if given, is called
+    ``(files_done, files_total)`` after each file completes.
     """
     in_root = Path(input_dir)
     out_root = Path(output_dir)
@@ -118,15 +122,29 @@ def redact_tree(
     if not files:
         return []
     jobs = [(str(p), str(out_root / p.relative_to(in_root))) for p in files]
+    total = len(jobs)
 
     n = ram_aware_workers(redactor, workers)
-    if n == 1 or len(jobs) == 1:
+    if n == 1 or total == 1:
         _init_worker(redactor, encoding, offline_guard)
-        return [_redact_one(job) for job in jobs]
+        results = []
+        for done, job in enumerate(jobs, start=1):
+            results.append(_redact_one(job))
+            if progress:
+                progress(done, total)
+        return results
 
     with ProcessPoolExecutor(
         max_workers=n,
         initializer=_init_worker,
         initargs=(redactor, encoding, offline_guard),
     ) as pool:
-        return list(pool.map(_redact_one, jobs))
+        # submit keyed by index so results can be restored to input order even
+        # though as_completed yields them as they finish (for live progress)
+        futures = {pool.submit(_redact_one, job): i for i, job in enumerate(jobs)}
+        by_index: dict[int, RedactResult] = {}
+        for done, fut in enumerate(as_completed(futures), start=1):
+            by_index[futures[fut]] = fut.result()
+            if progress:
+                progress(done, total)
+        return [by_index[i] for i in range(total)]
