@@ -37,6 +37,29 @@ def test_redact_tree_empty_dir(tmp_path):
     assert redact_tree(src, tmp_path / "out", Redactor()) == []
 
 
+def test_redact_tree_skips_symlinks(tmp_path):
+    import os
+
+    outside = tmp_path / "secret_outside.txt"
+    outside.write_text("email leaked@x.io")  # must NOT be redacted/copied
+    src = tmp_path / "in"
+    (src / "sub").mkdir(parents=True)
+    (src / "real.txt").write_text("email a@b.io")
+    # a symlinked file pointing outside the tree, and a symlinked directory
+    try:
+        os.symlink(outside, src / "link.txt")
+        os.symlink(tmp_path, src / "sub" / "escape")
+    except (OSError, NotImplementedError):
+        import pytest
+
+        pytest.skip("symlinks not supported on this platform")
+
+    results = redact_tree(src, tmp_path / "out", Redactor(), workers=1)
+    names = {Path(r.input_path).name for r in results}
+    assert names == {"real.txt"}  # only the real file, no symlink targets
+    assert not (tmp_path / "out" / "link.txt").exists()
+
+
 def _many_files(root: Path, n: int) -> Path:
     src = root / "in"
     src.mkdir()

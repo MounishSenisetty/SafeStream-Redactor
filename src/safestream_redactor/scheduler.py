@@ -118,7 +118,19 @@ def redact_tree(
     """
     in_root = Path(input_dir)
     out_root = Path(output_dir)
-    files = sorted(p for p in in_root.rglob("*") if p.is_file())
+    # Walk without following symlinks: a symlinked directory could escape the
+    # input tree (redacting/writing outside it) and a symlinked file could point
+    # at a device (/dev/zero) — neither is intended when redacting a directory.
+    # os.walk(followlinks=False) both skips descent into symlinked dirs and lets
+    # us drop symlinked files, portably across Python versions.
+    files: list[Path] = []
+    for root, _dirs, names in os.walk(in_root, followlinks=False):
+        root_path = Path(root)
+        for name in names:
+            p = root_path / name
+            if p.is_file() and not p.is_symlink():
+                files.append(p)
+    files.sort()
     if not files:
         return []
     jobs = [(str(p), str(out_root / p.relative_to(in_root))) for p in files]
