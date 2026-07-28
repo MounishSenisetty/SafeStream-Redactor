@@ -58,9 +58,7 @@ testpaths = ["tests"]
 [tool.coverage.run]
 source = ["safestream_redactor"]
 omit = [
-  # the NER tier needs the optional spaCy extra; it is exercised only when
-  # that extra is installed, so it would read 0% on the core test run
-  "*/detectors/ner.py",
+  # trivial `python -m` shim; exercised via the console-script entry point
   "*/__main__.py",
 ]
 
