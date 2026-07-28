@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import os
+import stat
+import tempfile
 from collections.abc import Iterable, Iterator
 
 from safestream_redactor.detectors.base import Detector
@@ -18,6 +22,27 @@ from safestream_redactor.engine import (
 )
 from safestream_redactor.entities import Detection, EntityType, resolve_overlaps
 from safestream_redactor.policy import RedactionPolicy
+from safestream_redactor.report import RedactionStats
+
+logger = logging.getLogger(__name__)
+
+
+def _match_destination_mode(tmp_path: str, out_path: str) -> None:
+    """Give the temp file the permissions the destination would have had.
+
+    ``mkstemp`` creates 0o600 files; a plain ``open(out, "w")`` would instead
+    keep an existing file's mode, or apply the process umask to a new one.
+    Matching that keeps atomic replacement behaviourally identical to the
+    direct write it replaced.
+    """
+    try:
+        mode = stat.S_IMODE(os.stat(out_path).st_mode)
+    except OSError:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
+    with contextlib.suppress(OSError):
+        os.chmod(tmp_path, mode)
 
 
 class Redactor:
@@ -95,6 +120,7 @@ class Redactor:
         # contextual tier also contributes trigger-gated detections of its own
         if resolved_types is None or EntityType.SSN in resolved_types:
             self._detectors.append(self._scorer)
+        logger.debug("detector tiers active: %s", [d.name for d in self._detectors])
 
     # ------------------------------------------------------------------
     # detection
@@ -125,23 +151,72 @@ class Redactor:
         """
         return stream_windows(chunks, self.detect, self.overlap)
 
-    def redact_stream(self, chunks: Iterable[str]) -> Iterator[str]:
+    def redact_stream(
+        self, chunks: Iterable[str], stats: RedactionStats | None = None
+    ) -> Iterator[str]:
         """Redact an iterable/generator of text chunks, yielding redacted chunks.
 
         Memory stays bounded by ``chunk_size + overlap`` regardless of total
         input size. Entities up to ``overlap`` characters long are detected
-        even when split across chunk boundaries.
+        even when split across chunk boundaries. Pass a
+        :class:`~safestream_redactor.report.RedactionStats` to accumulate
+        per-type counts and sizes while streaming.
         """
-        return stream_transform(chunks, self.detect, self.policy.apply, self.overlap)
+        if stats is None:
+            return stream_transform(chunks, self.detect, self.policy.apply, self.overlap)
+        return self._redact_stream_with_stats(chunks, stats)
+
+    def _redact_stream_with_stats(
+        self, chunks: Iterable[str], stats: RedactionStats
+    ) -> Iterator[str]:
+        for segment, detections in stream_windows(chunks, self.detect, self.overlap):
+            redacted = self.policy.apply(segment, detections)
+            stats.add_segment(segment, redacted, detections)
+            yield redacted
 
     def redact_file(
         self,
         input_path: str | os.PathLike[str],
         output_path: str | os.PathLike[str],
         encoding: str = "utf-8",
-    ) -> None:
-        """Redact ``input_path`` into ``output_path`` without loading either fully."""
-        chunks = read_chunks(os.fspath(input_path), self.chunk_size, encoding)
-        with open(output_path, "w", encoding=encoding) as out:
-            for redacted in self.redact_stream(chunks):
-                out.write(redacted)
+    ) -> RedactionStats:
+        """Redact ``input_path`` into ``output_path`` without loading either fully.
+
+        The output is written to a temporary file in the destination directory
+        and moved into place atomically, so a crash mid-run can never leave a
+        partially redacted file that looks complete — downstream consumers see
+        either the old content or the fully redacted result. Redacting a file
+        onto itself is rejected (the source would be destroyed on failure).
+
+        Returns the run's :class:`~safestream_redactor.report.RedactionStats`
+        (per-type counts, characters in/out).
+        """
+        in_path, out_path = os.fspath(input_path), os.fspath(output_path)
+        if os.path.exists(out_path):
+            try:
+                same = os.path.samefile(in_path, out_path)
+            except OSError:
+                same = False
+            if same:
+                raise ValueError(
+                    f"input and output refer to the same file ({out_path!r}); "
+                    "write to a different path, then move it into place"
+                )
+        stats = RedactionStats()
+        chunks = read_chunks(in_path, self.chunk_size, encoding)
+        fd, tmp_path = tempfile.mkstemp(
+            dir=os.path.dirname(out_path) or ".",
+            prefix=os.path.basename(out_path) + ".",
+            suffix=".tmp",
+        )
+        try:
+            with open(fd, "w", encoding=encoding) as out:
+                for redacted in self.redact_stream(chunks, stats):
+                    out.write(redacted)
+            _match_destination_mode(tmp_path, out_path)
+            os.replace(tmp_path, out_path)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+            raise
+        return stats

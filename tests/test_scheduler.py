@@ -37,6 +37,37 @@ def test_redact_tree_empty_dir(tmp_path):
     assert redact_tree(src, tmp_path / "out", Redactor()) == []
 
 
+def _many_files(root: Path, n: int) -> Path:
+    src = root / "in"
+    src.mkdir()
+    for i in range(n):
+        (src / f"f{i:02d}.txt").write_text(f"email user{i}@x.io")
+    return src
+
+
+def test_progress_callback_reports_every_file(tmp_path):
+    src = _many_files(tmp_path, 6)
+    seen = []
+    redact_tree(
+        src, tmp_path / "out", Redactor(), workers=1, progress=lambda d, t: seen.append((d, t))
+    )
+    assert [d for d, _ in seen] == [1, 2, 3, 4, 5, 6]
+    assert all(t == 6 for _, t in seen)
+
+
+def test_progress_and_order_preserved_parallel(tmp_path):
+    src = _many_files(tmp_path, 8)
+    seen = []
+    results = redact_tree(
+        src, tmp_path / "out", Redactor(), workers=4, progress=lambda d, t: seen.append(d)
+    )
+    # every file reported once, ending at the total, regardless of finish order
+    assert sorted(seen) == [1, 2, 3, 4, 5, 6, 7, 8]
+    # results stay in sorted input-path order even though completion order varies
+    names = [Path(r.input_path).name for r in results]
+    assert names == sorted(names)
+
+
 def test_ram_aware_workers():
     r = Redactor()
     assert ram_aware_workers(r, requested=3) == 3

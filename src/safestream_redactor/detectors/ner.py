@@ -7,6 +7,8 @@ with ``pip install safestream-redactor[ner]`` plus a model, e.g.
 
 from __future__ import annotations
 
+from typing import Any
+
 from safestream_redactor.entities import Detection, EntityType
 
 _LABEL_MAP = {
@@ -18,21 +20,38 @@ _LABEL_MAP = {
 }
 
 
+def _load_model(model: str) -> Any:
+    try:
+        import spacy
+    except ImportError as exc:
+        raise ImportError(
+            "spaCy is required for the NER tier. Install it with "
+            "'pip install safestream-redactor[ner]' and download a model with "
+            "'python -m spacy download en_core_web_sm'."
+        ) from exc
+    # only the NER component is needed; disabling the rest is much faster
+    return spacy.load(model, exclude=["tagger", "parser", "lemmatizer", "attribute_ruler"])
+
+
 class NERDetector:
     name = "ner"
 
     def __init__(self, model: str = "en_core_web_sm", confidence: float = 0.7) -> None:
-        try:
-            import spacy
-        except ImportError as exc:
-            raise ImportError(
-                "spaCy is required for the NER tier. Install it with "
-                "'pip install safestream-redactor[ner]' and download a model with "
-                "'python -m spacy download en_core_web_sm'."
-            ) from exc
-        # only the NER component is needed; disabling the rest is much faster
-        self._nlp = spacy.load(model, exclude=["tagger", "parser", "lemmatizer", "attribute_ruler"])
+        self._model = model
         self._confidence = confidence
+        self._nlp = _load_model(model)
+
+    # The loaded spaCy model is large and slow (sometimes impossible) to pickle,
+    # which matters because the multiprocessing scheduler ships detectors to
+    # worker processes. Pickle only the config and have each worker reload the
+    # model locally — cheaper over IPC and robust to model-pickling quirks.
+    def __getstate__(self) -> dict[str, Any]:
+        return {"model": self._model, "confidence": self._confidence}
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self._model = state["model"]
+        self._confidence = state["confidence"]
+        self._nlp = _load_model(self._model)
 
     def detect(self, text: str) -> list[Detection]:
         found: list[Detection] = []

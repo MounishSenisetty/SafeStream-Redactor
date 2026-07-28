@@ -60,9 +60,89 @@ def test_cli_uses_config_and_flags_override(config_file, tmp_path, capsys):
     assert capsys.readouterr().out == "# and <SSN>"
 
 
+def test_cli_detection_flags_override_config(config_file, tmp_path, capsys):
+    src = tmp_path / "in.txt"
+    src.write_text("bob@x.io and 123-45-6789 codename ProjectY chunk sk-ant-" + "Ab12Cd34" * 5)
+    assert (
+        main(
+            [
+                "redact",
+                str(src),
+                "-o",
+                "-",
+                "--config",
+                str(config_file),
+                "--types",
+                "email,anthropic_key",
+                "--min-confidence",
+                "0.6",
+                "--no-entropy",
+                "--custom-word",
+                "ProjectY",
+                "--chunk-size",
+                "2048",
+                "--overlap",
+                "256",
+            ]
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    # email redacted, custom word from the flag redacted, ssn no longer in scope
+    assert "bob@x.io" not in out and "ProjectY" not in out
+    assert "123-45-6789" in out
+    assert "sk-ant-" not in out
+
+
 def test_hmac_key_from_config(tmp_path):
     p = tmp_path / "p.toml"
     p.write_text('[redaction]\nmode = "pseudonymize"\nhmac_key = "k"\n')
     r = redactor_from_config(p)
     out = r.redact("bob@x.io")
     assert out.startswith("<EMAIL_")
+
+
+def test_unknown_key_fails_closed(tmp_path):
+    # a misspelled key must error, not silently fall back to the default and
+    # ship unredacted output
+    p = tmp_path / "p.toml"
+    p.write_text('[redaction]\nreplacment = "<X>"\n')
+    with pytest.raises(ValueError, match=r"unknown key 'replacment'.*did you mean 'replacement'"):
+        redactor_from_config(p)
+
+
+def test_unknown_section_fails_closed(tmp_path):
+    p = tmp_path / "p.toml"
+    p.write_text('[redation]\nmode = "mask"\n')
+    with pytest.raises(ValueError, match="unknown config section"):
+        redactor_from_config(p)
+
+
+def test_replacements_entity_keys_are_not_rejected(tmp_path):
+    # keys under redaction.replacements are entity names, not config keys
+    p = tmp_path / "p.toml"
+    p.write_text('[redaction.replacements]\nemail = "<E>"\nssn = "<S>"\n')
+    r = redactor_from_config(p)
+    assert r.redact("bob@x.io ssn: 123-45-6789") == "<E> ssn: <S>"
+
+
+def test_init_config_emits_a_usable_policy(tmp_path):
+    # the generated starter must load without error and actually redact,
+    # closing the loop between init-config and the strict validator
+    policy = tmp_path / "policy.toml"
+    assert main(["init-config", "-o", str(policy)]) == 0
+    src = tmp_path / "in.txt"
+    src.write_text("mail bob@x.io ssn 123-45-6789")
+    out = tmp_path / "out.txt"
+    assert main(["redact", str(src), "-o", str(out), "--config", str(policy)]) == 0
+    assert out.read_text() == "mail [REDACTED] ssn [REDACTED]"
+
+
+def test_init_config_refuses_to_clobber(tmp_path):
+    policy = tmp_path / "policy.toml"
+    policy.write_text("keep me")
+    with pytest.raises(SystemExit, match="already exists"):
+        main(["init-config", "-o", str(policy)])
+    assert policy.read_text() == "keep me"
+    assert main(["init-config", "-o", str(policy), "--force"]) == 0
+    assert policy.read_text() != "keep me"

@@ -1,10 +1,17 @@
-"""Runtime network-egress guard — *enforce* the offline privacy guarantee.
+"""Runtime network-egress guard — best-effort, defense-in-depth.
 
-SafeStream's promise is that sensitive text never leaves the machine. This
-module makes that enforceable rather than merely documented: once installed, it
-monkeypatches the socket layer so any attempt to open a connection to a
-non-loopback address raises :class:`NetworkAccessError` before a single byte is
-sent.
+Once installed, this monkeypatches the socket layer so any attempt to open a
+connection to a non-loopback address raises :class:`NetworkAccessError` before
+a byte is sent. That reliably stops *accidental* egress by this process, its
+detector plugins, and its pure-Python dependencies.
+
+It is **not** a security boundary and must not be relied on as one: a native
+extension issuing raw syscalls, a spawned subprocess (``curl`` ...), a
+``ctypes`` call into libc, or any other process on the host can all bypass it,
+and it does nothing about disk-based exfiltration. For a hard guarantee, run
+with networking disabled at the OS/container level (``--network none``, a
+network namespace, or a seccomp egress policy) in addition to this guard. See
+``SECURITY.md`` for the threat model.
 
 The guard is *not* installed on import — importing the library never changes
 global socket behaviour. The CLI installs it by default (opt out with

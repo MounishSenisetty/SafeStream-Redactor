@@ -32,7 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ner = ["spacy>=3.5"]
-dev = ["pytest>=7.0", "ruff>=0.4", "mypy>=1.8"]
+dev = ["pytest>=7.0", "pytest-cov>=4.1", "hypothesis>=6.90", "ruff>=0.4", "mypy>=1.8"]
 bench = ["presidio-analyzer>=2.2"]
 
 [project.urls]
@@ -55,10 +55,33 @@ markers = [
 ]
 testpaths = ["tests"]
 
+[tool.coverage.run]
+source = ["safestream_redactor"]
+omit = [
+  # trivial `python -m` shim; exercised via the console-script entry point
+  "*/__main__.py",
+]
+
+[tool.coverage.report]
+fail_under = 95
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "if sys\\.version_info",
+  "if __name__ == .__main__.:",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 src = ["src", "tests"]
+
+[tool.ruff.format]
+# Don't format Markdown: ruff's embedded-code-block formatting is unstable
+# across versions (some default it on, some gate it behind preview), which made
+# `ruff format --check` pass locally but fail in CI on README.md. Prose and doc
+# snippets aren't code we gate on, so exclude them from the formatter entirely.
+exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]

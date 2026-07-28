@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from collections.abc import Iterator
 
 from safestream_redactor import __version__
@@ -22,6 +23,7 @@ from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from safestream_redactor.entities import EntityType
 from safestream_redactor.policy import RedactionPolicy
 from safestream_redactor.redactor import Redactor
+from safestream_redactor.report import RedactionStats
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -66,6 +68,12 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--chunk-size", type=int, default=None, metavar="BYTES")
     common.add_argument("--overlap", type=int, default=None, metavar="CHARS")
     common.add_argument(
+        "--encoding",
+        default="utf-8",
+        metavar="ENC",
+        help="text encoding of the input/output (default: utf-8)",
+    )
+    common.add_argument(
         "--allow-network",
         dest="offline_guard",
         action="store_false",
@@ -76,6 +84,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
     redact = sub.add_parser("redact", parents=[common], help="redact a file or stdin")
     redact.add_argument("-o", "--output", required=True, help="output path, or '-' for stdout")
+    redact.add_argument(
+        "--stats",
+        action="store_true",
+        help="print per-type detection counts to stderr when done",
+    )
+    redact.add_argument(
+        "--report",
+        metavar="FILE",
+        help="write a JSON run report (counts and sizes only, never matched text)",
+    )
     redact.add_argument(
         "--workers",
         type=int,
@@ -103,7 +121,75 @@ def _build_parser() -> argparse.ArgumentParser:
 
     detect = sub.add_parser("detect", parents=[common], help="list detections without redacting")
     detect.add_argument("--json", action="store_true", help="one JSON object per detection")
+    detect.add_argument(
+        "--fail-on-detect",
+        action="store_true",
+        help="exit with status 1 if anything is detected (CI/pre-commit secret gate)",
+    )
+
+    init = sub.add_parser("init-config", help="write a documented, valid starter policy TOML file")
+    init.add_argument(
+        "-o", "--output", default="-", help="output path, or '-' for stdout (default)"
+    )
+    init.add_argument(
+        "--force", action="store_true", help="overwrite the output file if it already exists"
+    )
     return parser
+
+
+# A starter policy that documents every option and passes validate_config as-is.
+# Keys mirror the config schema exactly, so this doubles as executable documentation.
+_STARTER_CONFIG = """\
+# SafeStream-Redactor policy file. Pass it with:  safestream redact IN -o OUT --config this.toml
+# CLI flags override anything set here. Unknown keys/sections are rejected (fail-closed).
+
+[detection]
+# types = ["email", "ssn", "credit_card"]   # omit for all types
+min_confidence = 0.5
+use_ner = false                             # requires the [ner] extra + a model
+# ner_model = "en_core_web_sm"
+use_entropy = true                          # high-entropy secret detection
+
+[redaction]
+mode = "replace"                            # replace | mask | pseudonymize
+replacement = "[REDACTED]"
+mask_keep_last = 4                          # mask mode: trailing chars left visible
+mask_char = "*"
+# hmac_key = "change-me"                    # required for pseudonymize (keep it secret)
+# pseudonym_length = 16                     # hex digits of the keyed token (8-64)
+
+[redaction.replacements]                    # optional per-type replacement strings
+# email = "<EMAIL>"
+
+[custom]
+# words = ["ProjectX"]                      # literal words/phrases to always redact
+# patterns = ['\\\\binternal-[a-z]+\\\\b']       # regexes whose matches are always redacted
+
+[streaming]
+chunk_size = 65536
+overlap = 4096
+"""
+
+
+def _cmd_init_config(args: argparse.Namespace) -> int:
+    # sanity: the emitted template must satisfy the strict validator
+    from safestream_redactor.config import validate_config
+
+    if sys.version_info >= (3, 11):
+        import tomllib
+    else:
+        import tomli as tomllib
+    validate_config(tomllib.loads(_STARTER_CONFIG))
+
+    if args.output == "-":
+        sys.stdout.write(_STARTER_CONFIG)
+        return 0
+    if os.path.exists(args.output) and not args.force:
+        raise SystemExit(f"{args.output} already exists (pass --force to overwrite)")
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(_STARTER_CONFIG)
+    print(f"-- wrote starter policy to {args.output}", file=sys.stderr)
+    return 0
 
 
 def _build_redactor(args: argparse.Namespace) -> Redactor:
@@ -172,31 +258,86 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
     return redactor
 
 
-def _input_chunks(path: str, chunk_size: int) -> Iterator[str]:
+def _atomic_write_stream(path: str, pieces: Iterator[str], encoding: str) -> None:
+    """Write streamed output to a temp file, then move it into place atomically.
+
+    Matches :meth:`Redactor.redact_file` durability for the stdin->file path: a
+    crash mid-stream can't leave a truncated file that looks fully redacted.
+    """
+    import contextlib
+    import tempfile
+
+    fd, tmp = tempfile.mkstemp(
+        dir=os.path.dirname(path) or ".", prefix=os.path.basename(path) + "."
+    )
+    try:
+        with open(fd, "w", encoding=encoding) as out:
+            for piece in pieces:
+                out.write(piece)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
+
+
+def _input_chunks(path: str, chunk_size: int, encoding: str = "utf-8") -> Iterator[str]:
     if path == "-":
         while chunk := sys.stdin.read(chunk_size):
             yield chunk
     else:
         from safestream_redactor.engine import read_chunks
 
-        yield from read_chunks(path, chunk_size)
+        yield from read_chunks(path, chunk_size, encoding)
+
+
+def _finish_run(
+    args: argparse.Namespace, stats: RedactionStats, *, files: int, started: float
+) -> None:
+    """Emit the optional stats summary and JSON run report for a redact run."""
+    if getattr(args, "stats", False):
+        print(f"-- {stats.summary()}", file=sys.stderr)
+    # An undecodable-bytes warning is always shown (not gated on --stats): it
+    # means some input was never scanned, which is a redaction-coverage risk.
+    if stats.decode_replacements:
+        print(
+            f"safestream: warning: {stats.decode_replacements} undecodable byte(s) were "
+            "replaced with U+FFFD; input may not be valid UTF-8 and that content was not "
+            "scanned for sensitive data (try --encoding, or verify the source encoding)",
+            file=sys.stderr,
+        )
+    report_path = getattr(args, "report", None)
+    if report_path:
+        from safestream_redactor.report import build_report, write_report
+
+        write_report(
+            report_path,
+            build_report(
+                stats,
+                files=files,
+                duration_seconds=time.monotonic() - started,
+                version=__version__,
+            ),
+        )
 
 
 def _cmd_redact(args: argparse.Namespace) -> int:
     redactor = _build_redactor(args)
     if args.input not in ("-", None) and os.path.isdir(args.input):
         return _redact_directory(args, redactor)
-    chunks = _input_chunks(args.input, redactor.chunk_size)
+    started = time.monotonic()
+    encoding = getattr(args, "encoding", "utf-8")
+    stats = RedactionStats()
+    chunks = _input_chunks(args.input, redactor.chunk_size, encoding)
     if args.output == "-":
-        for piece in redactor.redact_stream(chunks):
+        for piece in redactor.redact_stream(chunks, stats):
             sys.stdout.write(piece)
         sys.stdout.flush()
     elif args.input == "-":
-        with open(args.output, "w", encoding="utf-8") as out:
-            for piece in redactor.redact_stream(chunks):
-                out.write(piece)
+        _atomic_write_stream(args.output, redactor.redact_stream(chunks, stats), encoding)
     else:
-        redactor.redact_file(args.input, args.output)
+        stats = redactor.redact_file(args.input, args.output, encoding=encoding)
+    _finish_run(args, stats, files=1, started=started)
     return 0
 
 
@@ -205,18 +346,38 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
 
     if args.output in ("-", None):
         raise SystemExit("directory input requires an output directory (-o DIR)")
+    started = time.monotonic()
+
+    # live progress only on an interactive stderr; a carriage-return line would
+    # just be noise in CI logs or a redirected file
+    progress = None
+    if sys.stderr.isatty():
+
+        def progress(done: int, total: int) -> None:
+            end = "\n" if done == total else "\r"
+            print(f"-- redacting: {done}/{total} files", end=end, file=sys.stderr, flush=True)
+
     results = redact_tree(
         args.input,
         args.output,
         redactor,
         workers=args.workers,
+        encoding=getattr(args, "encoding", "utf-8"),
         offline_guard=getattr(args, "offline_guard", True),
+        progress=progress,
     )
+    stats = RedactionStats()
+    for r in results:
+        stats.counts.update(r.counts)
+        stats.chars_in += r.chars_in
+        stats.chars_out += r.chars_out
+        stats.decode_replacements += r.decode_replacements
     total = sum(r.bytes_written for r in results)
     print(
         f"-- redacted {len(results)} file(s), {total} bytes written to {args.output}",
         file=sys.stderr,
     )
+    _finish_run(args, stats, files=len(results), started=started)
     return 0
 
 
@@ -225,7 +386,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     count = 0
     offset = 0
     for segment, detections in redactor.detect_stream(
-        _input_chunks(args.input, redactor.chunk_size)
+        _input_chunks(args.input, redactor.chunk_size, getattr(args, "encoding", "utf-8"))
     ):
         for det in detections:
             count += 1
@@ -247,11 +408,15 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         offset += len(segment)
     if not args.json:
         print(f"-- {count} detection(s)", file=sys.stderr)
+    if args.fail_on_detect and count:
+        return 1
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    if args.command == "init-config":
+        return _cmd_init_config(args)
     if getattr(args, "offline_guard", True):
         from safestream_redactor import netguard
 

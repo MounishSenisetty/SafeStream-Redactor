@@ -48,6 +48,10 @@ pip install -e '.[dev]'
 docker build -t safestream-redactor .
 docker run --rm -v "$PWD":/data safestream-redactor \
     redact /data/input.txt -o /data/output.txt
+
+# released multi-arch images (amd64/arm64, with SBOM + provenance) are on GHCR:
+docker run --rm -v "$PWD":/data ghcr.io/mounishsenisetty/safestream-redactor \
+    redact /data/input.txt -o /data/output.txt
 ```
 
 ## Quickstart
@@ -72,11 +76,30 @@ safestream redact ./logs -o ./logs_redacted --workers 8
 
 # just list what would be redacted
 safestream detect input.txt --json
+
+# CI / pre-commit secret gate: non-zero exit if anything is found
+safestream detect build.log --fail-on-detect
+
+# per-type counts to stderr, plus a JSON run report for compliance filing
+# (the report contains only type names, counts, and sizes — never matched text)
+safestream redact input.txt -o out.txt --stats --report run.json
+
+# non-UTF-8 source? decode it correctly (undecodable bytes are otherwise
+# reported and warned about, since unscanned bytes are a coverage risk)
+safestream redact legacy.log -o out.log --encoding latin-1
+
+# generate a documented, validated starter policy to customise
+safestream init-config -o policy.toml
 ```
 
 While redacting, the CLI installs an **offline network guard** by default: any attempt to
-open a non-loopback connection raises an error, so sensitive text provably never leaves the
-machine. Pass `--allow-network` to disable it.
+open a non-loopback connection through Python's socket layer raises an error. This is
+best-effort, defense-in-depth egress prevention for this process, its plugins, and its
+Python dependencies — **not** a hard boundary: native extensions issuing raw syscalls, a
+spawned subprocess, or another process on the machine are outside its reach. For a
+guaranteed boundary, also run with no network (`docker run --network none ...`) or a
+network namespace / seccomp policy. Pass `--allow-network` to disable the guard. See
+[SECURITY.md](SECURITY.md) for the full threat model.
 
 ### Python API
 
@@ -95,8 +118,10 @@ for d in redactor.detect("card 4111 1111 1111 1111"):
 policy = RedactionPolicy(replacements={EntityType.EMAIL: "<EMAIL>"})
 Redactor(policy=policy).redact("write to bob@corp.io")   # 'write to <EMAIL>'
 
-# constant-memory file-to-file
-Redactor().redact_file("huge.log", "huge_redacted.log")
+# constant-memory file-to-file; the write is atomic (never a partial output)
+# and the returned stats carry per-type counts — content-free audit evidence
+stats = Redactor().redact_file("huge.log", "huge_redacted.log")
+print(stats.summary())   # '3 detection(s): email=2, ssn=1'
 
 # generator-based streaming (any iterable of text chunks)
 with open("huge.log") as f:
@@ -178,6 +203,11 @@ safestream redact input.txt -o out.txt --config policy.toml
   Plugins: third-party tiers load from the 'safestream_redactor.detectors' entry point.
 ```
 
+Each tier-1 pattern declares literal *anchors* every match must contain (`AKIA`, `eyJ`,
+`@`, `://`, a digit, …); a cheap substring scan per window skips regexes that cannot
+match, so secret-sparse text runs ~25× faster with provably identical output (a
+differential test compares prefiltered and unfiltered detection).
+
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
 at least `overlap` characters from the buffer's end is emitted each round; the tail is carried
 into the next round so any entity up to `overlap` characters long (default 4 KB) is always
@@ -191,50 +221,56 @@ Detected entity types:
 - **PII:** `email`, `phone`, `credit_card` (Luhn-validated), `ssn`, `ipv4`, `ipv6`, plus
   `person` / `org` / `loc` with the NER extra.
 - **Credentials & secrets:** `aws_key`, `github_token`, `slack_token`, `slack_webhook`,
-  `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`, `jwt`,
-  `private_key`, `api_key` (generic `key = value` assignments), and `secret`
+  `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`,
+  `openai_key`, `anthropic_key`, `jwt`, `private_key`,
+  `url_credentials` (passwords embedded in connection strings — only the password is
+  redacted, so `postgres://svc:hunter2@db/app` becomes `postgres://svc:[REDACTED]@db/app`),
+  `api_key` (generic `key = value` assignments), and `secret`
   (undocumented high-entropy strings, on by default — disable with `--no-entropy`).
 - `custom` for user-supplied words and regexes.
 
-## Comparison
+## Evaluation
 
-**Structured PII** — 5.2 MB synthetic corpus, span-overlap + type-aware scoring
-(reproduce with `benchmarks/generate_dataset.py` then `benchmarks/run_benchmark.py`):
+> **Read this before quoting any number below.** The corpora these numbers come from
+> are *synthetic and self-generated*: the gold positives are emitted in the same
+> canonical formats the detector targets, so a near-perfect score on them measures
+> **format coverage and false-positive resistance, not real-world recall**. They are a
+> regression fixture, not an accuracy claim, and a self-generated benchmark is not
+> evidence of accuracy on your data. For a defensible accuracy number, run
+> `benchmarks/evaluate.py` against an independent labeled corpus you control (see
+> [benchmarks/README.md](benchmarks/README.md) — the Presidio research dataset, CoNLL,
+> and the n2c2 de-identification set are the recommended targets). Expect recall on
+> free-form prose (names, addresses) to be substantially lower than on structured PII
+> unless the `[ner]` extra is enabled.
 
-| Tool                          | Precision | Recall | F1    | Constant memory |
-| ----------------------------- | --------- | ------ | ----- | --------------- |
-| safestream-redactor           | 1.000     | 1.000  | 1.000 | ✅              |
-| Microsoft Presidio (patterns) | 0.928     | 0.815  | 0.868 | ❌              |
+**Format coverage & false-positive resistance (synthetic).** On the adversarial corpus
+(1 MB of noisy log/JSON/CSV/SQL dense with hard negatives — order numbers, ISO
+timestamps, UUIDs, git hashes, invalid-area SSNs, 5-octet version strings; reproduce
+with `benchmarks/generate_hard_dataset.py` then `benchmarks/run_benchmark.py`):
 
-**Realistic / adversarial** — 1 MB of noisy log / JSON / CSV / SQL records dense with
-*hard negatives* (order numbers, ISO timestamps, UUIDs, git hashes, invalid-area SSNs,
-5-octet version strings) that tempt false positives — both tools face the same distractors
-(reproduce with `benchmarks/generate_hard_dataset.py`):
+| Tool                          | Precision | Recall\* | Throughput  |
+| ----------------------------- | --------- | -------- | ----------- |
+| safestream-redactor           | 0.999     | 1.000    | ~3.1 MB/s   |
+| Microsoft Presidio (patterns) | 0.649     | 0.843    | ~0.06 MB/s  |
 
-| Tool                          | Precision | Recall | F1    | Throughput  |
-| ----------------------------- | --------- | ------ | ----- | ----------- |
-| safestream-redactor           | 0.999     | 1.000  | 1.000 | 3.13 MB/s   |
-| Microsoft Presidio (patterns) | 0.649     | 0.843  | 0.734 | 0.06 MB/s   |
+\* Recall here is against self-generated positives and is *not* a real-world recall
+figure — see the note above. The meaningful, non-circular result in this table is
+**precision under distractors**: SafeStream holds 0.999 while Presidio's phone
+recognizer emits thousands of false positives (P=0.649). Presidio was run via its
+pattern recognizers; its spaCy NER tier is a separate, model-dependent path that will
+out-recall SafeStream's regex core on prose unless you enable `[ner]`.
 
-This is the meaningful test: SafeStream holds 0.999 precision under the distractors while
-Presidio's phone recognizer emits thousands of false positives (P=0.649).
+**Throughput is a known limitation, not a strength.** ~3 MB/s single-core means a
+100 GB file takes hours; compiled scanners (gitleaks, ripgrep-class) are 100–1000×
+faster. The value here is constant memory and credential coverage, not raw speed —
+closing the speed gap (Vectorscan/re2 backend, intra-file parallelism) is on the
+[roadmap](docs/ROADMAP.md).
 
-> Honest caveats: the gold entities still use standard formats SafeStream targets, so treat
-> these as a strong-but-not-final signal, not an independent audit. Presidio was run via its
-> own pattern recognizers (its spaCy NER tier is a separate, model-dependent path). On
-> free-form prose with names/locations, Presidio's NER will out-recall SafeStream's regex
-> core unless you enable the `[ner]` extra.
-
-**Credentials & secrets** — where the tools genuinely diverge. On a corpus of AWS keys,
-GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random high-entropy secret:
-
-| Tool                | Credentials detected |
-| ------------------- | -------------------- |
-| safestream-redactor | 9 / 9                |
-| Microsoft Presidio  | 0 / 9                |
-
-Presidio ships no recognizers for these; credential/secret detection is SafeStream's
-core differentiator, alongside constant-memory streaming.
+**Credentials & secrets** — the genuinely differentiating capability. On a corpus of
+AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random
+high-entropy secret, Presidio ships no recognizers and detects 0/9; SafeStream detects
+9/9. This is a capability difference (Presidio has no credential recognizers at all),
+not a tuned accuracy comparison.
 
 ## Development
 
@@ -242,7 +278,8 @@ core differentiator, alongside constant-memory streaming.
 git clone https://github.com/MounishSenisetty/SafeStream-Redactor
 cd SafeStream-Redactor
 pip install -e '.[dev]'
-pytest                                   # fast suite
+pytest                                   # fast suite (incl. property-based tests)
+pytest --cov=safestream_redactor         # with the 95% coverage gate
 SAFESTREAM_MEMTEST_MB=100 pytest -m memory -o addopts=''   # constant-memory proof
 ruff check . && ruff format --check .       # lint + format
 mypy                                        # strict type check
@@ -250,6 +287,10 @@ mypy                                        # strict type check
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Good first issues live in
 [docs/good_first_issues.md](docs/good_first_issues.md) and the issue tracker.
+The audited state of the codebase and the phased improvement plan are in
+[docs/AUDIT.md](docs/AUDIT.md) and [docs/ROADMAP.md](docs/ROADMAP.md); the security
+policy and threat model (what the offline guard does and does not cover) are in
+[SECURITY.md](SECURITY.md).
 
 ## License
 

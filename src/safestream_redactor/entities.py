@@ -27,6 +27,10 @@ class EntityType(str, Enum):
     SENDGRID_KEY = "sendgrid_key"
     TWILIO_KEY = "twilio_key"
     NPM_TOKEN = "npm_token"
+    OPENAI_KEY = "openai_key"
+    ANTHROPIC_KEY = "anthropic_key"
+    # password embedded in a connection-string / URL userinfo section
+    URL_CREDENTIALS = "url_credentials"
     # generic high-entropy secret (no published format)
     SECRET = "secret"
     # NER tier
