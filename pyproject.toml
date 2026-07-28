@@ -76,6 +76,13 @@ line-length = 100
 target-version = "py310"
 src = ["src", "tests"]
 
+[tool.ruff.format]
+# Don't format Markdown: ruff's embedded-code-block formatting is unstable
+# across versions (some default it on, some gate it behind preview), which made
+# `ruff format --check` pass locally but fail in CI on README.md. Prose and doc
+# snippets aren't code we gate on, so exclude them from the formatter entirely.
+exclude = ["*.md"]
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 ignore = [
