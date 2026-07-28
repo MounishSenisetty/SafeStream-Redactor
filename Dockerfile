@@ -16,6 +16,11 @@ RUN pip install --no-cache-dir build && python -m build --wheel
 
 FROM python:3.12-slim AS runtime
 
+LABEL org.opencontainers.image.title="safestream-redactor" \
+      org.opencontainers.image.description="Streaming PII & credential redaction with constant memory usage" \
+      org.opencontainers.image.source="https://github.com/MounishSenisetty/SafeStream-Redactor" \
+      org.opencontainers.image.licenses="MIT"
+
 # Run as an unprivileged user; the tool never needs root.
 RUN useradd --create-home --uid 10001 safestream
 COPY --from=build /src/dist/*.whl /tmp/
