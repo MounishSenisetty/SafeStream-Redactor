@@ -86,8 +86,13 @@ safestream redact input.txt -o out.txt --stats --report run.json
 ```
 
 While redacting, the CLI installs an **offline network guard** by default: any attempt to
-open a non-loopback connection raises an error, so sensitive text provably never leaves the
-machine. Pass `--allow-network` to disable it.
+open a non-loopback connection through Python's socket layer raises an error. This is
+best-effort, defense-in-depth egress prevention for this process, its plugins, and its
+Python dependencies — **not** a hard boundary: native extensions issuing raw syscalls, a
+spawned subprocess, or another process on the machine are outside its reach. For a
+guaranteed boundary, also run with no network (`docker run --network none ...`) or a
+network namespace / seccomp policy. Pass `--allow-network` to disable the guard. See
+[SECURITY.md](SECURITY.md) for the full threat model.
 
 ### Python API
 
