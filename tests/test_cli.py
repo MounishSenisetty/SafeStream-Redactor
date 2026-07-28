@@ -64,6 +64,15 @@ def test_detect_json(sample, capsys):
     assert all({"start", "end", "text", "confidence"} <= r.keys() for r in records)
 
 
+def test_fail_on_detect_gates_ci(sample, tmp_path, capsys):
+    # findings -> exit 1; clean input -> exit 0
+    assert main(["detect", str(sample), "--fail-on-detect"]) == 1
+    clean = tmp_path / "clean.txt"
+    clean.write_text("nothing sensitive here\n")
+    assert main(["detect", str(clean), "--fail-on-detect"]) == 0
+    capsys.readouterr()
+
+
 def test_stdin_stdout(capsys, monkeypatch):
     import io
 

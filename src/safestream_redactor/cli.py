@@ -115,6 +115,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
     detect = sub.add_parser("detect", parents=[common], help="list detections without redacting")
     detect.add_argument("--json", action="store_true", help="one JSON object per detection")
+    detect.add_argument(
+        "--fail-on-detect",
+        action="store_true",
+        help="exit with status 1 if anything is detected (CI/pre-commit secret gate)",
+    )
     return parser
 
 
@@ -290,6 +295,8 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         offset += len(segment)
     if not args.json:
         print(f"-- {count} detection(s)", file=sys.stderr)
+    if args.fail_on_detect and count:
+        return 1
     return 0
 
 
