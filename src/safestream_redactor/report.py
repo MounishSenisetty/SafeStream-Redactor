@@ -25,6 +25,11 @@ class RedactionStats:
     counts: Counter[str] = field(default_factory=Counter)
     chars_in: int = 0
     chars_out: int = 0
+    # U+FFFD replacement characters seen in the input. These usually mean the
+    # source had bytes that could not be decoded as the chosen encoding and were
+    # substituted — text that no detector then scanned, so a secret in those
+    # bytes could pass through unredacted. Surfaced instead of silently ignored.
+    decode_replacements: int = 0
 
     @property
     def total(self) -> int:
@@ -33,6 +38,7 @@ class RedactionStats:
     def add_segment(self, segment: str, redacted: str, detections: Iterable[Detection]) -> None:
         self.chars_in += len(segment)
         self.chars_out += len(redacted)
+        self.decode_replacements += segment.count("�")
         for det in detections:
             self.counts[det.entity_type.value] += 1
 
@@ -40,6 +46,7 @@ class RedactionStats:
         self.counts.update(other.counts)
         self.chars_in += other.chars_in
         self.chars_out += other.chars_out
+        self.decode_replacements += other.decode_replacements
 
     def summary(self) -> str:
         """One-line human summary, e.g. ``5 detection(s): email=3, ssn=2``."""
@@ -67,6 +74,7 @@ def build_report(
         "detections_by_type": dict(sorted(stats.counts.items())),
         "chars_in": stats.chars_in,
         "chars_out": stats.chars_out,
+        "decode_replacements": stats.decode_replacements,
     }
 
 

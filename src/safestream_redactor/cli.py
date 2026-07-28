@@ -68,6 +68,12 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--chunk-size", type=int, default=None, metavar="BYTES")
     common.add_argument("--overlap", type=int, default=None, metavar="CHARS")
     common.add_argument(
+        "--encoding",
+        default="utf-8",
+        metavar="ENC",
+        help="text encoding of the input/output (default: utf-8)",
+    )
+    common.add_argument(
         "--allow-network",
         dest="offline_guard",
         action="store_false",
@@ -189,14 +195,37 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
     return redactor
 
 
-def _input_chunks(path: str, chunk_size: int) -> Iterator[str]:
+def _atomic_write_stream(path: str, pieces: Iterator[str], encoding: str) -> None:
+    """Write streamed output to a temp file, then move it into place atomically.
+
+    Matches :meth:`Redactor.redact_file` durability for the stdin->file path: a
+    crash mid-stream can't leave a truncated file that looks fully redacted.
+    """
+    import contextlib
+    import tempfile
+
+    fd, tmp = tempfile.mkstemp(
+        dir=os.path.dirname(path) or ".", prefix=os.path.basename(path) + "."
+    )
+    try:
+        with open(fd, "w", encoding=encoding) as out:
+            for piece in pieces:
+                out.write(piece)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
+
+
+def _input_chunks(path: str, chunk_size: int, encoding: str = "utf-8") -> Iterator[str]:
     if path == "-":
         while chunk := sys.stdin.read(chunk_size):
             yield chunk
     else:
         from safestream_redactor.engine import read_chunks
 
-        yield from read_chunks(path, chunk_size)
+        yield from read_chunks(path, chunk_size, encoding)
 
 
 def _finish_run(
@@ -205,6 +234,15 @@ def _finish_run(
     """Emit the optional stats summary and JSON run report for a redact run."""
     if getattr(args, "stats", False):
         print(f"-- {stats.summary()}", file=sys.stderr)
+    # An undecodable-bytes warning is always shown (not gated on --stats): it
+    # means some input was never scanned, which is a redaction-coverage risk.
+    if stats.decode_replacements:
+        print(
+            f"safestream: warning: {stats.decode_replacements} undecodable byte(s) were "
+            "replaced with U+FFFD; input may not be valid UTF-8 and that content was not "
+            "scanned for sensitive data (try --encoding, or verify the source encoding)",
+            file=sys.stderr,
+        )
     report_path = getattr(args, "report", None)
     if report_path:
         from safestream_redactor.report import build_report, write_report
@@ -225,18 +263,17 @@ def _cmd_redact(args: argparse.Namespace) -> int:
     if args.input not in ("-", None) and os.path.isdir(args.input):
         return _redact_directory(args, redactor)
     started = time.monotonic()
+    encoding = getattr(args, "encoding", "utf-8")
     stats = RedactionStats()
-    chunks = _input_chunks(args.input, redactor.chunk_size)
+    chunks = _input_chunks(args.input, redactor.chunk_size, encoding)
     if args.output == "-":
         for piece in redactor.redact_stream(chunks, stats):
             sys.stdout.write(piece)
         sys.stdout.flush()
     elif args.input == "-":
-        with open(args.output, "w", encoding="utf-8") as out:
-            for piece in redactor.redact_stream(chunks, stats):
-                out.write(piece)
+        _atomic_write_stream(args.output, redactor.redact_stream(chunks, stats), encoding)
     else:
-        stats = redactor.redact_file(args.input, args.output)
+        stats = redactor.redact_file(args.input, args.output, encoding=encoding)
     _finish_run(args, stats, files=1, started=started)
     return 0
 
@@ -252,6 +289,7 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
         args.output,
         redactor,
         workers=args.workers,
+        encoding=getattr(args, "encoding", "utf-8"),
         offline_guard=getattr(args, "offline_guard", True),
     )
     stats = RedactionStats()
@@ -259,6 +297,7 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
         stats.counts.update(r.counts)
         stats.chars_in += r.chars_in
         stats.chars_out += r.chars_out
+        stats.decode_replacements += r.decode_replacements
     total = sum(r.bytes_written for r in results)
     print(
         f"-- redacted {len(results)} file(s), {total} bytes written to {args.output}",
@@ -273,7 +312,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     count = 0
     offset = 0
     for segment, detections in redactor.detect_stream(
-        _input_chunks(args.input, redactor.chunk_size)
+        _input_chunks(args.input, redactor.chunk_size, getattr(args, "encoding", "utf-8"))
     ):
         for det in detections:
             count += 1

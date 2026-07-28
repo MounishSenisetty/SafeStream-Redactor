@@ -33,6 +33,7 @@ class RedactResult:
     counts: dict[str, int] = field(default_factory=dict)
     chars_in: int = 0
     chars_out: int = 0
+    decode_replacements: int = 0
 
 
 def _available_memory() -> int | None:
@@ -92,6 +93,7 @@ def _redact_one(job: tuple[str, str]) -> RedactResult:
         dict(stats.counts),
         stats.chars_in,
         stats.chars_out,
+        stats.decode_replacements,
     )
 
 
