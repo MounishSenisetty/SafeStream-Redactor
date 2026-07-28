@@ -210,11 +210,19 @@ differential test compares prefiltered and unfiltered detection).
 
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
 at least `overlap` characters from the buffer's end is emitted each round; the tail is carried
-into the next round so any entity up to `overlap` characters long (default 4 KB) is always
-seen whole at least once, even when a chunk boundary cuts straight through it. An emit
-boundary that would split a detection retreats to the detection's start. Already-emitted
-text is kept (up to `overlap` chars) as read-only left context so the contextual tier scores
-identically to whole-text mode.
+into the next round so any entity up to `overlap` characters long is always seen whole at
+least once, even when a chunk boundary cuts straight through it. An emit boundary that would
+split a detection retreats to the detection's start. Already-emitted text is kept (up to
+`overlap` chars) as read-only left context so the contextual tier scores identically to
+whole-text mode.
+
+**Guarantee and its limit.** The default overlap (16 KB) is deliberately larger than the
+biggest entity any built-in detector can produce (a private-key block is bounded to ~8 KB),
+so every built-in entity is caught across chunk boundaries. An entity *longer* than `overlap`
+— only possible from an unbounded custom regex or an unusually long high-entropy token — can
+be split and missed in streaming mode; SafeStream warns when it constructs a redactor with an
+undersized overlap and again if it ever detects an oversized entity, so raise `overlap` if you
+work with entities larger than 16 KB.
 
 Detected entity types:
 

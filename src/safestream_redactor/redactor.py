@@ -16,6 +16,7 @@ from safestream_redactor.detectors.deterministic import DeterministicDetector
 from safestream_redactor.engine import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_OVERLAP,
+    MAX_BUILTIN_ENTITY_LEN,
     read_chunks,
     stream_transform,
     stream_windows,
@@ -122,6 +123,21 @@ class Redactor:
             self._detectors.append(self._scorer)
         logger.debug("detector tiers active: %s", [d.name for d in self._detectors])
 
+        # Streaming only guarantees entities up to ``overlap`` chars are caught
+        # across chunk boundaries. If overlap is below the largest built-in
+        # entity, such an entity could be split and silently missed — a
+        # fail-open defect — so warn the operator up front.
+        self._warned_oversized = False
+        if self.overlap < MAX_BUILTIN_ENTITY_LEN:
+            logger.warning(
+                "overlap=%d is below the largest built-in entity size (%d); entities longer "
+                "than overlap may be missed when split across chunk boundaries in streaming "
+                "mode. Raise overlap to at least %d.",
+                self.overlap,
+                MAX_BUILTIN_ENTITY_LEN,
+                MAX_BUILTIN_ENTITY_LEN,
+            )
+
     # ------------------------------------------------------------------
     # detection
     # ------------------------------------------------------------------
@@ -133,7 +149,24 @@ class Redactor:
             raw.extend(detector.detect(text))
         self._scorer.adjust(text, raw)
         confident = [d for d in raw if d.confidence >= self.min_confidence]
-        return resolve_overlaps(confident)
+        resolved = resolve_overlaps(confident)
+        # Safety net for unbounded detectors (entropy secrets, custom regexes):
+        # if we ever see a detection longer than overlap, streaming may miss it
+        # when it straddles a boundary. Warn once so the operator can raise
+        # overlap. (Built-ins are bounded and covered by the default overlap.)
+        if not self._warned_oversized:
+            for det in resolved:
+                if det.end - det.start > self.overlap:
+                    self._warned_oversized = True
+                    logger.warning(
+                        "detected a %d-char %s entity, longer than overlap=%d; if it straddles "
+                        "a chunk boundary in streaming mode it may be missed. Raise overlap.",
+                        det.end - det.start,
+                        det.entity_type.value,
+                        self.overlap,
+                    )
+                    break
+        return resolved
 
     # ------------------------------------------------------------------
     # redaction

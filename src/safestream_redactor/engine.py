@@ -25,7 +25,18 @@ from collections.abc import Callable, Iterable, Iterator
 from safestream_redactor.entities import Detection
 
 DEFAULT_CHUNK_SIZE = 64 * 1024
-DEFAULT_OVERLAP = 4 * 1024
+
+# Length of the largest entity any built-in detector can produce. The private-key
+# block pattern is bounded to an 8 KB body; everything else is far smaller. The
+# streaming guarantee is "entities up to ``overlap`` chars are caught even when
+# split across chunk boundaries", so ``overlap`` MUST stay above this or such an
+# entity could be split and silently missed.
+MAX_BUILTIN_ENTITY_LEN = 8 * 1024
+
+# Default overlap comfortably exceeds MAX_BUILTIN_ENTITY_LEN so every built-in
+# entity (including a maximal private-key block) is always seen whole. Memory is
+# still tiny: chunk_size + overlap per stream.
+DEFAULT_OVERLAP = 16 * 1024
 
 DetectFn = Callable[[str], list[Detection]]
 ApplyFn = Callable[[str, list[Detection]], str]

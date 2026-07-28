@@ -55,6 +55,13 @@ Notable changes to this project. The format follows
 - Undecodable input bytes are surfaced: replacement characters are counted in the run
   report and the CLI warns, since bytes replaced with U+FFFD are content no detector
   scanned. Output writes for the stdin→file path are now atomic too.
+- The default streaming `overlap` is raised from 4 KB to 16 KB so it exceeds the largest
+  entity any built-in detector can produce (an 8 KB-bounded private-key block). Previously
+  a private key larger than 4 KB, split across chunk boundaries, was silently left
+  unredacted in streaming mode while whole-text mode redacted it — a fail-open leak. A
+  warning is now emitted when a redactor is constructed with an overlap below the built-in
+  maximum, and again if an entity longer than `overlap` is ever detected (covers unbounded
+  custom regexes and high-entropy tokens).
 
 ### Changed
 

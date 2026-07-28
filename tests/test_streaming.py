@@ -73,3 +73,32 @@ def test_redact_file(tmp_path):
     r = Redactor(chunk_size=64, overlap=32)
     r.redact_file(src, dst)
     assert dst.read_text() == "contact [REDACTED] ok\n" * 100
+
+
+def test_large_entity_survives_streaming_at_default_overlap():
+    # a private-key block larger than the OLD 4KB overlap must still be redacted
+    # when split across chunks — the default overlap now exceeds built-in entities
+    body = "MIIEowIBAAKCAQEA" + "A" * 6000
+    pem = f"-----BEGIN RSA PRIVATE KEY-----\n{body}\n-----END RSA PRIVATE KEY-----"
+    text = f"prefix {pem} suffix"
+    r = Redactor()  # default overlap
+    streamed = "".join(r.redact_stream(chunked(text, 512)))
+    assert streamed == r.redact(text)
+    assert "[REDACTED]" in streamed and body not in streamed
+
+
+def test_small_overlap_warns_at_construction(caplog):
+    with caplog.at_level("WARNING", logger="safestream_redactor.redactor"):
+        Redactor(overlap=1024)
+    assert any("below the largest built-in entity size" in r.getMessage() for r in caplog.records)
+
+
+def test_oversized_detection_warns_once(caplog):
+    long_word = "Z" * 200
+    r = Redactor(custom_words=[long_word], overlap=100)
+    caplog.clear()
+    with caplog.at_level("WARNING", logger="safestream_redactor.redactor"):
+        r.detect(f"secret {long_word} here")
+        r.detect(f"again {long_word} here")
+    oversized = [rec for rec in caplog.records if "longer than overlap" in rec.getMessage()]
+    assert len(oversized) == 1  # warn-once
