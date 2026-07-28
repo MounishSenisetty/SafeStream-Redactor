@@ -21,6 +21,7 @@ global socket behaviour. The CLI installs it by default (opt out with
 from __future__ import annotations
 
 import socket
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -33,6 +34,13 @@ class NetworkAccessError(RuntimeError):
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "::"})
 _original_connect: Any = None
 _original_connect_ex: Any = None
+# install()/uninstall() are reference-counted under a lock so concurrent or
+# nested `enforced()` blocks can't race: a boolean flag let one thread's
+# uninstall drop the guard while another thread was still inside its guarded
+# block, silently re-enabling egress. The refcount only unpatches when the last
+# holder leaves; the lock makes the patch/unpatch and counter atomic.
+_lock = threading.Lock()
+_install_count = 0
 
 
 def _is_local(address: object) -> bool:
@@ -48,53 +56,69 @@ def _is_local(address: object) -> bool:
 
 
 def install() -> None:
-    """Block outbound non-loopback connections process-wide. Idempotent."""
-    global _original_connect, _original_connect_ex
-    if _original_connect is not None:
-        return
-    _original_connect = socket.socket.connect
-    _original_connect_ex = socket.socket.connect_ex
+    """Block outbound non-loopback connections process-wide.
 
-    def guarded_connect(self: socket.socket, address: Any) -> Any:
-        if not _is_local(address):
-            raise NetworkAccessError(
-                f"outbound network connection to {address!r} blocked by SafeStream's "
-                "offline guard (pass --allow-network / call netguard.uninstall() to allow)"
-            )
-        return _original_connect(self, address)
+    Reference-counted: each :func:`install` must be balanced by an
+    :func:`uninstall`; the socket layer is patched only on the first install
+    and restored only when the last holder uninstalls. Thread-safe.
+    """
+    global _original_connect, _original_connect_ex, _install_count
+    with _lock:
+        _install_count += 1
+        if _install_count > 1:
+            return
+        _original_connect = socket.socket.connect
+        _original_connect_ex = socket.socket.connect_ex
 
-    def guarded_connect_ex(self: socket.socket, address: Any) -> Any:
-        if not _is_local(address):
-            raise NetworkAccessError(
-                f"outbound network connection to {address!r} blocked by SafeStream's offline guard"
-            )
-        return _original_connect_ex(self, address)
+        def guarded_connect(self: socket.socket, address: Any) -> Any:
+            if not _is_local(address):
+                raise NetworkAccessError(
+                    f"outbound network connection to {address!r} blocked by SafeStream's "
+                    "offline guard (pass --allow-network / call netguard.uninstall() to allow)"
+                )
+            return _original_connect(self, address)
 
-    socket.socket.connect = guarded_connect  # type: ignore[assignment,method-assign]
-    socket.socket.connect_ex = guarded_connect_ex  # type: ignore[assignment,method-assign]
+        def guarded_connect_ex(self: socket.socket, address: Any) -> Any:
+            if not _is_local(address):
+                raise NetworkAccessError(
+                    f"outbound network connection to {address!r} blocked by SafeStream's "
+                    "offline guard"
+                )
+            return _original_connect_ex(self, address)
+
+        socket.socket.connect = guarded_connect  # type: ignore[assignment,method-assign]
+        socket.socket.connect_ex = guarded_connect_ex  # type: ignore[assignment,method-assign]
 
 
 def uninstall() -> None:
-    """Restore the original socket behaviour. Idempotent."""
-    global _original_connect, _original_connect_ex
-    if _original_connect is not None:
-        socket.socket.connect = _original_connect  # type: ignore[method-assign]
-        socket.socket.connect_ex = _original_connect_ex  # type: ignore[method-assign]
-        _original_connect = None
-        _original_connect_ex = None
+    """Drop one install reference; restore sockets when the last one leaves.
+
+    Safe to call when not installed (no-op) and safe to call more times than
+    :func:`install` (the count floors at zero).
+    """
+    global _original_connect, _original_connect_ex, _install_count
+    with _lock:
+        if _install_count == 0:
+            return
+        _install_count -= 1
+        if _install_count > 0:
+            return
+        if _original_connect is not None:
+            socket.socket.connect = _original_connect  # type: ignore[method-assign]
+            socket.socket.connect_ex = _original_connect_ex  # type: ignore[method-assign]
+            _original_connect = None
+            _original_connect_ex = None
 
 
 def is_installed() -> bool:
-    return _original_connect is not None
+    return _install_count > 0
 
 
 @contextmanager
 def enforced() -> Iterator[None]:
-    """Context manager that guards network access for its duration."""
-    already = is_installed()
+    """Guard network access for the duration of the block (reference-counted)."""
     install()
     try:
         yield
     finally:
-        if not already:
-            uninstall()
+        uninstall()
