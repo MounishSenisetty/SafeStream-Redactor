@@ -222,45 +222,48 @@ Detected entity types:
   (undocumented high-entropy strings, on by default — disable with `--no-entropy`).
 - `custom` for user-supplied words and regexes.
 
-## Comparison
+## Evaluation
 
-**Structured PII** — 5.2 MB synthetic corpus, span-overlap + type-aware scoring
-(reproduce with `benchmarks/generate_dataset.py` then `benchmarks/run_benchmark.py`):
+> **Read this before quoting any number below.** The corpora these numbers come from
+> are *synthetic and self-generated*: the gold positives are emitted in the same
+> canonical formats the detector targets, so a near-perfect score on them measures
+> **format coverage and false-positive resistance, not real-world recall**. They are a
+> regression fixture, not an accuracy claim, and a self-generated benchmark is not
+> evidence of accuracy on your data. For a defensible accuracy number, run
+> `benchmarks/evaluate.py` against an independent labeled corpus you control (see
+> [benchmarks/README.md](benchmarks/README.md) — the Presidio research dataset, CoNLL,
+> and the n2c2 de-identification set are the recommended targets). Expect recall on
+> free-form prose (names, addresses) to be substantially lower than on structured PII
+> unless the `[ner]` extra is enabled.
 
-| Tool                          | Precision | Recall | F1    | Constant memory |
-| ----------------------------- | --------- | ------ | ----- | --------------- |
-| safestream-redactor           | 1.000     | 1.000  | 1.000 | ✅              |
-| Microsoft Presidio (patterns) | 0.928     | 0.815  | 0.868 | ❌              |
+**Format coverage & false-positive resistance (synthetic).** On the adversarial corpus
+(1 MB of noisy log/JSON/CSV/SQL dense with hard negatives — order numbers, ISO
+timestamps, UUIDs, git hashes, invalid-area SSNs, 5-octet version strings; reproduce
+with `benchmarks/generate_hard_dataset.py` then `benchmarks/run_benchmark.py`):
 
-**Realistic / adversarial** — 1 MB of noisy log / JSON / CSV / SQL records dense with
-*hard negatives* (order numbers, ISO timestamps, UUIDs, git hashes, invalid-area SSNs,
-5-octet version strings) that tempt false positives — both tools face the same distractors
-(reproduce with `benchmarks/generate_hard_dataset.py`):
+| Tool                          | Precision | Recall\* | Throughput  |
+| ----------------------------- | --------- | -------- | ----------- |
+| safestream-redactor           | 0.999     | 1.000    | ~3.1 MB/s   |
+| Microsoft Presidio (patterns) | 0.649     | 0.843    | ~0.06 MB/s  |
 
-| Tool                          | Precision | Recall | F1    | Throughput  |
-| ----------------------------- | --------- | ------ | ----- | ----------- |
-| safestream-redactor           | 0.999     | 1.000  | 1.000 | 3.13 MB/s   |
-| Microsoft Presidio (patterns) | 0.649     | 0.843  | 0.734 | 0.06 MB/s   |
+\* Recall here is against self-generated positives and is *not* a real-world recall
+figure — see the note above. The meaningful, non-circular result in this table is
+**precision under distractors**: SafeStream holds 0.999 while Presidio's phone
+recognizer emits thousands of false positives (P=0.649). Presidio was run via its
+pattern recognizers; its spaCy NER tier is a separate, model-dependent path that will
+out-recall SafeStream's regex core on prose unless you enable `[ner]`.
 
-This is the meaningful test: SafeStream holds 0.999 precision under the distractors while
-Presidio's phone recognizer emits thousands of false positives (P=0.649).
+**Throughput is a known limitation, not a strength.** ~3 MB/s single-core means a
+100 GB file takes hours; compiled scanners (gitleaks, ripgrep-class) are 100–1000×
+faster. The value here is constant memory and credential coverage, not raw speed —
+closing the speed gap (Vectorscan/re2 backend, intra-file parallelism) is on the
+[roadmap](docs/ROADMAP.md).
 
-> Honest caveats: the gold entities still use standard formats SafeStream targets, so treat
-> these as a strong-but-not-final signal, not an independent audit. Presidio was run via its
-> own pattern recognizers (its spaCy NER tier is a separate, model-dependent path). On
-> free-form prose with names/locations, Presidio's NER will out-recall SafeStream's regex
-> core unless you enable the `[ner]` extra.
-
-**Credentials & secrets** — where the tools genuinely diverge. On a corpus of AWS keys,
-GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random high-entropy secret:
-
-| Tool                | Credentials detected |
-| ------------------- | -------------------- |
-| safestream-redactor | 9 / 9                |
-| Microsoft Presidio  | 0 / 9                |
-
-Presidio ships no recognizers for these; credential/secret detection is SafeStream's
-core differentiator, alongside constant-memory streaming.
+**Credentials & secrets** — the genuinely differentiating capability. On a corpus of
+AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random
+high-entropy secret, Presidio ships no recognizers and detects 0/9; SafeStream detects
+9/9. This is a capability difference (Presidio has no credential recognizers at all),
+not a tuned accuracy comparison.
 
 ## Development
 
