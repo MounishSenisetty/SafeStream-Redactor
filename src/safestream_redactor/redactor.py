@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Iterable, Iterator
 
@@ -18,6 +19,8 @@ from safestream_redactor.engine import (
 )
 from safestream_redactor.entities import Detection, EntityType, resolve_overlaps
 from safestream_redactor.policy import RedactionPolicy
+
+logger = logging.getLogger(__name__)
 
 
 class Redactor:
@@ -95,6 +98,7 @@ class Redactor:
         # contextual tier also contributes trigger-gated detections of its own
         if resolved_types is None or EntityType.SSN in resolved_types:
             self._detectors.append(self._scorer)
+        logger.debug("detector tiers active: %s", [d.name for d in self._detectors])
 
     # ------------------------------------------------------------------
     # detection

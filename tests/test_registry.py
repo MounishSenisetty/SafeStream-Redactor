@@ -29,6 +29,8 @@ class _PluginDetector:
 
 
 class _FakeEntryPoint:
+    name = "fake"
+
     def __init__(self, obj):
         self._obj = obj
 
@@ -49,14 +51,33 @@ def test_load_plugins_accepts_instance(monkeypatch):
     assert registry.load_plugins()[0].name == "plugin"
 
 
-def test_bad_plugin_is_skipped(monkeypatch):
+def test_bad_plugin_is_skipped_with_warning(monkeypatch, caplog):
     class _Boom:
+        name = "boom"
+
         def load(self):
             raise RuntimeError("boom")
 
     not_a_detector = _FakeEntryPoint(object())  # loads but isn't a Detector
     monkeypatch.setattr(registry, "entry_points", lambda group: [_Boom(), not_a_detector])
-    assert registry.load_plugins() == []
+    with caplog.at_level("WARNING", logger=registry.logger.name):
+        assert registry.load_plugins() == []
+    # a skipped plugin is a coverage loss and must be visible to operators
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 2
+    assert "'boom'" in warnings[0].getMessage()
+    assert "Detector protocol" in warnings[1].getMessage()
+
+
+def test_plugin_constructor_failure_is_skipped_with_warning(monkeypatch, caplog):
+    class _RaisesInInit:
+        def __init__(self):
+            raise ValueError("bad config")
+
+    monkeypatch.setattr(registry, "entry_points", lambda group: [_FakeEntryPoint(_RaisesInInit)])
+    with caplog.at_level("WARNING", logger=registry.logger.name):
+        assert registry.load_plugins() == []
+    assert any("failed to load" in r.getMessage() for r in caplog.records)
 
 
 def test_redactor_uses_plugins(monkeypatch):
