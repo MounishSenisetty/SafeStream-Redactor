@@ -137,6 +137,20 @@ def report(name: str, metrics: dict[str, float], seconds: float, size_mb: float)
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data", type=Path, default=Path(__file__).parent / "data")
+    ap.add_argument(
+        "--assert-precision",
+        type=float,
+        default=None,
+        metavar="P",
+        help="exit non-zero if safestream precision falls below P (CI quality gate)",
+    )
+    ap.add_argument(
+        "--assert-recall",
+        type=float,
+        default=None,
+        metavar="R",
+        help="exit non-zero if safestream recall falls below R (CI quality gate)",
+    )
     args = ap.parse_args()
 
     corpus = args.data / "dataset.txt"
@@ -148,7 +162,14 @@ def main() -> None:
     print(f"corpus: {size_mb:.1f} MB, {len(gold)} gold entities\n")
 
     preds, seconds = bench_safestream(text)
-    report("safestream-redactor", score(preds, gold), seconds, size_mb)
+    metrics = score(preds, gold)
+    report("safestream-redactor", metrics, seconds, size_mb)
+    if args.assert_precision is not None and metrics["precision"] < args.assert_precision:
+        raise SystemExit(
+            f"precision {metrics['precision']:.4f} below required {args.assert_precision}"
+        )
+    if args.assert_recall is not None and metrics["recall"] < args.assert_recall:
+        raise SystemExit(f"recall {metrics['recall']:.4f} below required {args.assert_recall}")
 
     presidio = bench_presidio(text)
     if presidio is None:

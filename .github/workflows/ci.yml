@@ -57,6 +57,26 @@ jobs:
         env:
           SAFESTREAM_MEMTEST_MB: "64"
 
+  quality:
+    # detection-quality gate on the adversarial corpus: catches a pattern or
+    # scoring change that trades away precision/recall before it can merge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - run: python benchmarks/generate_hard_dataset.py --size-mb 1
+      - run: >
+          python benchmarks/run_benchmark.py --data benchmarks/data_hard
+          --assert-precision 0.995 --assert-recall 0.999
+      - run: python benchmarks/generate_dataset.py --size-mb 2
+      - run: >
+          python benchmarks/run_benchmark.py --data benchmarks/data
+          --assert-precision 0.999 --assert-recall 0.999
+
   audit:
     # fail on known vulnerabilities in the (few) resolved dependencies
     runs-on: ubuntu-latest
