@@ -61,6 +61,7 @@ def policy_from_config(data: dict[str, Any]) -> RedactionPolicy:
         mask_keep_last=section.get("mask_keep_last", 4),
         mask_char=section.get("mask_char", "*"),
         hmac_key=hmac_key.encode() if isinstance(hmac_key, str) else hmac_key,
+        pseudonym_length=section.get("pseudonym_length", 16),
     )
 
 

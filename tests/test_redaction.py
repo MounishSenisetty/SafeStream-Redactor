@@ -49,6 +49,25 @@ def test_pseudonymize_requires_key():
         RedactionPolicy(mode="pseudonymize")
 
 
+def test_pseudonym_token_width_is_configurable_and_defaults_to_64_bits():
+    default = RedactionPolicy(mode="pseudonymize", hmac_key=b"k")
+    r = Redactor(policy=default)
+    token = r.redact("mail bob@x.io").removeprefix("mail ")
+    hexpart = token[len("<EMAIL_") : -1]
+    assert len(hexpart) == 16  # 16 hex digits = 64 bits, the new default
+
+    wide = RedactionPolicy(mode="pseudonymize", hmac_key=b"k", pseudonym_length=32)
+    token = Redactor(policy=wide).redact("mail bob@x.io").removeprefix("mail ")
+    assert len(token[len("<EMAIL_") : -1]) == 32
+
+
+def test_pseudonym_length_bounds_are_validated():
+    with pytest.raises(ValueError, match="pseudonym_length"):
+        RedactionPolicy(mode="pseudonymize", hmac_key=b"k", pseudonym_length=4)
+    with pytest.raises(ValueError, match="pseudonym_length"):
+        RedactionPolicy(mode="pseudonymize", hmac_key=b"k", pseudonym_length=128)
+
+
 def test_adjacent_text_is_preserved():
     out = Redactor().redact("a bob@x.io b 10.0.0.1 c")
     assert out == "a [REDACTED] b [REDACTED] c"

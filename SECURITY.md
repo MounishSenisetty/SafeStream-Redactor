@@ -37,3 +37,13 @@ Being explicit about limits is part of the security posture:
 - **Plugins run with full process privileges.** Only install detector plugins you
   trust; the entry-point loader executes their code. Plugin loading can be disabled
   entirely with `Redactor(load_plugins=False)`.
+- **Pseudonymization is reversible, not anonymization.** `pseudonymize` mode emits a
+  deterministic keyed token (HMAC-SHA256 of the value under your `hmac_key`). This
+  preserves referential integrity — the same value always yields the same token — but
+  it therefore leaks value equality, and because the mapping is deterministic and
+  keyed, anyone holding the key can invert any low-cardinality domain (all SSNs, all
+  phone numbers) by brute force. Use a strong, secret, high-entropy key; store it like
+  a database credential; and treat the output as pseudonymized (re-identifiable by the
+  key holder), never as anonymized. If you need irreversibility, use `replace`/`mask`;
+  if you need equality-hiding, a per-value random salt is required (which sacrifices
+  the deterministic-token property).
