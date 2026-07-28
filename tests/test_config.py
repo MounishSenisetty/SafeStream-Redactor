@@ -100,3 +100,27 @@ def test_hmac_key_from_config(tmp_path):
     r = redactor_from_config(p)
     out = r.redact("bob@x.io")
     assert out.startswith("<EMAIL_")
+
+
+def test_unknown_key_fails_closed(tmp_path):
+    # a misspelled key must error, not silently fall back to the default and
+    # ship unredacted output
+    p = tmp_path / "p.toml"
+    p.write_text('[redaction]\nreplacment = "<X>"\n')
+    with pytest.raises(ValueError, match=r"unknown key 'replacment'.*did you mean 'replacement'"):
+        redactor_from_config(p)
+
+
+def test_unknown_section_fails_closed(tmp_path):
+    p = tmp_path / "p.toml"
+    p.write_text('[redation]\nmode = "mask"\n')
+    with pytest.raises(ValueError, match="unknown config section"):
+        redactor_from_config(p)
+
+
+def test_replacements_entity_keys_are_not_rejected(tmp_path):
+    # keys under redaction.replacements are entity names, not config keys
+    p = tmp_path / "p.toml"
+    p.write_text('[redaction.replacements]\nemail = "<E>"\nssn = "<S>"\n')
+    r = redactor_from_config(p)
+    assert r.redact("bob@x.io ssn: 123-45-6789") == "<E> ssn: <S>"

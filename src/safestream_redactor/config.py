@@ -42,10 +42,67 @@ from safestream_redactor.entities import EntityType
 from safestream_redactor.policy import RedactionPolicy
 from safestream_redactor.redactor import Redactor
 
+# A DLP tool must fail closed on misconfiguration: a typo like ``replacment``
+# or a stray ``[redation]`` section silently falling back to defaults means
+# unredacted output shipping to production. So the schema is a strict allowlist
+# and any unknown section or key is a hard error, not a silent default.
+_SCHEMA: dict[str, set[str]] = {
+    "detection": {
+        "types",
+        "min_confidence",
+        "use_ner",
+        "ner_model",
+        "use_entropy",
+    },
+    "redaction": {
+        "mode",
+        "replacement",
+        "replacements",
+        "mask_keep_last",
+        "mask_char",
+        "hmac_key",
+        "pseudonym_length",
+    },
+    "custom": {"words", "patterns"},
+    "streaming": {"chunk_size", "overlap"},
+}
+
+
+def _closest(name: str, valid: set[str]) -> str:
+    """Suggestion hint for a mistyped key, using difflib when it finds a near match."""
+    import difflib
+
+    match = difflib.get_close_matches(name, sorted(valid), n=1)
+    return f" (did you mean {match[0]!r}?)" if match else ""
+
+
+def validate_config(data: dict[str, Any]) -> None:
+    """Reject unknown sections/keys so a misconfigured policy never runs silently.
+
+    ``redaction.replacements`` is exempt from key checking: its keys are entity
+    type names, validated separately when the policy is built.
+    """
+    for section, keys in data.items():
+        if section not in _SCHEMA:
+            raise ValueError(
+                f"unknown config section [{section}]{_closest(section, set(_SCHEMA))}; "
+                f"valid sections: {', '.join(sorted(_SCHEMA))}"
+            )
+        if not isinstance(keys, dict):
+            raise ValueError(f"config section [{section}] must be a table")
+        allowed = _SCHEMA[section]
+        for key in keys:
+            if key not in allowed:
+                raise ValueError(
+                    f"unknown key {key!r} in [{section}]{_closest(key, allowed)}; "
+                    f"valid keys: {', '.join(sorted(allowed))}"
+                )
+
 
 def load_config(path: str | os.PathLike[str]) -> dict[str, Any]:
     with open(path, "rb") as f:
         data: dict[str, Any] = tomllib.load(f)
+    validate_config(data)
     return data
 
 
