@@ -191,8 +191,11 @@ Detected entity types:
 - **PII:** `email`, `phone`, `credit_card` (Luhn-validated), `ssn`, `ipv4`, `ipv6`, plus
   `person` / `org` / `loc` with the NER extra.
 - **Credentials & secrets:** `aws_key`, `github_token`, `slack_token`, `slack_webhook`,
-  `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`, `jwt`,
-  `private_key`, `api_key` (generic `key = value` assignments), and `secret`
+  `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`,
+  `openai_key`, `anthropic_key`, `jwt`, `private_key`,
+  `url_credentials` (passwords embedded in connection strings — only the password is
+  redacted, so `postgres://svc:hunter2@db/app` becomes `postgres://svc:[REDACTED]@db/app`),
+  `api_key` (generic `key = value` assignments), and `secret`
   (undocumented high-entropy strings, on by default — disable with `--no-entropy`).
 - `custom` for user-supplied words and regexes.
 

@@ -145,6 +145,32 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.98,
     ),
     Pattern(
+        EntityType.ANTHROPIC_KEY,
+        re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}(?<=[A-Za-z0-9_])\b"),
+        0.98,
+    ),
+    # legacy 48-char keys and the newer sk-proj-/sk-svcacct-/sk-admin- forms;
+    # sk-ant- is Anthropic's prefix and Stripe uses sk_live_/sk_test_ (underscore),
+    # so neither collides with this pattern.
+    Pattern(
+        EntityType.OPENAI_KEY,
+        re.compile(
+            r"\bsk-(?:(?:proj|svcacct|admin)-[A-Za-z0-9_-]{20,}(?<=[A-Za-z0-9_])"
+            r"|[A-Za-z0-9]{32,})\b"
+        ),
+        0.95,
+    ),
+    # password inside a URL's userinfo section (postgres://user:PASS@host, ...);
+    # only the password is the detection, so the rest of the URL stays readable.
+    # Scored above the email pattern so the inevitable "PASS@host.tld" email
+    # overlap resolves to this more precise label.
+    Pattern(
+        EntityType.URL_CREDENTIALS,
+        re.compile(r"\b[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]+:([^\s@/]{1,128})@[^\s@]"),
+        0.97,
+        group=1,
+    ),
+    Pattern(
         EntityType.API_KEY,
         re.compile(
             r"(?i)\b(?:api[_-]?key|apikey|secret[_-]?key|secret|access[_-]?token|auth[_-]?token"

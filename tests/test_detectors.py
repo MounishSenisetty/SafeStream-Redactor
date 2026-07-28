@@ -162,6 +162,45 @@ def test_npm_token():
     assert EntityType.NPM_TOKEN in types_in("npm_abcdefghijklmnopqrstuvwxyz0123456789")
 
 
+def test_openai_key():
+    # legacy 48-char form and the newer project-scoped form
+    assert EntityType.OPENAI_KEY in types_in("key sk-" + "AbCd1234" * 6 + " end")
+    assert EntityType.OPENAI_KEY in types_in("key sk-proj-Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56 end")
+    assert EntityType.OPENAI_KEY not in types_in("key sk-short end")
+
+
+def test_anthropic_key():
+    key = "sk-ant-api03-Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78"
+    dets = Redactor().detect(f"key {key} end")
+    labels = {d.entity_type for d in dets}
+    assert EntityType.ANTHROPIC_KEY in labels
+    # the sk-ant- prefix must not be mislabelled as an OpenAI key
+    assert EntityType.OPENAI_KEY not in labels
+
+
+def test_stripe_key_not_mislabelled_as_openai():
+    dets = Redactor().detect("key sk_live_abcdefghijklmnop1234567890 end")
+    assert EntityType.OPENAI_KEY not in {d.entity_type for d in dets}
+
+
+def test_url_credentials_redacts_only_the_password():
+    r = Redactor()
+    out = r.redact("dsn postgres://svc_user:S3cretPass@db.internal:5432/app up")
+    assert out == "dsn postgres://svc_user:[REDACTED]@db.internal:5432/app up"
+    dets = r.detect("amqp://guest:changeit-1@mq.example.com/vhost")
+    cred = [d for d in dets if d.entity_type is EntityType.URL_CREDENTIALS]
+    assert [d.text for d in cred] == ["changeit-1"]
+    # the password span must win over the overlapping "pass@host" email match
+    assert not any(d.entity_type is EntityType.EMAIL for d in dets)
+
+
+def test_url_without_password_is_not_flagged():
+    assert EntityType.URL_CREDENTIALS not in types_in("see https://example.com/a:b page")
+    assert EntityType.URL_CREDENTIALS not in types_in("clone ssh://git@github.com/org/repo.git")
+    # a port is not a password
+    assert EntityType.URL_CREDENTIALS not in types_in("open http://db.internal:5432/metrics")
+
+
 # --- entropy / statistical tier -----------------------------------------
 
 
