@@ -87,6 +87,50 @@ def test_large_entity_survives_streaming_at_default_overlap():
     assert "[REDACTED]" in streamed and body not in streamed
 
 
+def test_over_cap_entity_is_redacted_with_bounded_memory():
+    # A boundary-free high-entropy token far larger than overlap must not (a) be
+    # missed, (b) grow the engine buffer without bound, or (c) hang. Hex tokens
+    # are used because they cannot contain a contextual-suppression trigger.
+    import hashlib
+    import tracemalloc
+
+    r = Redactor()
+
+    def measure(units):
+        def gen():
+            yield "k "
+            for i in range(units):
+                yield hashlib.sha256(str(i).encode()).hexdigest()  # 64 hex chars, no boundary
+            yield " z\n"
+
+        tracemalloc.start()
+        redacted = False
+        for piece in r.redact_stream(gen()):  # consume + discard: measure engine only
+            redacted = redacted or "[REDACTED]" in piece
+        _, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        return peak, redacted
+
+    small_peak, red_small = measure(2000)  # ~128 KB token
+    big_peak, red_big = measure(8000)  # ~512 KB token (4x larger)
+    assert red_small and red_big  # the over-long secret is redacted, never leaked
+    # 4x the input, roughly the same peak: memory is bounded by the cap, not O(n)
+    assert big_peak < 2 * small_peak
+
+
+def test_complete_entity_larger_than_overlap_streams_identically():
+    # an entity longer than overlap but that terminates within a few overlaps is
+    # emitted whole, identically to non-streaming redaction
+    import hashlib
+
+    r = Redactor()
+    token = "".join(hashlib.sha256(str(i).encode()).hexdigest() for i in range(500))  # ~32 KB
+    assert r.overlap < len(token) < 4 * r.overlap
+    text = f"k {token} z"
+    for n in (37, 4096, 65536):
+        assert "".join(r.redact_stream(chunked(text, n))) == r.redact(text)
+
+
 def test_small_overlap_warns_at_construction(caplog):
     with caplog.at_level("WARNING", logger="safestream_redactor.redactor"):
         Redactor(overlap=1024)
