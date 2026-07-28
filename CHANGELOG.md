@@ -34,6 +34,10 @@ Notable changes to this project. The format follows
 - `benchmarks/evaluate.py`: an accuracy harness that scores against an independent,
   externally-labeled corpus (per-type + micro-averaged P/R/F1, label mapping),
   separating real accuracy measurement from the synthetic regression fixture.
+- `--encoding` flag for non-UTF-8 sources; a new `init-config` command that writes a
+  documented, schema-validated starter policy; and per-file progress reporting for
+  directory redaction (live on an interactive terminal, via a `progress` callback on
+  `redact_tree`).
 
 ### Security
 
@@ -48,6 +52,9 @@ Notable changes to this project. The format follows
   output).
 - The private-key pattern body is length-bounded, so a `BEGIN`-without-`END` marker
   followed by a large base64 run can no longer trigger a pathological long scan.
+- Undecodable input bytes are surfaced: replacement characters are counted in the run
+  report and the CLI warns, since bytes replaced with U+FFFD are content no detector
+  scanned. Output writes for the stdin→file path are now atomic too.
 
 ### Changed
 
@@ -58,6 +65,9 @@ Notable changes to this project. The format follows
 - `redact_file` writes atomically (temp file + rename): a crash can no longer leave a
   partially redacted file that looks complete, and previous output survives failures.
   Redacting a file onto itself is now rejected with an error.
+- The NER detector pickles as configuration only (model name + confidence) and reloads
+  its model in each worker process, so bulk directory redaction with `use_ner=True` no
+  longer serializes a large spaCy model across process boundaries.
 
 ## [0.1.0] - 2026-07-25
 

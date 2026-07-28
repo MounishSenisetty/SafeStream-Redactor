@@ -139,14 +139,24 @@ rather than add features.
 - **ReDoS bound** *(done)*: the private-key body is length-capped against pathological
   scans.
 
-Still open from the review (highest-value next):
+Also implemented since:
 
-- **Throughput**: Vectorscan/re2 backend behind the `Detector` seam + intra-file
-  parallelism, to close the ~100× gap with compiled scanners for the large-file case.
-- **Encoding safety**: surface (and count) decode-replacement events instead of silently
-  substituting.
-- **NER-in-scheduler**: test and document pickling/startup cost of shipping a spaCy model
-  to worker processes.
+- **Encoding safety** *(done)*: undecodable bytes are counted, reported, and warned
+  about (unscanned content is a coverage risk); `--encoding` reads non-UTF-8 sources.
+- **NER-in-scheduler** *(done)*: the NER detector pickles as config and reloads its
+  model per worker, so bulk redaction no longer serializes a spaCy model over IPC; the
+  tier now has real test coverage via an injected fake spaCy.
+- **Operability** *(done)*: `init-config` emits a schema-validated starter policy;
+  directory runs report per-file progress; the stdin→file path writes atomically.
+
+Still open (highest-value next):
+
+- **Throughput** — the biggest remaining gap. A Vectorscan/re2 backend behind the
+  `Detector` seam plus intra-file parallelism would close the ~100× distance from
+  compiled scanners on the large-file case. Deferred deliberately: a correct
+  intra-file split must preserve the constant-memory guarantee and left-context
+  determinism at seams, so it needs its own design pass with an equivalence proof,
+  not a quick pass. This is the one headline limitation still standing.
 
 ## Phase 3 — Research-grade detection
 

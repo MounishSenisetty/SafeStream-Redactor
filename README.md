@@ -83,6 +83,13 @@ safestream detect build.log --fail-on-detect
 # per-type counts to stderr, plus a JSON run report for compliance filing
 # (the report contains only type names, counts, and sizes — never matched text)
 safestream redact input.txt -o out.txt --stats --report run.json
+
+# non-UTF-8 source? decode it correctly (undecodable bytes are otherwise
+# reported and warned about, since unscanned bytes are a coverage risk)
+safestream redact legacy.log -o out.log --encoding latin-1
+
+# generate a documented, validated starter policy to customise
+safestream init-config -o policy.toml
 ```
 
 While redacting, the CLI installs an **offline network guard** by default: any attempt to
