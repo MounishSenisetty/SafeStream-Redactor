@@ -6,7 +6,7 @@
 #
 # The image installs only the constant-memory core (no third-party runtime
 # deps), so it stays small and runs fully offline.
-FROM python:3.12-slim AS build
+FROM python:3.14-slim AS build
 
 WORKDIR /src
 # Copy only what the build backend (hatchling) needs to produce the wheel.
@@ -14,7 +14,7 @@ COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 RUN pip install --no-cache-dir build && python -m build --wheel
 
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 LABEL org.opencontainers.image.title="safestream-redactor" \
       org.opencontainers.image.description="Streaming PII & credential redaction with constant memory usage" \
