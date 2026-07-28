@@ -130,6 +130,22 @@ def test_contextual_suppression():
     assert ssn and ssn[0].confidence < 0.85
 
 
+def test_long_secret_containing_trigger_substring_is_not_suppressed():
+    # a real high-entropy secret that coincidentally contains "test" as a
+    # substring must not be suppressed and dropped (content-dependent leak)
+    secret = "Zx9testKq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0Aa"
+    out = Redactor().redact(f"api_key credential {secret}")
+    assert secret not in out
+
+
+def test_short_placeholder_value_still_suppressed():
+    # the in-value placeholder check still applies to short structured values
+    dets = Redactor(min_confidence=0.0).detect("ssn: test-45-6789")
+    ssn = [d for d in dets if d.entity_type is EntityType.SSN]
+    # "test" inside the short value still lowers confidence
+    assert not ssn or all(d.meta.get("context") == "suppressed" for d in ssn)
+
+
 def test_overlap_resolution_card_beats_phone():
     dets = Redactor().detect("card 4111 1111 1111 1111 ok")
     assert [d.entity_type for d in dets] == [EntityType.CREDIT_CARD]

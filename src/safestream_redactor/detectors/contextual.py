@@ -41,6 +41,24 @@ _BARE_SSN = re.compile(r"(?<![\d-])\d{9}(?![\d-])")
 BOOST = 0.2
 SUPPRESS = 0.4
 
+# The in-value placeholder check (does the match itself read like "test" /
+# "example"?) is meaningful only for structured PII whose placeholder values are
+# recognisable, e.g. "test@example.com" or "xxx-xx-xxxx". Applying it to a
+# high-entropy credential is a false-positive magnet: a random token very likely
+# contains "test" or "fake" as a coincidental substring, which would suppress
+# and silently drop a real secret. So the in-value check is limited to these
+# types; the surrounding-context check still applies to every type.
+_VALUE_SUPPRESS_TYPES = frozenset(
+    {
+        EntityType.EMAIL,
+        EntityType.SSN,
+        EntityType.PHONE,
+        EntityType.CREDIT_CARD,
+        EntityType.IPV4,
+        EntityType.IPV6,
+    }
+)
+
 
 class ContextualScorer:
     """Adjusts confidences in place and contributes trigger-gated detections."""
@@ -67,9 +85,12 @@ class ContextualScorer:
                 det.confidence = min(1.0, det.confidence + self.boost)
                 det.meta["context"] = "boosted"
             # suppression looks at the match itself plus a tight window, so a
-            # neighbouring entity containing e.g. "example" can't poison it
+            # neighbouring entity containing e.g. "example" can't poison it. The
+            # in-value check is skipped for long matches (see note above) so a
+            # coincidental substring can't drop a real high-entropy secret.
             near = text[max(0, det.start - self.suppress_window) : det.start].lower()
-            if any(t in near or t in det.text.lower() for t in _SUPPRESS_TRIGGERS):
+            value = det.text.lower() if det.entity_type in _VALUE_SUPPRESS_TYPES else ""
+            if any(t in near or t in value for t in _SUPPRESS_TRIGGERS):
                 det.confidence = max(0.0, det.confidence - self.suppress)
                 det.meta["context"] = "suppressed"
         return detections
