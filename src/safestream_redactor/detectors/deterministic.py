@@ -99,7 +99,12 @@ _PATTERNS: tuple[Pattern, ...] = (
         EntityType.PRIVATE_KEY,
         re.compile(
             r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----"
-            r"[A-Za-z0-9+/=\s]+?"
+            # Bounded body: a real PEM private key body is well under 8 KB even
+            # for RSA-4096 (~3.2 KB of base64). Bounding the repetition caps the
+            # scan a lazy ``+?`` would otherwise do position-by-position looking
+            # for the END marker, so a crafted BEGIN-without-END followed by
+            # megabytes of base64 can't cause a pathological long scan.
+            r"[A-Za-z0-9+/=\s]{1,8192}?"
             r"-----END [A-Z0-9 ]*PRIVATE KEY-----"
         ),
         0.99,

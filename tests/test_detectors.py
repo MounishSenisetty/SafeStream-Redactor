@@ -99,6 +99,17 @@ def test_private_key_block():
     assert EntityType.PRIVATE_KEY in types_in(f"cert:\n{pem}\ndone")
 
 
+def test_private_key_begin_without_end_is_bounded_and_fast():
+    import time
+
+    # a BEGIN marker followed by megabytes of base64 with no END must not cause
+    # a pathological scan; it must simply not match, quickly
+    hostile = "-----BEGIN RSA PRIVATE KEY-----\n" + "A" * 4_000_000
+    start = time.perf_counter()
+    assert EntityType.PRIVATE_KEY not in types_in(hostile)
+    assert time.perf_counter() - start < 2.0
+
+
 def test_custom_words_and_patterns():
     found = Redactor(custom_words=["ProjectX"], custom_patterns=[r"\bID-\d{4}\b"]).detect(
         "projectx doc ID-1234"
