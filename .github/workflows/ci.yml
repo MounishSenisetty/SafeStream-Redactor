@@ -48,7 +48,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -e .[dev]
-      - run: pytest -q
+      # coverage gate: fail_under is configured in pyproject.toml
+      - run: pytest -q --cov=safestream_redactor --cov-report=term
       # smaller variant of the constant-memory proof to keep CI fast;
       # run the full 1 GB check locally with: pytest -m memory -o addopts=''
       - run: pytest -m memory -o addopts='' -q

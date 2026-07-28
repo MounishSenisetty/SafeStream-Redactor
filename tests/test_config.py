@@ -60,6 +60,40 @@ def test_cli_uses_config_and_flags_override(config_file, tmp_path, capsys):
     assert capsys.readouterr().out == "# and <SSN>"
 
 
+def test_cli_detection_flags_override_config(config_file, tmp_path, capsys):
+    src = tmp_path / "in.txt"
+    src.write_text("bob@x.io and 123-45-6789 codename ProjectY chunk sk-ant-" + "Ab12Cd34" * 5)
+    assert (
+        main(
+            [
+                "redact",
+                str(src),
+                "-o",
+                "-",
+                "--config",
+                str(config_file),
+                "--types",
+                "email,anthropic_key",
+                "--min-confidence",
+                "0.6",
+                "--no-entropy",
+                "--custom-word",
+                "ProjectY",
+                "--chunk-size",
+                "2048",
+                "--overlap",
+                "256",
+            ]
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    # email redacted, custom word from the flag redacted, ssn no longer in scope
+    assert "bob@x.io" not in out and "ProjectY" not in out
+    assert "123-45-6789" in out
+    assert "sk-ant-" not in out
+
+
 def test_hmac_key_from_config(tmp_path):
     p = tmp_path / "p.toml"
     p.write_text('[redaction]\nmode = "pseudonymize"\nhmac_key = "k"\n')

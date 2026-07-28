@@ -81,6 +81,15 @@ def test_stdin_stdout(capsys, monkeypatch):
     assert out == "ip [REDACTED] here"
 
 
+def test_stdin_to_file(capsys, monkeypatch, tmp_path):
+    import io
+
+    monkeypatch.setattr("sys.stdin", io.StringIO("ip 10.0.0.1 here"))
+    out = tmp_path / "out.txt"
+    assert main(["redact", "-", "-o", str(out)]) == 0
+    assert out.read_text() == "ip [REDACTED] here"
+
+
 def test_missing_input_file_errors(capsys, tmp_path):
     assert main(["redact", str(tmp_path / "nope.txt"), "-o", "-"]) == 1
     assert "error" in capsys.readouterr().err
