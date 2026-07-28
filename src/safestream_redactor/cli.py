@@ -126,7 +126,70 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="exit with status 1 if anything is detected (CI/pre-commit secret gate)",
     )
+
+    init = sub.add_parser("init-config", help="write a documented, valid starter policy TOML file")
+    init.add_argument(
+        "-o", "--output", default="-", help="output path, or '-' for stdout (default)"
+    )
+    init.add_argument(
+        "--force", action="store_true", help="overwrite the output file if it already exists"
+    )
     return parser
+
+
+# A starter policy that documents every option and passes validate_config as-is.
+# Keys mirror the config schema exactly, so this doubles as executable documentation.
+_STARTER_CONFIG = """\
+# SafeStream-Redactor policy file. Pass it with:  safestream redact IN -o OUT --config this.toml
+# CLI flags override anything set here. Unknown keys/sections are rejected (fail-closed).
+
+[detection]
+# types = ["email", "ssn", "credit_card"]   # omit for all types
+min_confidence = 0.5
+use_ner = false                             # requires the [ner] extra + a model
+# ner_model = "en_core_web_sm"
+use_entropy = true                          # high-entropy secret detection
+
+[redaction]
+mode = "replace"                            # replace | mask | pseudonymize
+replacement = "[REDACTED]"
+mask_keep_last = 4                          # mask mode: trailing chars left visible
+mask_char = "*"
+# hmac_key = "change-me"                    # required for pseudonymize (keep it secret)
+# pseudonym_length = 16                     # hex digits of the keyed token (8-64)
+
+[redaction.replacements]                    # optional per-type replacement strings
+# email = "<EMAIL>"
+
+[custom]
+# words = ["ProjectX"]                      # literal words/phrases to always redact
+# patterns = ['\\\\binternal-[a-z]+\\\\b']       # regexes whose matches are always redacted
+
+[streaming]
+chunk_size = 65536
+overlap = 4096
+"""
+
+
+def _cmd_init_config(args: argparse.Namespace) -> int:
+    # sanity: the emitted template must satisfy the strict validator
+    from safestream_redactor.config import validate_config
+
+    if sys.version_info >= (3, 11):
+        import tomllib
+    else:
+        import tomli as tomllib
+    validate_config(tomllib.loads(_STARTER_CONFIG))
+
+    if args.output == "-":
+        sys.stdout.write(_STARTER_CONFIG)
+        return 0
+    if os.path.exists(args.output) and not args.force:
+        raise SystemExit(f"{args.output} already exists (pass --force to overwrite)")
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(_STARTER_CONFIG)
+    print(f"-- wrote starter policy to {args.output}", file=sys.stderr)
+    return 0
 
 
 def _build_redactor(args: argparse.Namespace) -> Redactor:
@@ -341,6 +404,8 @@ def _cmd_detect(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    if args.command == "init-config":
+        return _cmd_init_config(args)
     if getattr(args, "offline_guard", True):
         from safestream_redactor import netguard
 

@@ -124,3 +124,25 @@ def test_replacements_entity_keys_are_not_rejected(tmp_path):
     p.write_text('[redaction.replacements]\nemail = "<E>"\nssn = "<S>"\n')
     r = redactor_from_config(p)
     assert r.redact("bob@x.io ssn: 123-45-6789") == "<E> ssn: <S>"
+
+
+def test_init_config_emits_a_usable_policy(tmp_path):
+    # the generated starter must load without error and actually redact,
+    # closing the loop between init-config and the strict validator
+    policy = tmp_path / "policy.toml"
+    assert main(["init-config", "-o", str(policy)]) == 0
+    src = tmp_path / "in.txt"
+    src.write_text("mail bob@x.io ssn 123-45-6789")
+    out = tmp_path / "out.txt"
+    assert main(["redact", str(src), "-o", str(out), "--config", str(policy)]) == 0
+    assert out.read_text() == "mail [REDACTED] ssn [REDACTED]"
+
+
+def test_init_config_refuses_to_clobber(tmp_path):
+    policy = tmp_path / "policy.toml"
+    policy.write_text("keep me")
+    with pytest.raises(SystemExit, match="already exists"):
+        main(["init-config", "-o", str(policy)])
+    assert policy.read_text() == "keep me"
+    assert main(["init-config", "-o", str(policy), "--force"]) == 0
+    assert policy.read_text() != "keep me"
