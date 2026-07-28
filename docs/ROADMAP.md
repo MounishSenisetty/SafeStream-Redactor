@@ -122,6 +122,32 @@ added only where it strengthens the actual guarantee.
 - **Container publishing** *(done)*: GHCR multi-arch images with SBOM + provenance
   attestation on release.
 
+## Phase 2.5 — Credibility & honesty fixes (implemented)
+
+Prompted by an external-review pass; these correct claims and close fail-open gaps
+rather than add features.
+
+- **Honest benchmarking** *(done)*: `benchmarks/evaluate.py` scores against independent
+  labeled corpora; the synthetic benchmark is relabeled a regression fixture (its recall
+  was near-circular). Throughput is stated as a known limitation, not a strength.
+- **Truthful security claims** *(done)*: the offline guard is documented as best-effort
+  in-process prevention, not a hard boundary.
+- **Pseudonymization** *(done)*: widened to 64-bit configurable tokens; documented as
+  reversible-by-key-holder, not anonymization.
+- **Fail-closed config** *(done)*: unknown TOML keys/sections are errors, not silent
+  default fallback.
+- **ReDoS bound** *(done)*: the private-key body is length-capped against pathological
+  scans.
+
+Still open from the review (highest-value next):
+
+- **Throughput**: Vectorscan/re2 backend behind the `Detector` seam + intra-file
+  parallelism, to close the ~100× gap with compiled scanners for the large-file case.
+- **Encoding safety**: surface (and count) decode-replacement events instead of silently
+  substituting.
+- **NER-in-scheduler**: test and document pickling/startup cost of shipping a spaCy model
+  to worker processes.
+
 ## Phase 3 — Research-grade detection
 
 - **Format-aware context**: recognise JSON/CSV/logfmt structure so field *names*

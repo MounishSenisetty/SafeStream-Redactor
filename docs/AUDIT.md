@@ -79,9 +79,11 @@ but is not documented as such, and there is no work-splitting option for the com
 
 ### Security — 7/10
 
-Strengths: the `netguard` egress guard converts the "your data never leaves the
-machine" promise from documentation into an enforced runtime property — including
-inside scheduler worker processes. Docker runs as a non-root user. Publishing uses
+Strengths: the `netguard` egress guard is a best-effort, defense-in-depth layer that
+reliably stops *accidental* egress by this process and its Python dependencies —
+including inside scheduler worker processes — though it is not a hard boundary (a native
+syscall, subprocess, or co-resident process bypasses it; see `SECURITY.md`). Docker runs
+as a non-root user. Publishing uses
 OIDC trusted publishing (no long-lived PyPI tokens). Pattern validators (Luhn, SSN
 rules, `ipaddress` parsing) reduce false positives that would otherwise leak *un*redacted.
 
@@ -170,11 +172,14 @@ from secret scanners (truffleHog, detect-secrets):
 
 1. Constant-memory streaming with the boundary-retreat overlap algorithm — proven by
    test, not claimed.
-2. An *enforced* offline guarantee (`netguard`) — no comparable tool makes its privacy
-   promise a runtime invariant.
+2. A default-on offline egress guard (`netguard`) — uncommon to ship enabled by
+   default, though it is best-effort in-process prevention, not a hard boundary.
 3. PII **and** credentials in one pass with tiered confidence and contextual
    boost/suppress.
 
-What keeps it from 10: the ideas are implemented at single-machine CLI scope, and the
-evaluation, calibration, and format-awareness needed to make the claims
-research-grade are not yet built.
+Each element individually has prior art (streaming scanners; `pytest-socket` uses the
+same socket monkeypatch; gitleaks/detect-secrets cover credentials + entropy), so the
+differentiation is the *product combination*, not a research-novel or patentable
+method. What keeps it from research-grade: the accuracy evaluation was circular
+(now addressed by `benchmarks/evaluate.py` against independent corpora), and the
+calibration and format-awareness needed for a real contribution are not yet built.

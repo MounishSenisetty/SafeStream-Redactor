@@ -31,6 +31,24 @@ Notable changes to this project. The format follows
 - Container publishing: releases build multi-arch (amd64/arm64) images to GHCR with an
   SBOM and provenance attestations; the Dockerfile carries OCI metadata labels.
 
+- `benchmarks/evaluate.py`: an accuracy harness that scores against an independent,
+  externally-labeled corpus (per-type + micro-averaged P/R/F1, label mapping),
+  separating real accuracy measurement from the synthetic regression fixture.
+
+### Security
+
+- Corrected the offline-guard claims: it is best-effort in-process egress prevention,
+  not a boundary that makes data "provably never leave the machine" (README, module
+  docstring, and audit updated to match `SECURITY.md`).
+- Pseudonymization token widened from 40 to 64 bits (configurable 8–64) to avoid
+  collisions on large corpora, with explicit documentation that deterministic keyed
+  pseudonyms are re-identifiable by the key holder — not anonymization.
+- Policy config now fails closed: an unknown TOML section or key is rejected with a
+  suggestion instead of silently falling back to defaults (which could ship unredacted
+  output).
+- The private-key pattern body is length-bounded, so a `BEGIN`-without-`END` marker
+  followed by a large base64 run can no longer trigger a pathological long scan.
+
 ### Changed
 
 - Deterministic-tier patterns are prefiltered by guaranteed anchor literals: windows
