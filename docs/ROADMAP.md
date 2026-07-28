@@ -106,18 +106,20 @@ added only where it strengthens the actual guarantee.
 - **Risks**: Windows leg may surface real platform bugs — that is the point; kept
   non-blocking only if flaky for environmental reasons.
 
-## Phase 2 — Performance & assurance (next)
+## Phase 2 — Performance & assurance (implemented)
 
-- **Single-pass anchored prefilter**: most tier-1 patterns have literal anchors
-  (`AKIA`, `eyJ`, `xox`, `-----BEGIN`, `@`); one combined scan can skip windows with
-  no anchors at all. Target: 3× throughput on secret-sparse logs. Risk: must be
-  provably equivalent — gate with a differential fuzz test against the naive path.
-- **Property-based testing**: Hypothesis generators for the streaming-equals-whole-text
-  invariant and overlap resolution; this is the cheapest way to find boundary bugs
-  the hand-written cases miss.
-- **Coverage gate + benchmark tracking in CI**: prevent silent regression of either
-  correctness coverage or throughput.
-- **Container publishing**: GHCR multi-arch images with SBOM + provenance
+- **Anchored prefilter** *(done)*: every tier-1 pattern declares literals any match
+  must contain; windows without them skip the regex. Measured ~25× on digit-free
+  prose and ~1.7× on digit-heavy logs, gated by a differential test proving output
+  identity with the prefilter disabled.
+- **Property-based testing** *(done)*: Hypothesis generators cover the
+  streaming-equals-whole-text invariant, segment reassembly/offsets, and the overlap
+  resolution contract (sorted, non-overlapping, maximal, idempotent), derandomized
+  for reproducible CI.
+- **Coverage gate + detection-quality gate in CI** *(done)*: 95% coverage floor;
+  benchmark job regenerates the seeded corpora and fails below fixed
+  precision/recall floors.
+- **Container publishing** *(done)*: GHCR multi-arch images with SBOM + provenance
   attestation on release.
 
 ## Phase 3 — Research-grade detection

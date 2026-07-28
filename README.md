@@ -48,6 +48,10 @@ pip install -e '.[dev]'
 docker build -t safestream-redactor .
 docker run --rm -v "$PWD":/data safestream-redactor \
     redact /data/input.txt -o /data/output.txt
+
+# released multi-arch images (amd64/arm64, with SBOM + provenance) are on GHCR:
+docker run --rm -v "$PWD":/data ghcr.io/mounishsenisetty/safestream-redactor \
+    redact /data/input.txt -o /data/output.txt
 ```
 
 ## Quickstart
@@ -187,6 +191,11 @@ safestream redact input.txt -o out.txt --config policy.toml
   Plugins: third-party tiers load from the 'safestream_redactor.detectors' entry point.
 ```
 
+Each tier-1 pattern declares literal *anchors* every match must contain (`AKIA`, `eyJ`,
+`@`, `://`, a digit, …); a cheap substring scan per window skips regexes that cannot
+match, so secret-sparse text runs ~25× faster with provably identical output (a
+differential test compares prefiltered and unfiltered detection).
+
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
 at least `overlap` characters from the buffer's end is emitted each round; the tail is carried
 into the next round so any entity up to `overlap` characters long (default 4 KB) is always
@@ -254,7 +263,8 @@ core differentiator, alongside constant-memory streaming.
 git clone https://github.com/MounishSenisetty/SafeStream-Redactor
 cd SafeStream-Redactor
 pip install -e '.[dev]'
-pytest                                   # fast suite
+pytest                                   # fast suite (incl. property-based tests)
+pytest --cov=safestream_redactor         # with the 95% coverage gate
 SAFESTREAM_MEMTEST_MB=100 pytest -m memory -o addopts=''   # constant-memory proof
 ruff check . && ruff format --check .       # lint + format
 mypy                                        # strict type check

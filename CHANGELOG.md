@@ -25,8 +25,18 @@ Notable changes to this project. The format follows
 - Security policy (`SECURITY.md`) with an explicit threat model, Dependabot updates,
   a `pip-audit` CI job, and macOS/Windows CI legs.
 
+- Property-based tests (Hypothesis) for the streaming-equals-whole-text invariant and
+  overlap-resolution contract; a 95% coverage gate; and a CI job that regenerates the
+  seeded benchmark corpora and fails if precision/recall fall below fixed floors.
+- Container publishing: releases build multi-arch (amd64/arm64) images to GHCR with an
+  SBOM and provenance attestations; the Dockerfile carries OCI metadata labels.
+
 ### Changed
 
+- Deterministic-tier patterns are prefiltered by guaranteed anchor literals: windows
+  that cannot contain a match skip the regex entirely (~25× faster on digit-free
+  prose, ~1.7× on digit-heavy logs, identical output — enforced by a differential
+  test).
 - `redact_file` writes atomically (temp file + rename): a crash can no longer leave a
   partially redacted file that looks complete, and previous output survives failures.
   Redacting a file onto itself is now rejected with an error.
