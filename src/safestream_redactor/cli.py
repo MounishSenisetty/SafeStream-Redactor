@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from collections.abc import Iterator
 
 from safestream_redactor import __version__
@@ -22,6 +23,7 @@ from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from safestream_redactor.entities import EntityType
 from safestream_redactor.policy import RedactionPolicy
 from safestream_redactor.redactor import Redactor
+from safestream_redactor.report import RedactionStats
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -76,6 +78,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
     redact = sub.add_parser("redact", parents=[common], help="redact a file or stdin")
     redact.add_argument("-o", "--output", required=True, help="output path, or '-' for stdout")
+    redact.add_argument(
+        "--stats",
+        action="store_true",
+        help="print per-type detection counts to stderr when done",
+    )
+    redact.add_argument(
+        "--report",
+        metavar="FILE",
+        help="write a JSON run report (counts and sizes only, never matched text)",
+    )
     redact.add_argument(
         "--workers",
         type=int,
@@ -182,21 +194,45 @@ def _input_chunks(path: str, chunk_size: int) -> Iterator[str]:
         yield from read_chunks(path, chunk_size)
 
 
+def _finish_run(
+    args: argparse.Namespace, stats: RedactionStats, *, files: int, started: float
+) -> None:
+    """Emit the optional stats summary and JSON run report for a redact run."""
+    if getattr(args, "stats", False):
+        print(f"-- {stats.summary()}", file=sys.stderr)
+    report_path = getattr(args, "report", None)
+    if report_path:
+        from safestream_redactor.report import build_report, write_report
+
+        write_report(
+            report_path,
+            build_report(
+                stats,
+                files=files,
+                duration_seconds=time.monotonic() - started,
+                version=__version__,
+            ),
+        )
+
+
 def _cmd_redact(args: argparse.Namespace) -> int:
     redactor = _build_redactor(args)
     if args.input not in ("-", None) and os.path.isdir(args.input):
         return _redact_directory(args, redactor)
+    started = time.monotonic()
+    stats = RedactionStats()
     chunks = _input_chunks(args.input, redactor.chunk_size)
     if args.output == "-":
-        for piece in redactor.redact_stream(chunks):
+        for piece in redactor.redact_stream(chunks, stats):
             sys.stdout.write(piece)
         sys.stdout.flush()
     elif args.input == "-":
         with open(args.output, "w", encoding="utf-8") as out:
-            for piece in redactor.redact_stream(chunks):
+            for piece in redactor.redact_stream(chunks, stats):
                 out.write(piece)
     else:
-        redactor.redact_file(args.input, args.output)
+        stats = redactor.redact_file(args.input, args.output)
+    _finish_run(args, stats, files=1, started=started)
     return 0
 
 
@@ -205,6 +241,7 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
 
     if args.output in ("-", None):
         raise SystemExit("directory input requires an output directory (-o DIR)")
+    started = time.monotonic()
     results = redact_tree(
         args.input,
         args.output,
@@ -212,11 +249,17 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
         workers=args.workers,
         offline_guard=getattr(args, "offline_guard", True),
     )
+    stats = RedactionStats()
+    for r in results:
+        stats.counts.update(r.counts)
+        stats.chars_in += r.chars_in
+        stats.chars_out += r.chars_out
     total = sum(r.bytes_written for r in results)
     print(
         f"-- redacted {len(results)} file(s), {total} bytes written to {args.output}",
         file=sys.stderr,
     )
+    _finish_run(args, stats, files=len(results), started=started)
     return 0
 
 

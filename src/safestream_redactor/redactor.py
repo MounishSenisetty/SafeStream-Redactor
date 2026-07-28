@@ -19,6 +19,7 @@ from safestream_redactor.engine import (
 )
 from safestream_redactor.entities import Detection, EntityType, resolve_overlaps
 from safestream_redactor.policy import RedactionPolicy
+from safestream_redactor.report import RedactionStats
 
 logger = logging.getLogger(__name__)
 
@@ -129,23 +130,43 @@ class Redactor:
         """
         return stream_windows(chunks, self.detect, self.overlap)
 
-    def redact_stream(self, chunks: Iterable[str]) -> Iterator[str]:
+    def redact_stream(
+        self, chunks: Iterable[str], stats: RedactionStats | None = None
+    ) -> Iterator[str]:
         """Redact an iterable/generator of text chunks, yielding redacted chunks.
 
         Memory stays bounded by ``chunk_size + overlap`` regardless of total
         input size. Entities up to ``overlap`` characters long are detected
-        even when split across chunk boundaries.
+        even when split across chunk boundaries. Pass a
+        :class:`~safestream_redactor.report.RedactionStats` to accumulate
+        per-type counts and sizes while streaming.
         """
-        return stream_transform(chunks, self.detect, self.policy.apply, self.overlap)
+        if stats is None:
+            return stream_transform(chunks, self.detect, self.policy.apply, self.overlap)
+        return self._redact_stream_with_stats(chunks, stats)
+
+    def _redact_stream_with_stats(
+        self, chunks: Iterable[str], stats: RedactionStats
+    ) -> Iterator[str]:
+        for segment, detections in stream_windows(chunks, self.detect, self.overlap):
+            redacted = self.policy.apply(segment, detections)
+            stats.add_segment(segment, redacted, detections)
+            yield redacted
 
     def redact_file(
         self,
         input_path: str | os.PathLike[str],
         output_path: str | os.PathLike[str],
         encoding: str = "utf-8",
-    ) -> None:
-        """Redact ``input_path`` into ``output_path`` without loading either fully."""
+    ) -> RedactionStats:
+        """Redact ``input_path`` into ``output_path`` without loading either fully.
+
+        Returns the run's :class:`~safestream_redactor.report.RedactionStats`
+        (per-type counts, characters in/out).
+        """
+        stats = RedactionStats()
         chunks = read_chunks(os.fspath(input_path), self.chunk_size, encoding)
         with open(output_path, "w", encoding=encoding) as out:
-            for redacted in self.redact_stream(chunks):
+            for redacted in self.redact_stream(chunks, stats):
                 out.write(redacted)
+        return stats

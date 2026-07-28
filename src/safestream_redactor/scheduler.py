@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from safestream_redactor.redactor import Redactor
@@ -29,6 +29,10 @@ class RedactResult:
     input_path: str
     output_path: str
     bytes_written: int
+    # entity-type name -> number of redactions in this file (never content)
+    counts: dict[str, int] = field(default_factory=dict)
+    chars_in: int = 0
+    chars_out: int = 0
 
 
 def _available_memory() -> int | None:
@@ -80,8 +84,15 @@ def _redact_one(job: tuple[str, str]) -> RedactResult:
     parent = os.path.dirname(out_path)
     if parent:
         os.makedirs(parent, exist_ok=True)
-    _WORKER_REDACTOR.redact_file(in_path, out_path, encoding=_WORKER_ENCODING)
-    return RedactResult(in_path, out_path, os.path.getsize(out_path))
+    stats = _WORKER_REDACTOR.redact_file(in_path, out_path, encoding=_WORKER_ENCODING)
+    return RedactResult(
+        in_path,
+        out_path,
+        os.path.getsize(out_path),
+        dict(stats.counts),
+        stats.chars_in,
+        stats.chars_out,
+    )
 
 
 def redact_tree(
