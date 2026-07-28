@@ -47,6 +47,7 @@ def test_failure_preserves_previous_output(tmp_path):
     assert dst.read_text() == "previous good content"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits")
 def test_overwrite_preserves_existing_permissions(tmp_path):
     src, dst = tmp_path / "in.txt", tmp_path / "out.txt"
     src.write_text("email bob@x.io")
@@ -57,6 +58,7 @@ def test_overwrite_preserves_existing_permissions(tmp_path):
     assert stat.S_IMODE(dst.stat().st_mode) == 0o640
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits")
 def test_new_output_is_not_locked_to_0600(tmp_path):
     src, dst = tmp_path / "in.txt", tmp_path / "out.txt"
     src.write_text("email bob@x.io")
