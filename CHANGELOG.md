@@ -62,6 +62,21 @@ Notable changes to this project. The format follows
   warning is now emitted when a redactor is constructed with an overlap below the built-in
   maximum, and again if an entity longer than `overlap` is ever detected (covers unbounded
   custom regexes and high-entropy tokens).
+- The streaming buffer is capped (at 4×overlap) with input coalescing. An entity longer
+  than `overlap` — an unbounded custom regex or a boundary-free high-entropy run — used to
+  grow the buffer without bound (O(n) memory) and re-detect it every chunk (O(n²) time), a
+  denial of service against the constant-memory guarantee. Such an entity is now redacted
+  fail-closed (as one or more tokens) with the buffer bounded and scan count O(n/overlap);
+  entities up to a few overlaps still stream identically to whole-text.
+- The offline network guard is reference-counted under a lock: concurrent or nested
+  `enforced()` blocks no longer race, where the first to exit could drop the guard while
+  another thread was still inside its protected block.
+- Directory redaction no longer follows symlinks (`os.walk(followlinks=False)` + skipping
+  symlinked files), so a symlink can't escape the input tree or read a device file.
+- A real high-entropy secret is no longer silently dropped when its own text happens to
+  contain a placeholder substring like "test" — the in-value placeholder check is limited
+  to structured PII types (this was a content-dependent leak, ~1 in 5 large blobs).
+- The entropy detector computes a candidate's Shannon entropy once instead of twice.
 
 ### Changed
 

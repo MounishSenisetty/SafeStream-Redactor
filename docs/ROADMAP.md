@@ -149,6 +149,23 @@ Also implemented since:
 - **Operability** *(done)*: `init-config` emits a schema-validated starter policy;
   directory runs report per-file progress; the stdin→file path writes atomically.
 
+## Phase 2.6 — Adversarial-audit fixes (implemented)
+
+Found by an adversarial "try to break it" pass; all verified with regression tests.
+
+- **Streaming DoS** *(done)*: a boundary-free over-long entity grew the buffer without
+  bound (O(n) memory) and re-detected it every chunk (O(n²) time). The buffer is now
+  capped with input coalescing; such an entity is redacted fail-closed with flat memory
+  (~190 KB across a 16× input increase) and linear time.
+- **Guard concurrency** *(done)*: the offline guard is reference-counted under a lock, so
+  concurrent/nested `enforced()` blocks can't drop it out from under each other.
+- **Symlink traversal** *(done)*: directory redaction walks with `followlinks=False` and
+  skips symlinked files, so a link can't escape the tree or read a device.
+- **Suppression leak** *(done)*: a real secret whose text coincidentally contained a
+  placeholder substring ("test", …) was dropped ~1 in 5; the in-value check is now limited
+  to structured PII types.
+- **Entropy micro-opt** *(done)*: Shannon entropy is computed once per candidate.
+
 Still open (highest-value next):
 
 - **Throughput** — the biggest remaining gap. A Vectorscan/re2 backend behind the

@@ -218,11 +218,14 @@ whole-text mode.
 
 **Guarantee and its limit.** The default overlap (16 KB) is deliberately larger than the
 biggest entity any built-in detector can produce (a private-key block is bounded to ~8 KB),
-so every built-in entity is caught across chunk boundaries. An entity *longer* than `overlap`
-— only possible from an unbounded custom regex or an unusually long high-entropy token — can
-be split and missed in streaming mode; SafeStream warns when it constructs a redactor with an
-undersized overlap and again if it ever detects an oversized entity, so raise `overlap` if you
-work with entities larger than 16 KB.
+so every built-in entity is caught whole across chunk boundaries and streams identically to
+whole-text redaction. An entity *longer* than `overlap` — only possible from an unbounded
+custom regex or an unusually long high-entropy token — is handled fail-closed: the working
+buffer is capped (at 4×overlap, so memory stays bounded and a giant boundary-free token can
+never hang the stream or exhaust RAM), and such an entity is redacted as one or more tokens
+rather than missed. SafeStream also warns when a redactor is built with an undersized overlap
+and if it detects an oversized entity, so raise `overlap` if you want entities larger than
+16 KB redacted as a single span.
 
 Detected entity types:
 
