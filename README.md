@@ -72,6 +72,13 @@ safestream redact ./logs -o ./logs_redacted --workers 8
 
 # just list what would be redacted
 safestream detect input.txt --json
+
+# CI / pre-commit secret gate: non-zero exit if anything is found
+safestream detect build.log --fail-on-detect
+
+# per-type counts to stderr, plus a JSON run report for compliance filing
+# (the report contains only type names, counts, and sizes — never matched text)
+safestream redact input.txt -o out.txt --stats --report run.json
 ```
 
 While redacting, the CLI installs an **offline network guard** by default: any attempt to
@@ -95,8 +102,10 @@ for d in redactor.detect("card 4111 1111 1111 1111"):
 policy = RedactionPolicy(replacements={EntityType.EMAIL: "<EMAIL>"})
 Redactor(policy=policy).redact("write to bob@corp.io")   # 'write to <EMAIL>'
 
-# constant-memory file-to-file
-Redactor().redact_file("huge.log", "huge_redacted.log")
+# constant-memory file-to-file; the write is atomic (never a partial output)
+# and the returned stats carry per-type counts — content-free audit evidence
+stats = Redactor().redact_file("huge.log", "huge_redacted.log")
+print(stats.summary())   # '3 detection(s): email=2, ssn=1'
 
 # generator-based streaming (any iterable of text chunks)
 with open("huge.log") as f:
@@ -253,6 +262,10 @@ mypy                                        # strict type check
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Good first issues live in
 [docs/good_first_issues.md](docs/good_first_issues.md) and the issue tracker.
+The audited state of the codebase and the phased improvement plan are in
+[docs/AUDIT.md](docs/AUDIT.md) and [docs/ROADMAP.md](docs/ROADMAP.md); the security
+policy and threat model (what the offline guard does and does not cover) are in
+[SECURITY.md](SECURITY.md).
 
 ## License
 
