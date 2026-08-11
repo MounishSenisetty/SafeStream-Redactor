@@ -44,12 +44,20 @@ def stream_windows(
     chunks: Iterable[str],
     detect: DetectFn,
     overlap: int = DEFAULT_OVERLAP,
+    *,
+    initial_context: str = "",
 ) -> Iterator[tuple[str, list[Detection]]]:
     """Yield ``(segment, detections)`` pairs covering the input exactly once.
 
     ``detections`` are the non-overlapping detections fully contained in
     ``segment``, with offsets relative to the segment. ``detect`` must return
     non-overlapping detections (the pipeline guarantees this).
+
+    ``initial_context`` seeds the read-only left context for the very first
+    window, as if that text had already been emitted: contextual scoring sees
+    it, but detections inside it are dropped and it is never yielded. The
+    parallel file engine uses this so a worker starting mid-file scores its
+    first characters exactly as the sequential pass would.
     """
     if overlap < 0:
         raise ValueError("overlap must be >= 0")
@@ -68,7 +76,7 @@ def stream_windows(
                 kept.append(det)
         return kept
 
-    prefix = ""
+    prefix = initial_context[-overlap:] if overlap else ""
     buffer = ""
     for chunk in chunks:
         buffer += chunk

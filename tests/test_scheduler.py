@@ -68,6 +68,38 @@ def test_progress_and_order_preserved_parallel(tmp_path):
     assert names == sorted(names)
 
 
+def test_inprocess_run_does_not_leak_netguard(tmp_path):
+    # the single-worker fallback runs in the caller's process; the offline
+    # guard it installs must be removed again when the run finishes, or a
+    # library call would permanently patch the host application's sockets.
+    # The invariant is that the run leaves global guard state unchanged,
+    # whatever it was on entry (other tests may have installed it).
+    from safestream_redactor import netguard
+
+    netguard.uninstall()
+    try:
+        assert not netguard.is_installed()
+        src = _tree(tmp_path)
+        redact_tree(src, tmp_path / "out", Redactor(), workers=1)
+        assert not netguard.is_installed()
+    finally:
+        netguard.uninstall()
+
+
+def test_inprocess_run_keeps_preinstalled_netguard(tmp_path):
+    # ...but when the caller (e.g. the CLI) installed the guard itself, the
+    # run must not tear down that outer guard on exit
+    from safestream_redactor import netguard
+
+    netguard.install()
+    try:
+        src = _tree(tmp_path)
+        redact_tree(src, tmp_path / "out", Redactor(), workers=1)
+        assert netguard.is_installed()
+    finally:
+        netguard.uninstall()
+
+
 def test_ram_aware_workers():
     r = Redactor()
     assert ram_aware_workers(r, requested=3) == 3

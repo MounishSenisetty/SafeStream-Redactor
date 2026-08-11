@@ -57,8 +57,55 @@ def test_contextual_bare_ssn():
 
 def test_ipv4():
     assert EntityType.IPV4 in types_in("host 10.0.0.1 up")
+    assert EntityType.IPV4 in types_in("edge 255.255.255.255 and 0.0.0.0 ok")
     assert EntityType.IPV4 not in types_in("version 999.999.999.999")
     assert EntityType.IPV4 not in types_in("1.2.3.4.5 is not an ip")
+    # leading-zero octets are version/ordinal shapes, not IPs (01, 007)
+    assert EntityType.IPV4 not in types_in("release 1.02.3.4 shipped")
+    assert EntityType.IPV4 not in types_in("build 10.0.007.1 done")
+    assert EntityType.IPV4 not in types_in("octet 10.0.0.256 too big")
+
+
+def test_ipv4_shape_plus_validator_matches_old_alternation():
+    # The shape regex + ipv4_ok validator must accept exactly what the previous
+    # inline alternation (25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d) accepted, so the
+    # speedup can never silently change detection semantics.
+    import re
+
+    old = re.compile(
+        r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}"
+        r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?!\d)(?!\.\d)"
+    )
+    samples = [
+        "10.0.0.1",
+        "255.255.255.255",
+        "0.0.0.0",
+        "256.1.2.3",
+        "1.2.3.256",
+        "01.2.3.4",
+        "1.02.3.4",
+        "1.2.3.007",
+        "999.999.999.999",
+        "1.2.3.4.5",
+        "12345.1.2.3.4",
+        "1.2.3",
+        "x1.2.3.4",
+        "1.2.3.4x",
+        "v1.2.3.4",
+        "1.2.3.40",
+        "1.2.3.400",
+        "10.20.30.40",
+        "192.168.0.1:8080",
+        "..1.2.3.4",
+    ]
+    blob = "  ".join(samples)
+    old_spans = [(m.start(), m.end()) for m in old.finditer(blob)]
+    new_spans = [
+        (d.start, d.end)
+        for d in Redactor(types=["ipv4"], use_entropy=False, load_plugins=False).detect(blob)
+        if d.entity_type is EntityType.IPV4
+    ]
+    assert new_spans == old_spans
 
 
 def test_ipv6():

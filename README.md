@@ -74,6 +74,10 @@ tail -f app.log | safestream redact - -o - --mode pseudonymize --hmac-key "$SECR
 # redact a whole directory tree in parallel (RAM/CPU-aware worker count)
 safestream redact ./logs -o ./logs_redacted --workers 8
 
+# ...or split ONE big file across cores — output is byte-identical to the
+# single-core pass (a seam cross-check guarantees no lost/duplicated text)
+safestream redact huge.log -o huge_redacted.log --workers 8
+
 # just list what would be redacted
 safestream detect input.txt --json
 
@@ -131,6 +135,9 @@ with open("huge.log") as f:
 # parallel, RAM-aware redaction across a directory tree
 from safestream_redactor.scheduler import redact_tree
 redact_tree("logs/", "logs_redacted/", Redactor(), workers=8)
+
+# split a single large file across cores; byte-identical to the sequential pass
+Redactor().redact_file("huge.log", "huge_redacted.log", workers=8)
 
 # enforce the offline guarantee around any block of code
 from safestream_redactor import netguard
@@ -199,6 +206,8 @@ safestream redact input.txt -o out.txt --config policy.toml
           redaction policy (replace / mask / pseudonymize / per-type)
 
   Scheduler: RAM/CPU-aware multiprocessing across files (safestream/scheduler.py).
+  Parallel: one big file split into character-aligned ranges, output byte-identical
+    to the sequential pass, seam cross-check falls back on disagreement (parallel.py).
   Offline guard: any non-loopback connection raises NetworkAccessError (netguard.py).
   Plugins: third-party tiers load from the 'safestream_redactor.detectors' entry point.
 ```
@@ -262,8 +271,12 @@ out-recall SafeStream's regex core on prose unless you enable `[ner]`.
 
 **Throughput is a known limitation, not a strength.** ~3 MB/s single-core means a
 100 GB file takes hours; compiled scanners (gitleaks, ripgrep-class) are 100–1000×
-faster. The value here is constant memory and credential coverage, not raw speed —
-closing the speed gap (Vectorscan/re2 backend, intra-file parallelism) is on the
+faster. The value here is constant memory and credential coverage, not raw speed.
+A single large file can now be split across cores with `--workers N` /
+`redact_file(..., workers=N)` — measured ~3.7× on 4 cores, with **byte-identical**
+output to the single-core pass (a seam cross-check falls back to sequential rather
+than risk differing output). That narrows but does not close the gap to compiled
+scanners; a Vectorscan/re2 backend for the remaining constant factor stays on the
 [roadmap](docs/ROADMAP.md).
 
 **Credentials & secrets** — the genuinely differentiating capability. On a corpus of

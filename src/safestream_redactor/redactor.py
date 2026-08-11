@@ -179,6 +179,8 @@ class Redactor:
         input_path: str | os.PathLike[str],
         output_path: str | os.PathLike[str],
         encoding: str = "utf-8",
+        *,
+        workers: int | None = None,
     ) -> RedactionStats:
         """Redact ``input_path`` into ``output_path`` without loading either fully.
 
@@ -188,9 +190,20 @@ class Redactor:
         either the old content or the fully redacted result. Redacting a file
         onto itself is rejected (the source would be destroyed on failure).
 
+        ``workers`` > 1 redacts a large file with that many processes in
+        parallel (see :mod:`safestream_redactor.parallel`); the output is
+        byte-identical to the sequential pass, and small files or encodings
+        that cannot be split safely fall back to it automatically.
+
         Returns the run's :class:`~safestream_redactor.report.RedactionStats`
         (per-type counts, characters in/out).
         """
+        if workers is not None and workers > 1:
+            from safestream_redactor.parallel import redact_file_parallel
+
+            return redact_file_parallel(
+                self, input_path, output_path, workers=workers, encoding=encoding
+            ).stats
         in_path, out_path = os.fspath(input_path), os.fspath(output_path)
         if os.path.exists(out_path):
             try:
