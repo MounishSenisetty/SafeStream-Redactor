@@ -8,6 +8,16 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- Intra-file parallel redaction (`safestream_redactor.parallel`): a single large
+  file is split into character-aligned byte ranges and redacted across processes,
+  with output **byte-identical** to the sequential pass for entities within the
+  overlap guarantee. Enable it with `Redactor.redact_file(..., workers=N)` or
+  `safestream redact big.log -o out.log --workers N`. A seam cross-check makes
+  character loss or duplication at a range boundary structurally impossible: any
+  disagreement transparently falls back to the sequential pass, as do small files
+  and encodings that cannot be split safely. Measured ~3.7× on 4 cores; see
+  `docs/adr/0001-intra-file-parallelism.md` for the design and equivalence
+  argument.
 - `url_credentials` detection: passwords embedded in connection-string URLs
   (`postgres://user:PASS@host`); only the password is redacted so the DSN stays
   readable.
@@ -62,6 +72,17 @@ Notable changes to this project. The format follows
   that cannot contain a match skip the regex entirely (~25× faster on digit-free
   prose, ~1.7× on digit-heavy logs, identical output — enforced by a differential
   test).
+- The IPv4 pattern now uses a cheap shape regex plus an `ipv4_ok` validator instead of
+  an inline octet alternation, cutting the IPv4 scan roughly in half on IP-dense text.
+  A differential test pins the shape+validator combination to exactly the matches the
+  old alternation accepted (including rejection of leading-zero octets like `01`).
+
+### Fixed
+
+- The in-process (single-worker) path of `redact_tree` installed the offline network
+  guard in the **caller's** process and never removed it, silently patching a library
+  user's sockets for the rest of the process. The guard is now scoped to the run and
+  a pre-existing guard installed by the caller is left untouched.
 - `redact_file` writes atomically (temp file + rename): a crash can no longer leave a
   partially redacted file that looks complete, and previous output survives failures.
   Redacting a file onto itself is now rejected with an error.

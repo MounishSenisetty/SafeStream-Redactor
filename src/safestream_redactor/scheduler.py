@@ -9,6 +9,7 @@ when present) so peak memory stays bounded no matter how large the corpus is.
 
 from __future__ import annotations
 
+import contextlib
 import os
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -126,13 +127,20 @@ def redact_tree(
 
     n = ram_aware_workers(redactor, workers)
     if n == 1 or total == 1:
-        _init_worker(redactor, encoding, offline_guard)
-        results = []
-        for done, job in enumerate(jobs, start=1):
-            results.append(_redact_one(job))
-            if progress:
-                progress(done, total)
-        return results
+        # In-process fallback: the guard must not outlive the call. Workers are
+        # throwaway processes, but here install() would patch the *caller's*
+        # socket layer permanently — a silent global side effect on library
+        # users — so the guard is scoped to the run instead.
+        from safestream_redactor import netguard
+
+        with netguard.enforced() if offline_guard else contextlib.nullcontext():
+            _init_worker(redactor, encoding, offline_guard=False)
+            results = []
+            for done, job in enumerate(jobs, start=1):
+                results.append(_redact_one(job))
+                if progress:
+                    progress(done, total)
+            return results
 
     with ProcessPoolExecutor(
         max_workers=n,

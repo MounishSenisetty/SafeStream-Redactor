@@ -99,7 +99,9 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         metavar="N",
-        help="parallel workers when INPUT is a directory (default: RAM/CPU-aware)",
+        help="parallel workers: RAM/CPU-aware fan-out over files when INPUT is a "
+        "directory, or range-parallel redaction of one large file (output is "
+        "byte-identical to the sequential pass)",
     )
     redact.add_argument(
         "--mode",
@@ -335,6 +337,17 @@ def _cmd_redact(args: argparse.Namespace) -> int:
         sys.stdout.flush()
     elif args.input == "-":
         _atomic_write_stream(args.output, redactor.redact_stream(chunks, stats), encoding)
+    elif getattr(args, "workers", None) and args.workers > 1:
+        from safestream_redactor.parallel import redact_file_parallel
+
+        stats = redact_file_parallel(
+            redactor,
+            args.input,
+            args.output,
+            workers=args.workers,
+            encoding=encoding,
+            offline_guard=getattr(args, "offline_guard", True),
+        ).stats
     else:
         stats = redactor.redact_file(args.input, args.output, encoding=encoding)
     _finish_run(args, stats, files=1, started=started)

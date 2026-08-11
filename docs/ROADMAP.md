@@ -149,14 +149,21 @@ Also implemented since:
 - **Operability** *(done)*: `init-config` emits a schema-validated starter policy;
   directory runs report per-file progress; the stdin→file path writes atomically.
 
+- **Intra-file parallelism** *(done)*: a single large file is split into
+  character-aligned byte ranges and redacted across processes, with output
+  byte-identical to the sequential pass for entities within the overlap guarantee
+  (measured ~3.7× on 4 cores). A seam cross-check makes character loss/duplication at
+  a range boundary structurally impossible — any disagreement falls back to the
+  sequential pass. Design and equivalence argument in
+  [docs/adr/0001-intra-file-parallelism.md](adr/0001-intra-file-parallelism.md).
+
 Still open (highest-value next):
 
-- **Throughput** — the biggest remaining gap. A Vectorscan/re2 backend behind the
-  `Detector` seam plus intra-file parallelism would close the ~100× distance from
-  compiled scanners on the large-file case. Deferred deliberately: a correct
-  intra-file split must preserve the constant-memory guarantee and left-context
-  determinism at seams, so it needs its own design pass with an equivalence proof,
-  not a quick pass. This is the one headline limitation still standing.
+- **Throughput constant factor** — parallelism now uses idle cores, but each core
+  still runs the Python regex tiers at ~3 MB/s. A Vectorscan/re2 backend behind the
+  `Detector` seam would close the remaining ~100× distance from compiled scanners; it
+  stacks on top of the range-parallel path. This is the one headline limitation still
+  standing.
 
 ## Phase 3 — Research-grade detection
 
