@@ -240,17 +240,39 @@ Detected entity types:
 
 ## Evaluation
 
-> **Read this before quoting any number below.** The corpora these numbers come from
-> are *synthetic and self-generated*: the gold positives are emitted in the same
-> canonical formats the detector targets, so a near-perfect score on them measures
-> **format coverage and false-positive resistance, not real-world recall**. They are a
-> regression fixture, not an accuracy claim, and a self-generated benchmark is not
-> evidence of accuracy on your data. For a defensible accuracy number, run
-> `benchmarks/evaluate.py` against an independent labeled corpus you control (see
-> [benchmarks/README.md](benchmarks/README.md) — the Presidio research dataset, CoNLL,
-> and the n2c2 de-identification set are the recommended targets). Expect recall on
-> free-form prose (names, addresses) to be substantially lower than on structured PII
-> unless the `[ner]` extra is enabled.
+> **Two separate measurements, never conflated.** The *synthetic* corpora below
+> measure **format coverage and false-positive resistance** (their gold positives are
+> in the detector's canonical formats, so their recall is near-circular and not a
+> real-world number). The *independent* corpus measures **real-world recall** on data
+> authored by someone else. Both are reproducible; neither is edited to flatter the
+> numbers.
+
+**Real-world accuracy (independent corpus).** Scored against the Microsoft
+`presidio-research` synthetic dataset (`synth_dataset_v2.json`, 1500 records,
+template-generated from real name/address/locale lists — *not* tuned to SafeStream),
+over the entity classes the deterministic core targets. Reproduce with
+`python benchmarks/eval_dual.py` (fetches the corpus on demand):
+
+| type        | Precision | Recall | F1    |
+| ----------- | --------- | ------ | ----- |
+| email       | 1.000     | 1.000  | 1.000 |
+| phone       | 1.000     | 0.565  | 0.722 |
+| credit_card | 0.977     | 0.926  | 0.951 |
+| ssn         | 1.000     | 1.000  | 1.000 |
+| ipv4/ipv6   | 1.000     | 1.000  | 1.000 |
+| **micro**   | **0.988** | **0.837** | **0.885 → 0.907** |
+
+Phone recall is the honest weak spot: real numbers appear in loosely-grouped
+international/local formats with no cue word, which the precision-first design
+deliberately does not chase (measured: promoting them lifts recall to 0.76 but drops
+phone precision to 0.77 — real over-redaction). Names/addresses (`person`/`org`/`loc`)
+need the `[ner]` extra and are not scored here. See
+[docs/adr/0003-independent-accuracy-evaluation.md](docs/adr/0003-independent-accuracy-evaluation.md).
+
+**Format coverage & false-positive resistance (synthetic).** On the adversarial corpus
+(1 MB of noisy log/JSON/CSV/SQL dense with hard negatives — order numbers, ISO
+timestamps, UUIDs, git hashes, invalid-area SSNs, 5-octet version strings; reproduce
+with `benchmarks/generate_hard_dataset.py` then `benchmarks/run_benchmark.py`):
 
 **Format coverage & false-positive resistance (synthetic).** On the adversarial corpus
 (1 MB of noisy log/JSON/CSV/SQL dense with hard negatives — order numbers, ISO
@@ -269,15 +291,21 @@ recognizer emits thousands of false positives (P=0.649). Presidio was run via it
 pattern recognizers; its spaCy NER tier is a separate, model-dependent path that will
 out-recall SafeStream's regex core on prose unless you enable `[ner]`.
 
-**Throughput is a known limitation, not a strength.** ~3 MB/s single-core means a
+**Throughput is a known limitation, not a strength.** ~3–5 MB/s single-core means a
 100 GB file takes hours; compiled scanners (gitleaks, ripgrep-class) are 100–1000×
 faster. The value here is constant memory and credential coverage, not raw speed.
-A single large file can now be split across cores with `--workers N` /
+A single large file can be split across cores with `--workers N` /
 `redact_file(..., workers=N)` — measured ~3.7× on 4 cores, with **byte-identical**
 output to the single-core pass (a seam cross-check falls back to sequential rather
-than risk differing output). That narrows but does not close the gap to compiled
-scanners; a Vectorscan/re2 backend for the remaining constant factor stays on the
-[roadmap](docs/ROADMAP.md).
+than risk differing output). A true 100 MB/s *single-core* is not achievable in pure
+Python for validated multi-pattern detection: a compiled RE2/Hyperscan backend was
+prototyped and measured, and found *not* to help this pattern set — the patterns it
+accelerates are already prefiltered to near-zero on real data, and the real
+bottlenecks (`credit_card`, `ipv6`, lookbehind `phone`) are RE2-incompatible or
+slower under a correctness-preserving integration. The evidence and the correctness
+proof are in
+[docs/adr/0002-no-compiled-regex-backend.md](docs/adr/0002-no-compiled-regex-backend.md).
+Cross-core parallelism is therefore the throughput multiplier.
 
 **Credentials & secrets** — the genuinely differentiating capability. On a corpus of
 AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random

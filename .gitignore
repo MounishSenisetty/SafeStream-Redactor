@@ -218,3 +218,6 @@ __marimo__/
 .streamlit/secrets.toml
 benchmarks/data/
 benchmarks/data_hard/
+
+# fetched-on-demand external evaluation corpora (not vendored)
+benchmarks/external/

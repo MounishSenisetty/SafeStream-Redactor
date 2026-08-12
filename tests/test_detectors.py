@@ -20,6 +20,25 @@ def test_phone_international():
     assert EntityType.PHONE not in types_in("room 12-34")
 
 
+def test_phone_nanp_grouping_without_context():
+    # NNN-NNN-NNNN (and dotted) is phone-specific enough to fire with no cue word,
+    # which is how most real-world numbers appear (measured on the Presidio corpus)
+    assert EntityType.PHONE in types_in("reach me at 905-674-3793 anytime")
+    assert EntityType.PHONE in types_in("ref 259.735.7502 on file")
+    # must not collide with SSN (NNN-NN-NNNN) or ISO date grouping
+    assert EntityType.PHONE not in types_in("id 123-45-6789 here")
+    assert EntityType.PHONE not in types_in("date 2024-01-02 here")
+
+
+def test_phone_extension():
+    # a trailing extension is absorbed into the match
+    found = Redactor(load_plugins=False).detect("call 905-674-3793x4587 now")
+    dets = {d.entity_type: d.text for d in found}
+    assert EntityType.PHONE in dets
+    assert dets[EntityType.PHONE].endswith("x4587")
+    assert EntityType.PHONE in types_in("tel +1-604-696-5272 ext. 565")
+
+
 def test_phone_rejects_date_and_ssn_shapes():
     # ISO dates and SSN-shaped groups must never be flagged as phone numbers
     assert EntityType.PHONE not in types_in("event on 2024-02-04 happened")
@@ -37,6 +56,43 @@ def test_credit_card_luhn():
     assert not luhn_ok("4111111111111112")
     assert EntityType.CREDIT_CARD in types_in("pay with 4111-1111-1111-1111 now")
     assert EntityType.CREDIT_CARD not in types_in("pay with 1234-5678-9012-3456 now")
+    # spaced and mixed separators still match
+    assert EntityType.CREDIT_CARD in types_in("card 4111 1111 1111 1111 ok")
+    assert EntityType.CREDIT_CARD in types_in("card 4111-1111 1111-1111 ok")
+
+
+def test_credit_card_shape_matches_old_alternation():
+    # The shape regex + Luhn must accept exactly what the previous
+    # (?:\d[ -]?){12,18}\d form accepted, so the speedup cannot change output.
+    import re
+
+    from safestream_redactor.detectors.deterministic import luhn_ok
+
+    old = re.compile(r"(?<![\d-])(?:\d[ -]?){12,18}\d(?![\d-])")
+    samples = [
+        "4111111111111111",
+        "4111 1111 1111 1111",
+        "4111-1111-1111-1111",
+        "4111 1111-1111 1111",
+        "378282246310005",  # 15-digit amex, valid
+        "38520000023237",  # 14-digit diners, valid
+        "1234567890123",  # 13 digits, fails luhn
+        "12 34 56 78 90 12 34 56 78",  # spaced, too many
+        "4111  1111 1111 1111",  # double space (not allowed -> should not match whole)
+        "prefix4111111111111111suffix",
+        "-4111111111111111",  # leading dash boundary
+        "4111111111111111-",  # trailing dash boundary
+        "40355010000000080001234",  # 23-digit run
+        "no digits here",
+    ]
+    blob = "  ".join(samples)
+    old_spans = [(m.start(), m.end()) for m in old.finditer(blob) if luhn_ok(m.group())]
+    new_spans = [
+        (d.start, d.end)
+        for d in Redactor(types=["credit_card"], use_entropy=False, load_plugins=False).detect(blob)
+        if d.entity_type is EntityType.CREDIT_CARD
+    ]
+    assert new_spans == old_spans
 
 
 def test_ssn_validation():

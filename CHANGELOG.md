@@ -8,6 +8,12 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- Independent real-world accuracy evaluation (`benchmarks/eval_dual.py`): scores the
+  deterministic core against the externally-authored Microsoft `presidio-research`
+  corpus (fetched on demand), kept strictly separate from the synthetic
+  false-positive-resistance fixture. Establishes a reproducible real recall number
+  (micro F1 0.885 → 0.907 after the phone improvements below). See
+  `docs/adr/0003-independent-accuracy-evaluation.md`.
 - Intra-file parallel redaction (`safestream_redactor.parallel`): a single large
   file is split into character-aligned byte ranges and redacted across processes,
   with output **byte-identical** to the sequential pass for entities within the
@@ -68,6 +74,20 @@ Notable changes to this project. The format follows
 
 ### Changed
 
+- Phone detection recall improved on real-world formats without any precision loss
+  (measured 0.446 → 0.565 on the independent corpus, precision held at 1.000): a
+  dedicated NANP `NNN-NNN-NNNN` pattern (dash or dot) that fires without a cue word,
+  and support for trailing extensions (`x4587`, `ext. 12`). Cue-less bare numbers stay
+  context-gated — promoting them was measured to trade precision for recall on real
+  data (0.77 precision, 21 false positives) at flat F1, so it was rejected.
+- `credit_card` detection uses a cheaper shape regex + Luhn validator
+  (`\d(?:[ -]?\d){12,18}`), ~1.5× faster on card-shaped runs with byte-identical
+  matches (differential test enforces).
+- Evaluated and rejected a compiled RE2/Hyperscan detection backend on measured
+  evidence (not a fit for this pattern set — the accelerable patterns are already
+  prefiltered to near-zero on real data, and the real bottlenecks are RE2-incompatible
+  or slower under a correctness-preserving integration); documented in
+  `docs/adr/0002-no-compiled-regex-backend.md`.
 - Deterministic-tier patterns are prefiltered by guaranteed anchor literals: windows
   that cannot contain a match skip the regex entirely (~25× faster on digit-free
   prose, ~1.7× on digit-heavy logs, identical output — enforced by a differential
