@@ -1,6 +1,5 @@
 # SafeStream-Redactor
 
-[![CI](https://github.com/MounishSenisetty/SafeStream-Redactor/actions/workflows/ci.yml/badge.svg)](https://github.com/MounishSenisetty/SafeStream-Redactor/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/safestream-redactor)](https://pypi.org/project/safestream-redactor/)
 [![Python](https://img.shields.io/pypi/pyversions/safestream-redactor)](https://pypi.org/project/safestream-redactor/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
