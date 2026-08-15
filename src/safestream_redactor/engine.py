@@ -25,7 +25,14 @@ from collections.abc import Callable, Iterable, Iterator
 from safestream_redactor.entities import Detection
 
 DEFAULT_CHUNK_SIZE = 64 * 1024
-DEFAULT_OVERLAP = 4 * 1024
+# The overlap is the window the engine carries between chunks so an entity split
+# by a chunk boundary is still seen whole at least once. Streaming equivalence
+# (docs/FORMAL_MODEL.md, Theorem 1) requires ``overlap >= L_max``, the longest
+# span any detector can emit. Every pattern bounds its span to at most this
+# value (the private-key body and the entropy candidate are the two long ones;
+# both are capped to fit), so the default satisfies the theorem's premise
+# unconditionally. Keep this in sync with ``MAX_SPAN`` in the detectors.
+DEFAULT_OVERLAP = 8 * 1024
 
 DetectFn = Callable[[str], list[Detection]]
 ApplyFn = Callable[[str, list[Detection]], str]

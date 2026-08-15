@@ -67,6 +67,23 @@ def test_detect_stream_offsets_are_segment_relative():
     assert found == [(51, "bob@x.io")]
 
 
+def test_long_entropy_run_up_to_overlap_streams_identically():
+    """A high-entropy secret as long as the overlap must stream identically.
+
+    This exercises the WI-1 bound: with the entropy candidate capped at the
+    overlap, a run of exactly ``overlap`` characters is one span and is carried
+    whole across any chunk boundary, so streaming equals whole-text redaction.
+    """
+    from safestream_redactor.engine import DEFAULT_OVERLAP
+
+    run = ("Zx9Kq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0" * 300)[:DEFAULT_OVERLAP]
+    text = "lead " + run + " tail"
+    r = Redactor()  # default overlap
+    for chunk_size in (1, 97, 1024, DEFAULT_OVERLAP - 1, DEFAULT_OVERLAP + 3):
+        streamed = "".join(r.redact_stream(chunked(text, chunk_size)))
+        assert streamed == r.redact(text), f"chunk_size={chunk_size}"
+
+
 def test_redact_file(tmp_path):
     src, dst = tmp_path / "in.txt", tmp_path / "out.txt"
     src.write_text("contact bob@x.io ok\n" * 100)

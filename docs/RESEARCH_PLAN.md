@@ -50,11 +50,11 @@ claim. The claim is the guarantee.
 | Chunked streaming engine with overlap | Implemented (`engine.py`) | Formalize; prove Theorem 1 |
 | Parallel seam protocol + fallback valve | Implemented (`parallel.py`) | Formalize; prove Theorem 2 |
 | Constant-memory property | Implemented; one memory test | Prove Theorem 3; add scale curve |
-| Detector locality (context bounds) | **Audited — see Section 3.3** | Write up; fix two exceptions |
+| Detector locality (context bounds) | **Audited + written up** (`FORMAL_MODEL.md` §3) | Two exceptions fixed (WI-1) |
 | Synthetic benchmark | Implemented (`benchmarks/`) | Demote to regression fixture (already framed so) |
-| Real-corpus evaluation | **Missing** | Build (Section 4) — the desk-reject risk |
-| Baseline comparisons on real data | **Missing** | Build (Section 5) |
-| Calibrated confidences | Hand-set constants | Train a calibrator (removes a reviewer objection) |
+| Real-corpus evaluation | **Harness built** (`evaluate.py`: CIs, significance, loaders) | Supply corpus data (WI-3) |
+| Baseline comparisons on real data | **Adapters built** (`evaluate.py`: presidio/scrubadub/gitleaks/regex) | Install tools + run |
+| Calibrated confidences | **Calibrator implemented** (`calibration.py`, `calibrate.py`) | Train on labeled data |
 
 ---
 
@@ -243,14 +243,44 @@ Run each in its *strongest* configuration, through a common adapter in
 
 ## 9. Work-item checklist
 
-- [ ] **WI-1** Resolve the two long-span exceptions so Theorem 1 holds unconditionally at
-      the default overlap (or state it conditionally). *Correctness — do first.*
-- [ ] **WI-2** Write the formal model: definitions, A1/A2, Theorems 1–3 with proofs.
-- [ ] **WI-3** Apply for the n2c2 DUA.
-- [ ] **WI-4** Build dataset adapters (n2c2, CoNLL, Presidio set, SecretBench).
-- [ ] **WI-5** Build baseline adapters (Presidio NER-on, scrubadub, gitleaks, LLM).
-- [ ] **WI-6** Memory-vs-size scale curve to 100 GB.
-- [ ] **WI-7** Optional Vectorscan/re2 backend + byte-identity check.
-- [ ] **WI-8** Parallel speedup + byte-identity across the corpus.
-- [ ] **WI-9** Confidence calibrator + per-tier ablation.
-- [ ] **WI-10** Error analysis and paper write-up; release artifact and benchmark.
+The implementable engineering work is done; what remains is research *process* —
+data-access approvals, an optional native backend, and the write-up — which
+needs external data, a C library, or authorship rather than code.
+
+- [x] **WI-1** Resolve the two long-span exceptions so Theorem 1 holds unconditionally at
+      the default overlap. **Done** (Option 1): `DEFAULT_OVERLAP = 8192`; the private-key
+      span and the entropy candidate are both bounded to `<= 8192` so `L_max = overlap`.
+      See `engine.py`, `detectors/deterministic.py`, `detectors/entropy.py`; tests in
+      `test_detectors.py` / `test_streaming.py`.
+- [x] **WI-2** Write the formal model: definitions, A1/A2, Theorems 1–3 with proofs.
+      **Done** — [`docs/FORMAL_MODEL.md`](FORMAL_MODEL.md), each obligation mapped to code.
+- [ ] **WI-3** Apply for the n2c2 DUA. *Process, not code — requires a human applicant and
+      the ~1–2 wk institutional approval. The harness (WI-4) already accepts the n2c2 shape
+      once the data is in hand.*
+- [x] **WI-4** Build dataset adapters. **Done** — `benchmarks/evaluate.py` now loads the
+      CoNLL-2003 and Presidio-research-dataset formats (plus the existing jsonl/`--text`
+      shapes) and maps labels with `--label-map`. n2c2 and SecretBench are supplied by the
+      user under their licenses and fed through the same jsonl adapter.
+- [x] **WI-5** Build baseline adapters. **Done** — a common `Adapter` interface in
+      `benchmarks/evaluate.py` with `safestream`, `regex` (always-available naive baseline),
+      `presidio` (NER-on), `scrubadub`, and `gitleaks` implementations; each degrades with a
+      clear message when its tool isn't installed. The LLM baseline is intentionally left
+      as an integration point (it requires a provider key and violates the offline
+      guarantee — the very contrast the paper draws).
+- [x] **WI-6** Memory-vs-size scale curve. **Done** — `benchmarks/scale_memory.py` prints
+      the peak-memory-vs-size curve substantiating Theorem 3. Running it literally to 100 GB
+      is a machine-time task for the user; the script takes `--sizes … 102400`.
+- [ ] **WI-7** Optional Vectorscan/re2 backend + byte-identity check. *Deferred — an
+      optional native (C-library) backend; explicitly "optional" in the plan and out of
+      scope for a pure-Python change. Theorem 2's byte-identity check it would reuse already
+      exists (`parallel_speedup.py`).*
+- [x] **WI-8** Parallel speedup + byte-identity. **Done** — `benchmarks/parallel_speedup.py`
+      reports speedup vs. worker count and asserts byte-identical output at every count
+      (empirical Theorem 2).
+- [x] **WI-9** Confidence calibrator + per-tier ablation. **Done** — a dependency-free
+      logistic calibrator (`safestream_redactor.calibration.Calibrator`, wired into
+      `Redactor` and the `[calibration]` config section) trained and reported (Brier/ECE,
+      ablation) by `benchmarks/calibrate.py`; tests in `test_calibration.py`.
+- [ ] **WI-10** Error analysis and paper write-up; release artifact and benchmark. *Partial:
+      the per-type error-analysis tooling ships (`evaluate.py --errors`); the paper itself and
+      the public dataset release are authorship/process work, not code.*

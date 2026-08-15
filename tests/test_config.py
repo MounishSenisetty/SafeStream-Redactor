@@ -102,6 +102,21 @@ def test_hmac_key_from_config(tmp_path):
     assert out.startswith("<EMAIL_")
 
 
+def test_calibration_model_loaded_from_config(tmp_path):
+    from safestream_redactor import Calibrator
+    from safestream_redactor.calibration import FEATURE_NAMES
+
+    # a bias-only model forcing every detection to ~0 probability, referenced by
+    # a path relative to the config file
+    Calibrator([-50.0] + [0.0] * len(FEATURE_NAMES)).save(tmp_path / "model.json")
+    p = tmp_path / "p.toml"
+    p.write_text('[calibration]\nmodel = "model.json"\n')
+    r = redactor_from_config(p)
+    assert r.calibrator is not None
+    # calibrated to ~0, so nothing clears the default threshold
+    assert r.redact("bob@x.io ssn 123-45-6789") == "bob@x.io ssn 123-45-6789"
+
+
 def test_unknown_key_fails_closed(tmp_path):
     # a misspelled key must error, not silently fall back to the default and
     # ship unredacted output

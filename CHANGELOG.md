@@ -6,6 +6,39 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Formal model document (`docs/FORMAL_MODEL.md`): definitions, the two locality
+  assumptions with their audited constants, and Theorems 1–3 (streaming equivalence,
+  parallel byte-identity with safe fallback, constant memory) with proofs mapped to the
+  code that discharges each obligation.
+- Learned confidence calibration (`safestream_redactor.calibration.Calibrator`): a
+  dependency-free logistic model that maps a detection's local features to a calibrated
+  probability, so `min_confidence` acts on comparable probabilities across tiers. Wire it
+  in via `Redactor(calibrator=…)` or a `[calibration] model = "…"` config section; it is
+  a per-detection function of local features, so it preserves the streaming/parallel
+  equivalence guarantees. Train and evaluate one with `benchmarks/calibrate.py`
+  (Brier score, expected calibration error, and a per-tier ablation).
+- Evaluation harness upgrades (`benchmarks/evaluate.py`): 95% bootstrap confidence
+  intervals (`--bootstrap`), a paired-bootstrap significance test between two systems
+  (`--compare`), baseline adapters behind one common interface
+  (`--system {safestream,regex,presidio,scrubadub,gitleaks}`), CoNLL-2003 and
+  Presidio-research-dataset loaders (`--conll` / `--presidio-json`), and per-type
+  error analysis (`--errors`).
+- Scaling-proof scripts: `benchmarks/scale_memory.py` (peak-memory-vs-size curve for
+  Theorem 3) and `benchmarks/parallel_speedup.py` (speedup vs. worker count with a
+  byte-identity assertion at every count for Theorem 2).
+
+### Changed
+
+- **Default streaming overlap raised from 4096 to 8192 characters.** Every detector now
+  emits spans no longer than the overlap, so the premise of the streaming-equivalence
+  theorem (`overlap >= L_max`) holds unconditionally at the default configuration. The
+  private-key pattern's key-type fields and body are bounded so its widest possible span
+  is exactly 8192, and the entropy candidate is capped at 8192 (a longer high-entropy run
+  is redacted as consecutive ≤8192 spans rather than one unbounded span). Detection output
+  is unchanged for every run up to the overlap; a differential test pins this.
+
 ## [0.2.0] - 2026-08-15
 
 ### Added
