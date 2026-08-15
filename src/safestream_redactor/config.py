@@ -37,6 +37,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from safestream_redactor.arbitration import DEFAULT_MARGIN, DEFAULT_WINDOW
 from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from safestream_redactor.entities import EntityType
 from safestream_redactor.policy import RedactionPolicy
@@ -66,6 +67,9 @@ _SCHEMA: dict[str, set[str]] = {
     "custom": {"words", "patterns"},
     "streaming": {"chunk_size", "overlap"},
     "calibration": {"model"},
+    # Only the offline RuleArbiter is configurable from a file; the LLMArbiter
+    # needs an injected client and so is Python-API only.
+    "arbitration": {"arbiter", "window", "margin"},
 }
 
 
@@ -139,16 +143,33 @@ def redactor_from_config(path: str | os.PathLike[str]) -> Redactor:
         # portable together with the model it references
         model_path = os.path.join(os.path.dirname(os.fspath(path)), model_path)
         calibrator = Calibrator.load(model_path)
+
+    arbitration = data.get("arbitration", {})
+    min_confidence = detection.get("min_confidence", 0.5)
+    arbiter = None
+    arbiter_kind = arbitration.get("arbiter", "off")
+    if arbiter_kind == "rule":
+        from safestream_redactor.arbitration import RuleArbiter
+
+        arbiter = RuleArbiter(min_confidence=min_confidence)
+    elif arbiter_kind != "off":
+        raise ValueError(
+            f"unknown arbitration.arbiter {arbiter_kind!r}; the file config supports "
+            "'rule' (offline) or 'off'. Inject an LLMArbiter via the Python API instead."
+        )
     return Redactor(
         types=detection.get("types"),
         policy=policy_from_config(data),
-        min_confidence=detection.get("min_confidence", 0.5),
+        min_confidence=min_confidence,
         custom_words=custom.get("words", ()),
         custom_patterns=custom.get("patterns", ()),
         use_ner=detection.get("use_ner", False),
         ner_model=detection.get("ner_model", "en_core_web_sm"),
         use_entropy=detection.get("use_entropy", True),
         calibrator=calibrator,
+        arbiter=arbiter,
+        arbiter_window=arbitration.get("window", DEFAULT_WINDOW),
+        arbiter_margin=arbitration.get("margin", DEFAULT_MARGIN),
         chunk_size=streaming.get("chunk_size", DEFAULT_CHUNK_SIZE),
         overlap=streaming.get("overlap", DEFAULT_OVERLAP),
     )

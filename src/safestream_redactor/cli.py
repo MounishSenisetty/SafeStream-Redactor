@@ -170,6 +170,12 @@ mask_char = "*"
 [streaming]
 chunk_size = 65536
 overlap = 8192
+
+# [arbitration]                             # optional: resolve tier disagreements
+# arbiter = "rule"                          # "rule" (offline, deterministic) or "off"
+# window = 64                               # context chars an arbiter sees per conflict
+# margin = 0.15                             # how close counts as a conflict
+# (an LLM arbiter needs an injected client, so it is Python-API only)
 """
 
 

@@ -205,6 +205,7 @@ driver-licence / bank-account / routing / employee-ID / Slack-ID / DOB values �
         └───────────────────────────┘
                      │
           confidence filter + overlap resolution
+             (optional: conflict-only arbitration — only when tiers disagree)
                      │
                      ▼
           redaction policy (replace / mask / pseudonymize / per-type)
@@ -223,11 +224,36 @@ differential test compares prefiltered and unfiltered detection).
 
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
 at least `overlap` characters from the buffer's end is emitted each round; the tail is carried
-into the next round so any entity up to `overlap` characters long (default 4 KB) is always
+into the next round so any entity up to `overlap` characters long (default 8 KB) is always
 seen whole at least once, even when a chunk boundary cuts straight through it. An emit
 boundary that would split a detection retreats to the detection's start. Already-emitted
 text is kept (up to `overlap` chars) as read-only left context so the contextual tier scores
 identically to whole-text mode.
+
+### Conflict-only arbitration (optional)
+
+Most spans are unambiguous and the confidence/length policy settles them. For the minority
+that are genuine *conflicts* — overlapping candidates with near-equal confidence, a detection
+sitting right at `min_confidence`, or a match the contextual tier suppressed — you can attach
+an **arbiter** that is consulted *only* for those cases:
+
+```python
+from safestream_redactor import Redactor, RuleArbiter, LLMArbiter
+
+# deterministic, fully offline — preserves the equivalence guarantees (also `[arbitration]` in TOML)
+Redactor(arbiter=RuleArbiter()).redact(text)
+
+# delegate hard calls to any model you supply: a plain `str -> str` callable, no vendor baked in
+Redactor(arbiter=LLMArbiter(client=my_model)).redact(text)
+```
+
+Restricting the arbiter to disagreements keeps it rare, so a slow or costly model adds latency
+only where it changes the decision. `RuleArbiter` (the offline default) reads only the competing
+candidates' own fields, so it stays byte-identical under streaming and parallelism. `LLMArbiter`
+trades that: a model's output is not bit-reproducible and a hosted call sends a bounded window off
+the machine, so enabling it **relaxes the offline and equivalence guarantees** (a local model keeps
+the data on-machine). It is opt-in, never the default, and a client error falls back to the
+deterministic arbiter. See [`docs/FORMAL_MODEL.md`](docs/FORMAL_MODEL.md) §5.
 
 Detected entity types:
 

@@ -8,6 +8,17 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- Conflict-only arbitration tier (`safestream_redactor.arbitration`): a resolver consulted
+  **only** when detectors disagree — overlapping candidates with near-equal confidence, a
+  detection at the `min_confidence` threshold, or a contextually-suppressed match — so it
+  stays rare and adds latency only where it changes the decision. Two arbiters ship:
+  `RuleArbiter`, a deterministic, fully-offline default that reads only candidate-local
+  fields and therefore preserves the streaming/parallel equivalence guarantees; and
+  `LLMArbiter`, which delegates the ruling to any injected `str -> str` language-model
+  client (the package hard-codes no vendor and pulls in no SDK). Enable via
+  `Redactor(arbiter=…)` or a `[arbitration] arbiter = "rule"` config section. Enabling an
+  `LLMArbiter` with a hosted model relaxes the offline and equivalence guarantees, so it is
+  opt-in and never the default; a client error falls back to the deterministic arbiter.
 - Formal model document (`docs/FORMAL_MODEL.md`): definitions, the two locality
   assumptions with their audited constants, and Theorems 1–3 (streaming equivalence,
   parallel byte-identity with safe fallback, constant memory) with proofs mapped to the

@@ -9,6 +9,12 @@ import stat
 import tempfile
 from collections.abc import Iterable, Iterator
 
+from safestream_redactor.arbitration import (
+    DEFAULT_MARGIN,
+    DEFAULT_WINDOW,
+    Arbiter,
+    find_conflicts,
+)
 from safestream_redactor.calibration import Calibrator
 from safestream_redactor.detectors.base import Detector
 from safestream_redactor.detectors.contextual import ContextualScorer
@@ -72,6 +78,15 @@ class Redactor:
         the threshold acts on comparable probabilities across tiers. Calibration
         is a per-detection function of local features only, so it preserves the
         streaming/parallel equivalence guarantees.
+    arbiter:
+        Optional conflict-only :class:`~safestream_redactor.arbitration.Arbiter`.
+        When given, it is consulted **only** for detector disagreements (near-tie
+        overlaps, borderline-confidence, or suppressed matches); everything else
+        is resolved by the deterministic policy untouched. The offline
+        :class:`~safestream_redactor.arbitration.RuleArbiter` preserves the
+        equivalence guarantees; an
+        :class:`~safestream_redactor.arbitration.LLMArbiter` trades them for
+        accuracy on ambiguous cases (see that module's docstring).
     extra_detectors:
         Any additional objects implementing the :class:`Detector` protocol.
     load_plugins:
@@ -90,6 +105,9 @@ class Redactor:
         ner_model: str = "en_core_web_sm",
         use_entropy: bool = True,
         calibrator: Calibrator | None = None,
+        arbiter: Arbiter | None = None,
+        arbiter_window: int = DEFAULT_WINDOW,
+        arbiter_margin: float = DEFAULT_MARGIN,
         extra_detectors: Iterable[Detector] = (),
         load_plugins: bool = True,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
@@ -103,6 +121,9 @@ class Redactor:
         self.policy = policy or RedactionPolicy()
         self.min_confidence = min_confidence
         self.calibrator = calibrator
+        self.arbiter = arbiter
+        self.arbiter_window = arbiter_window
+        self.arbiter_margin = arbiter_margin
         self.chunk_size = chunk_size
         self.overlap = overlap
         self._scorer = ContextualScorer()
@@ -145,8 +166,39 @@ class Redactor:
         if self.calibrator is not None:
             for det in raw:
                 det.confidence = self.calibrator.predict_one(det)
+        if self.arbiter is not None:
+            raw = self._arbitrate(text, raw)
         confident = [d for d in raw if d.confidence >= self.min_confidence]
         return resolve_overlaps(confident)
+
+    def _arbitrate(self, text: str, raw: list[Detection]) -> list[Detection]:
+        """Replace each conflicting cluster with the arbiter's single ruling.
+
+        Only ambiguous clusters are touched (see
+        :func:`~safestream_redactor.arbitration.find_conflicts`); unambiguous
+        detections pass through unchanged. A kept ruling is promoted to at least
+        ``min_confidence`` so the arbiter's decision survives the threshold that
+        follows — the arbiter, not the raw score, is authoritative for the spans
+        it ruled on.
+        """
+        assert self.arbiter is not None
+        conflicts = find_conflicts(
+            raw,
+            text,
+            min_confidence=self.min_confidence,
+            window=self.arbiter_window,
+            margin=self.arbiter_margin,
+        )
+        if not conflicts:
+            return raw
+        consumed = {id(d) for c in conflicts for d in c.candidates}
+        survivors = [d for d in raw if id(d) not in consumed]
+        for conflict in conflicts:
+            ruling = self.arbiter.arbitrate(conflict)
+            if ruling is not None:
+                ruling.confidence = max(ruling.confidence, self.min_confidence)
+                survivors.append(ruling)
+        return survivors
 
     # ------------------------------------------------------------------
     # redaction

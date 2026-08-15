@@ -2,6 +2,7 @@
 
 import logging
 
+from safestream_redactor.arbitration import Arbiter, Conflict, LLMArbiter, RuleArbiter
 from safestream_redactor.calibration import Calibrator
 from safestream_redactor.entities import Detection, EntityType
 from safestream_redactor.policy import RedactionMode, RedactionPolicy
@@ -15,12 +16,16 @@ __version__ = "0.2.0"
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
+    "Arbiter",
     "Calibrator",
+    "Conflict",
     "Detection",
     "EntityType",
+    "LLMArbiter",
     "RedactionMode",
     "RedactionPolicy",
     "RedactionStats",
     "Redactor",
+    "RuleArbiter",
     "__version__",
 ]

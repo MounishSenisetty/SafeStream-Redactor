@@ -279,6 +279,16 @@ in exactly these cases, all of them detectable or documented:
   tier that conditions on a whole document — breaks A2, and neither theorem
   applies to it. This is the principled reason the offline, bounded-window
   detectors are the ones that carry the equivalence guarantee.
+- **The `LLMArbiter`.** The conflict-only arbitration tier
+  (`safestream_redactor.arbitration`) is consulted only for detector
+  disagreements. Its default, `RuleArbiter`, is a pure function of the competing
+  candidates' own fields, so it stays within A1/A2 and **preserves** the theorems
+  (`test_arbitration.py::test_rule_arbiter_preserves_streaming_equivalence`
+  pins this). An `LLMArbiter`, by contrast, consults a model whose output is not
+  bit-reproducible and — when hosted — sends a bounded window off the machine; it
+  therefore **relaxes** both the offline guarantee and the equivalence theorems by
+  design. It is opt-in and never the default, and a client failure falls back to
+  the deterministic `RuleArbiter`.
 - **Non-splittable encodings.** Only self-synchronising encodings (UTF-8,
   single-byte codecs) can be split for parallelism; others fall back to the
   sequential path by construction (`parallel.splittable_encoding`). Theorem 1

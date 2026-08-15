@@ -117,6 +117,29 @@ def test_calibration_model_loaded_from_config(tmp_path):
     assert r.redact("bob@x.io ssn 123-45-6789") == "bob@x.io ssn 123-45-6789"
 
 
+def test_arbitration_rule_from_config(tmp_path):
+    from safestream_redactor.arbitration import RuleArbiter
+
+    p = tmp_path / "p.toml"
+    p.write_text('[arbitration]\narbiter = "rule"\nwindow = 32\nmargin = 0.2\n')
+    r = redactor_from_config(p)
+    assert isinstance(r.arbiter, RuleArbiter)
+    assert r.arbiter_window == 32 and r.arbiter_margin == 0.2
+
+
+def test_arbitration_off_by_default(tmp_path):
+    p = tmp_path / "p.toml"
+    p.write_text("[detection]\nmin_confidence = 0.5\n")
+    assert redactor_from_config(p).arbiter is None
+
+
+def test_arbitration_rejects_unknown_arbiter(tmp_path):
+    p = tmp_path / "p.toml"
+    p.write_text('[arbitration]\narbiter = "gpt"\n')
+    with pytest.raises(ValueError, match=r"unknown arbitration\.arbiter"):
+        redactor_from_config(p)
+
+
 def test_unknown_key_fails_closed(tmp_path):
     # a misspelled key must error, not silently fall back to the default and
     # ship unredacted output
