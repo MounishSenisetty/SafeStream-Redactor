@@ -2,6 +2,7 @@
 
 import logging
 
+from safestream_redactor.calibration import Calibrator
 from safestream_redactor.entities import Detection, EntityType
 from safestream_redactor.policy import RedactionMode, RedactionPolicy
 from safestream_redactor.redactor import Redactor
@@ -14,6 +15,7 @@ __version__ = "0.2.0"
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
+    "Calibrator",
     "Detection",
     "EntityType",
     "RedactionMode",

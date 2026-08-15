@@ -19,8 +19,21 @@ from collections import Counter
 
 from safestream_redactor.entities import Detection, EntityType
 
+# The longest span the entropy tier will emit. Bounding it keeps assumption A1
+# (docs/FORMAL_MODEL.md) — every span is at most ``MAX_SPAN`` characters — true
+# for this tier, which is otherwise the one detector whose candidate length is
+# unbounded. It is set to the default streaming overlap so Theorem 1's premise
+# (``overlap >= L_max``) holds at the default configuration.
+MAX_SPAN = 8 * 1024
+
 # A candidate is a run of secret-looking characters bounded by non-secret chars.
-_CANDIDATE = re.compile(r"(?<![A-Za-z0-9+/=_-])[A-Za-z0-9+/=_-]{20,}(?![A-Za-z0-9+/=_-])")
+# The length is capped at ``MAX_SPAN``; a run longer than that is matched as
+# consecutive capped spans (no lookbehind/lookahead, so the tail is never
+# dropped) rather than one unbounded span. For every run up to ``MAX_SPAN`` the
+# match is identical to an unbounded candidate — a differential test pins this —
+# so the cap changes behaviour only for runs longer than the streaming overlap,
+# which are outside the engine's single-span guarantee anyway.
+_CANDIDATE = re.compile(rf"[A-Za-z0-9+/=_-]{{20,{MAX_SPAN}}}")
 _HEX = re.compile(r"\A[0-9a-fA-F]+\Z")
 _ALPHA_ONLY = re.compile(r"\A[A-Za-z]+\Z")
 

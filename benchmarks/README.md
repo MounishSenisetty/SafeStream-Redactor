@@ -35,6 +35,56 @@ names/addresses to be far below the synthetic numbers unless `--ner` is on — t
 is the honest state of a regex-first detector and is what the roadmap's calibration and
 NER work targets.
 
+The harness also carries the machinery a journal reviewer expects (see
+[`../docs/RESEARCH_PLAN.md`](../docs/RESEARCH_PLAN.md)):
+
+- **Confidence intervals** — `--bootstrap N` prints a 95% bootstrap CI on micro-F1.
+- **Baselines through one adapter** — `--system {safestream,regex,presidio,scrubadub,gitleaks}`,
+  each mapped into SafeStream's label vocabulary so the comparison is apples-to-apples.
+- **Significance** — `--compare OTHER` scores a second system on the same records and reports
+  a paired-bootstrap p-value for the F1 gap.
+- **Standard corpus loaders** — `--conll file` (CoNLL-2003) and `--presidio-json file`
+  (Presidio research dataset), in addition to `--jsonl` and `--text`/`--gold`.
+- **Error analysis** — `--errors N` prints up to N false-negative/false-positive snippets
+  per type.
+
+```bash
+# SafeStream vs. gitleaks on a secret corpus, with CIs, significance, and error examples
+python benchmarks/evaluate.py --jsonl secrets.jsonl --system safestream \
+    --compare gitleaks --bootstrap 2000 --errors 10
+```
+
+## Calibration + ablation: `calibrate.py`
+
+Trains the logistic confidence calibrator on a labeled corpus, reports how much better
+calibrated the probabilities become (Brier score and expected calibration error, before
+vs. after), and prints a per-tier ablation (micro-F1 with each optional tier removed).
+Save the model and reference it from a policy's `[calibration]` section.
+
+```bash
+python benchmarks/calibrate.py --jsonl labeled.jsonl \
+    --label-map PERSON=person,EMAIL_ADDRESS=email,US_SSN=ssn --out calibrator.json
+```
+
+## Scaling proofs: `scale_memory.py` and `parallel_speedup.py`
+
+These substantiate the theorems in [`../docs/FORMAL_MODEL.md`](../docs/FORMAL_MODEL.md):
+
+- **`scale_memory.py`** — peak memory vs. file size. A flat line against a growing input
+  is the empirical proof of the constant-memory property (Theorem 3).
+
+  ```bash
+  python benchmarks/scale_memory.py --sizes 64 256 1024 4096
+  ```
+
+- **`parallel_speedup.py`** — speedup vs. worker count, and a byte-identity assertion at
+  every count (empirical Theorem 2). Exits non-zero if any parallel run diverges from the
+  sequential output.
+
+  ```bash
+  python benchmarks/parallel_speedup.py --size 512 --workers 1 2 4 8
+  ```
+
 ## Regression fixture: `run_benchmark.py`
 
 Compares SafeStream-Redactor against [Microsoft Presidio](https://github.com/microsoft/presidio)

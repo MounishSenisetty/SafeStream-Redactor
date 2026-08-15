@@ -9,6 +9,7 @@ import stat
 import tempfile
 from collections.abc import Iterable, Iterator
 
+from safestream_redactor.calibration import Calibrator
 from safestream_redactor.detectors.base import Detector
 from safestream_redactor.detectors.contextual import ContextualScorer
 from safestream_redactor.detectors.custom import CustomDetector
@@ -64,6 +65,13 @@ class Redactor:
     use_entropy:
         Enable the statistical tier that flags high-entropy secrets with no
         published format (on by default).
+    calibrator:
+        Optional trained :class:`~safestream_redactor.calibration.Calibrator`.
+        When given, each detection's hand-set confidence is replaced by the
+        model's calibrated probability before ``min_confidence`` is applied, so
+        the threshold acts on comparable probabilities across tiers. Calibration
+        is a per-detection function of local features only, so it preserves the
+        streaming/parallel equivalence guarantees.
     extra_detectors:
         Any additional objects implementing the :class:`Detector` protocol.
     load_plugins:
@@ -81,6 +89,7 @@ class Redactor:
         use_ner: bool = False,
         ner_model: str = "en_core_web_sm",
         use_entropy: bool = True,
+        calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
         load_plugins: bool = True,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
@@ -93,6 +102,7 @@ class Redactor:
         )
         self.policy = policy or RedactionPolicy()
         self.min_confidence = min_confidence
+        self.calibrator = calibrator
         self.chunk_size = chunk_size
         self.overlap = overlap
         self._scorer = ContextualScorer()
@@ -132,6 +142,9 @@ class Redactor:
         for detector in self._detectors:
             raw.extend(detector.detect(text))
         self._scorer.adjust(text, raw)
+        if self.calibrator is not None:
+            for det in raw:
+                det.confidence = self.calibrator.predict_one(det)
         confident = [d for d in raw if d.confidence >= self.min_confidence]
         return resolve_overlaps(confident)
 

@@ -23,7 +23,7 @@ Example policy file::
 
     [streaming]
     chunk_size = 65536
-    overlap = 4096
+    overlap = 8192
 """
 
 from __future__ import annotations
@@ -65,6 +65,7 @@ _SCHEMA: dict[str, set[str]] = {
     },
     "custom": {"words", "patterns"},
     "streaming": {"chunk_size", "overlap"},
+    "calibration": {"model"},
 }
 
 
@@ -128,6 +129,16 @@ def redactor_from_config(path: str | os.PathLike[str]) -> Redactor:
     detection = data.get("detection", {})
     custom = data.get("custom", {})
     streaming = data.get("streaming", {})
+    calibration = data.get("calibration", {})
+    calibrator = None
+    model_path = calibration.get("model")
+    if model_path:
+        from safestream_redactor.calibration import Calibrator
+
+        # resolve the model path relative to the config file, so a policy is
+        # portable together with the model it references
+        model_path = os.path.join(os.path.dirname(os.fspath(path)), model_path)
+        calibrator = Calibrator.load(model_path)
     return Redactor(
         types=detection.get("types"),
         policy=policy_from_config(data),
@@ -137,6 +148,7 @@ def redactor_from_config(path: str | os.PathLike[str]) -> Redactor:
         use_ner=detection.get("use_ner", False),
         ner_model=detection.get("ner_model", "en_core_web_sm"),
         use_entropy=detection.get("use_entropy", True),
+        calibrator=calibrator,
         chunk_size=streaming.get("chunk_size", DEFAULT_CHUNK_SIZE),
         overlap=streaming.get("overlap", DEFAULT_OVERLAP),
     )

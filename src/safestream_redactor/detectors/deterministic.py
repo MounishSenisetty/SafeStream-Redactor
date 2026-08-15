@@ -111,14 +111,22 @@ _PATTERNS: tuple[Pattern, ...] = (
     Pattern(
         EntityType.PRIVATE_KEY,
         re.compile(
-            r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----"
+            # Key-type field bounded to {0,20}: real labels ("RSA ", "EC ",
+            # "OPENSSH ", "ENCRYPTED ", ...) are far shorter, and an unbounded
+            # ``*`` would otherwise let a crafted "BEGIN <megabytes> PRIVATE KEY"
+            # produce a span longer than the streaming overlap.
+            r"-----BEGIN [A-Z0-9 ]{0,20}PRIVATE KEY-----"
             # Bounded body: a real PEM private key body is well under 8 KB even
-            # for RSA-4096 (~3.2 KB of base64). Bounding the repetition caps the
-            # scan a lazy ``+?`` would otherwise do position-by-position looking
-            # for the END marker, so a crafted BEGIN-without-END followed by
-            # megabytes of base64 can't cause a pathological long scan.
-            r"[A-Za-z0-9+/=\s]{1,8192}?"
-            r"-----END [A-Z0-9 ]*PRIVATE KEY-----"
+            # for RSA-4096 (~3.2 KB of base64); 8100 covers RSA keys up to
+            # ~RSA-12288. The bound also caps the scan a lazy ``+?`` would do
+            # position-by-position looking for the END marker, so a crafted
+            # BEGIN-without-END followed by megabytes of base64 can't cause a
+            # pathological long scan. With the two {0,20} type fields and the
+            # fixed markers this keeps the whole span at most 8192 characters
+            # (the default overlap), so assumption A1 (docs/FORMAL_MODEL.md)
+            # holds for private keys at the default configuration.
+            r"[A-Za-z0-9+/=\s]{1,8100}?"
+            r"-----END [A-Z0-9 ]{0,20}PRIVATE KEY-----"
         ),
         0.99,
         anchors=("-----BEGIN",),

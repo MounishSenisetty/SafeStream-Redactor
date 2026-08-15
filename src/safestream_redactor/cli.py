@@ -169,7 +169,7 @@ mask_char = "*"
 
 [streaming]
 chunk_size = 65536
-overlap = 4096
+overlap = 8192
 """
 
 

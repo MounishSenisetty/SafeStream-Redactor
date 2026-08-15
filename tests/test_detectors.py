@@ -310,3 +310,63 @@ def test_named_credential_beats_entropy():
     dets = Redactor().detect("key sk_live_abcdefghijklmnop1234567890XYZ end")
     stripe = [d for d in dets if d.entity_type is EntityType.STRIPE_KEY]
     assert stripe and not any(d.entity_type is EntityType.SECRET for d in dets)
+
+
+# --- bounded-span invariant (WI-1 / Theorem 1 premise A1) -----------------
+#
+# Streaming equivalence requires ``overlap >= L_max``, the longest span any
+# detector emits. These tests pin ``L_max <= DEFAULT_OVERLAP`` for the two
+# patterns that were historically unbounded, so the default configuration
+# satisfies the theorem's premise. See docs/FORMAL_MODEL.md.
+
+
+def test_no_detector_emits_a_span_longer_than_default_overlap():
+    from safestream_redactor.engine import DEFAULT_OVERLAP
+
+    # a hostile blob: a 20 KB high-entropy run and an over-long PEM body, both
+    # of which would once have produced a single span wider than the overlap
+    blob = (
+        "secret " + "Zx9Kq2mVp7Lw3Rt8Yn4Bc6" * 900 + "\n"
+        "-----BEGIN RSA PRIVATE KEY-----\n" + "MIIEowIBAAKCAQEA1234" * 900 + "\n"
+        "-----END RSA PRIVATE KEY-----\n"
+    )
+    dets = Redactor().detect(blob)
+    assert dets  # the blob is not silently ignored
+    assert all(d.end - d.start <= DEFAULT_OVERLAP for d in dets)
+
+
+def test_over_long_entropy_run_is_fully_covered_by_consecutive_spans():
+    from safestream_redactor.detectors.entropy import MAX_SPAN, EntropyDetector
+
+    run = "Zx9Kq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0" * 1000  # ~32 KB, > 2 * MAX_SPAN
+    text = "token " + run + " end"
+    dets = EntropyDetector().detect(text)
+    assert dets
+    assert all(d.end - d.start <= MAX_SPAN for d in dets)
+    # the whole run is covered with no gaps: spans are contiguous end-to-start
+    import itertools
+
+    spans = sorted((d.start, d.end) for d in dets)
+    assert spans[0][0] == text.index(run)
+    assert spans[-1][1] == text.index(run) + len(run)
+    for (_, prev_end), (next_start, _) in itertools.pairwise(spans):
+        assert next_start == prev_end
+
+
+def test_max_private_key_span_fits_within_default_overlap():
+    from safestream_redactor.detectors.deterministic import _PATTERNS
+    from safestream_redactor.engine import DEFAULT_OVERLAP
+
+    pk = next(p for p in _PATTERNS if p.entity_type is EntityType.PRIVATE_KEY)
+    widest = (
+        "-----BEGIN "
+        + "X" * 20
+        + "PRIVATE KEY-----"
+        + "A" * 8100
+        + "-----END "
+        + "X" * 20
+        + "PRIVATE KEY-----"
+    )
+    m = pk.regex.search(widest)
+    assert m is not None
+    assert len(m.group()) <= DEFAULT_OVERLAP
