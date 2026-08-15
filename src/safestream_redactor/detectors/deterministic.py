@@ -214,11 +214,31 @@ _PATTERNS: tuple[Pattern, ...] = (
         group=1,
         anchors=("://",),
     ),
+    # AWS Secret Access Key: a 40-char base64-ish secret behind an explicit
+    # "aws ... secret ... key [:=]" cue. Only the value (group 1) is redacted,
+    # like URL_CREDENTIALS above. The label gate makes this precise enough to
+    # score well above the entropy tier, which otherwise catches this secret only
+    # weakly (conf 0.60) and not at all when nearby "test"/"example" markers
+    # suppress it.
+    Pattern(
+        EntityType.AWS_SECRET,
+        re.compile(
+            r"(?i)aws[_\s-]*secret[_\s-]*(?:access[_\s-]*)?key\s*[:=]\s*"
+            r"[\"']?([A-Za-z0-9/+]{40})(?![A-Za-z0-9/+])"
+        ),
+        0.9,
+        group=1,
+        anchors_lower=("aws",),
+    ),
+    # The value class includes common password specials (@ ! # $ % ^ & *) so a
+    # value like ``P@ssw0rd-123!`` is captured whole instead of truncating at the
+    # first special char. Safe to be permissive: the match is already gated by an
+    # explicit key/secret/token/password label followed by ``:`` or ``=``.
     Pattern(
         EntityType.API_KEY,
         re.compile(
             r"(?i)\b(?:api[_-]?key|apikey|secret[_-]?key|secret|access[_-]?token|auth[_-]?token"
-            r"|token|password|passwd|pwd)\b\s*[:=]\s*[\"']?([A-Za-z0-9_\-./+]{12,128})[\"']?"
+            r"|token|password|passwd|pwd)\b\s*[:=]\s*[\"']?([A-Za-z0-9_@!#$%^&*./+\-]{12,128})[\"']?"
         ),
         0.75,
         group=1,

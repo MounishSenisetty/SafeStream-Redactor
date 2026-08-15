@@ -1,0 +1,90 @@
+# SafeStream-Redactor example policy
+# ===================================
+# Run it with:
+#
+#     safestream redact input.txt -o out.txt --config examples/policy.toml
+#     safestream detect input.txt            --config examples/policy.toml
+#
+# CLI flags override anything set here. Unknown sections/keys are rejected
+# (fail-closed), so a typo can never silently ship unredacted output.
+#
+# `safestream init-config` writes a minimal, schema-validated starter policy;
+# this file is a fuller, ready-to-use version that additionally enables NER and
+# adds custom patterns for identifiers that have no universal format.
+
+[detection]
+# Omit `types` to detect every supported type (recommended for DLP). Narrow it
+# only when you deliberately want to redact a subset.
+# types = ["email", "ssn", "credit_card"]
+
+# Confidence threshold. A detection is redacted only when its score clears this.
+#
+# The default (0.5) is tuned so structured PII and credentials pass while noisy
+# look-alikes (order numbers, version strings) are dropped. Lower it to catch
+# more — including values the contextual tier suppresses because they sit next
+# to "test" / "sample" / "example" / "fake" markers (those subtract 0.4). On a
+# file literally saturated with such markers, 0.35 recovers most detections at
+# some cost to precision. Do NOT lower it globally on trusted prose unless you
+# have measured the false-positive impact on your data.
+min_confidence = 0.5
+# min_confidence = 0.35   # more aggressive: also catches many test/sample-marked values
+
+# Person / organisation / location names have no regex signature, so catching
+# them needs the optional spaCy NER tier. This policy enables it. You MUST
+# install the extra and a model first, or the run will error out on startup:
+#
+#     pip install 'safestream-redactor[ner]'
+#     python -m spacy download en_core_web_sm
+#
+# With the model present this redacts names like "John Michael Doe". If you have
+# not installed it yet, set `use_ner = false` (or drop this section) to run the
+# rest of the policy without names.
+use_ner = true
+# ner_model = "en_core_web_sm"
+
+# High-entropy secret detection (random API keys / tokens with no published
+# format). On by default; leave it enabled.
+use_entropy = true
+
+[redaction]
+mode = "replace"                  # replace | mask | pseudonymize
+replacement = "[REDACTED]"
+mask_keep_last = 4                # mask mode: trailing chars left visible
+mask_char = "*"
+# hmac_key = "change-me"          # required for pseudonymize (keep it secret)
+# pseudonym_length = 16           # hex digits of the keyed token (8-64)
+
+[redaction.replacements]          # optional per-type replacement strings
+# email = "<EMAIL>"
+
+[custom]
+# Identifiers below have no universal signature (a bank account number is just
+# digits, a passport number is just letters+digits), so the built-in tiers can't
+# tell them apart from ordinary numbers. We anchor each regex to its label so it
+# fires only in the right context and keeps precision high.
+#
+# NOTE: CustomDetector redacts the WHOLE match, so a label-anchored pattern
+# redacts its label word too (e.g. "Passport No: A1234567" -> "[REDACTED]").
+# For a DLP tool that is the fail-safe outcome — the sensitive value is never
+# left exposed. Patterns are case-insensitive.
+patterns = [
+  # Passport number: 6-9 letters/digits behind a "passport" cue
+  'passport\s*(?:no\.?|number|#)?\s*[:#=]\s*[A-Z0-9]{6,9}',
+  # Driver's licence number
+  "driver'?s?\\s*licen[cs]e\\s*(?:no\\.?|number|#)?\\s*[:#=]\\s*[A-Z0-9]{5,15}",
+  # Bank account number: 6-17 digits behind an "account" cue
+  'account\s*(?:no\.?|number|#)?\s*[:#=]\s*\d{6,17}',
+  # ABA routing / transit number: exactly 9 digits behind a "routing" cue
+  'routing\s*(?:no\.?|number|#|transit)?\s*[:#=]\s*\d{9}\b',
+  # Employee ID: alphanumeric badge id behind an "employee id" cue
+  'employee\s*(?:id|no\.?|number|#)\s*[:#=]?\s*[A-Z0-9-]{3,12}',
+  # Slack user / member ID (form is Uxxxxxxxx), anchored to a "slack ... id" cue
+  'slack\s*(?:user|member)?\s*id\s*[:#=]\s*[A-Z0-9]{8,12}',
+  # Date of birth
+  '(?:dob|date\s*of\s*birth)\s*[:#=]\s*\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}',
+]
+# words = ["ProjectX"]            # literal words/phrases to always redact
+
+[streaming]
+chunk_size = 65536
+overlap = 4096
