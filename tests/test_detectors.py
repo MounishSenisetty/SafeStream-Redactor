@@ -119,6 +119,22 @@ def test_aws_key():
     assert EntityType.AWS_KEY not in types_in("key AKIA123")
 
 
+def test_aws_secret_access_key_labelled():
+    # the 40-char secret behind an "aws secret access key" cue is caught by a
+    # precise, high-confidence label pattern (not just the weaker entropy tier),
+    # and only the value is the detection span
+    secret = "AB12cd34" * 5  # 40 chars, mixed alphanumeric
+    r = Redactor()
+    dets = r.detect(f"AWS Secret Access Key: {secret}")
+    aws = [d for d in dets if d.entity_type is EntityType.AWS_SECRET]
+    assert aws and aws[0].text == secret
+    # underscore form with '=' assignment
+    assert EntityType.AWS_SECRET in types_in(f"aws_secret_access_key={secret}")
+    # the label itself stays readable; only the secret value is redacted
+    out = r.redact(f"aws_secret_access_key={secret}")
+    assert out == "aws_secret_access_key=[REDACTED]"
+
+
 def test_github_token():
     assert EntityType.GITHUB_TOKEN in types_in("tok ghp_abcdefghijklmnopqrstuvwxyz0123456789")
     assert EntityType.GITHUB_TOKEN in types_in("tok github_pat_11ABCDEFG0123456789abcdefghij")
@@ -130,6 +146,14 @@ def test_generic_api_key():
     assert EntityType.API_KEY in types_in("password: hunter2hunter2hunter2")
     # no assignment context -> not detected as generic key
     assert EntityType.API_KEY not in types_in("the word secret alone")
+
+
+def test_generic_api_key_with_special_chars():
+    # a password containing @ ! # $ % ^ & * must be captured whole, not truncated
+    # at the first special character (which would drop it below the 12-char floor)
+    dets = Redactor(min_confidence=0.0).detect("Password: P@ssw0rd-123!#Xy end")
+    api = [d for d in dets if d.entity_type is EntityType.API_KEY]
+    assert api and api[0].text == "P@ssw0rd-123!#Xy"
 
 
 def test_jwt():

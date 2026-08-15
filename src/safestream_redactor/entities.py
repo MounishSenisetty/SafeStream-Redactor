@@ -16,6 +16,8 @@ class EntityType(str, Enum):
     IPV4 = "ipv4"
     IPV6 = "ipv6"
     AWS_KEY = "aws_key"
+    # AWS Secret Access Key (the 40-char secret paired with an access key id)
+    AWS_SECRET = "aws_secret"
     GITHUB_TOKEN = "github_token"
     API_KEY = "api_key"
     JWT = "jwt"

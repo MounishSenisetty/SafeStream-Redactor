@@ -180,6 +180,11 @@ words = ["ProjectX"]
 safestream redact input.txt -o out.txt --config policy.toml
 ```
 
+A fuller, ready-to-use policy — NER enabled, plus custom patterns for passport /
+driver-licence / bank-account / routing / employee-ID / Slack-ID / DOB values — ships in
+[`examples/policy.toml`](examples/policy.toml). Generate a minimal starter with
+`safestream init-config -o policy.toml`.
+
 ## Architecture
 
 ```
@@ -228,7 +233,8 @@ Detected entity types:
 
 - **PII:** `email`, `phone`, `credit_card` (Luhn-validated), `ssn`, `ipv4`, `ipv6`, plus
   `person` / `org` / `loc` with the NER extra.
-- **Credentials & secrets:** `aws_key`, `github_token`, `slack_token`, `slack_webhook`,
+- **Credentials & secrets:** `aws_key`, `aws_secret` (the 40-char secret behind an
+  `aws … secret … key` label), `github_token`, `slack_token`, `slack_webhook`,
   `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`,
   `openai_key`, `anthropic_key`, `jwt`, `private_key`,
   `url_credentials` (passwords embedded in connection strings — only the password is
@@ -283,6 +289,51 @@ AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random
 high-entropy secret, Presidio ships no recognizers and detects 0/9; SafeStream detects
 9/9. This is a capability difference (Presidio has no credential recognizers at all),
 not a tuned accuracy comparison.
+
+## Detection accuracy & limitations
+
+**100% recall and 100% precision together are not achievable for free-text PII, by
+anyone.** Names, street addresses, bank account numbers, and employee IDs have no
+distinctive form — a bank account number is indistinguishable from any other run of
+digits, and "April" is both a name and a month. Any detector faces a precision/recall
+tradeoff: catch every possible name and you also redact ordinary words; redact only
+unambiguous matches and you miss the rest. SafeStream is tuned to favour precision on
+structured PII and credentials, with names and format-less identifiers handled by the
+opt-in levers below. Treat it as high-recall for credentials and structured PII, and
+best-effort for free prose — not as a guarantee of catching everything.
+
+**Why a file labelled "TEST" under-detects.** The contextual tier deliberately
+*subtracts* confidence from any value sitting next to `test`, `sample`, `example`,
+`dummy`, `fake`, `placeholder`, or `lorem` (see `detectors/contextual.py`). This keeps
+documentation snippets and fixture data from being redacted. The side effect is that a
+file *saturated* with those marker words — e.g. a sample log full of `TEST DATA`,
+`fake`, `example`, `TestPass` — has most of its detections pushed below the default 0.5
+threshold and left untouched. That is working as designed: on real data (without the
+marker words) recall is substantially higher. If you *want* those suppressed values
+redacted anyway, lower `min_confidence` (below).
+
+**Three levers to raise recall**, in increasing order of effort:
+
+1. **Lower `min_confidence`.** The default is 0.5. Setting it to `0.35`
+   (`--min-confidence 0.35`, or in a policy file) recovers most values the test/sample
+   suppression demotes, at some cost to precision. Do this per-run on data you know is
+   noisy — not globally on trusted prose.
+2. **Enable NER for names.** Person / org / location names need the optional spaCy tier:
+   `pip install 'safestream-redactor[ner]'` then `python -m spacy download en_core_web_sm`,
+   and run with `--ner` (or `use_ner = true` in a policy). Without it, names are not
+   detected at all.
+3. **Add custom patterns for format-less identifiers.** Passport numbers, driver
+   licences, bank/routing/account numbers, employee IDs, Slack user IDs, and dates of
+   birth have no universal signature, so they need label-anchored regexes you supply. A
+   ready-to-use policy covering all of these ships in
+   [`examples/policy.toml`](examples/policy.toml):
+
+   ```bash
+   safestream detect input.txt --config examples/policy.toml
+   ```
+
+   It also enables NER and documents each lever inline. Custom patterns redact the whole
+   match (including the label word) — the fail-safe outcome for DLP.
 
 ## Development
 

@@ -6,8 +6,22 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-15
+
 ### Added
 
+- `aws_secret` detection: a precise, high-confidence label pattern for the 40-char AWS
+  Secret Access Key behind an `aws … secret … key` cue. Only the secret value is
+  redacted (the label stays readable), and the specific label beats the weaker
+  entropy-tier catch it previously relied on.
+- Ready-to-use example policy (`examples/policy.toml`): enables the NER tier and ships
+  label-anchored custom patterns for identifiers with no universal format — passport,
+  driver licence, bank account, routing number, employee ID, Slack user ID, and date of
+  birth — each documented inline. Run with `--config examples/policy.toml`.
+- README "Detection accuracy & limitations" section: why 100% recall+precision is
+  unattainable for free-text PII, why files saturated with `test`/`sample`/`example`
+  markers under-detect (contextual suppression, by design), and the three recall levers
+  (lower `min_confidence`, enable NER, add custom patterns).
 - Intra-file parallel redaction (`safestream_redactor.parallel`): a single large
   file is split into character-aligned byte ranges and redacted across processes,
   with output **byte-identical** to the sequential pass for entities within the
@@ -79,6 +93,11 @@ Notable changes to this project. The format follows
 
 ### Fixed
 
+- Labelled passwords containing special characters (`@ ! # $ % ^ & *`) were truncated at
+  the first special char, dropping them below the 12-char minimum so they went
+  undetected. The generic `key/secret/token/password = value` value class now includes
+  common password specials, so a value like `P@ssw0rd-123!` is captured whole. Safe
+  because the match is still gated by an explicit label followed by `:` or `=`.
 - The in-process (single-worker) path of `redact_tree` installed the offline network
   guard in the **caller's** process and never removed it, silently patching a library
   user's sockets for the rest of the process. The guard is now scoped to the run and
