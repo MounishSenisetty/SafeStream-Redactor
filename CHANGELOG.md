@@ -6,6 +6,8 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-16
+
 ### Added
 
 - Complete project walkthrough (`docs/PROJECT_OVERVIEW.md`): what the project is, the
