@@ -8,6 +8,15 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- Complete project walkthrough (`docs/PROJECT_OVERVIEW.md`): what the project is, the
+  layered architecture, and a per-file table of what every module does and why it exists.
+- Measured benchmark results and an honest competitor comparison under `research/`:
+  accuracy/throughput on the clean and adversarial synthetic corpora and a constant-memory
+  scaling curve (all with full environment metadata in `research/results/raw/`), plus a
+  documented capability matrix vs. 10 existing systems (Presidio, Philter, Piiranha,
+  GLiNER, Grepture, Private AI, AWS Comprehend, Google DLP, Microsoft Purview, Tonic AI)
+  with a `benchmark-report.md` and `competitive-analysis.md`. Competitor rows are labelled
+  Documented (not benchmarked); only SafeStream's numbers are Measured.
 - Optional local REST API (`safestream_redactor.api`, `safestream serve`): a
   standard-library-only (`http.server`) transport adapter around the same
   `Redactor` — no new runtime dependency. Routes: `GET /health`, `GET /version`,

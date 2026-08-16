@@ -1,0 +1,59 @@
+{
+  "experiment": "detection accuracy and throughput on synthetic labeled corpora",
+  "tool": "safestream-redactor",
+  "package_version": "0.2.0",
+  "git_commit": "ad38aa457e3e2cebce5e3536d9d8cbdffad31930",
+  "git_branch": "feature/rest-api-and-architecture-diagrams",
+  "timestamp_utc": "2026-08-16",
+  "environment": {
+    "python": "3.11.15",
+    "implementation": "CPython",
+    "os": "Linux 6.18.5-fc-v20",
+    "machine": "x86_64",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cpu_cores": 4,
+    "ram_kb": 16461004
+  },
+  "matching": "type-aware, predicted span counts as a hit if it overlaps >=50% of the gold span",
+  "runs": [
+    {
+      "dataset": "generate_dataset.py (clean/canonical)",
+      "dataset_seed": "default",
+      "corpus_mb": 10.5,
+      "gold_entities": 60253,
+      "types": ["email", "phone", "credit_card", "ssn", "ipv4"],
+      "config": "Redactor(types=TYPES)",
+      "command": "python benchmarks/generate_dataset.py --size-mb 10 && python benchmarks/run_benchmark.py",
+      "results": {
+        "precision": 1.000,
+        "recall": 1.000,
+        "f1": 1.000,
+        "tp": 60253,
+        "fp": 0,
+        "fn": 0,
+        "throughput_mb_per_s": 3.50
+      },
+      "caveat": "The clean corpus is a REGRESSION FIXTURE, not a real-world accuracy measure: gold positives use the same canonical formats the detector targets, so recall is near-circular. Quote evaluate.py against an independent corpus for a defensible accuracy number."
+    },
+    {
+      "dataset": "generate_hard_dataset.py (adversarial)",
+      "dataset_seed": "default",
+      "corpus_mb": 5.2,
+      "gold_entities": 70169,
+      "types": ["email", "phone", "credit_card", "ssn", "ipv4"],
+      "config": "Redactor(types=TYPES)",
+      "command": "python benchmarks/generate_hard_dataset.py --size-mb 5 --out benchmarks/data_hard && python benchmarks/run_benchmark.py --data benchmarks/data_hard",
+      "results": {
+        "precision": 0.999,
+        "recall": 1.000,
+        "f1": 1.000,
+        "tp": 70169,
+        "fp": 45,
+        "fn": 0,
+        "throughput_mb_per_s": 2.06
+      },
+      "note": "Adversarial corpus embeds real PII in noisy log/JSON/CSV/SQL dense with hard negatives (Luhn-failing 16-digit numbers, 5-octet IPs, invalid SSNs, UUIDs). This precision-under-distractors number is the genuinely informative signal: 45 false positives across 70,169 gold entities."
+    }
+  ],
+  "presidio": "not benchmarked in this environment (presidio-analyzer not installed; run_benchmark.py runs it automatically when the [bench] extra is present)"
+}

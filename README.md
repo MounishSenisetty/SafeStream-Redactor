@@ -323,6 +323,14 @@ high-entropy secret, Presidio ships no recognizers and detects 0/9; SafeStream d
 9/9. This is a capability difference (Presidio has no credential recognizers at all),
 not a tuned accuracy comparison.
 
+> **Reproducible results & comparison.** Measured accuracy/throughput and a
+> constant-memory scaling curve — each recorded with full environment metadata and the
+> exact command to reproduce it — plus a documented capability matrix against 10 systems
+> (Presidio, Philter, Piiranha, GLiNER, Grepture, Private AI, AWS Comprehend, Google DLP,
+> Microsoft Purview, Tonic AI) live in [`research/`](research/). Only SafeStream's numbers
+> are measured; competitor rows are labelled *documented*. A complete per-file walkthrough
+> of the whole project is in [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
+
 ## Detection accuracy & limitations
 
 **100% recall and 100% precision together are not achievable for free-text PII, by
