@@ -114,7 +114,7 @@ Python dependencies — **not** a hard boundary: native extensions issuing raw s
 spawned subprocess, or another process on the machine are outside its reach. For a
 guaranteed boundary, also run with no network (`docker run --network none ...`) or a
 network namespace / seccomp policy. Pass `--allow-network` to disable the guard. See
-[SECURITY.md](SECURITY.md) for the full threat model.
+[SECURITY.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/SECURITY.md) for the full threat model.
 
 ### Python API
 
@@ -171,7 +171,7 @@ curl -s -X POST http://127.0.0.1:8000/redact \
 
 Endpoints: `GET /health`, `GET /version`, `GET /detectors`, `POST /redact`,
 `POST /scan` (offsets + types only, never the matched text). Full reference:
-[docs/rest-api.md](docs/rest-api.md).
+[docs/rest-api.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/rest-api.md).
 
 ### Extending with plugins
 
@@ -211,7 +211,7 @@ safestream redact input.txt -o out.txt --config policy.toml
 
 A fuller, ready-to-use policy — NER enabled, plus custom patterns for passport /
 driver-licence / bank-account / routing / employee-ID / Slack-ID / DOB values — ships in
-[`examples/policy.toml`](examples/policy.toml). Generate a minimal starter with
+[`examples/policy.toml`](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/examples/policy.toml). Generate a minimal starter with
 `safestream init-config -o policy.toml`.
 
 ## Architecture
@@ -245,16 +245,51 @@ driver-licence / bank-account / routing / employee-ID / Slack-ID / DOB values �
   Plugins: third-party tiers load from the 'safestream_redactor.detectors' entry point.
 ```
 
+The same system as a layered diagram (rendered on GitHub; shown as diagram source on PyPI):
+
+```mermaid
+flowchart TB
+    subgraph Interface["Interface Layer"]
+        CLI["CLI"]
+        API["Python / REST API"]
+    end
+    subgraph Support["Supporting facilities"]
+        Config["Configuration"]
+        Sched["Parallel scheduling"]
+        Egress["Egress safeguard"]
+    end
+    Task["Coordination (Redactor)"]
+    Stream["Streaming engine<br/>rolling buffer + overlap"]
+    subgraph Detection["Detection tiers"]
+        Det["Deterministic + validators"]
+        Ent["Entropy (secrets)"]
+        NER["NER (optional)"]
+        Ctx["Contextual"]
+        Arb["Arbitration<br/>score • filter • resolve"]
+    end
+    Redact["Redaction policy<br/>replace / mask / pseudonymise"]
+    Local["Local file system"]
+
+    CLI --> Task
+    API --> Task
+    Config --> Task
+    Sched --> Stream
+    Egress -.-> Stream
+    Task --> Stream
+    Stream --> Det & Ent & NER & Ctx
+    Det & Ent & NER & Ctx --> Arb
+    Arb --> Redact --> Local
+    Stream --> Local
+```
+
+Full editable **Mermaid + PlantUML** sources for the component, class, sequence,
+deployment, activity, and data-flow diagrams live in
+[docs/architecture/](https://github.com/MounishSenisetty/SafeStream-Redactor/tree/main/docs/architecture).
+
 Each tier-1 pattern declares literal *anchors* every match must contain (`AKIA`, `eyJ`,
 `@`, `://`, a digit, …); a cheap substring scan per window skips regexes that cannot
 match, so secret-sparse text runs ~25× faster with provably identical output (a
 differential test compares prefiltered and unfiltered detection).
-
-Editable **Mermaid and PlantUML source** for every architecture diagram —
-overall architecture, component and class models, the detection cascade, rolling
-buffer, deployment, sequence, activity, and data-flow diagrams — lives in
-[docs/architecture/](docs/architecture/), each validated against the module it
-describes.
 
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
 at least `overlap` characters from the buffer's end is emitted each round; the tail is carried
@@ -285,7 +320,7 @@ identically to whole-text mode.
 > regression fixture, not an accuracy claim, and a self-generated benchmark is not
 > evidence of accuracy on your data. For a defensible accuracy number, run
 > `benchmarks/evaluate.py` against an independent labeled corpus you control (see
-> [benchmarks/README.md](benchmarks/README.md) — the Presidio research dataset, CoNLL,
+> [benchmarks/README.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/benchmarks/README.md) — the Presidio research dataset, CoNLL,
 > and the n2c2 de-identification set are the recommended targets). Expect recall on
 > free-form prose (names, addresses) to be substantially lower than on structured PII
 > unless the `[ner]` extra is enabled.
@@ -315,7 +350,7 @@ A single large file can now be split across cores with `--workers N` /
 output to the single-core pass (a seam cross-check falls back to sequential rather
 than risk differing output). That narrows but does not close the gap to compiled
 scanners; a Vectorscan/re2 backend for the remaining constant factor stays on the
-[roadmap](docs/ROADMAP.md).
+[roadmap](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/ROADMAP.md).
 
 **Credentials & secrets** — the genuinely differentiating capability. On a corpus of
 AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random
@@ -327,9 +362,9 @@ not a tuned accuracy comparison.
 > constant-memory scaling curve — each recorded with full environment metadata and the
 > exact command to reproduce it — plus a documented capability matrix against 10 systems
 > (Presidio, Philter, Piiranha, GLiNER, Grepture, Private AI, AWS Comprehend, Google DLP,
-> Microsoft Purview, Tonic AI) live in [`research/`](research/). Only SafeStream's numbers
+> Microsoft Purview, Tonic AI) live in [`research/`](https://github.com/MounishSenisetty/SafeStream-Redactor/tree/main/research). Only SafeStream's numbers
 > are measured; competitor rows are labelled *documented*. A complete per-file walkthrough
-> of the whole project is in [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md).
+> of the whole project is in [`docs/PROJECT_OVERVIEW.md`](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PROJECT_OVERVIEW.md).
 
 ## Detection accuracy & limitations
 
@@ -367,7 +402,7 @@ redacted anyway, lower `min_confidence` (below).
    licences, bank/routing/account numbers, employee IDs, Slack user IDs, and dates of
    birth have no universal signature, so they need label-anchored regexes you supply. A
    ready-to-use policy covering all of these ships in
-   [`examples/policy.toml`](examples/policy.toml):
+   [`examples/policy.toml`](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/examples/policy.toml):
 
    ```bash
    safestream detect input.txt --config examples/policy.toml
@@ -389,13 +424,13 @@ ruff check . && ruff format --check .       # lint + format
 mypy                                        # strict type check
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Good first issues live in
-[docs/good_first_issues.md](docs/good_first_issues.md) and the issue tracker.
+See [CONTRIBUTING.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/CONTRIBUTING.md). Good first issues live in
+[docs/good_first_issues.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/good_first_issues.md) and the issue tracker.
 The audited state of the codebase and the phased improvement plan are in
-[docs/AUDIT.md](docs/AUDIT.md) and [docs/ROADMAP.md](docs/ROADMAP.md); the security
+[docs/AUDIT.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/AUDIT.md) and [docs/ROADMAP.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/ROADMAP.md); the security
 policy and threat model (what the offline guard does and does not cover) are in
-[SECURITY.md](SECURITY.md).
+[SECURITY.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/SECURITY.md).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/LICENSE)
