@@ -22,6 +22,18 @@ fixed-size chunks with an overlapping context window, so entities that straddle 
 boundaries are still caught — and memory use never grows with file size (proven by a test
 that redacts a generated 1 GB file under a 16 MB allocation cap).
 
+## Features
+
+- **Constant-memory streaming** — process very large files without loading the entire file into memory.
+- **Multi-tier detection** — deterministic patterns, entropy analysis, optional NER, and contextual scoring.
+- **PII detection** — emails, phone numbers, credit cards, SSNs, IPv4/IPv6, and optional names/organizations/locations.
+- **Credential detection** — API keys, cloud credentials, tokens, JWTs, private keys, and high-entropy secrets.
+- **Multiple redaction modes** — replace, mask, pseudonymize, and per-type replacements.
+- **Parallel processing** — process directory trees or split large files across workers.
+- **Offline network guard** — prevents non-loopback network access by default during CLI redaction.
+- **Extensible plugin system** — add custom detection tiers through Python entry points.
+- **Configurable policies** — define detection and redaction behavior using TOML.
+
 ## Install
 
 Three ways — pip, from source, or Docker:
@@ -255,19 +267,17 @@ the machine, so enabling it **relaxes the offline and equivalence guarantees** (
 the data on-machine). It is opt-in, never the default, and a client error falls back to the
 deterministic arbiter. See [`docs/FORMAL_MODEL.md`](docs/FORMAL_MODEL.md) §5.
 
-Detected entity types:
+## Supported Detection Types
 
-- **PII:** `email`, `phone`, `credit_card` (Luhn-validated), `ssn`, `ipv4`, `ipv6`, plus
-  `person` / `org` / `loc` with the NER extra.
-- **Credentials & secrets:** `aws_key`, `aws_secret` (the 40-char secret behind an
-  `aws … secret … key` label), `github_token`, `slack_token`, `slack_webhook`,
-  `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`,
-  `openai_key`, `anthropic_key`, `jwt`, `private_key`,
-  `url_credentials` (passwords embedded in connection strings — only the password is
-  redacted, so `postgres://svc:hunter2@db/app` becomes `postgres://svc:[REDACTED]@db/app`),
-  `api_key` (generic `key = value` assignments), and `secret`
-  (undocumented high-entropy strings, on by default — disable with `--no-entropy`).
-- `custom` for user-supplied words and regexes.
+| Category | Detection Types |
+|---|---|
+| PII | Email, phone, credit card, SSN, IPv4, IPv6 |
+| NER | Person, organization, location |
+| Cloud credentials | AWS keys, AWS secrets, Google API keys |
+| Service tokens | GitHub, Slack, Stripe, SendGrid, Twilio, npm |
+| Authentication | JWT, private keys, URL credentials |
+| Generic secrets | API keys, high-entropy secrets |
+| Custom | User-defined words and regex patterns |
 
 ## Evaluation
 
@@ -334,8 +344,8 @@ best-effort for free prose — not as a guarantee of catching everything.
 documentation snippets and fixture data from being redacted. The side effect is that a
 file *saturated* with those marker words — e.g. a sample log full of `TEST DATA`,
 `fake`, `example`, `TestPass` — has most of its detections pushed below the default 0.5
-threshold and left untouched. That is working as designed: on real data (without the
-marker words) recall is substantially higher. If you *want* those suppressed values
+threshold and left untouched.That is working as designed: on real data (without the
+marker words) recall is substantially higher.If you *want* those suppressed values
 redacted anyway, lower `min_confidence` (below).
 
 **Three levers to raise recall**, in increasing order of effort:
