@@ -8,6 +8,17 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- Optional local REST API (`safestream_redactor.api`, `safestream serve`): a
+  standard-library-only (`http.server`) transport adapter around the same
+  `Redactor` — no new runtime dependency. Routes: `GET /health`, `GET /version`,
+  `GET /detectors`, `POST /redact`, `POST /scan`. Binds to loopback by default,
+  never logs request bodies, rejects oversized bodies with `413`, and keeps
+  `/scan` content-free (offsets + types, never the matched text). Documented in
+  `docs/rest-api.md`. Added `Redactor.detector_names` for introspection.
+- Architecture diagram sources organised under `docs/architecture/` (Mermaid +
+  PlantUML), recreated from the system-design document and validated against the
+  implementation. The class model was corrected to match the real `EntityType`
+  enum, `Detection` fields, and `RedactionStats`; a REST API diagram was added.
 - Formal model document (`docs/FORMAL_MODEL.md`): definitions, the two locality
   assumptions with their audited constants, and Theorems 1–3 (streaming equivalence,
   parallel byte-identity with safe fallback, constant memory) with proofs mapped to the

@@ -1,0 +1,29 @@
+@startuml
+title File Redaction Sequence
+' Validated against redactor.py:redact_file and cli.py
+actor Operator
+participant CLI
+participant "Facade\n(Redactor)" as Facade
+participant "Streaming engine" as Stream
+participant "Detection Tiers" as Detect
+participant Arbitration as Arb
+participant "Redaction policy" as Policy
+database "File system" as FS
+Operator -> CLI : redact input -> output [options]
+CLI -> Facade : redact_file(input, output)
+Facade -> FS : open temporary output\n(restricted access)
+loop For each chunk until input exhausted
+    Stream -> Stream : Read next window\n(buffer + overlap)
+    Stream -> Detect : detect(window text)
+    Detect --> Stream : candidate detections
+    Stream -> Arb : adjust / filter / resolve
+    Arb --> Stream : final detections
+    Stream -> Policy : apply(window, detections)
+    Policy --> Stream : redacted window
+    Stream -> FS : write redacted window
+    Stream -> Stream : retain overlap margin
+end
+Facade -> FS : atomically replace output\nwith temporary file
+Facade -> CLI : RedactionStats(counts, sizes)
+CLI -> Operator : summary + exit status
+@enduml

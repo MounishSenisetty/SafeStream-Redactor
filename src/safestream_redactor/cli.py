@@ -136,6 +136,20 @@ def _build_parser() -> argparse.ArgumentParser:
     init.add_argument(
         "--force", action="store_true", help="overwrite the output file if it already exists"
     )
+
+    serve = sub.add_parser("serve", help="run a local REST API (stdlib only) around the redactor")
+    serve.add_argument(
+        "--host", default="127.0.0.1", help="bind address (default: 127.0.0.1, loopback)"
+    )
+    serve.add_argument("--port", type=int, default=8000, help="bind port (default: 8000)")
+    serve.add_argument("--config", help="TOML policy file used for every request")
+    serve.add_argument(
+        "--max-body",
+        type=int,
+        default=None,
+        metavar="BYTES",
+        help="reject request bodies larger than this (default: 8 MiB)",
+    )
     return parser
 
 
@@ -426,10 +440,31 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_serve(args: argparse.Namespace) -> int:
+    from safestream_redactor.api import DEFAULT_MAX_BODY_BYTES, serve
+
+    if args.config:
+        from safestream_redactor.config import redactor_from_config
+
+        redactor = redactor_from_config(args.config)
+    else:
+        redactor = Redactor()
+    max_body = args.max_body if args.max_body is not None else DEFAULT_MAX_BODY_BYTES
+    print(
+        f"-- safestream REST API on http://{args.host}:{args.port} "
+        f"(tiers: {', '.join(redactor.detector_names)})",
+        file=sys.stderr,
+    )
+    serve(redactor, host=args.host, port=args.port, max_body_bytes=max_body)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     if args.command == "init-config":
         return _cmd_init_config(args)
+    if args.command == "serve":
+        return _cmd_serve(args)
     if getattr(args, "offline_guard", True):
         from safestream_redactor import netguard
 

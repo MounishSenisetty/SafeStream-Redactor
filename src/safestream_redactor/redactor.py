@@ -132,6 +132,11 @@ class Redactor:
             self._detectors.append(self._scorer)
         logger.debug("detector tiers active: %s", [d.name for d in self._detectors])
 
+    @property
+    def detector_names(self) -> list[str]:
+        """Names of the detector tiers active on this redactor, in run order."""
+        return [d.name for d in self._detectors]
+
     # ------------------------------------------------------------------
     # detection
     # ------------------------------------------------------------------
