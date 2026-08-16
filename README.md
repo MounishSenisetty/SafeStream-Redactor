@@ -318,8 +318,8 @@ best-effort for free prose — not as a guarantee of catching everything.
 documentation snippets and fixture data from being redacted. The side effect is that a
 file *saturated* with those marker words — e.g. a sample log full of `TEST DATA`,
 `fake`, `example`, `TestPass` — has most of its detections pushed below the default 0.5
-threshold and left untouched. That is working as designed: on real data (without the
-marker words) recall is substantially higher. If you *want* those suppressed values
+threshold and left untouched.That is working as designed: on real data (without the
+marker words) recall is substantially higher.If you *want* those suppressed values
 redacted anyway, lower `min_confidence` (below).
 
 **Three levers to raise recall**, in increasing order of effort:
