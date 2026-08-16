@@ -6,13 +6,22 @@ build-backend = "hatchling.build"
 name = "safestream-redactor"
 dynamic = ["version"]
 description = "Streaming PII & credential detection/redaction for very large text files with constant memory usage."
-readme = "README.md"
+# PyPI-specific description: prose only, no Mermaid diagram source and no
+# repo-relative file links (those render as broken paths on the PyPI page).
+# The rich GitHub README (diagrams + deep links) stays at ./README.md.
+readme = "src/README_PYPI.md"
 license = "MIT"
 license-files = ["LICENSE"]
+# All three names carry no email so they render together in a single PyPI
+# "Author" field. Giving only one an email split it into a separate
+# Author-email metadata field, which is why one name went missing on PyPI.
 authors = [
-    { name = "Mounish Senisetty", email = "senisettymounish@gmail.com" },
+    { name = "Mounish Senisetty" },
     { name = "Ashrith" },
-    { name = "Sandhiya" }
+    { name = "Sandhiya" },
+]
+maintainers = [
+    { name = "Mounish Senisetty", email = "senisettymounish@gmail.com" },
 ]
 requires-python = ">=3.10"
 keywords = ["pii", "redaction", "privacy", "security", "streaming", "secrets", "dlp"]
