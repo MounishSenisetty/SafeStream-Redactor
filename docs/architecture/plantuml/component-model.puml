@@ -1,0 +1,48 @@
+@startuml
+title SafeStream-Redactor - Component Model
+' Validated against redactor.py, detectors/, netguard.py, scheduler.py, report.py
+actor Operator
+actor "CI / Automated pipeline" as Pipeline
+package "SafeStream-Redactor\n(single local process)" {
+    component Scheduler
+    component "Command-line interface" as CLI
+    component "Programmatic facade" as Facade
+    component Configuration
+    component "Egress safeguard" as Egress
+    component "Streaming engine" as Stream
+    interface Detector
+    component "Custom / plugin tiers" as Custom
+    component "Deterministic tier" as Deterministic
+    component "Entropy tier" as Entropy
+    component "NER tier (optional)" as NER
+    component "Contextual tier" as Contextual
+    component "Arbitration\n(score / filter / resolve)" as Arbitration
+    component "Redaction policy" as Policy
+    component "Run report / stats" as Stats
+}
+database "Local file system" as FS
+Operator --> CLI
+Pipeline --> CLI
+Scheduler --> CLI
+CLI --> Facade
+CLI --> Configuration
+Egress ..> Stream : blocks non-loopback egress
+Facade --> Stream
+Configuration --> Facade
+Stream --> Detector : detect(text)
+Detector <|.. Custom
+Detector <|.. Deterministic
+Detector <|.. Entropy
+Detector <|.. NER
+Detector <|.. Contextual
+Custom --> Arbitration
+Deterministic --> Arbitration
+Entropy --> Arbitration
+NER --> Arbitration
+Contextual --> Arbitration
+Arbitration --> Policy
+Policy --> Stream : rewrite
+Stream --> Stats
+Stats --> FS
+Stream --> FS
+@enduml

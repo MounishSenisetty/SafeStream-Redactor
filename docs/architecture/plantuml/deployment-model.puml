@@ -1,0 +1,19 @@
+@startuml
+title SafeStream-Redactor - Deployment Model
+' Validated against pyproject.toml, Dockerfile, .github/workflows/
+node "Build environment" {
+    artifact "Source" as Source
+    artifact "Build & packaging" as Build
+    Source --> Build
+}
+node "Registry" {
+    artifact "Package (PyPI) / container image (GHCR)" as Package
+}
+node "Target host\n(local-first, self-contained)" as Host {
+    node "Installed package\nor container instance" as Instance
+    database "Local file system\ninput / redacted output / report" as FS
+    Instance --> FS : reads / writes
+}
+Build --> Package
+Package --> Instance
+@enduml

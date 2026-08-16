@@ -156,6 +156,23 @@ with netguard.enforced():
     Redactor().redact_file("huge.log", "huge_redacted.log")   # network calls now raise
 ```
 
+### REST API
+
+An optional, standard-library-only REST server wraps the same `Redactor` (no
+extra dependency, loopback-only by default, request bodies never logged):
+
+```bash
+safestream serve                       # http://127.0.0.1:8000
+curl -s -X POST http://127.0.0.1:8000/redact \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "email bob@corp.io key AKIAIOSFODNN7EXAMPLE"}'
+# {"redacted": "email [REDACTED] key [REDACTED]", "total_detections": 2, ...}
+```
+
+Endpoints: `GET /health`, `GET /version`, `GET /detectors`, `POST /redact`,
+`POST /scan` (offsets + types only, never the matched text). Full reference:
+[docs/rest-api.md](docs/rest-api.md).
+
 ### Extending with plugins
 
 Any installed package can add a detection tier by advertising an entry point — no fork
@@ -232,6 +249,12 @@ Each tier-1 pattern declares literal *anchors* every match must contain (`AKIA`,
 `@`, `://`, a digit, …); a cheap substring scan per window skips regexes that cannot
 match, so secret-sparse text runs ~25× faster with provably identical output (a
 differential test compares prefiltered and unfiltered detection).
+
+Editable **Mermaid and PlantUML source** for every architecture diagram —
+overall architecture, component and class models, the detection cascade, rolling
+buffer, deployment, sequence, activity, and data-flow diagrams — lives in
+[docs/architecture/](docs/architecture/), each validated against the module it
+describes.
 
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
 at least `overlap` characters from the buffer's end is emitted each round; the tail is carried

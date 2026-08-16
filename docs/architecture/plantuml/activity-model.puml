@@ -1,0 +1,32 @@
+@startuml
+title Overall Redaction Workflow
+' Validated against cli.py, engine.py, redactor.py, report.py
+start
+:Read policy file (if any);
+if (Configuration valid?) then (yes)
+    :Overlay explicit options on policy;
+    :Build detector tiers + policy;
+    :Install egress safeguard;
+    repeat
+        :Read next chunk into buffer;
+        if (buffer <= overlap?) then (yes)
+            :Carry forward, emit nothing;
+        else (no)
+            :Run multi-tier detection on window;
+            :Adjust / filter / resolve;
+            if (Boundary splits a detection?) then (yes)
+                :Retreat boundary to entity start;
+            endif
+            :Apply redaction policy;
+            :Write redacted segment to temp file;
+            :Retain overlap margin as left context;
+        endif
+    repeat while (More input?) is (yes)
+    :Atomically replace output with temp file;
+    :Emit content-free stats / report;
+    stop
+else (no)
+    :Reject with suggestion;
+    stop
+endif
+@enduml

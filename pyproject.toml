@@ -41,7 +41,9 @@ bench = ["presidio-analyzer>=2.2"]
 
 [project.urls]
 Homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
+Documentation = "https://github.com/MounishSenisetty/SafeStream-Redactor/tree/main/docs"
 Issues = "https://github.com/MounishSenisetty/SafeStream-Redactor/issues"
+Changelog = "https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/CHANGELOG.md"
 
 [project.scripts]
 safestream = "safestream_redactor.cli:main"
