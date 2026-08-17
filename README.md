@@ -67,6 +67,11 @@ docker run --rm -v "$PWD":/data ghcr.io/mounishsenisetty/safestream-redactor \
 
 ## Quickstart
 
+> **New here?** Follow the guided demo in **[docs/DEMO.md](docs/DEMO.md)** — all four
+> install methods (PyPI / clone / Docker / REST API), every feature, dataset
+> generation, and benchmarks in one place. Or run it in one command:
+> `examples/run_demo.sh`.
+
 ### CLI
 
 ```bash
