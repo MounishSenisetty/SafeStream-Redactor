@@ -35,7 +35,9 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("input", help="input file path, or '-' for stdin")
+    # The input positional is added per-subcommand: `redact` takes exactly one,
+    # `detect` takes one or more (so it works as a pre-commit hook over staged
+    # files). Shared flags live here.
     common.add_argument(
         "--types",
         help="comma-separated entity types to detect (default: all), "
@@ -68,6 +70,14 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--chunk-size", type=int, default=None, metavar="BYTES")
     common.add_argument("--overlap", type=int, default=None, metavar="CHARS")
     common.add_argument(
+        "--memory-limit",
+        default=None,
+        metavar="SIZE",
+        help="run within an explicit application memory budget (e.g. 32MB, 256MiB). "
+        "Caps worker count to stay under the budget and fails closed with a "
+        "resource-exhaustion error if the chunk/overlap cannot fit at all.",
+    )
+    common.add_argument(
         "--encoding",
         default="utf-8",
         metavar="ENC",
@@ -83,6 +93,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     redact = sub.add_parser("redact", parents=[common], help="redact a file or stdin")
+    redact.add_argument("input", help="input file path, directory, or '-' for stdin")
     redact.add_argument("-o", "--output", required=True, help="output path, or '-' for stdout")
     redact.add_argument(
         "--stats",
@@ -122,7 +133,18 @@ def _build_parser() -> argparse.ArgumentParser:
     redact.add_argument("--hmac-key", default=None, help="secret for pseudonymize mode")
 
     detect = sub.add_parser("detect", parents=[common], help="list detections without redacting")
+    detect.add_argument(
+        "input",
+        nargs="+",
+        help="one or more input file paths, or '-' for stdin (accepts many files "
+        "so it works as a pre-commit/CI secret gate)",
+    )
     detect.add_argument("--json", action="store_true", help="one JSON object per detection")
+    detect.add_argument(
+        "--sarif",
+        action="store_true",
+        help="emit a SARIF 2.1.0 report (for GitHub code scanning / CI); content-free",
+    )
     detect.add_argument(
         "--fail-on-detect",
         action="store_true",
@@ -150,6 +172,12 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="BYTES",
         help="reject request bodies larger than this (default: 8 MiB)",
     )
+
+    mcp = sub.add_parser(
+        "mcp-serve",
+        help="run a local Model Context Protocol server (stdio) exposing scan/redact tools",
+    )
+    mcp.add_argument("--config", help="TOML policy file used for every tool call")
     return parser
 
 
@@ -274,6 +302,48 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
     return redactor
 
 
+def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
+    """Admit the run under ``--memory-limit`` and return the permitted worker cap.
+
+    Returns ``None`` when no budget was requested. Raises
+    :class:`~safestream_redactor.memory_budget.ResourceExhaustionError` (caught
+    in :func:`main`) when even one worker cannot fit — the fail-closed path.
+    """
+    limit = getattr(args, "memory_limit", None)
+    if not limit:
+        return None
+    from safestream_redactor.memory_budget import (
+        MemoryBudget,
+        estimate_interpreter_baseline,
+        format_size,
+    )
+
+    budget = MemoryBudget(limit, model_budget="512MB" if getattr(args, "ner", False) else 0)
+    requested = getattr(args, "workers", None)
+    plan = budget.plan(
+        redactor.chunk_size,
+        redactor.overlap,
+        requested_workers=requested,
+        max_workers=os.cpu_count() or 1,
+    )
+    baseline = estimate_interpreter_baseline()
+    if baseline > budget.limit:
+        print(
+            f"safestream: warning: the interpreter already resides in "
+            f"{format_size(baseline)}, above the {format_size(budget.limit)} budget; "
+            "the budget bounds the streaming working set, not total process RSS "
+            "(see docs/MEMORY_ARCHITECTURE.md)",
+            file=sys.stderr,
+        )
+    print(
+        f"-- memory budget {format_size(budget.limit)}: "
+        f"{plan.workers} worker(s) x ~{format_size(plan.per_worker_bytes)} working set, "
+        f"headroom ~{format_size(plan.headroom_bytes)}",
+        file=sys.stderr,
+    )
+    return plan.workers
+
+
 def _atomic_write_stream(path: str, pieces: Iterator[str], encoding: str) -> None:
     """Write streamed output to a temp file, then move it into place atomically.
 
@@ -339,6 +409,11 @@ def _finish_run(
 
 def _cmd_redact(args: argparse.Namespace) -> int:
     redactor = _build_redactor(args)
+    budget_workers = _plan_budget(args, redactor)
+    if budget_workers is not None:
+        # The budget caps concurrency: never exceed what it permits.
+        requested = getattr(args, "workers", None)
+        args.workers = budget_workers if requested is None else min(requested, budget_workers)
     if args.input not in ("-", None) and os.path.isdir(args.input):
         return _redact_directory(args, redactor)
     started = time.monotonic()
@@ -410,30 +485,64 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
 
 def _cmd_detect(args: argparse.Namespace) -> int:
     redactor = _build_redactor(args)
+    _plan_budget(
+        args, redactor
+    )  # validate the single-stream footprint; fail closed if it can't fit
+    sarif = getattr(args, "sarif", False)
+    findings = []
+    if sarif:
+        from safestream_redactor.sarif import Finding
+
     count = 0
-    offset = 0
-    for segment, detections in redactor.detect_stream(
-        _input_chunks(args.input, redactor.chunk_size, getattr(args, "encoding", "utf-8"))
-    ):
-        for det in detections:
-            count += 1
-            if args.json:
-                print(
-                    json.dumps(
-                        {
-                            "type": det.entity_type.value,
-                            "start": offset + det.start,
-                            "end": offset + det.end,
-                            "text": det.text,
-                            "confidence": round(det.confidence, 3),
-                            "source": det.source,
-                        }
+    # `detect` accepts one or more inputs; each is scanned independently and its
+    # findings carry that file's URI. SARIF findings accumulate into one report.
+    inputs = args.input if isinstance(args.input, list) else [args.input]
+    encoding = getattr(args, "encoding", "utf-8")
+    for path in inputs:
+        offset = 0
+        uri = path if path != "-" else "stdin"
+        for segment, detections in redactor.detect_stream(
+            _input_chunks(path, redactor.chunk_size, encoding)
+        ):
+            for det in detections:
+                count += 1
+                if sarif:
+                    findings.append(
+                        Finding(
+                            det.entity_type,
+                            offset + det.start,
+                            offset + det.end,
+                            det.confidence,
+                            det.source,
+                            uri=uri,
+                        )
                     )
-                )
-            else:
-                print(f"{det.entity_type.value:>13}  conf={det.confidence:.2f}  {det.text!r}")
-        offset += len(segment)
-    if not args.json:
+                elif args.json:
+                    print(
+                        json.dumps(
+                            {
+                                "file": uri,
+                                "type": det.entity_type.value,
+                                "start": offset + det.start,
+                                "end": offset + det.end,
+                                "text": det.text,
+                                "confidence": round(det.confidence, 3),
+                                "source": det.source,
+                            }
+                        )
+                    )
+                else:
+                    prefix = f"{uri}: " if len(inputs) > 1 else ""
+                    print(
+                        f"{prefix}{det.entity_type.value:>13}  "
+                        f"conf={det.confidence:.2f}  {det.text!r}"
+                    )
+            offset += len(segment)
+    if sarif:
+        from safestream_redactor.sarif import build_sarif
+
+        print(json.dumps(build_sarif(findings, version=__version__), indent=2))
+    elif not args.json:
         print(f"-- {count} detection(s)", file=sys.stderr)
     if args.fail_on_detect and count:
         return 1
@@ -459,20 +568,47 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_mcp_serve(args: argparse.Namespace) -> int:
+    from safestream_redactor.mcp_server import serve_stdio
+
+    if args.config:
+        from safestream_redactor.config import redactor_from_config
+
+        redactor = redactor_from_config(args.config)
+    else:
+        redactor = Redactor()
+    # The MCP server is local stdio only; the offline guard stays on so a
+    # misbehaving policy/plugin still cannot reach the network mid-session.
+    from safestream_redactor import netguard
+
+    netguard.install()
+    serve_stdio(redactor)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     if args.command == "init-config":
         return _cmd_init_config(args)
     if args.command == "serve":
         return _cmd_serve(args)
+    if args.command == "mcp-serve":
+        return _cmd_mcp_serve(args)
     if getattr(args, "offline_guard", True):
         from safestream_redactor import netguard
 
         netguard.install()
+    from safestream_redactor.memory_budget import ResourceExhaustionError
+
     try:
         if args.command == "redact":
             return _cmd_redact(args)
         return _cmd_detect(args)
+    except ResourceExhaustionError as exc:
+        # Fail-closed memory-budget refusal gets its own exit code (3) so CI and
+        # scripts can distinguish "would not fit" from an ordinary I/O error.
+        print(f"safestream: resource-exhaustion: {exc}", file=sys.stderr)
+        return 3
     except (OSError, ValueError) as exc:
         print(f"safestream: error: {exc}", file=sys.stderr)
         return 1

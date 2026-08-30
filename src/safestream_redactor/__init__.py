@@ -8,7 +8,7 @@ from safestream_redactor.policy import RedactionMode, RedactionPolicy
 from safestream_redactor.redactor import Redactor
 from safestream_redactor.report import RedactionStats
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # Standard library-package practice: emit nothing unless the embedding
 # application configures logging. Detection content is never logged anywhere.

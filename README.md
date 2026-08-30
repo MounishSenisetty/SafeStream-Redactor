@@ -31,7 +31,10 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Multiple redaction modes** — replace, mask, pseudonymize, and per-type replacements.
 - **Parallel processing** — process directory trees or split large files across workers.
 - **Offline network guard** — prevents non-loopback network access by default during CLI redaction.
-- **Extensible plugin system** — add custom detection tiers through Python entry points.
+- **Explicit memory budget** — `--memory-limit 32MB` runs within a stated budget and *fails closed* (exit 3) rather than over-allocating ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)).
+- **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
+- **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
+- **Extensible plugin system** — add custom detection tiers through Python entry points; each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).
 - **Configurable policies** — define detection and redaction behavior using TOML.
 
 ## Install
@@ -97,8 +100,18 @@ safestream redact huge.log -o huge_redacted.log --workers 8
 # just list what would be redacted
 safestream detect input.txt --json
 
-# CI / pre-commit secret gate: non-zero exit if anything is found
+# CI / pre-commit secret gate: non-zero exit if anything is found (many files ok)
 safestream detect build.log --fail-on-detect
+safestream detect src/ tests/ --fail-on-detect
+
+# SARIF report for GitHub code scanning (content-free: no secret text)
+safestream detect . --sarif > results.sarif
+
+# run within an explicit memory budget; fails closed (exit 3) if it can't fit
+safestream redact big.log -o clean.log --memory-limit 64MB --workers 8
+
+# expose scan/redact as offline MCP tools for an AI agent (stdio JSON-RPC)
+safestream mcp-serve
 
 # per-type counts to stderr, plus a JSON run report for compliance filing
 # (the report contains only type names, counts, and sizes — never matched text)

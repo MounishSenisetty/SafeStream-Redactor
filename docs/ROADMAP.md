@@ -180,7 +180,43 @@ Still open (highest-value next):
 
 - Separate `safestream-server` package (REST + auth + rate limiting) for teams that
   accept in-network redaction; the core never depends on it.
-- Pre-commit hook package and GitHub Action wrapping the Phase 1 CI gate.
+- Pre-commit hook package and GitHub Action wrapping the Phase 1 CI gate *(done, 0.4.0)*.
+
+## Phase 5 — Resource governance, agent integration, and CI surface (0.4.0)
+
+Implemented in the 0.4.0 change set; each item is real and tested, and none
+weakens the local-first guarantee.
+
+- **Explicit memory budget** *(done)*: `--memory-limit` admission control that
+  estimates the streaming working set, derives a budget-bounded worker count, and
+  fails closed with a structured `ResourceExhaustionError` (exit 3). The budget
+  bounds the application working set, not process RSS — a distinction the docs
+  state plainly rather than hide. See `docs/MEMORY_ARCHITECTURE.md`.
+- **Detector-declared streaming context** *(done)*: `StreamingRequirements`
+  replaces the single global overlap constant with a value the engine derives
+  from the detectors in use; shrinking the overlap below the requirement warns.
+- **Local MCP server** *(done)*: `safestream mcp-serve`, offline stdio JSON-RPC,
+  metadata-only `scan`/`explain_detection` (the secret never crosses the tool
+  boundary). See `docs/MCP.md`.
+- **CI surface** *(done)*: SARIF 2.1.0 output, a pre-commit hook, and a GitHub
+  Action; `detect` accepts many files as a staged-file gate. See `docs/CI_CD.md`.
+- **AI developer workflow** *(done)*: `.claude/` add-a-detector skill, agent, and
+  command.
+
+### Deliberately deferred (with justification)
+
+- **Rust/native core**: evaluated and deferred. The bounded-memory invariant is
+  already met in pure Python (the working set is `O(chunk+overlap)`, not `O(input)`),
+  so a native core buys *throughput*, not memory safety. The honest place for it
+  is behind the `Detector` seam as a Vectorscan/re2 backend (see the Phase 2
+  "throughput constant factor" note) — a self-contained, measurable change — not a
+  from-scratch rewrite of an already-correct engine. Introducing PyO3/maturin,
+  cross-platform wheels, and a native build matrix for a marketing bullet would be
+  production-theatre; it is scoped as its own project with its own benchmark gate.
+- **ONNX/local-LLM detector**: the plugin architecture and streaming-requirements
+  metadata make this a drop-in `Detector`, but shipping it means shipping (or
+  fetching) a model with integrity verification and calibration — work that must
+  not degrade into a fake/stub detector. Tracked as Phase 3 "ONNX NER option".
 
 ## Self-critique iterations applied to this plan
 

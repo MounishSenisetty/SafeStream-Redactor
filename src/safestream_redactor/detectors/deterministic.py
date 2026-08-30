@@ -12,7 +12,14 @@ import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
+from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
+
+# The longest span any tier-1 pattern can emit: the private-key body is bounded
+# to keep the whole match within the default overlap (see the PRIVATE_KEY
+# pattern's comment). Every other pattern is far shorter, so this is L_max for
+# the deterministic tier.
+DETERMINISTIC_MAX_SPAN = 8 * 1024
 
 # ---------------------------------------------------------------------------
 # validators
@@ -319,6 +326,7 @@ class DeterministicDetector:
     """
 
     name = "deterministic"
+    requirements = StreamingRequirements(max_span=DETERMINISTIC_MAX_SPAN)
 
     def __init__(
         self, types: Iterable[EntityType] | None = None, *, prefilter: bool = True

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
 
 _LABEL_MAP = {
@@ -35,6 +36,11 @@ def _load_model(model: str) -> Any:
 
 class NERDetector:
     name = "ner"
+    # Named entities are short, but the statistical model reads sentence context
+    # on both sides, so declare a modest left/right context window. NER accuracy
+    # can still degrade near a chunk boundary; that is a known limitation the
+    # left/right context mitigates but does not eliminate (see docs/DETECTORS).
+    requirements = StreamingRequirements(max_span=256, left_context=256, right_context=256)
 
     def __init__(self, model: str = "en_core_web_sm", confidence: float = 0.7) -> None:
         self._model = model

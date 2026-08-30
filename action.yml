@@ -1,0 +1,53 @@
+name: "SafeStream secret & PII scan"
+description: >-
+  Fail the build when tracked files contain detectable secrets or PII. Runs
+  fully offline and never prints the matched secret — only its type, location,
+  and confidence. Optionally uploads a SARIF report to GitHub code scanning.
+author: "SafeStream-Redactor"
+branding:
+  icon: "shield"
+  color: "purple"
+
+inputs:
+  paths:
+    description: "Space-separated files/directories to scan."
+    required: false
+    default: "."
+  config:
+    description: "Path to a TOML policy file (optional)."
+    required: false
+    default: ""
+  sarif-file:
+    description: "If set, write a SARIF report to this path (upload it separately)."
+    required: false
+    default: ""
+  version:
+    description: "Version of safestream-redactor to install from PyPI."
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install safestream-redactor
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          python -m pip install "safestream-redactor==${{ inputs.version }}"
+        else
+          python -m pip install safestream-redactor
+        fi
+
+    - name: Scan for secrets and PII
+      shell: bash
+      run: |
+        CONFIG_ARG=""
+        if [ -n "${{ inputs.config }}" ]; then CONFIG_ARG="--config ${{ inputs.config }}"; fi
+        if [ -n "${{ inputs.sarif-file }}" ]; then
+          # Produce a SARIF report AND fail the job on any finding. The report
+          # is content-free (no secret text) and safe to upload as an artifact.
+          safestream detect ${{ inputs.paths }} $CONFIG_ARG --sarif > "${{ inputs.sarif-file }}"
+          safestream detect ${{ inputs.paths }} $CONFIG_ARG --fail-on-detect
+        else
+          safestream detect ${{ inputs.paths }} $CONFIG_ARG --fail-on-detect
+        fi

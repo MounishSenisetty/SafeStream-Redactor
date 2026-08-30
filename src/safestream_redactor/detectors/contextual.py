@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 
+from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
 
 # words near a detection that make it MORE likely to be real, per type
@@ -46,6 +47,9 @@ class ContextualScorer:
     """Adjusts confidences in place and contributes trigger-gated detections."""
 
     name = "contextual"
+    # Emits at most a 9-digit bare-SSN span, but reads up to ``window`` chars of
+    # left context to gate it; declare both so the engine preserves that context.
+    requirements = StreamingRequirements(max_span=9, left_context=48)
 
     def __init__(
         self,

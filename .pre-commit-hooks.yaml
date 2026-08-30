@@ -1,0 +1,22 @@
+# Pre-commit hook definitions for SafeStream-Redactor.
+#
+# Consumers add this to their own .pre-commit-config.yaml:
+#
+#   repos:
+#     - repo: https://github.com/MounishSenisetty/SafeStream-Redactor
+#       rev: v0.4.0
+#       hooks:
+#         - id: safestream-detect
+#
+# The hook blocks a commit whose staged files contain detectable secrets or
+# PII. It runs entirely locally (the offline guard stays on) and never prints
+# the matched secret — only its type, location, and confidence.
+- id: safestream-detect
+  name: SafeStream secret/PII scan
+  description: Block commits that introduce detectable secrets or PII.
+  entry: safestream detect --fail-on-detect
+  language: python
+  # Scan text-like files by default; consumers can override `files`/`exclude`.
+  types: [text]
+  # Each staged file is passed as the positional INPUT argument, one per run.
+  # `detect` exits non-zero when anything is found, which fails the hook.

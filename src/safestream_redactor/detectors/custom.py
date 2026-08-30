@@ -5,11 +5,18 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
+from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
 
 
 class CustomDetector:
     name = "custom"
+    # User-supplied words are literals (bounded by their own length); user
+    # patterns are arbitrary, so the span a custom regex can match is not known
+    # ahead of time. We declare the default overlap as the assumed bound and
+    # document that a custom pattern matching text longer than the configured
+    # overlap falls outside the single-span boundary guarantee (Theorem 1).
+    requirements = StreamingRequirements(max_span=8 * 1024)
 
     def __init__(
         self,
