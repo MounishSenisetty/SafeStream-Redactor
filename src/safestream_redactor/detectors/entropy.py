@@ -17,6 +17,7 @@ import math
 import re
 from collections import Counter
 
+from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
 
 # The longest span the entropy tier will emit. Bounding it keeps assumption A1
@@ -56,6 +57,9 @@ class EntropyDetector:
     """
 
     name = "entropy"
+    # A candidate run is capped at MAX_SPAN characters (see _CANDIDATE), so that
+    # is the longest span this tier can emit.
+    requirements = StreamingRequirements(max_span=MAX_SPAN)
 
     def __init__(
         self,

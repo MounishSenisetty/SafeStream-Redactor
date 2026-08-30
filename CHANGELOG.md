@@ -6,6 +6,45 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-30
+
+### Added
+
+- **Explicit memory-budget admission control** (`safestream_redactor.memory_budget`,
+  `--memory-limit`): run within a stated application memory budget (e.g.
+  `--memory-limit 32MB`). The engine estimates the per-worker streaming working
+  set, derives the worker count that keeps the aggregate under the budget, and
+  **fails closed** with a structured `ResourceExhaustionError` (CLI exit code 3)
+  rather than silently over-allocating or loading the whole file. Documented,
+  with an honest working-set-vs-RSS distinction, in `docs/MEMORY_ARCHITECTURE.md`.
+- **Detector streaming-requirements metadata** (`StreamingRequirements`): each
+  detector declares its longest span and the left/right context it reads, and
+  the engine derives the required overlap from the detectors actually in use
+  (`engine.required_overlap`, `Redactor.min_safe_overlap`) instead of a single
+  global constant. Shrinking the overlap below what the active tiers need now
+  logs a boundary-coverage warning.
+- **Local MCP server** (`safestream mcp-serve`, `safestream_redactor.mcp_server`):
+  a stdlib-only, offline stdio JSON-RPC 2.0 Model Context Protocol server exposing
+  `scan`, `redact`, `explain_detection`, `detectors`, and `health` tools.
+  `scan`/`explain_detection` return finding metadata only — type, location,
+  confidence, severity, detector — and **never the matched secret**. Documented
+  in `docs/MCP.md`.
+- **SARIF 2.1.0 output** for the CI gate (`detect --sarif`): content-free findings
+  (severity-mapped levels, security-severity scores) for GitHub code scanning.
+- **Pre-commit hook and GitHub Action** wrapping the secret gate
+  (`.pre-commit-hooks.yaml`, `action.yml`); `detect` now accepts multiple input
+  files so it works as a staged-file gate.
+- **Severity classification** (`safestream_redactor.severity`): a shared,
+  content-free four-level scale used by MCP and SARIF.
+- **`.claude/` developer workflow**: an `add-a-detector` skill, a `detector-author`
+  agent, and an `add-detector` command that walk a contributor through pattern
+  design, boundary safety, hard-negative fixtures, and the CI gates.
+- **Adversarial boundary test suite** (`tests/test_boundary_adversarial.py`):
+  representative secrets split at every byte position and many chunk sizes,
+  secret-at-byte-0 / secret-at-EOF, multi-entity boundary crossings, a PEM key
+  split across dozens of chunks, multibyte-Unicode splits, and the documented
+  entity-longer-than-overlap limitation.
+
 ## [0.3.0] - 2026-08-16
 
 ### Added

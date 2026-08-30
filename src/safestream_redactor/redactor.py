@@ -132,10 +132,40 @@ class Redactor:
             self._detectors.append(self._scorer)
         logger.debug("detector tiers active: %s", [d.name for d in self._detectors])
 
+        # Boundary-correctness guard: the overlap must cover the longest span any
+        # active detector can emit (plus the context it reads), or an entity that
+        # straddles a chunk boundary could be silently missed — a fail-open
+        # coverage loss. The default overlap already satisfies the built-in tiers;
+        # this warns only when a caller shrinks it below what the detectors need.
+        needed = self.min_safe_overlap
+        if self.overlap < needed:
+            logger.warning(
+                "overlap=%d is below the %d characters the active detectors require "
+                "(%s); entities longer than the overlap that straddle a chunk boundary "
+                "may be missed",
+                self.overlap,
+                needed,
+                ", ".join(sorted({d.name for d in self._detectors})),
+            )
+
     @property
     def detector_names(self) -> list[str]:
         """Names of the detector tiers active on this redactor, in run order."""
         return [d.name for d in self._detectors]
+
+    @property
+    def min_safe_overlap(self) -> int:
+        """Smallest overlap that keeps every active detector boundary-correct.
+
+        Derived from each detector's declared
+        :class:`~safestream_redactor.detectors.base.StreamingRequirements`
+        rather than a global constant. An ``overlap`` at least this large
+        guarantees any entity the active tiers can emit is seen whole even when
+        split across a chunk boundary.
+        """
+        from safestream_redactor.engine import required_overlap
+
+        return required_overlap(self._detectors)
 
     # ------------------------------------------------------------------
     # detection

@@ -93,3 +93,32 @@ def test_stdin_to_file(capsys, monkeypatch, tmp_path):
 def test_missing_input_file_errors(capsys, tmp_path):
     assert main(["redact", str(tmp_path / "nope.txt"), "-o", "-"]) == 1
     assert "error" in capsys.readouterr().err
+
+
+def test_memory_limit_generous_admits(sample, tmp_path, capsys):
+    out = tmp_path / "out.txt"
+    assert main(["redact", str(sample), "-o", str(out), "--memory-limit", "256MB"]) == 0
+    assert "memory budget" in capsys.readouterr().err
+    assert out.read_text() == "email [REDACTED] ssn: [REDACTED] codename ProjectX\n"
+
+
+def test_memory_limit_fail_closed_exit_3(sample, capsys):
+    # A 1 MB budget cannot hold even one worker's working set: fail closed.
+    assert main(["detect", str(sample), "--memory-limit", "1MB"]) == 3
+    assert "resource-exhaustion" in capsys.readouterr().err
+
+
+def test_memory_limit_caps_workers(sample, tmp_path, capsys):
+    out = tmp_path / "out.txt"
+    # Ask for many workers under a tight budget; the run still succeeds because
+    # the budget silently caps concurrency rather than exceeding the limit.
+    assert (
+        main(["redact", str(sample), "-o", str(out), "--memory-limit", "48MB", "--workers", "16"])
+        == 0
+    )
+    assert out.read_text() == "email [REDACTED] ssn: [REDACTED] codename ProjectX\n"
+
+
+def test_memory_limit_bad_value_errors(sample, capsys):
+    assert main(["detect", str(sample), "--memory-limit", "notasize"]) == 1
+    assert "error" in capsys.readouterr().err

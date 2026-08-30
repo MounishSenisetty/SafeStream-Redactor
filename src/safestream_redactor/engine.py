@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
 
+from safestream_redactor.detectors.base import requirements_of
 from safestream_redactor.entities import Detection
 
 DEFAULT_CHUNK_SIZE = 64 * 1024
@@ -36,6 +37,19 @@ DEFAULT_OVERLAP = 8 * 1024
 
 DetectFn = Callable[[str], list[Detection]]
 ApplyFn = Callable[[str, list[Detection]], str]
+
+
+def required_overlap(detectors: Iterable[object]) -> int:
+    """Smallest overlap that keeps every detector boundary-correct.
+
+    Each detector declares its :class:`~safestream_redactor.detectors.base.StreamingRequirements`
+    (or gets a conservative default). The engine's overlap must be at least the
+    largest ``required_overlap`` across them so no detector's longest span, plus
+    the context it reads, can be cut by a chunk boundary (``docs/FORMAL_MODEL.md``,
+    Theorem 1). This replaces the old single global constant with a value the
+    engine derives from the detectors actually in use.
+    """
+    return max((requirements_of(d).required_overlap for d in detectors), default=DEFAULT_OVERLAP)
 
 
 def read_chunks(
