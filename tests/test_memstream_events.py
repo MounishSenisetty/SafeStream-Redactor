@@ -1,5 +1,7 @@
 """Event model and codec: round-trip, framing, and stability of the wire form."""
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from safestream_redactor.memstream.events import (
@@ -67,5 +69,5 @@ def test_record_types():
 
 def test_event_is_hashable_frozen():
     e = MemoryEvent(kind="log")
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         e.kind = "changed"  # type: ignore[misc]
