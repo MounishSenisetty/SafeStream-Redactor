@@ -220,12 +220,24 @@ _WORKER_REDACTOR: Redactor | None = None
 _WORKER_ENCODING = "utf-8"
 
 
-def _init_worker(redactor: Redactor, encoding: str, offline_guard: bool) -> None:
+def _init_worker(
+    redactor: Redactor,
+    encoding: str,
+    offline_guard: bool,
+    address_space_limit: int | None = None,
+) -> None:
     global _WORKER_REDACTOR, _WORKER_ENCODING
     if offline_guard:
         from safestream_redactor import netguard
 
         netguard.install()
+    if address_space_limit is not None:
+        # Cap each worker at the kernel level too, so a single worker cannot
+        # over-allocate past its share of the budget (the caller's --memory-limit
+        # divided across workers). Best-effort: unsupported platforms no-op.
+        from safestream_redactor.memory_budget import enforce_address_space_limit
+
+        enforce_address_space_limit(address_space_limit)
     _WORKER_REDACTOR = redactor
     _WORKER_ENCODING = encoding
 
@@ -396,6 +408,7 @@ def redact_file_parallel(
     workers: int,
     encoding: str = "utf-8",
     offline_guard: bool = False,
+    worker_address_space_limit: int | None = None,
 ) -> ParallelOutcome:
     """Redact one file using up to ``workers`` processes.
 
@@ -406,7 +419,9 @@ def redact_file_parallel(
     path outright for small files, non-splittable encodings, or ``workers=1``.
 
     ``offline_guard`` installs the network guard in worker processes (the
-    caller's process is never patched).
+    caller's process is never patched). ``worker_address_space_limit``, when
+    set, caps each worker's address space (``RLIMIT_AS``) at its current size
+    plus that many bytes, so a runaway worker fails closed at the kernel level.
     """
     from concurrent.futures import ProcessPoolExecutor
 
@@ -456,7 +471,7 @@ def redact_file_parallel(
         with ProcessPoolExecutor(
             max_workers=min(workers, n_ranges),
             initializer=_init_worker,
-            initargs=(redactor, encoding, offline_guard),
+            initargs=(redactor, encoding, offline_guard, worker_address_space_limit),
         ) as pool:
             results = sorted(pool.map(_redact_range, jobs), key=lambda r: r.index)
 

@@ -31,7 +31,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Multiple redaction modes** — replace, mask, pseudonymize, and per-type replacements.
 - **Parallel processing** — process directory trees or split large files across workers.
 - **Offline network guard** — prevents non-loopback network access by default during CLI redaction.
-- **Explicit memory budget** — `--memory-limit 32MB` admits the run under a stated budget with pre-flight admission control: it sizes worker count to fit and *fails closed* (exit 3) when even one worker's estimated working set won't, instead of silently loading the whole file ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)). Kernel-enforced hard limits (`RLIMIT_AS` / cgroup v2) are on the roadmap.
+- **Explicit memory budget** — `--memory-limit 32MB` admits the run under a stated budget (sizes workers, refuses configs that can't fit) *and*, on Linux/POSIX, backs it with a hard kernel `RLIMIT_AS` cap so an over-allocating run **fails closed** (exit 3) at the kernel instead of swelling past the limit; on platforms without `RLIMIT_AS` it falls back to admission control only ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)).
 - **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
 - **Extensible plugin system** — add custom detection tiers through Python entry points; each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).

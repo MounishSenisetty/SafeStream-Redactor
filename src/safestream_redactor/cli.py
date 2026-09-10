@@ -74,8 +74,10 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="SIZE",
         help="run within an explicit application memory budget (e.g. 32MB, 256MiB). "
-        "Caps worker count to stay under the budget and fails closed with a "
-        "resource-exhaustion error if the chunk/overlap cannot fit at all.",
+        "Caps worker count to stay under the budget, refuses configs that cannot "
+        "fit (exit 3), and on Linux/POSIX backs the budget with a hard RLIMIT_AS "
+        "cap so an over-allocating run fails closed at the kernel (also exit 3) "
+        "rather than swelling past the limit.",
     )
     common.add_argument(
         "--encoding",
@@ -314,6 +316,7 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
         return None
     from safestream_redactor.memory_budget import (
         MemoryBudget,
+        enforce_address_space_limit,
         estimate_interpreter_baseline,
         format_size,
     )
@@ -341,6 +344,26 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
         f"headroom ~{format_size(plan.headroom_bytes)}",
         file=sys.stderr,
     )
+    # Back the admitted budget with a hard kernel cap on this (orchestrating /
+    # streaming) process. Workers get their own per-worker cap when the parallel
+    # path runs; see _cmd_redact.
+    enforced = enforce_address_space_limit(budget.limit)
+    if enforced.applied:
+        print(
+            f"-- memory limit enforced by kernel (RLIMIT_AS): {enforced.reason}; "
+            "over-allocation fails closed (exit 3)",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"safestream: warning: kernel memory enforcement unavailable "
+            f"({enforced.reason}); using admission control only (the budget still "
+            "sizes workers and refuses configs that cannot fit)",
+            file=sys.stderr,
+        )
+    # Stash the per-worker growth allowance so the parallel dispatch can cap each
+    # worker process at the kernel level too.
+    args._per_worker_bytes = plan.per_worker_bytes
     return plan.workers
 
 
@@ -436,6 +459,7 @@ def _cmd_redact(args: argparse.Namespace) -> int:
             workers=args.workers,
             encoding=encoding,
             offline_guard=getattr(args, "offline_guard", True),
+            worker_address_space_limit=getattr(args, "_per_worker_bytes", None),
         ).stats
     else:
         stats = redactor.redact_file(args.input, args.output, encoding=encoding)
@@ -608,6 +632,16 @@ def main(argv: list[str] | None = None) -> int:
         # Fail-closed memory-budget refusal gets its own exit code (3) so CI and
         # scripts can distinguish "would not fit" from an ordinary I/O error.
         print(f"safestream: resource-exhaustion: {exc}", file=sys.stderr)
+        return 3
+    except MemoryError:
+        # The kernel RLIMIT_AS cap (from --memory-limit) refused an allocation:
+        # the run exceeded its budget and fails closed with the same exit code as
+        # a pre-flight refusal, rather than being killed or silently degrading.
+        print(
+            "safestream: resource-exhaustion: allocation refused by the enforced "
+            "memory limit (RLIMIT_AS); the run exceeded its --memory-limit budget",
+            file=sys.stderr,
+        )
         return 3
     except (OSError, ValueError) as exc:
         print(f"safestream: error: {exc}", file=sys.stderr)
