@@ -361,4 +361,34 @@ address. README, SECURITY.md, and MEMORY_ARCHITECTURE.md were updated to match.
 feature flag, gated by the differential test, reporting real numbers — the one
 headline limitation still standing.
 
-**Stopping here for review before Phase 3.**
+## 7. Phase 3 status (performance backend) — complete, pending review
+
+Prototyped and benchmarked a compiled-regex (google-re2) backend for the
+deterministic tier, ran the differential comparison, and — as the guardrail
+"don't merge a backend that changes output" requires — **did not adopt it**. The
+differential check did its job: it caught that the backend changes output.
+
+| Finding | Evidence |
+| --- | --- |
+| re2 can't compile the throughput-dominating patterns | 10/23 patterns fail (`ssn`, `credit_card`, `ipv4`, `ipv6`, `phone`, `aws_secret`, `anthropic_key`, `openai_key`, `private_key`) — lookaround / large repetition |
+| re2 **changes output** on Unicode (safety regression) | its `\b`/`\w`/`\d` are ASCII-only vs Python's Unicode-aware; 5/5 Unicode probes diverge with re2 **under-detecting** (e.g. matching an email Python correctly rejects) |
+| re2 gives **no end-to-end speedup** | 1.00× on a realistic PII log, 0.89× on credential-dense text — the prefilter already captures re2's fast-no-match win, and the costly PII patterns stay in Python |
+| Hyperscan/Vectorscan hits the same wall | same lookaround + ASCII-boundary limits, heavier native dep — documented, not pursued |
+
+Deliverables: `benchmarks/re2_backend.py` (reproducible prototype + correctness +
+throughput), `docs/PERFORMANCE_BACKENDS.md` (findings + decision + the real
+prerequisite: a semantics-preserving lookaround-free / Unicode-consistent pattern
+rewrite), README + ROADMAP updated. `google-re2` is a benchmark-only extra; the
+shipped `pip install` stays dependency-free and the backend is **not** shippable
+as-is (it would under-redact Unicode text).
+
+## 8. Overall — all four phases complete
+
+Every finding from §1–§3 is addressed or explicitly, honestly deferred with
+reasons. The public API is unchanged, the constant-memory invariant holds (the
+100 MB memory proof passes after every phase), and coverage stays ≥ 95% with
+ruff + mypy strict clean throughout. Two guarantees the README described as
+best-effort are now real at the kernel (`RLIMIT_AS` memory enforcement; opt-in
+seccomp/netns offline containment); two tempting optimisations (zero-copy I/O, a
+compiled regex backend) were evaluated with real numbers and honestly declined,
+with the docs updated to match the code rather than the reverse.
