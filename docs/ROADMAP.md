@@ -160,13 +160,21 @@ Also implemented since:
 Still open (highest-value next):
 
 - **Throughput constant factor** — parallelism now uses idle cores, but each core
-  still runs the Python regex tiers at ~3 MB/s. A Vectorscan/re2 backend behind the
-  `Detector` seam would close the remaining ~100× distance from compiled scanners; it
-  stacks on top of the range-parallel path. This is the one headline limitation still
-  standing. (Zero-copy input I/O — `mmap`/`preadv`/`splice` — was evaluated and
-  **not adopted**: input I/O is already ~2600–3800× faster than detection, so it is
-  not on the critical path; see [docs/ZERO_COPY.md](ZERO_COPY.md). Worth revisiting
-  only *after* a compiled backend makes detection fast enough for I/O to matter.)
+  still runs the Python regex tiers at ~3 MB/s. A drop-in Vectorscan/re2 backend was
+  **prototyped, measured, and not adopted**: re2's ASCII-only `\b`/`\w`/`\d` change
+  detection output on Unicode text (under-detecting), and it gives no end-to-end
+  speedup because the anchor prefilter already captures its advantage while the
+  throughput-dominating PII patterns (SSN, card, IPv4, phone, IPv6) use lookaround re2
+  cannot compile — see [docs/PERFORMANCE_BACKENDS.md](PERFORMANCE_BACKENDS.md). The
+  real prerequisite is therefore a **semantics-preserving pattern rewrite**: recast the
+  lookaround PII patterns as lookaround-free candidate regexes (boundary logic moved
+  into their validators, as several tiers already do) with Unicode-consistent boundary
+  classes; only then can a compiled backend match byte-for-byte and help. That rewrite,
+  not the backend itself, is the open work. (Zero-copy input I/O — `mmap`/`preadv`/
+  `splice` — was likewise evaluated and **not adopted**: input I/O is already
+  ~2600–3800× faster than detection, so it is not on the critical path; see
+  [docs/ZERO_COPY.md](ZERO_COPY.md). Both are worth revisiting only *after* detection
+  itself is fast enough for the surrounding layers to matter.)
 
 ## Phase 3 — Research-grade detection
 
@@ -210,12 +218,15 @@ weakens the local-first guarantee.
 
 - **Rust/native core**: evaluated and deferred. The bounded-memory invariant is
   already met in pure Python (the working set is `O(chunk+overlap)`, not `O(input)`),
-  so a native core buys *throughput*, not memory safety. The honest place for it
-  is behind the `Detector` seam as a Vectorscan/re2 backend (see the Phase 2
-  "throughput constant factor" note) — a self-contained, measurable change — not a
-  from-scratch rewrite of an already-correct engine. Introducing PyO3/maturin,
-  cross-platform wheels, and a native build matrix for a marketing bullet would be
-  production-theatre; it is scoped as its own project with its own benchmark gate.
+  so a native core buys *throughput*, not memory safety. The obvious form — a
+  Vectorscan/re2 backend behind the `Detector` seam — was prototyped and measured, and
+  it does not work as a drop-in: it changes output on Unicode and gives no end-to-end
+  speedup (see [PERFORMANCE_BACKENDS.md](PERFORMANCE_BACKENDS.md) and the "throughput
+  constant factor" note above). A native core only pays off *after* the
+  semantics-preserving pattern rewrite described there, and even then must clear its
+  own byte-identity + benchmark gate. Introducing PyO3/maturin, cross-platform wheels,
+  and a native build matrix for a marketing bullet would be production-theatre; it is
+  scoped as its own project.
 - **ONNX/local-LLM detector**: the plugin architecture and streaming-requirements
   metadata make this a drop-in `Detector`, but shipping it means shipping (or
   fetching) a model with integrity verification and calibration — work that must

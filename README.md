@@ -391,8 +391,15 @@ A single large file can now be split across cores with `--workers N` /
 `redact_file(..., workers=N)` — measured ~3.7× on 4 cores, with **byte-identical**
 output to the single-core pass (a seam cross-check falls back to sequential rather
 than risk differing output). That narrows but does not close the gap to compiled
-scanners; a Vectorscan/re2 backend for the remaining constant factor stays on the
-[roadmap](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/ROADMAP.md).
+scanners. A drop-in Vectorscan/re2 backend was **prototyped and measured** and
+**not adopted**: re2's ASCII-only `\b`/`\w`/`\d` change detection output on
+Unicode text (it under-detects), and it gives no end-to-end speedup because the
+anchor prefilter already captures its advantage and the throughput-dominating PII
+patterns use lookaround re2 cannot compile — full numbers in
+[docs/PERFORMANCE_BACKENDS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PERFORMANCE_BACKENDS.md).
+Closing the constant factor would require first rewriting those patterns to be
+lookaround-free and Unicode-boundary-consistent (on the
+[roadmap](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/ROADMAP.md)).
 
 **Credentials & secrets** — the genuinely differentiating capability. On a corpus of
 AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random
