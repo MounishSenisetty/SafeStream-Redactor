@@ -333,4 +333,32 @@ use overlap 64-256); raising would break that valid, memory-constrained use. The
 mitigations are the existing `__init__` warning plus the new runtime over-long-span
 warning (R-ENG-4). Flagging for your call if you'd prefer an explicit opt-in flag instead.
 
-**Stopping here for review before Phase 2 (kernel-level guarantees).**
+**Phase 1 stopped here for review before Phase 2 (kernel-level guarantees).**
+
+---
+
+## 6. Phase 2 status (real kernel-level guarantees) — complete, pending review
+
+Implemented in small, verified commits. Baseline green at every step
+(376 fast tests + 100 MB memory proof passing, coverage ≥ 96%, ruff + mypy strict
+clean). Systems code (ctypes syscalls) is proven by real forked-child tests and
+covered in-process with fakes so no irreversible syscall touches the test runner.
+
+| Finding | Action taken | Where |
+|---|---|---|
+| **R-MEM-1** | `--memory-limit` now backed by a hard **`RLIMIT_AS`** kernel cap (current VSZ + budget) on Linux/POSIX: over-allocation raises `MemoryError` → CLI **exit 3**, failing closed at the kernel instead of Python-side accounting. Main process + each parallel worker capped; only ever tightens a pre-existing lower cap; graceful admission-only fallback where unsupported. cgroup v2 `memory.max` documented as the complementary container-runtime mechanism (an unprivileged process can't self-apply it). | `memory_budget.enforce_address_space_limit`, `cli._plan_budget`, `parallel._init_worker`; `tests/test_memory_enforcement.py` |
+| **R-NET-1/2** | Opt-in **`--offline-hard`** kernel modes: `seccomp` (seccomp-bpf filter blocking `AF_INET`/`AF_INET6` socket creation process-wide, native code included) and `netns` (`unshare(CLONE_NEWNET)` into an empty namespace), plus `auto`. Applied before workers fork; fail closed to a warning where unsupported; docs state exactly what each does and does not cover. | `netguard_hard.py`, `cli._apply_offline_hard`; `tests/test_netguard_hard.py` |
+| **Zero-copy** | Evaluated `mmap`+`madvise`, `preadv`, `splice`/`sendfile` with a benchmark. Input I/O is ~2600–3800× faster than detection, so it is not on the critical path; **not adopted** (would also fight the `RLIMIT_AS` cap and fork the shared decoder). splice/sendfile structurally inapplicable (redaction rewrites bytes). Decision + numbers documented. | `benchmarks/zero_copy_read.py`, `docs/ZERO_COPY.md`, ROADMAP |
+
+**Honesty note.** Everything above is best-effort where the platform is: hard
+modes and `RLIMIT_AS` are Linux/POSIX and degrade to clearly-labelled fallbacks
+elsewhere; the `RLIMIT_AS` cap is deliberately conservative (bounds VSZ, may
+refuse slightly before RSS reaches the budget); seccomp blocks IP-socket
+*creation* (loopback included) because classic BPF cannot filter `connect()` by
+address. README, SECURITY.md, and MEMORY_ARCHITECTURE.md were updated to match.
+
+**Remaining for Phase 3 (performance):** the Vectorscan/re2 backend behind a
+feature flag, gated by the differential test, reporting real numbers — the one
+headline limitation still standing.
+
+**Stopping here for review before Phase 3.**
