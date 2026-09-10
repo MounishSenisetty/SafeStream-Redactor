@@ -31,7 +31,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Multiple redaction modes** — replace, mask, pseudonymize, and per-type replacements.
 - **Parallel processing** — process directory trees or split large files across workers.
 - **Offline network guard** — prevents non-loopback network access by default during CLI redaction.
-- **Explicit memory budget** — `--memory-limit 32MB` runs within a stated budget and *fails closed* (exit 3) rather than over-allocating ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)).
+- **Explicit memory budget** — `--memory-limit 32MB` admits the run under a stated budget with pre-flight admission control: it sizes worker count to fit and *fails closed* (exit 3) when even one worker's estimated working set won't, instead of silently loading the whole file ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)). Kernel-enforced hard limits (`RLIMIT_AS` / cgroup v2) are on the roadmap.
 - **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
 - **Extensible plugin system** — add custom detection tiers through Python entry points; each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).
@@ -311,7 +311,7 @@ differential test compares prefiltered and unfiltered detection).
 
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
 at least `overlap` characters from the buffer's end is emitted each round; the tail is carried
-into the next round so any entity up to `overlap` characters long (default 4 KB) is always
+into the next round so any entity up to `overlap` characters long (default 8 KB) is always
 seen whole at least once, even when a chunk boundary cuts straight through it. An emit
 boundary that would split a detection retreats to the detection's start. Already-emitted
 text is kept (up to `overlap` chars) as read-only left context so the contextual tier scores
