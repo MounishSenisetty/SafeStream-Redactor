@@ -20,10 +20,13 @@ detected even when it is split across chunk boundaries.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Iterable, Iterator
 
 from safestream_redactor.detectors.base import requirements_of
 from safestream_redactor.entities import Detection
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CHUNK_SIZE = 64 * 1024
 # The overlap is the window the engine carries between chunks so an entity split
@@ -99,16 +102,15 @@ def stream_windows(
 
     prefix = initial_context[-overlap:] if overlap else ""
     buffer = ""
+    warned_overlong = False
     for chunk in chunks:
         buffer += chunk
         if len(buffer) <= overlap:
             continue
         emit_upto = len(buffer) - overlap
         detections = window_detect(prefix, buffer)
-        # never cut through a detection: retreat the boundary to its start
-        for det in detections:
-            if det.start < emit_upto < det.end:
-                emit_upto = det.start
+        warned_overlong = _warn_if_overlong(detections, overlap, warned_overlong)
+        emit_upto = _retreat_boundary(detections, emit_upto)
         if emit_upto <= 0:
             continue
         ready = [d for d in detections if d.end <= emit_upto]
@@ -116,7 +118,59 @@ def stream_windows(
         prefix = (prefix + buffer[:emit_upto])[-overlap:] if overlap else ""
         buffer = buffer[emit_upto:]
     if buffer:
-        yield buffer, window_detect(prefix, buffer)
+        detections = window_detect(prefix, buffer)
+        _warn_if_overlong(detections, overlap, warned_overlong)
+        yield buffer, detections
+
+
+def _retreat_boundary(detections: list[Detection], emit_upto: int) -> int:
+    """Pull ``emit_upto`` out of every detection that straddles it.
+
+    A boundary that would cut through a detection retreats to that detection's
+    start, so a match is never split across two segments. With the
+    non-overlapping detections the pipeline guarantees, at most one detection
+    straddles the boundary and a single retreat suffices. This iterates to a
+    fixpoint so the invariant holds even if a caller (a custom detector, or
+    direct use of :func:`stream_windows`) passes *overlapping* detections: a
+    retreat can expose a second straddler, and the loop keeps pulling the
+    boundary left until no detection crosses it. ``emit_upto`` is strictly
+    decreasing and bounded below by 0, so the loop terminates.
+    """
+    while True:
+        moved = emit_upto
+        for det in detections:
+            if det.start < moved < det.end:
+                moved = det.start
+        if moved == emit_upto:
+            return emit_upto
+        emit_upto = moved
+
+
+def _warn_if_overlong(detections: list[Detection], overlap: int, already: bool) -> bool:
+    """Warn once per stream if a detection is longer than the overlap window.
+
+    A span longer than ``overlap`` cannot be guaranteed whole across an
+    arbitrary chunk boundary (``docs/FORMAL_MODEL.md``, assumption A1): in
+    sequential mode it may be cut, and in parallel mode the seam valve falls
+    back. The built-in tiers bound every span to the default overlap, so this
+    fires only when a caller shrinks ``overlap`` or a third-party detector emits
+    a longer span than it declared — a fail-open coverage risk worth surfacing
+    rather than swallowing. Returns the updated "already warned" flag.
+    """
+    if already or overlap <= 0:
+        return already
+    for det in detections:
+        if det.end - det.start > overlap:
+            logger.warning(
+                "detection of type %s spans %d characters, longer than the overlap "
+                "window (%d); an entity this long that straddles a chunk boundary may "
+                "be missed. Raise overlap to at least the longest span you expect.",
+                det.entity_type.value,
+                det.end - det.start,
+                overlap,
+            )
+            return True
+    return already
 
 
 def stream_transform(
