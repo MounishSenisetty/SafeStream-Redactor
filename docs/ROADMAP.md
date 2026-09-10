@@ -163,7 +163,10 @@ Still open (highest-value next):
   still runs the Python regex tiers at ~3 MB/s. A Vectorscan/re2 backend behind the
   `Detector` seam would close the remaining ~100× distance from compiled scanners; it
   stacks on top of the range-parallel path. This is the one headline limitation still
-  standing.
+  standing. (Zero-copy input I/O — `mmap`/`preadv`/`splice` — was evaluated and
+  **not adopted**: input I/O is already ~2600–3800× faster than detection, so it is
+  not on the critical path; see [docs/ZERO_COPY.md](ZERO_COPY.md). Worth revisiting
+  only *after* a compiled backend makes detection fast enough for I/O to matter.)
 
 ## Phase 3 — Research-grade detection
 
