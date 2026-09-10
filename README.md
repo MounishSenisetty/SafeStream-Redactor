@@ -129,9 +129,33 @@ While redacting, the CLI installs an **offline network guard** by default: any a
 open a non-loopback connection through Python's socket layer raises an error. This is
 best-effort, defense-in-depth egress prevention for this process, its plugins, and its
 Python dependencies — **not** a hard boundary: native extensions issuing raw syscalls, a
-spawned subprocess, or another process on the machine are outside its reach. For a
-guaranteed boundary, also run with no network (`docker run --network none ...`) or a
-network namespace / seccomp policy. Pass `--allow-network` to disable the guard. See
+spawned subprocess, or another process on the machine are outside its reach. Pass
+`--allow-network` to disable it.
+
+For a **kernel-enforced** boundary that also contains native code and raw syscalls, add
+`--offline-hard MODE` (Linux; opt-in, applied before workers fork):
+
+```bash
+# block AF_INET/AF_INET6 socket creation process-wide via a seccomp-bpf filter
+safestream redact input.txt -o out.txt --offline-hard seccomp
+
+# or enter an empty network namespace (no network at all, loopback included)
+safestream redact input.txt -o out.txt --offline-hard netns   # or: auto
+```
+
+- **`seccomp`** — installs a seccomp filter that makes IPv4/IPv6 socket *creation*
+  fail (`EACCES`) for this process and every child, native code included. `AF_UNIX`
+  and already-open sockets are untouched. (Classic seccomp-bpf can't inspect the
+  `sockaddr` pointer, so it blocks IP-socket creation outright rather than filtering
+  `connect()` by address — the stronger choice for offline use.)
+- **`netns`** — `unshare(CLONE_NEWNET)` into a fresh namespace whose only interface is a
+  down loopback: no network of any kind. Needs `CAP_SYS_ADMIN` (root) or unprivileged
+  user-namespace support (tried as a fallback).
+- Both **fall back with a warning** where unsupported, leaving the in-process guard
+  active; neither is for `serve`/`mcp-serve` (they need loopback).
+
+For whole-container isolation you control, `docker run --network none ...` remains the
+strongest option. See
 [SECURITY.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/SECURITY.md) for the full threat model.
 
 ### Python API

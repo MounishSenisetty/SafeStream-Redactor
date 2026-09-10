@@ -20,13 +20,31 @@ upgrade to the current release.
 
 Being explicit about limits is part of the security posture:
 
-- **Offline guard (`netguard`)** blocks non-loopback connections made through Python's
-  `socket` layer in the current process (and scheduler worker processes). It is a
-  strong guard against accidental egress by this tool, its plugins, and its
+- **Offline guard (`netguard`, default)** blocks non-loopback connections made through
+  Python's `socket` layer in the current process (and scheduler worker processes). It is
+  a strong guard against accidental egress by this tool, its plugins, and its
   dependencies. It is **not** a container/host-level egress policy: native extensions
-  making raw syscalls, or other processes on the machine, are out of its reach. For a
-  hard boundary, run the container with networking disabled (`docker run --network
-  none ...`) in addition to the guard.
+  making raw syscalls, or other processes on the machine, are out of its reach.
+- **Hard offline modes (`--offline-hard`, opt-in, Linux).** For containment that also
+  covers native code and raw syscalls, two kernel-enforced modes are available and are
+  applied before any worker process is forked (so children inherit them):
+  - **`seccomp`** installs a seccomp-bpf filter that makes `socket(2)` for `AF_INET`/
+    `AF_INET6` fail with `EACCES` for this process and every child. **Covers:** all new
+    IPv4/IPv6 socket creation, native code included. **Does not cover:** already-open
+    sockets, `AF_UNIX`/`AF_NETLINK`, or filesystem exfiltration. Classic seccomp-bpf
+    cannot read the `sockaddr` pointer, so it cannot allow loopback while blocking
+    external by address — it blocks IP-socket *creation* outright (loopback included).
+  - **`netns`** enters a new network namespace via `unshare(CLONE_NEWNET)` whose only
+    interface is a down loopback. **Covers:** all network access by this process and its
+    children — every protocol, loopback included. **Does not cover:** other processes on
+    the host, or filesystem exfiltration; requires `CAP_SYS_ADMIN` or unprivileged
+    user-namespace support.
+  - Both **fail closed to a warning, not an error**: where the kernel refuses the
+    operation, the run continues under the in-process guard and says so. Neither applies
+    to `serve`/`mcp-serve`, which need loopback.
+- **Strongest boundary remains the runtime you control.** For whole-container isolation,
+  run with networking disabled (`docker run --network none ...`) in addition to any of
+  the above.
 - **Detection is probabilistic at the margins.** Tier-1 patterns are validator-backed
   and high-precision, but no detector guarantees complete recall on arbitrary text.
   Treat redacted output as risk-reduced, not certified-clean; keep humans in the loop

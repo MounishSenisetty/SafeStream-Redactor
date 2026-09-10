@@ -93,6 +93,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="disable the offline network guard (allowed by default: any outbound "
         "non-loopback connection is blocked while redacting)",
     )
+    common.add_argument(
+        "--offline-hard",
+        choices=["seccomp", "netns", "auto"],
+        default=None,
+        metavar="MODE",
+        help="opt-in kernel-enforced offline mode for redact/detect, in addition to "
+        "the default in-process guard (Linux only): 'seccomp' blocks AF_INET/AF_INET6 "
+        "socket creation process-wide (native code included); 'netns' enters an empty "
+        "network namespace (no network at all, loopback included); 'auto' tries netns "
+        "then seccomp. Applied before workers fork. Falls back with a warning where "
+        "unsupported. Not for serve/mcp-serve (they need loopback).",
+    )
 
     redact = sub.add_parser("redact", parents=[common], help="redact a file or stdin")
     redact.add_argument("input", help="input file path, directory, or '-' for stdin")
@@ -610,6 +622,39 @@ def _cmd_mcp_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _apply_offline_hard(mode: str | None) -> None:
+    """Enable an opt-in kernel-enforced offline mode, warning on fallback.
+
+    ``auto`` prefers the network namespace (the most complete boundary) and
+    falls back to the seccomp filter. Applied in the main process before any
+    worker forks, so children inherit the containment. Never fatal: an
+    unsupported platform degrades to the in-process guard with a warning.
+    """
+    if not mode:
+        return
+    from safestream_redactor.netguard_hard import (
+        enable_network_namespace,
+        enable_seccomp_inet_block,
+    )
+
+    if mode == "seccomp":
+        result = enable_seccomp_inet_block()
+    elif mode == "netns":
+        result = enable_network_namespace()
+    else:  # auto
+        result = enable_network_namespace()
+        if not result.applied:
+            result = enable_seccomp_inet_block()
+    if result.applied:
+        print(f"-- offline hard mode active [{result.mode}]: {result.reason}", file=sys.stderr)
+    else:
+        print(
+            f"safestream: warning: could not enable hard offline mode ({result.reason}); "
+            "continuing with the in-process network guard only",
+            file=sys.stderr,
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     if args.command == "init-config":
@@ -622,6 +667,7 @@ def main(argv: list[str] | None = None) -> int:
         from safestream_redactor import netguard
 
         netguard.install()
+    _apply_offline_hard(getattr(args, "offline_hard", None))
     from safestream_redactor.memory_budget import ResourceExhaustionError
 
     try:
