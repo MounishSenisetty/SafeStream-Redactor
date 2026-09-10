@@ -72,6 +72,51 @@ def test_streaming_equals_whole_text_for_any_input_and_chunking(text, chunk_size
     assert "".join(r.redact_stream(chunked(text, chunk_size))) == r.redact(text)
 
 
+# The longest token above is ~38 chars and the contextual scorer reads a
+# 48-char left window (C_left), so any overlap >= 64 clears both L_max(text)
+# and C_left — the premise of the streaming-equivalence theorem for this corpus.
+# Fuzzing overlap *and* chunk_size together stresses the boundary at every
+# combination the theorem must hold for, not just one fixed overlap.
+@settings(max_examples=150, derandomize=True, deadline=None)
+@given(
+    text=texts,
+    chunk_size=st.integers(min_value=1, max_value=97),
+    overlap=st.integers(min_value=64, max_value=256),
+)
+def test_streaming_equals_whole_text_across_fuzzed_overlap(text, chunk_size, overlap):
+    r = Redactor(overlap=overlap, load_plugins=False)
+    assert "".join(r.redact_stream(chunked(text, chunk_size))) == r.redact(text)
+
+
+# A single entity, deliberately driven across a chunk boundary at *every*
+# interior position, must always come out redacted — this is the concrete
+# statement of "any entity <= overlap is seen whole regardless of where the
+# boundary falls". Each specimen is one non-overlapping entity in plain filler.
+BOUNDARY_SPECIMENS = [
+    ("email jane.doe@corp.example.com here", "jane.doe@corp.example.com"),
+    ("ssn: 123-45-6789 filed", "123-45-6789"),
+    ("card 4111 1111 1111 1111 charged", "4111 1111 1111 1111"),
+    ("key AKIAIOSFODNN7EXAMPLE leaked", "AKIAIOSFODNN7EXAMPLE"),
+    ("host 10.20.30.40 up", "10.20.30.40"),
+    ("tok ghp_abcdefghijklmnopqrstuvwxyz0123456789 pushed", None),
+    ("dsn postgres://svc:S3cretPass@db.internal/app", "S3cretPass"),
+]
+
+
+@given(cut=st.integers(min_value=0, max_value=60))
+@settings(max_examples=61, derandomize=True, deadline=None)
+def test_single_entity_redacted_at_every_boundary_position(cut):
+    r = Redactor(overlap=64, load_plugins=False)
+    for text, needle in BOUNDARY_SPECIMENS:
+        if cut > len(text):
+            continue
+        whole = r.redact(text)
+        streamed = "".join(r.redact_stream([text[:cut], text[cut:]]))
+        assert streamed == whole, f"boundary at {cut} changed output for {text!r}"
+        if needle is not None:
+            assert needle not in streamed, f"entity leaked with boundary at {cut}"
+
+
 @settings(max_examples=80, derandomize=True, deadline=None)
 @given(text=texts, chunk_size=st.integers(min_value=1, max_value=97))
 def test_detect_stream_segments_reassemble_and_offsets_hold(text, chunk_size):
