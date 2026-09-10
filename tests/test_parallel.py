@@ -11,6 +11,8 @@ import os
 import random
 
 import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 
 import safestream_redactor.parallel as par
 from safestream_redactor import Redactor
@@ -304,6 +306,44 @@ def test_inprocess_worker_byte_identity(tmp_path, small_ranges, inprocess_pool):
     assert outcome.ranges > 1
     assert not outcome.fell_back
     assert par_out.read_bytes() == seq_out.read_bytes()
+
+
+@settings(
+    max_examples=30,
+    derandomize=True,
+    deadline=None,
+    # the fixtures below only install constant monkeypatches (min range size,
+    # in-process pool), so they are safe to reuse across generated examples
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
+@given(
+    seed=st.integers(min_value=0, max_value=10_000),
+    blocks=st.integers(min_value=250, max_value=550),
+    workers=st.sampled_from([2, 3, 4, 6]),
+)
+def test_parallel_byte_identical_to_sequential_fuzzed(
+    tmp_path_factory, small_ranges, inprocess_pool, seed, blocks, workers
+):
+    """Exhaustively fuzz content, worker count and (via block count) range
+    boundaries, asserting parallel output is byte-identical to the sequential
+    pass and that stats agree — Theorem 2's byte-identity clause, generatively.
+
+    Runs through the in-process pool so the worker, seam reassembly and valve
+    are all exercised (and measured) in one process.
+    """
+    text = make_corpus(seed=seed, blocks=blocks)
+    tmp_path = tmp_path_factory.mktemp("par_fuzz")
+    src = tmp_path / "in.txt"
+    src.write_text(text)
+    r = Redactor(chunk_size=1024, overlap=512, load_plugins=False)
+    seq_out, par_out = tmp_path / "seq.txt", tmp_path / "par.txt"
+    seq_stats = r.redact_file(src, seq_out)
+    outcome = redact_file_parallel(r, str(src), str(par_out), workers=workers)
+    assert not outcome.fell_back, "in-guarantee input must not fall back"
+    assert par_out.read_bytes() == seq_out.read_bytes()
+    assert outcome.stats.counts == seq_stats.counts
+    assert outcome.stats.chars_in == seq_stats.chars_in
+    assert outcome.stats.chars_out == seq_stats.chars_out
 
 
 def test_seam_disagreement_falls_back(tmp_path, small_ranges, monkeypatch):
