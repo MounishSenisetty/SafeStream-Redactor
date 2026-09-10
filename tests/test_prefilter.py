@@ -6,6 +6,9 @@ the same detector with it disabled, across corpora dense with entities,
 near-miss negatives, and anchor-free prose.
 """
 
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
 from safestream_redactor.detectors.deterministic import _PATTERNS, DeterministicDetector
 
 POSITIVES = [
@@ -56,6 +59,54 @@ def test_prefilter_is_differentially_equivalent():
     corpora = POSITIVES + NEGATIVES + ["\n".join(POSITIVES + NEGATIVES)]
     for text in corpora:
         assert _detect(text, True) == _detect(text, False), f"divergence on {text!r}"
+
+
+# Generative gate: the prefilter is a pure optimisation, so prefiltered and
+# unfiltered detection must be byte-identical on *arbitrary* input, not just the
+# curated corpora above. Fragments include partial anchors, digits, whitespace,
+# and near-miss credential shapes so the fuzzer probes the exact conditions the
+# anchor/needs_digit skip logic branches on.
+_FRAGMENTS = [
+    "@",
+    "AKIA",
+    "ghp_",
+    "eyJ",
+    "sk-",
+    "SG.",
+    "xox",
+    "npm_",
+    "://",
+    "key",
+    "secret",
+    "token",
+    "password",
+    "-----BEGIN",
+    "123-45-6789",
+    "4111 1111 1111 1111",
+    "1.2.3.4",
+    "2001:db8::1",
+    "AIza",
+    "k_live_",
+    "  ",
+    "\n",
+    "0",
+    "9a8b",
+    "example",
+    "abcXYZ",
+    ":",
+    "=",
+    '"',
+    "-",
+    ".",
+]
+
+fuzzed_text = st.lists(st.sampled_from(_FRAGMENTS), min_size=0, max_size=60).map("".join)
+
+
+@settings(max_examples=400, derandomize=True, deadline=None)
+@given(text=fuzzed_text)
+def test_prefilter_is_differentially_equivalent_on_fuzzed_input(text):
+    assert _detect(text, True) == _detect(text, False), f"divergence on {text!r}"
 
 
 def test_prefilter_finds_all_expected_positives():
