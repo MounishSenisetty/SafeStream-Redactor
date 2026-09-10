@@ -163,3 +163,23 @@ def test_resolve_overlaps_invariants(detections):
         assert any(d is k for k in kept) or any(d.overlaps(k) for k in kept)
     # idempotent
     assert resolve_overlaps(kept) == kept
+
+
+def test_resolve_overlaps_tiebreak_is_deterministic():
+    """Equal-confidence overlaps resolve by longer span, then earlier start.
+
+    Pins the arbitration order so a future sort-key change can't silently
+    reorder ties — the case a calibrator can produce when it maps two tiers'
+    detections to the same probability (R-ARB-3).
+    """
+    # same confidence, overlapping: the longer span must win
+    short = Detection(0, 4, "xxxx", EntityType.PHONE, 0.9)
+    long = Detection(0, 8, "xxxxxxxx", EntityType.CREDIT_CARD, 0.9)
+    assert resolve_overlaps([short, long]) == [long]
+    assert resolve_overlaps([long, short]) == [long]  # input order irrelevant
+
+    # equal confidence and equal length, overlapping: earlier start wins
+    left = Detection(0, 5, "aaaaa", EntityType.CUSTOM, 0.7)
+    right = Detection(2, 7, "bbbbb", EntityType.CUSTOM, 0.7)
+    assert resolve_overlaps([right, left]) == [left]
+    assert resolve_overlaps([left, right]) == [left]
