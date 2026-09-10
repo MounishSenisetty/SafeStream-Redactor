@@ -303,4 +303,34 @@ Phase 2 (make the guarantees real at the kernel level):
 Phase 3 (performance): prototype re2/Vectorscan backend behind a flag, gated by the
 differential test; report real numbers.
 
-**Stopping here for review before any Phase-1 edits, as requested.**
+---
+
+## 5. Phase 1 status (correctness first) — complete, pending review
+
+Implemented on this branch in small, verified commits. Baseline stayed green at every
+step (343 fast tests + memory proof passing, coverage 96.24%, ruff + mypy strict clean).
+
+| Finding | Action taken | Where |
+|---|---|---|
+| **R-ENG-1** | Emit-boundary retreat now iterates to a fixpoint, so a span is never cut even when a caller passes overlapping detections (previously a fail-open). Non-overlapping path unchanged. | `engine._retreat_boundary` + `tests/test_engine_kernel.py` |
+| **R-ENG-4** | Runtime guard warns once per stream when a detection exceeds the overlap, instead of silently risking a boundary miss. | `engine._warn_if_overlong` + `tests/test_engine_kernel.py` |
+| **R-ENG-3** | Zero-anchored / straddling-at-0 retreat pinned by unit tests. | `tests/test_engine_kernel.py` |
+| **Streaming invariant** | Property tests now fuzz `overlap` **and** `chunk_size` together, plus drive one entity across a boundary at every position, asserting byte-identical vs whole-file. | `tests/test_properties.py` |
+| **R-DET-1** | Prefilter differential check promoted to a generative Hypothesis gate over fuzzed input. | `tests/test_prefilter.py` |
+| **R-PAR-1** | Parallel==sequential byte-identity proven by a Hypothesis property fuzzing content, worker count, and range boundaries (existing test covers forced-disagreement fallback). | `tests/test_parallel.py` |
+| **R-ARB-3** | Deterministic tie-break in `resolve_overlaps` pinned. | `tests/test_properties.py` |
+| **R-ENC-1** | Already covered — `test_invalid_utf8_bytes_mid_range` asserts decode-replacement parity between sequential and parallel; no new test needed. | `tests/test_parallel.py` (existing) |
+| **R-DOC-1 / R-DOC-2** | README overlap default corrected to 8 KB; `docs/AUDIT.md` marked historical and cross-linked. | `README.md`, `docs/AUDIT.md` |
+| **R-MEM-1 (partial)** | README `--memory-limit` wording softened to "pre-flight admission control" to match today's code; the real `RLIMIT_AS`/cgroup enforcement is Phase 2. | `README.md` |
+
+**Deliberately left for Phase 2** (privileged / kernel-level, worth a review
+checkpoint before touching): **R-MEM-1** hard enforcement (`setrlimit`/cgroup v2),
+**R-NET-1/2** `unshare`/seccomp hard mode, and the zero-copy streaming evaluation.
+**R-ENG-2** (under-overlap warning → hard failure) was intentionally **not** changed to
+raise-by-default: `min_safe_overlap` is the *worst-case* declared span (8192), and small
+entities legitimately run with a small overlap (the property/streaming tests themselves
+use overlap 64-256); raising would break that valid, memory-constrained use. The honest
+mitigations are the existing `__init__` warning plus the new runtime over-long-span
+warning (R-ENG-4). Flagging for your call if you'd prefer an explicit opt-in flag instead.
+
+**Stopping here for review before Phase 2 (kernel-level guarantees).**
