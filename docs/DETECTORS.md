@@ -11,10 +11,44 @@ tier; overlaps are resolved most-specific/highest-confidence wins.
 | 1. Deterministic | `detectors/deterministic.py` | Anchored regexes + validators (Luhn, `ipaddress`, SSN rules). Highest precision. |
 | 2. Statistical | `detectors/entropy.py` | High-entropy tokens with no published format (bespoke keys, session tokens). |
 | 3. NER (optional) | `detectors/ner.py` | spaCy PERSON/ORG/LOC. Requires the `ner` extra + a model. |
+| 3b. ONNX NER (optional) | `detectors/onnx_ner.py` | Local ONNX token-classifier for PERSON/ORG/LOC, on-device, no data egress. Requires the `onnx` extra + a model. |
 | 4. Contextual | `detectors/contextual.py` | Nudges confidence from surrounding trigger words; promotes trigger-gated spans (bare SSN next to "ssn:"). |
 
 Custom words/regexes (`detectors/custom.py`) and third-party plugins
 (entry-point group `safestream_redactor.detectors`) plug in alongside these.
+
+### The optional ONNX NER tier
+
+An alternative to the spaCy tier that runs a local ONNX token-classification
+model (BIO/IOB2 tagging) entirely on-device via `onnxruntime` — **no network, no
+data egress** (CPU execution provider only; a test runs it under the offline
+network guard). It targets the same PII the deterministic rules cannot catch
+(PERSON / ORG / LOC), but ships no spaCy dependency and takes any portable ONNX
+model. `onnxruntime`/`numpy` are imported lazily and only when the tier is
+constructed, so the base install stays pure-Python; enable it with
+`pip install safestream-redactor[onnx]` and **bring your own model**.
+
+```bash
+safestream redact in.txt -o out.txt \
+    --onnx model.onnx --onnx-vocab vocab.json      # --onnx-labels optional
+```
+
+```python
+from safestream_redactor import Redactor
+r = Redactor(use_onnx=True, onnx_model="model.onnx", onnx_vocab="vocab.json")
+```
+
+Three seams keep it testable and pluggable (`docs`/tests cover each): a
+`Tokenizer` (built-in pure-Python `WordTokenizer`, or wrap a Hugging Face
+sub-word tokenizer), an `InferenceBackend` (`OnnxRuntimeBackend`, or inject your
+own), and a pure-Python `decode_bio` that merges BIO tags into character-offset
+spans with a conservative (minimum-over-span) confidence. The tier declares
+`StreamingRequirements` so the engine keeps it boundary-correct, and it pickles
+its config (not the session) so it works under the parallel scheduler — exactly
+like the spaCy tier. Labels default to the CoNLL IOB2 scheme
+(`{0:"O",1:"B-PER",…}`); override with `--onnx-labels` (an id→tag JSON) for
+another model. **No pretrained model is bundled** — the tier is the plumbing; the
+accuracy is whatever model you supply.
 
 ## Coverage and severity
 

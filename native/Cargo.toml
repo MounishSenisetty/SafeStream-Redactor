@@ -1,0 +1,29 @@
+[package]
+name = "safestream_native"
+# Kept in lockstep with the safestream-redactor version (src/.../__init__.py): a
+# published native wheel must match the Python pattern spec it accelerates. A
+# runtime spec-guard (deterministic.py::_native_matches_spec) falls back to pure
+# Python if a skewed wheel is ever paired, so this is coordination, not a hard gate.
+version = "0.4.0"
+edition = "2021"
+description = "Native (Rust) detection core for SafeStream-Redactor — optional, byte-identical fast lane"
+license = "MIT"
+repository = "https://github.com/MounishSenisetty/SafeStream-Redactor"
+homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
+# not published to crates.io; distributed only as a PyPI wheel via maturin
+publish = false
+
+[lib]
+name = "safestream_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+# abi3-py310: one wheel per platform works for CPython >= 3.10 (keeps the wheel
+# matrix small). extension-module: link against the host interpreter at import.
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"] }
+regex = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

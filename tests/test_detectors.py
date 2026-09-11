@@ -1,7 +1,18 @@
 """Detector unit tests: one positive and one negative case per entity type."""
 
+import builtins
+
+import pytest
+
 from safestream_redactor import EntityType, Redactor
-from safestream_redactor.detectors.deterministic import luhn_ok, ssn_ok
+from safestream_redactor.detectors.deterministic import (
+    _PATTERNS,
+    DeterministicDetector,
+    _load_native,
+    _native_matches_spec,
+    luhn_ok,
+    ssn_ok,
+)
 
 
 def types_in(text: str, **kwargs) -> set[EntityType]:
@@ -204,6 +215,103 @@ def test_contextual_suppression():
 def test_overlap_resolution_card_beats_phone():
     dets = Redactor().detect("card 4111 1111 1111 1111 ok")
     assert [d.entity_type for d in dets] == [EntityType.CREDIT_CARD]
+
+
+# --- backend selection (pure-Python behaviour; native equivalence lives in
+#     tests/test_native_backend.py, which is gated on the extension being built) --
+
+
+def test_backend_default_is_python():
+    """The default backend loads no native core and runs everything in Python."""
+    det = DeterministicDetector()
+    assert det._native is None
+    assert det._py_patterns is det._patterns
+
+
+def test_load_native_python_returns_none():
+    assert _load_native("python") is None
+
+
+def test_backend_invalid_raises():
+    with pytest.raises(ValueError, match="backend must be"):
+        DeterministicDetector(backend="bogus")
+
+
+def test_backend_native_missing_falls_back(monkeypatch):
+    """backend='native' warns and degrades to pure Python when the import fails.
+
+    Runs regardless of whether the extension is actually installed: the import is
+    forced to fail, so this exercises the dependency-free fallback path in default
+    CI (where the native extra is never built).
+    """
+    real_import = builtins.__import__
+
+    def _no_native(name, *args, **kwargs):
+        if name == "safestream_native":
+            raise ImportError("simulated missing native extension")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _no_native)
+    with pytest.warns(RuntimeWarning, match="not installed"):
+        det = DeterministicDetector(backend="native")
+    assert det._native is None
+    # falls back to the full Python pattern set, output unchanged
+    text = "ssn 123-45-6789 ip 10.0.0.1 mail bob@x.io"
+    assert {d.entity_type for d in det.detect(text)} == {
+        EntityType.SSN,
+        EntityType.IPV4,
+        EntityType.EMAIL,
+    }
+
+
+def test_backend_auto_missing_falls_back_silently(monkeypatch, recwarn):
+    """backend='auto' degrades to Python with no warning when native is absent."""
+    real_import = builtins.__import__
+
+    def _no_native(name, *args, **kwargs):
+        if name == "safestream_native":
+            raise ImportError("simulated missing native extension")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _no_native)
+    det = DeterministicDetector(backend="auto")
+    assert det._native is None
+    assert not recwarn.list
+
+
+def test_native_spec_guard_accepts_matching_and_rejects_skew():
+    """The runtime spec-guard accepts a spec-matching native module and rejects skew.
+
+    Guards the published-wheel version-skew case without needing the extension:
+    a fake module exposing patterns() whose sources match the Python spec passes;
+    one with a drifted source, an unknown type, or a broken patterns() fails.
+    """
+
+    class _Good:
+        # every _PATTERNS source is, by construction, in the guard's expected set
+        @staticmethod
+        def patterns():
+            return [(p.entity_type.value, p.confidence, p.regex.pattern) for p in _PATTERNS]
+
+    class _Drifted:
+        @staticmethod
+        def patterns():
+            return [("email", 0.95, "WRONG-PATTERN")]
+
+    class _UnknownType:
+        @staticmethod
+        def patterns():
+            return [("not_a_real_type", 0.5, r"\d+")]
+
+    class _Broken:
+        @staticmethod
+        def patterns():
+            raise RuntimeError("boom")
+
+    assert _native_matches_spec(_Good)
+    assert not _native_matches_spec(_Drifted)
+    assert not _native_matches_spec(_UnknownType)
+    assert not _native_matches_spec(_Broken)
 
 
 # --- expanded credential patterns ---------------------------------------

@@ -61,6 +61,31 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--min-confidence", type=float, default=None)
     common.add_argument("--ner", action="store_true", help="enable the spaCy NER tier")
     common.add_argument(
+        "--onnx",
+        metavar="MODEL.onnx",
+        default=None,
+        help="enable the local ONNX NER tier with this model (requires the [onnx] "
+        "extra and --onnx-vocab); runs on-device, no data egress",
+    )
+    common.add_argument(
+        "--onnx-vocab",
+        metavar="VOCAB.json",
+        default=None,
+        help="JSON token->id vocab for the ONNX tier (required with --onnx)",
+    )
+    common.add_argument(
+        "--onnx-labels",
+        metavar="LABELS.json",
+        default=None,
+        help="JSON id->tag map for the ONNX tier (default: CoNLL IOB2 scheme)",
+    )
+    common.add_argument(
+        "--onnx-min-score",
+        type=float,
+        default=0.5,
+        help="drop ONNX detections below this model probability (default: 0.5)",
+    )
+    common.add_argument(
         "--no-entropy",
         dest="entropy",
         action="store_false",
@@ -206,6 +231,11 @@ _STARTER_CONFIG = """\
 min_confidence = 0.5
 use_ner = false                             # requires the [ner] extra + a model
 # ner_model = "en_core_web_sm"
+use_onnx = false                            # local ONNX NER tier ([onnx] extra, on-device)
+# onnx_model = "model.onnx"                 # required when use_onnx = true
+# onnx_vocab = "vocab.json"                 # required when use_onnx = true (token->id)
+# onnx_labels = "labels.json"               # optional id->tag (default: CoNLL IOB2)
+# onnx_min_score = 0.5
 use_entropy = true                          # high-entropy secret detection
 
 [redaction]
@@ -278,6 +308,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         policy.replacements[EntityType.from_name(type_name)] = replacement
     if policy.mode.value == "pseudonymize" and not policy.hmac_key:
         raise SystemExit("--mode pseudonymize requires --hmac-key")
+    if args.onnx and not args.onnx_vocab:
+        raise SystemExit("--onnx requires --onnx-vocab (a JSON token->id vocab)")
 
     if redactor is None:
         types = args.types.split(",") if args.types else None
@@ -288,6 +320,11 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
             custom_words=args.custom_word,
             custom_patterns=args.custom_regex,
             use_ner=args.ner,
+            use_onnx=bool(args.onnx),
+            onnx_model=args.onnx,
+            onnx_vocab=args.onnx_vocab,
+            onnx_labels=args.onnx_labels,
+            onnx_min_score=args.onnx_min_score,
             use_entropy=args.entropy,
             chunk_size=args.chunk_size or DEFAULT_CHUNK_SIZE,
             overlap=args.overlap if args.overlap is not None else DEFAULT_OVERLAP,
@@ -309,6 +346,14 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         from safestream_redactor.detectors.custom import CustomDetector
 
         redactor._detectors.insert(1, CustomDetector(args.custom_word, args.custom_regex))
+    if args.onnx and not any(d.name == "onnx" for d in redactor._detectors):
+        from safestream_redactor.detectors.onnx_ner import OnnxPiiDetector
+
+        redactor._detectors.append(
+            OnnxPiiDetector.from_files(
+                args.onnx, args.onnx_vocab, args.onnx_labels, min_score=args.onnx_min_score
+            )
+        )
     if args.chunk_size:
         redactor.chunk_size = args.chunk_size
     if args.overlap is not None:
@@ -333,7 +378,8 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
         format_size,
     )
 
-    budget = MemoryBudget(limit, model_budget="512MB" if getattr(args, "ner", False) else 0)
+    _has_model = getattr(args, "ner", False) or getattr(args, "onnx", None)
+    budget = MemoryBudget(limit, model_budget="512MB" if _has_model else 0)
     requested = getattr(args, "workers", None)
     plan = budget.plan(
         redactor.chunk_size,

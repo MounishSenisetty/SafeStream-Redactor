@@ -1,0 +1,26 @@
+[build-system]
+requires = ["maturin>=1.5,<2"]
+build-backend = "maturin"
+
+[project]
+name = "safestream-redactor-native"
+description = "Optional native (Rust) detection core for SafeStream-Redactor"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Mounish Senisetty" }]
+dynamic = ["version"]
+classifiers = [
+  "Programming Language :: Rust",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+]
+
+[project.urls]
+Homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
+Documentation = "https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/NATIVE_CORE.md"
+Issues = "https://github.com/MounishSenisetty/SafeStream-Redactor/issues"
+
+[tool.maturin]
+module-name = "safestream_native"
+# abi3 wheel: forward-compatible across CPython >= 3.10
+features = ["pyo3/extension-module"]

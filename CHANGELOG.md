@@ -6,6 +6,36 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Optional local ONNX NER tier** (`Redactor(use_onnx=True, ...)`, CLI `--onnx`,
+  the `pip install safestream-redactor[onnx]` extra): an on-device
+  token-classification model (BIO/IOB2) for the PERSON / ORG / LOC entities
+  deterministic rules cannot catch — the same niche as the spaCy tier, but via a
+  portable ONNX model run through `onnxruntime` with **no data egress** (CPU
+  provider only; verified under the offline network guard). `onnxruntime`/`numpy`
+  are imported lazily so the base install stays pure-Python. Three seams
+  (tokenizer / inference backend / pure-Python BIO decoder) keep the logic
+  testable without a model and let a Hugging Face tokenizer or custom runner plug
+  in; it declares `StreamingRequirements` and pickles its config for the parallel
+  scheduler, like the spaCy tier. Bring your own `.onnx` model + vocab — no model
+  is bundled. See `docs/DETECTORS.md`.
+
+- **Optional native (Rust) detection core** (`Redactor(backend="native")`, and the
+  `pip install safestream-redactor[native]` extra): a compiled, **byte-identical**
+  accelerator for the deterministic tier's finite-automaton patterns (12 credential
+  patterns + SSN/IPv4/IPv6), run behind the existing detector seam. The base install
+  stays pure-Python and dependency-free; `backend="python"` remains the default and
+  the oracle, and `backend="native"`/`"auto"` fall back to Python when the extension
+  is absent. Output is proven identical to the Python tier (differential + Hypothesis
+  gate, including Unicode-digit parity); a runtime spec-guard falls back to Python if
+  a version-skewed wheel is paired. Built and published as separate abi3 wheels by
+  `.github/workflows/native-wheels.yml`. Measured whole-pipeline redaction gain
+  1.4–1.7× (Amdahl-limited by the still-Python entropy/contextual tiers); see
+  `docs/NATIVE_CORE.md`. `credit_card`/`phone` (evaluated on `fancy-regex`) and the
+  entropy tier were measured and deliberately **left in Python** — the doc records
+  why.
+
 ## [0.4.0] - 2026-08-30
 
 ### Added

@@ -62,6 +62,11 @@ class Redactor:
         Extra literal words/phrases and regexes to always redact.
     use_ner:
         Enable the optional spaCy tier (requires the ``ner`` extra).
+    use_onnx:
+        Enable the optional local ONNX NER tier (PERSON/ORG/LOC via an on-device
+        ONNX model, no data egress; requires the ``onnx`` extra). Needs
+        ``onnx_model`` and ``onnx_vocab``; ``onnx_labels`` (id->tag JSON) is
+        optional and defaults to the CoNLL IOB2 scheme.
     use_entropy:
         Enable the statistical tier that flags high-entropy secrets with no
         published format (on by default).
@@ -77,6 +82,12 @@ class Redactor:
     load_plugins:
         Discover and load third-party detectors registered under the
         ``safestream_redactor.detectors`` entry-point group (on by default).
+    backend:
+        Detection engine for the deterministic tier. ``"python"`` (default) runs
+        everything in pure Python. ``"native"``/``"auto"`` route the patterns the
+        optional compiled core covers through it and the rest through Python, with
+        byte-identical output; both fall back to pure Python when the
+        ``safestream_native`` extension is not installed (``"native"`` warns).
     """
 
     def __init__(
@@ -88,12 +99,18 @@ class Redactor:
         custom_patterns: Iterable[str] = (),
         use_ner: bool = False,
         ner_model: str = "en_core_web_sm",
+        use_onnx: bool = False,
+        onnx_model: str | None = None,
+        onnx_vocab: str | dict[str, int] | None = None,
+        onnx_labels: str | dict[int | str, str] | None = None,
+        onnx_min_score: float = 0.5,
         use_entropy: bool = True,
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
         load_plugins: bool = True,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
+        backend: str = "python",
     ) -> None:
         resolved_types = (
             None
@@ -107,7 +124,7 @@ class Redactor:
         self.overlap = overlap
         self._scorer = ContextualScorer()
 
-        self._detectors: list[Detector] = [DeterministicDetector(resolved_types)]
+        self._detectors: list[Detector] = [DeterministicDetector(resolved_types, backend=backend)]
         custom_words = list(custom_words)
         custom_patterns = list(custom_patterns)
         if custom_words or custom_patterns:
@@ -116,6 +133,16 @@ class Redactor:
             from safestream_redactor.detectors.ner import NERDetector
 
             self._detectors.append(NERDetector(ner_model))
+        if use_onnx:
+            from safestream_redactor.detectors.onnx_ner import OnnxPiiDetector
+
+            if onnx_model is None or onnx_vocab is None:
+                raise ValueError("use_onnx requires onnx_model and onnx_vocab")
+            self._detectors.append(
+                OnnxPiiDetector.from_files(
+                    onnx_model, onnx_vocab, onnx_labels, min_score=onnx_min_score
+                )
+            )
         # statistical tier: generic high-entropy secrets (on by default)
         if use_entropy and (resolved_types is None or EntityType.SECRET in resolved_types):
             from safestream_redactor.detectors.entropy import EntropyDetector
