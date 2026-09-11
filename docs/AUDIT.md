@@ -1,5 +1,13 @@
 # Repository Audit
 
+> **Historical.** This is the original **v0.1.0** audit. Several gaps it lists
+> (property-based tests, coverage gate, single-file parallelism, atomic writes,
+> `redact_file` return value, `SECURITY.md`) have since been closed. For the
+> current production-hardening audit — a claim→code map, the baseline suite, and
+> the kernel correctness review — see
+> [AUDIT_FINDINGS.md](AUDIT_FINDINGS.md), §1.4 of which reconciles this document
+> against the present code.
+
 A category-by-category assessment of the codebase as of v0.1.0 (commit `cf683d8`).
 Each category is scored 1–10 with the reasoning behind the score. The companion
 [ROADMAP.md](ROADMAP.md) turns every gap identified here into a concrete, prioritised

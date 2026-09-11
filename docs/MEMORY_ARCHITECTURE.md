@@ -48,10 +48,47 @@ safestream redact big.log -o clean.log --memory-limit 64MB --workers 8
    limit and the largest chunk size that would fit. It never silently shrinks
    buffers or falls back to whole-file loading.
 
-This is **admission control**, not an allocator. Python offers no hook to cap
-heap growth, so the guarantee is: *if the estimate does not fit, we refuse before
-starting*, and the estimate is deliberately larger than reality so the true peak
+This admission step runs *before* any work starts: *if the estimate does not fit,
+we refuse*, and the estimate is deliberately larger than reality so the true peak
 stays under the number you asked for.
+
+### 2.1 Kernel enforcement — `RLIMIT_AS` (new)
+
+Admission control alone cannot *stop* an allocation the estimate did not
+foresee (a pathological input, a mis-declared plugin). On Linux/POSIX the budget
+is therefore also backed by a **hard kernel cap**: after admission,
+`enforce_address_space_limit(growth_bytes)` reads the process's current virtual
+size (VSZ, from `/proc/self/statm`) and sets `RLIMIT_AS` to *current VSZ +
+budget*. From that point the kernel refuses any `mmap`/`brk` that would grow the
+process past the cap — the offending allocation raises `MemoryError`, which the
+CLI catches and turns into the same **exit 3**. Over-allocation now *fails
+closed at the kernel*, not just in Python-side accounting.
+
+- **Main process**: capped at *current VSZ + `--memory-limit`* (it streams in the
+  sequential path and lightly orchestrates in the parallel path).
+- **Each parallel worker**: `parallel._init_worker` lowers `RLIMIT_AS` to its own
+  *current VSZ + per-worker budget*, so a single runaway worker fails closed on
+  its own share rather than the whole budget.
+- **Only ever tightens**: a pre-existing lower hard limit (e.g. a container
+  `--memory`/cgroup cap) is preserved, never raised.
+
+**Honest caveat.** `RLIMIT_AS` bounds *virtual* address space, which can exceed
+resident memory (glibc arenas, thread stacks, `mmap` reservations). The cap is
+therefore **conservative**: it may refuse slightly *before* RSS reaches the
+budget, never after — the same "err toward earlier refusal" direction as the
+admission estimate. That is the safe direction for a fail-closed guarantee.
+
+**Fallback.** On platforms without `resource`/`RLIMIT_AS` (e.g. Windows), or when
+`/proc/self/statm` can't be read, enforcement is skipped and the CLI prints a
+warning; the run continues under admission control only. `setrlimit` is never
+allowed to crash the run — a rejected call degrades to the same fallback.
+
+**Complementary container limits.** A cgroup v2 `memory.max` (via
+`docker run --memory=…` or systemd) is a stronger, whole-container bound but must
+be set by whoever owns the cgroup — an unprivileged process cannot move itself
+into a delegated cgroup and write `memory.max`. SafeStream therefore enforces the
+in-process `RLIMIT_AS` cap it *can* set unprivileged, and defers container-level
+enforcement to the runtime. Both compose: the tighter of the two wins.
 
 ## 3. Working set vs. RSS vs. page cache (the honest part)
 

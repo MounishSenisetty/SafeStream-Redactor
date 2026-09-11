@@ -31,7 +31,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Multiple redaction modes** — replace, mask, pseudonymize, and per-type replacements.
 - **Parallel processing** — process directory trees or split large files across workers.
 - **Offline network guard** — prevents non-loopback network access by default during CLI redaction.
-- **Explicit memory budget** — `--memory-limit 32MB` runs within a stated budget and *fails closed* (exit 3) rather than over-allocating ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)).
+- **Explicit memory budget** — `--memory-limit 32MB` admits the run under a stated budget (sizes workers, refuses configs that can't fit) *and*, on Linux/POSIX, backs it with a hard kernel `RLIMIT_AS` cap so an over-allocating run **fails closed** (exit 3) at the kernel instead of swelling past the limit; on platforms without `RLIMIT_AS` it falls back to admission control only ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)).
 - **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
 - **Extensible plugin system** — add custom detection tiers through Python entry points; each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).
@@ -129,9 +129,33 @@ While redacting, the CLI installs an **offline network guard** by default: any a
 open a non-loopback connection through Python's socket layer raises an error. This is
 best-effort, defense-in-depth egress prevention for this process, its plugins, and its
 Python dependencies — **not** a hard boundary: native extensions issuing raw syscalls, a
-spawned subprocess, or another process on the machine are outside its reach. For a
-guaranteed boundary, also run with no network (`docker run --network none ...`) or a
-network namespace / seccomp policy. Pass `--allow-network` to disable the guard. See
+spawned subprocess, or another process on the machine are outside its reach. Pass
+`--allow-network` to disable it.
+
+For a **kernel-enforced** boundary that also contains native code and raw syscalls, add
+`--offline-hard MODE` (Linux; opt-in, applied before workers fork):
+
+```bash
+# block AF_INET/AF_INET6 socket creation process-wide via a seccomp-bpf filter
+safestream redact input.txt -o out.txt --offline-hard seccomp
+
+# or enter an empty network namespace (no network at all, loopback included)
+safestream redact input.txt -o out.txt --offline-hard netns   # or: auto
+```
+
+- **`seccomp`** — installs a seccomp filter that makes IPv4/IPv6 socket *creation*
+  fail (`EACCES`) for this process and every child, native code included. `AF_UNIX`
+  and already-open sockets are untouched. (Classic seccomp-bpf can't inspect the
+  `sockaddr` pointer, so it blocks IP-socket creation outright rather than filtering
+  `connect()` by address — the stronger choice for offline use.)
+- **`netns`** — `unshare(CLONE_NEWNET)` into a fresh namespace whose only interface is a
+  down loopback: no network of any kind. Needs `CAP_SYS_ADMIN` (root) or unprivileged
+  user-namespace support (tried as a fallback).
+- Both **fall back with a warning** where unsupported, leaving the in-process guard
+  active; neither is for `serve`/`mcp-serve` (they need loopback).
+
+For whole-container isolation you control, `docker run --network none ...` remains the
+strongest option. See
 [SECURITY.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/SECURITY.md) for the full threat model.
 
 ### Python API
@@ -311,7 +335,7 @@ differential test compares prefiltered and unfiltered detection).
 
 The streaming engine keeps a rolling buffer of `chunk_size + overlap` characters. Only text
 at least `overlap` characters from the buffer's end is emitted each round; the tail is carried
-into the next round so any entity up to `overlap` characters long (default 4 KB) is always
+into the next round so any entity up to `overlap` characters long (default 8 KB) is always
 seen whole at least once, even when a chunk boundary cuts straight through it. An emit
 boundary that would split a detection retreats to the detection's start. Already-emitted
 text is kept (up to `overlap` chars) as read-only left context so the contextual tier scores
@@ -367,8 +391,15 @@ A single large file can now be split across cores with `--workers N` /
 `redact_file(..., workers=N)` — measured ~3.7× on 4 cores, with **byte-identical**
 output to the single-core pass (a seam cross-check falls back to sequential rather
 than risk differing output). That narrows but does not close the gap to compiled
-scanners; a Vectorscan/re2 backend for the remaining constant factor stays on the
-[roadmap](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/ROADMAP.md).
+scanners. A drop-in Vectorscan/re2 backend was **prototyped and measured** and
+**not adopted**: re2's ASCII-only `\b`/`\w`/`\d` change detection output on
+Unicode text (it under-detects), and it gives no end-to-end speedup because the
+anchor prefilter already captures its advantage and the throughput-dominating PII
+patterns use lookaround re2 cannot compile — full numbers in
+[docs/PERFORMANCE_BACKENDS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PERFORMANCE_BACKENDS.md).
+Closing the constant factor would require first rewriting those patterns to be
+lookaround-free and Unicode-boundary-consistent (on the
+[roadmap](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/ROADMAP.md)).
 
 **Credentials & secrets** — the genuinely differentiating capability. On a corpus of
 AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random

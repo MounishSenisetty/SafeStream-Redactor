@@ -55,9 +55,11 @@ import re
 from dataclasses import dataclass, field
 
 __all__ = [
+    "AddressSpaceLimit",
     "BudgetPlan",
     "MemoryBudget",
     "ResourceExhaustionError",
+    "enforce_address_space_limit",
     "estimate_interpreter_baseline",
     "format_size",
     "parse_size",
@@ -163,6 +165,97 @@ def estimate_interpreter_baseline() -> int:
         return pages * resource.getpagesize()
     except (OSError, ValueError, ImportError, IndexError):
         return 40 * 1024 * 1024
+
+
+def _current_address_space_bytes() -> int | None:
+    """Current process virtual address size (VSZ) in bytes, or ``None``.
+
+    Reads field 0 of ``/proc/self/statm`` (total program size, in pages). This
+    is the number :func:`enforce_address_space_limit` anchors the hard cap to,
+    so growth is measured from where the process already is.
+    """
+    try:
+        import resource
+
+        with open("/proc/self/statm") as f:
+            pages = int(f.read().split()[0])
+        return pages * resource.getpagesize()
+    except (OSError, ValueError, ImportError, IndexError):
+        return None
+
+
+@dataclass(slots=True, frozen=True)
+class AddressSpaceLimit:
+    """Outcome of trying to install a hard kernel memory cap (``RLIMIT_AS``).
+
+    ``applied`` is True only when the kernel is now enforcing the cap; otherwise
+    the caller keeps the pure-Python admission-control behaviour and ``reason``
+    explains why enforcement was unavailable (non-POSIX platform, no
+    ``/proc``, a rejected ``setrlimit``).
+    """
+
+    applied: bool
+    mechanism: str  # "rlimit_as" when enforced, "none" otherwise
+    cap_bytes: int | None
+    reason: str
+
+
+def enforce_address_space_limit(growth_bytes: int) -> AddressSpaceLimit:
+    """Cap this process's address space at *current VSZ + ``growth_bytes``*.
+
+    Backs ``--memory-limit`` with a real kernel boundary: once set,
+    ``RLIMIT_AS`` makes the kernel fail any allocation (``mmap``/``brk``) that
+    would grow the process past the cap, so the process fails **closed**
+    (a :class:`MemoryError`, surfaced by the CLI as exit 3) instead of relying
+    on Python-side accounting that cannot actually stop an allocation.
+
+    The cap is anchored to the process's *current* virtual size, so
+    ``growth_bytes`` is the additional working set the run is allowed — matching
+    how :class:`MemoryBudget` defines the budget (an application working set,
+    not total RSS). ``RLIMIT_AS`` bounds *virtual* address space, which can
+    exceed resident memory (glibc arenas, thread stacks, mmap reservations), so
+    the cap is deliberately conservative: it may refuse slightly *before* RSS
+    reaches the budget, never after — the same "err toward earlier refusal"
+    direction as the admission estimate.
+
+    Graceful fallback: on platforms without ``resource``/``RLIMIT_AS`` (e.g.
+    Windows) or when the current address size can't be read, nothing is enforced
+    and ``applied=False`` is returned; the caller then keeps admission-only
+    behaviour rather than failing. Never raises.
+
+    This is process-wide and cannot be undone by lowering it further only; it is
+    installed once, just before the streaming work begins.
+    """
+    try:
+        import resource
+    except ImportError:  # pragma: no cover - exercised only on non-POSIX
+        return AddressSpaceLimit(False, "none", None, "resource module unavailable (non-POSIX)")
+    rlimit_as = getattr(resource, "RLIMIT_AS", None)
+    if rlimit_as is None:  # pragma: no cover - platform without RLIMIT_AS
+        return AddressSpaceLimit(False, "none", None, "RLIMIT_AS unsupported on this platform")
+    current = _current_address_space_bytes()
+    if current is None:  # pragma: no cover - no /proc/self/statm
+        return AddressSpaceLimit(
+            False, "none", None, "could not read current address space (/proc/self/statm)"
+        )
+    cap = current + max(1, growth_bytes)
+    soft, hard = resource.getrlimit(rlimit_as)
+    # Only ever tighten: keep any pre-existing (e.g. container) hard limit that
+    # is already lower than our computed cap.
+    new_hard = cap if hard == resource.RLIM_INFINITY else min(cap, hard)
+    new_soft = new_hard if soft == resource.RLIM_INFINITY else min(cap, new_hard, soft)
+    new_soft = min(new_soft, new_hard)
+    try:
+        resource.setrlimit(rlimit_as, (new_soft, new_hard))
+    except (ValueError, OSError) as exc:  # pragma: no cover - kernel refusal
+        return AddressSpaceLimit(False, "none", None, f"setrlimit(RLIMIT_AS) rejected: {exc}")
+    return AddressSpaceLimit(
+        True,
+        "rlimit_as",
+        new_soft,
+        f"address space capped at {format_size(new_soft)} "
+        f"(current {format_size(current)} + budget {format_size(growth_bytes)})",
+    )
 
 
 @dataclass(slots=True, frozen=True)

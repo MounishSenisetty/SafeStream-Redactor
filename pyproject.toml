@@ -46,7 +46,9 @@ dependencies = [
 [project.optional-dependencies]
 ner = ["spacy>=3.5"]
 dev = ["pytest>=7.0", "pytest-cov>=4.1", "hypothesis>=6.90", "ruff>=0.4", "mypy>=1.8"]
-bench = ["presidio-analyzer>=2.2"]
+# google-re2 is used only by benchmarks/re2_backend.py (the evaluated-and-not-
+# adopted compiled-regex backend); it is never imported by the shipped package.
+bench = ["presidio-analyzer>=2.2", "google-re2>=1.1"]
 
 [project.urls]
 Homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
@@ -106,6 +108,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
+# the re2 evaluation deliberately embeds ambiguous Unicode (Arabic-Indic digits,
+# accented Latin) to demonstrate re2's ASCII-only boundary divergence
+"benchmarks/re2_backend.py" = ["RUF001"]
 
 [tool.mypy]
 python_version = "3.10"
