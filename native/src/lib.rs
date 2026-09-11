@@ -26,55 +26,87 @@ use pyo3::prelude::*;
 use regex::Regex;
 use std::sync::OnceLock;
 
-/// (entity_type, confidence, pattern source). The pattern strings must stay
-/// byte-for-byte in sync with `detectors/deterministic.py`; the differential test
-/// enforces equivalence, and `patterns()` (exposed to Python) lets the test read
-/// them back for an exact-source check.
-const PATTERNS: &[(&str, f64, &str)] = &[
+/// Post-match check applied to a candidate before it is accepted. `Simple`
+/// patterns need none (the regex is exact). `Ssn` reproduces the lookaround-free
+/// SSN's boundary assertions + validator (`docs/NATIVE_CORE.md`).
+#[derive(Clone, Copy, PartialEq)]
+enum Check {
+    Simple,
+    Ssn,
+}
+
+/// (entity_type, confidence, pattern source, check). Sources for `Simple`
+/// patterns match `detectors/deterministic.py` byte-for-byte; the `Ssn` source is
+/// the lookaround-free candidate from `detectors/_lookaround_free.py`. The
+/// differential test enforces equivalence, and `patterns()` (exposed to Python)
+/// lets the test read them back for an exact-source check.
+const PATTERNS: &[(&str, f64, &str, Check)] = &[
     (
         "email",
         0.95,
         r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+        Check::Simple,
     ),
     (
         "private_key",
         0.99,
         r"-----BEGIN [A-Z0-9 ]{0,20}PRIVATE KEY-----[A-Za-z0-9+/=\s]{1,8100}?-----END [A-Z0-9 ]{0,20}PRIVATE KEY-----",
+        Check::Simple,
     ),
     (
         "jwt",
         0.95,
         r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b",
+        Check::Simple,
     ),
-    ("aws_key", 0.98, r"\b(?:AKIA|ASIA|ABIA|ACCA)[0-9A-Z]{16}\b"),
+    (
+        "aws_key",
+        0.98,
+        r"\b(?:AKIA|ASIA|ABIA|ACCA)[0-9A-Z]{16}\b",
+        Check::Simple,
+    ),
     (
         "github_token",
         0.98,
         r"\b(?:gh[pousr]_[A-Za-z0-9]{36,255}|github_pat_[A-Za-z0-9_]{22,255})\b",
+        Check::Simple,
     ),
     (
         "slack_token",
         0.98,
         r"\bxox[baprs]-[0-9A-Za-z]{10,48}(?:-[0-9A-Za-z]{10,48}){0,3}\b",
+        Check::Simple,
     ),
     (
         "slack_webhook",
         0.98,
         r"https://hooks\.slack\.com/services/T[A-Z0-9]{8,}/B[A-Z0-9]{8,}/[A-Za-z0-9]{16,}",
+        Check::Simple,
     ),
     (
         "stripe_key",
         0.97,
         r"\b[sr]k_(?:live|test)_[0-9A-Za-z]{16,99}\b",
+        Check::Simple,
     ),
-    ("google_api_key", 0.95, r"\bAIza[0-9A-Za-z_-]{35}\b"),
+    (
+        "google_api_key",
+        0.95,
+        r"\bAIza[0-9A-Za-z_-]{35}\b",
+        Check::Simple,
+    ),
     (
         "sendgrid_key",
         0.98,
         r"\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b",
+        Check::Simple,
     ),
-    ("twilio_key", 0.9, r"\bSK[0-9a-f]{32}\b"),
-    ("npm_token", 0.98, r"\bnpm_[A-Za-z0-9]{36}\b"),
+    ("twilio_key", 0.9, r"\bSK[0-9a-f]{32}\b", Check::Simple),
+    ("npm_token", 0.98, r"\bnpm_[A-Za-z0-9]{36}\b", Check::Simple),
+    // Digit-gated PII pattern (the real bottleneck): lookaround-free candidate +
+    // Unicode-aware boundary check + string-comparison validator. Byte-identical
+    // to Python incl. Unicode-digit SSNs (the validator never does int()).
+    ("ssn", 0.85, r"\d{3}-\d{2}-\d{4}", Check::Ssn),
 ];
 
 // One compiled `Regex` per pattern. We deliberately do NOT use `RegexSet`: a
@@ -88,9 +120,60 @@ fn engine() -> &'static Vec<Regex> {
     ENGINE.get_or_init(|| {
         PATTERNS
             .iter()
-            .map(|(_, _, p)| Regex::new(p).expect("regex compiles"))
+            .map(|(_, _, p, _)| Regex::new(p).expect("regex compiles"))
             .collect()
     })
+}
+
+// --- boundary + validators for the digit-gated PII patterns ------------------
+//
+// The boundary character classes reproduce the ORIGINAL Python assertion classes
+// with the same Unicode semantics: Python `\d` is Unicode-aware, so `[\d-]` must
+// match Unicode digits too. Rust's `regex` uses Unicode `\d`, matching Python.
+// The class regex is only run against the single characters adjacent to a match
+// (rare), never over the whole input.
+
+/// `[\d-]` — the SSN lookaround class (`(?<![\d-])` / `(?![\d-])`).
+fn ssn_class() -> &'static Regex {
+    static C: OnceLock<Regex> = OnceLock::new();
+    C.get_or_init(|| Regex::new(r"[\d-]").expect("class compiles"))
+}
+
+fn char_before(text: &str, start: usize) -> Option<char> {
+    text[..start].chars().next_back()
+}
+
+fn char_after(text: &str, end: usize) -> Option<char> {
+    text[end..].chars().next()
+}
+
+/// True if `c` is matched by the class regex (single-char test, no allocation).
+fn in_class(cls: &Regex, c: char) -> bool {
+    let mut buf = [0u8; 4];
+    cls.is_match(c.encode_utf8(&mut buf))
+}
+
+/// Reproduce SSN's `(?<![\d-])…(?![\d-])`: neither neighbour may be in `[\d-]`.
+fn ssn_boundary_ok(text: &str, start: usize, end: usize) -> bool {
+    let cls = ssn_class();
+    let before = char_before(text, start).is_none_or(|c| !in_class(cls, c));
+    let after = char_after(text, end).is_none_or(|c| !in_class(cls, c));
+    before && after
+}
+
+/// Reproduce Python `ssn_ok` exactly. The candidate is `\d{3}-\d{2}-\d{4}`, so it
+/// always splits into three parts on `-`. All checks are string comparisons (no
+/// `int()`), so this is correct for Unicode-digit SSNs too — matching Python.
+fn ssn_ok(m: &str) -> bool {
+    let mut it = m.split('-');
+    let (area, group, serial) = match (it.next(), it.next(), it.next()) {
+        (Some(a), Some(g), Some(s)) => (a, g, s),
+        _ => return false, // unreachable for the candidate shape
+    };
+    if area == "000" || area == "666" || area.starts_with('9') {
+        return false;
+    }
+    group != "00" && serial != "0000"
 }
 
 /// Translate the byte offsets in `raw` (start, end, idx) to character offsets.
@@ -137,8 +220,16 @@ fn detect(py: Python<'_>, text: &str) -> PyResult<Vec<(usize, usize, &'static st
     let raw: Vec<(usize, usize, usize)> = py.allow_threads(|| {
         let mut out: Vec<(usize, usize, usize)> = Vec::new();
         for (idx, re) in engine().iter().enumerate() {
+            let check = PATTERNS[idx].3;
             for m in re.find_iter(text) {
-                out.push((m.start(), m.end(), idx));
+                let (s, e) = (m.start(), m.end());
+                let accept = match check {
+                    Check::Simple => true,
+                    Check::Ssn => ssn_boundary_ok(text, s, e) && ssn_ok(m.as_str()),
+                };
+                if accept {
+                    out.push((s, e, idx));
+                }
             }
         }
         out
@@ -150,17 +241,17 @@ fn detect(py: Python<'_>, text: &str) -> PyResult<Vec<(usize, usize, &'static st
     Ok(to_char_offsets(text, &raw)
         .into_iter()
         .map(|(cs, ce, idx)| {
-            let (name, conf, _) = PATTERNS[idx];
+            let (name, conf, _, _) = PATTERNS[idx];
             (cs, ce, name, conf)
         })
         .collect())
 }
 
 /// Expose the pattern table (type, confidence, source) so the differential test
-/// can assert the sources match the Python tier exactly.
+/// can assert the sources match the Python spec exactly.
 #[pyfunction]
 fn patterns() -> Vec<(&'static str, f64, &'static str)> {
-    PATTERNS.to_vec()
+    PATTERNS.iter().map(|&(n, c, s, _)| (n, c, s)).collect()
 }
 
 #[pymodule]

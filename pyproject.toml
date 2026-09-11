@@ -112,6 +112,7 @@ ignore = [
 # to prove Unicode-boundary correctness / re2's ASCII-only divergence
 "benchmarks/re2_backend.py" = ["RUF001"]
 "tests/test_lookaround_free.py" = ["RUF001"]
+"tests/test_native_backend.py" = ["RUF001"]
 
 [tool.mypy]
 python_version = "3.10"

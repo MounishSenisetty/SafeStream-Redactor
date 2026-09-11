@@ -10,11 +10,11 @@ Build + run:
         pip install --force-reinstall --no-deps native/dist/*.whl
     python benchmarks/native_backend.py
 
-Current slice: the 12 lookaround-free, group-0, no-validator credential patterns
-(email, private_key, jwt, aws_key, github_token, slack_token, slack_webhook,
-stripe_key, google_api_key, sendgrid_key, twilio_key, npm_token). These are the
-patterns Python already prefilters cheaply — so beating Python here is the
-conservative case; the digit-gated PII patterns (the real bottleneck) come next.
+Current slice: the 12 lookaround-free credential patterns plus SSN (the first
+digit-gated PII pattern — the real bottleneck class: no distinctive literal, so
+Python can't prefilter-skip it on any digit-bearing line). SSN uses a
+lookaround-free candidate + Unicode-aware boundary check + string-comparison
+validator, byte-identical to Python including Unicode-digit SSNs.
 """
 
 from __future__ import annotations
@@ -39,9 +39,11 @@ _CREDS = [
     "tok ghp_abcdefghijklmnopqrstuvwxyz0123456789 used",
     "auth eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6y",
     "npm npm_abcdefghijklmnopqrstuvwxyz0123456789 published",
-    "sg SG.abcdefghijklmnopqrstuv.abcdefghijklmnopqrstuvwxyz0123456789ABCDEXY sent",
+    "ssn 123-45-6789 on file",  # digit-gated PII: the real bottleneck class
 ]
-_DISTRACT = "2024-01-05T00:00:03Z INFO req 3bd3 latency 42ms status 200 path api v1 users id 96046"
+# Distractor carries digits, so the SSN pattern (digit-gated, no literal prefilter)
+# cannot be prefilter-skipped in Python and must run its regex on every line.
+_DISTRACT = "2024-01-05T00:00:03Z INFO req 3bd3 latency 42ms status 200 id 96046 bytes 76323"
 
 
 def _corpus(mb: int, pii_frac: float, seed: int = 3) -> str:
@@ -70,7 +72,7 @@ def main() -> None:
     types = [EntityType.from_name(n) for n in covered]
     pydet = DeterministicDetector(types=types, prefilter=True)
 
-    print(f"native slice: {len(covered)} credential patterns")
+    print(f"native slice: {len(covered)} patterns (12 credential + ssn)")
     print(f"{'corpus':<22} {'matches':>9} {'python':>12} {'native':>12} {'speedup':>8}")
     print("-" * 66)
     for label, frac in [("none (0% PII)", 0.0), ("sparse (1%)", 0.01), ("dense (50%)", 0.5)]:

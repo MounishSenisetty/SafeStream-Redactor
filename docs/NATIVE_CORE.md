@@ -118,26 +118,56 @@ skips when the native extra isn't installed, so default CI stays green) and by a
 source-equality check (`patterns()` must match the Python pattern strings).
 
 Note this slice is the *conservative* case: these credential patterns are already
-cheap in Python (anchor prefilter), yet native still wins 7–49×. The larger win
-is expected on the digit-gated PII patterns (the real bottleneck), which need
-their validators (Luhn, octet range, `\d` counts) ported to Rust — the next
-sub-step.
+cheap in Python (anchor prefilter), yet native still wins 7–49×.
+
+### Sub-step 1 — SSN (first digit-gated PII pattern, the real bottleneck)
+
+SSN is the representative bottleneck pattern: `\d{3}-\d{2}-\d{4}` has **no
+distinctive literal**, so Python cannot prefilter-skip it — its regex runs on
+*every digit-bearing line*. Ported as a lookaround-free candidate + a
+Unicode-aware boundary check (`[\d-]` neighbours, using Rust's Unicode `\d` to
+match Python) + the `ssn_ok` validator. The validator is **pure string
+comparison** (`split('-')`, `starts_with('9')`, `!= "00"`), so it is byte-identical
+to Python *including Unicode-digit SSNs* — no `int()` involved.
+
+Measured (5 MB, best of 3; distractor lines carry digits so Python must run the
+SSN regex on each):
+
+| SSN density | Python | Native | Speedup |
+| --- | --- | --- | --- |
+| 0% (digit distractors only) | 35 MB/s | 413 MB/s | **11.8×** |
+| 10% | 32 MB/s | 350 MB/s | **11.7×** |
+| 50% | 23 MB/s | 209 MB/s | **9.0×** |
+
+Byte-identical to Python, gated by the differential test + a 30 000-example
+Hypothesis fuzz stressing SSN boundaries and Unicode digits (0 divergences).
+
+### The Unicode-`int()` blocker for IPv4/IPv6 (why they are deferred)
+
+Python detects **Unicode-digit** IPv4/IPv6 too (`٩٩.٩.٩.٩` → ipv4), because
+`ipv4_ok` calls `int(octet)` and Python's `int()` accepts any Unicode decimal
+digit, while Rust's `str::parse`/`char::to_digit` are ASCII-only. A naive Rust
+port would therefore **under-detect** Unicode-digit IPv4/IPv6 — a divergence the
+gate would (correctly) reject. So IPv4/IPv6 wait for a Unicode-`int()`-equivalent
+in Rust (a small Nd→value helper) or an explicit ASCII-fast-path + Python fallback
+for the rare Unicode-digit case. `credit_card`/`phone` remain the `fancy-regex`
+slow-lane cases. SSN is unaffected because its validator does no integer parsing.
 
 ## Status
 
 - Step 2 (`detectors/_lookaround_free.py` + `tests/test_lookaround_free.py`):
   **done** — 19/21 patterns DFA-ready with a proven byte-identical rewrite.
-- Step 3 scaffold (`native/`, `benchmarks/native_backend.py`,
-  `tests/test_native_backend.py`): **done** — toolchain validated, first slice is
-  byte-identical and 7–49× faster; findings above. Not wired into the default
-  pipeline (zero risk to shipping behavior); the extension is optional and
-  built-from-source only.
-- **Next sub-steps** (each benchmark- and byte-identity-gated): (a) port the
-  digit-gated PII patterns + their validators to Rust and re-measure on the real
-  bottleneck; (b) add `credit_card`/`phone` via the `fancy-regex` slow lane; (c)
-  wire `backend="native"` into the deterministic tier behind a `[native]` extra
-  with the pure-Python fallback; (d) run the full baseline harness end-to-end and
-  report the real redaction-throughput gain (ship only if faster AND identical).
+- Step 3 scaffold + sub-step 1 (`native/`, `benchmarks/native_backend.py`,
+  `tests/test_native_backend.py`): **done** — toolchain validated; 12 credential
+  patterns + SSN are byte-identical and 9–49× faster; findings above. Not wired
+  into the default pipeline (zero risk to shipping behavior); the extension is
+  optional and built-from-source only.
+- **Next sub-steps** (each benchmark- and byte-identity-gated): (a) IPv4/IPv6 once
+  the Unicode-`int()` parity is solved (above); (b) add `credit_card`/`phone` via
+  the `fancy-regex` slow lane; (c) wire `backend="native"` into the deterministic
+  tier behind a `[native]` extra with the pure-Python fallback; (d) run the full
+  baseline harness end-to-end and report the real redaction-throughput gain (ship
+  only if faster AND identical).
 - Open decision for the maintainer before wiring/publishing: whether to publish a
   `safestream-redactor-native` wheel (adds a CI wheel-build matrix) or keep it
   build-from-source; and confirmation to add the optional `[native]` extra.
