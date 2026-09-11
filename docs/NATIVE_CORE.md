@@ -80,11 +80,64 @@ Two acceptable native implementations, both gated by the same differential test:
    (`docs/BASELINE.md`) shows a real, measured speedup. Report numbers; if it
    diverges or doesn't help, it does not ship (the re2 precedent).
 
+## Step 3 — first native slice (built and measured)
+
+The crate lives in `native/` (PyO3 + `regex`, built with maturin to an **abi3**
+wheel — one wheel per platform for CPython ≥ 3.10, keeping the build matrix
+small). The first slice implements the 12 lookaround-free, group-0, no-validator
+credential patterns and exposes `detect(text) -> [(char_start, char_end, type,
+confidence)]`.
+
+Two findings, both measured:
+
+1. **`RegexSet` is the wrong tool here.** A combined automaton is bloated by
+   `private_key`'s `{1,8100}` bound and does not use each pattern's required-
+   literal prefilter — it measured **~6 MB/s**. Running each pattern as an
+   individual `Regex` with `find_iter` lets the crate's built-in memchr/
+   aho-corasick literal prefilter (SIMD) engage — the automatic analogue of the
+   Python anchor prefilter — at **400–1200 MB/s**. The core uses individual
+   `find_iter`.
+2. **Byte→char offset conversion matters.** Rust `regex` yields *byte* offsets;
+   Python `Detection` uses *character* offsets. The core converts them (ASCII fast
+   path; otherwise a single O(n+matches) pass), so output is byte-identical on
+   non-ASCII input — verified on `文字a@b.io文字` etc.
+
+Measured vs the Python tier on the **same 12 patterns** (5 MB corpus, best of 3,
+`benchmarks/native_backend.py`; absolute numbers are environment-dependent, the
+ratio is the result):
+
+| Corpus | Python | Native | Speedup |
+| --- | --- | --- | --- |
+| none (0% PII)   | 163 MB/s | 1195 MB/s | **7.3×** |
+| sparse (1% PII) |  25 MB/s | 1229 MB/s | **48.8×** |
+| dense (50% PII) |  23 MB/s |  376 MB/s | **16.6×** |
+
+Output is **byte-identical** to Python (span/type/confidence, incl. Unicode char
+offsets), gated by `tests/test_native_backend.py` (corpus + Hypothesis fuzz;
+skips when the native extra isn't installed, so default CI stays green) and by a
+source-equality check (`patterns()` must match the Python pattern strings).
+
+Note this slice is the *conservative* case: these credential patterns are already
+cheap in Python (anchor prefilter), yet native still wins 7–49×. The larger win
+is expected on the digit-gated PII patterns (the real bottleneck), which need
+their validators (Luhn, octet range, `\d` counts) ported to Rust — the next
+sub-step.
+
 ## Status
 
-- Step 2 (this doc + `detectors/_lookaround_free.py` + `tests/test_lookaround_free.py`):
-  **done** — 19/21 patterns DFA-ready with a proven byte-identical rewrite; the 2
-  scanner cases are specified. No production behavior changed (the module is a
-  validated spec, not wired into the default pipeline).
-- Step 3 (Rust core): not started; awaits review of this plan and the Rust
-  toolchain decision (it introduces the `[native]` extra and a wheel build matrix).
+- Step 2 (`detectors/_lookaround_free.py` + `tests/test_lookaround_free.py`):
+  **done** — 19/21 patterns DFA-ready with a proven byte-identical rewrite.
+- Step 3 scaffold (`native/`, `benchmarks/native_backend.py`,
+  `tests/test_native_backend.py`): **done** — toolchain validated, first slice is
+  byte-identical and 7–49× faster; findings above. Not wired into the default
+  pipeline (zero risk to shipping behavior); the extension is optional and
+  built-from-source only.
+- **Next sub-steps** (each benchmark- and byte-identity-gated): (a) port the
+  digit-gated PII patterns + their validators to Rust and re-measure on the real
+  bottleneck; (b) add `credit_card`/`phone` via the `fancy-regex` slow lane; (c)
+  wire `backend="native"` into the deterministic tier behind a `[native]` extra
+  with the pure-Python fallback; (d) run the full baseline harness end-to-end and
+  report the real redaction-throughput gain (ship only if faster AND identical).
+- Open decision for the maintainer before wiring/publishing: whether to publish a
+  `safestream-redactor-native` wheel (adds a CI wheel-build matrix) or keep it
+  build-from-source; and confirmation to add the optional `[native]` extra.

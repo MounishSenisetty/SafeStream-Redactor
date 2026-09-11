@@ -1,0 +1,22 @@
+[package]
+name = "safestream_native"
+version = "0.0.1"
+edition = "2021"
+description = "Native (Rust) detection core for SafeStream-Redactor — optional, byte-identical fast lane"
+license = "MIT"
+publish = false
+
+[lib]
+name = "safestream_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+# abi3-py310: one wheel per platform works for CPython >= 3.10 (keeps the wheel
+# matrix small). extension-module: link against the host interpreter at import.
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"] }
+regex = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
