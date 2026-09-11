@@ -17,9 +17,20 @@ import pytest
 import safestream_redactor.memory_budget as mb
 from safestream_redactor.memory_budget import AddressSpaceLimit, enforce_address_space_limit
 
+# The module needs fork (POSIX) for the real-enforcement tests; Windows has no
+# resource module at all, so skip the whole module there.
 pytestmark = pytest.mark.skipif(
     not hasattr(os, "fork") or sys.platform == "win32",
     reason="RLIMIT_AS enforcement is POSIX-only",
+)
+
+# RLIMIT_AS is only *reliably enforced* on Linux. macOS accepts setrlimit(RLIMIT_AS)
+# but does not honour it (allocations past the cap still succeed), so a test that
+# actually provokes the kernel must be Linux-only; the graceful-fallback behaviour
+# on other platforms is covered by the mocked tests below.
+linux_only = pytest.mark.skipif(
+    not sys.platform.startswith("linux"),
+    reason="RLIMIT_AS is only reliably enforced on Linux",
 )
 
 MB = 1024 * 1024
@@ -41,6 +52,7 @@ def _in_child(fn: Callable[[], int | None]) -> int:
     return os.WEXITSTATUS(status) if os.WIFEXITED(status) else 128 + (status & 0x7F)
 
 
+@linux_only
 def test_enforce_applies_and_allows_allocation_within_budget():
     def fn() -> int:
         info = enforce_address_space_limit(256 * MB)
@@ -53,6 +65,7 @@ def test_enforce_applies_and_allows_allocation_within_budget():
     assert _in_child(fn) == 0
 
 
+@linux_only
 def test_enforce_fails_closed_on_over_allocation():
     def fn() -> int:
         info = enforce_address_space_limit(24 * MB)
