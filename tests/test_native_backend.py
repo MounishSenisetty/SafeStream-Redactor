@@ -161,3 +161,75 @@ fuzzed = st.lists(st.sampled_from(_FRAGMENTS), min_size=0, max_size=30).map("".j
 @given(text=fuzzed)
 def test_equivalence_fuzzed(text):
     _assert_equiv(text)
+
+
+# ---------------------------------------------------------------------------
+# Wired detector: DeterministicDetector(backend="native") must be byte-identical
+# to backend="python". This is the stronger, end-user-facing gate: it runs the
+# FULL pattern set (native-covered types through the Rust core, the remaining 8
+# -- credit_card, two phone patterns, the label-gated credential patterns --
+# through Python) and asserts the combined output matches pure Python exactly,
+# including source
+# and confidence. The detect-loop tests above cover only the native-covered
+# subset in isolation.
+# ---------------------------------------------------------------------------
+
+
+def _det_key(dets: list) -> list[tuple]:
+    return sorted(
+        (d.start, d.end, d.text, d.entity_type.value, round(d.confidence, 6), d.source)
+        for d in dets
+    )
+
+
+def _assert_backend_equiv(text: str) -> None:
+    native = DeterministicDetector(backend="native")
+    python = DeterministicDetector(backend="python")
+    assert _det_key(native.detect(text)) == _det_key(python.detect(text)), (
+        f"native backend diverged from python: {text!r}"
+    )
+
+
+def test_native_backend_is_active():
+    """Guard the test's own premise: the native core is loaded and splitting work.
+
+    If the extension silently fell back to Python, the equivalence tests would
+    pass vacuously. Assert the hybrid split actually happened.
+    """
+    det = DeterministicDetector(backend="native")
+    assert det._native is not None
+    assert det._native_names  # native handles some types
+    assert det._py_patterns  # Python still handles the uncovered remainder
+
+
+def test_backend_equivalence_on_corpus():
+    for text in CORPUS:
+        _assert_backend_equiv(text)
+    _assert_backend_equiv("\n".join(CORPUS))
+
+
+# credit_card / phone exercise the Python-only lane alongside the native lane
+_WIRED_FRAGMENTS = [
+    *_FRAGMENTS,
+    "4111 1111 1111 1111",  # Luhn-valid card (Python lane)
+    "+1 (415) 555-2671",  # structured phone (Python lane)
+    "555 123 4567",  # bare phone
+    "aws_secret_access_key = " + "A" * 40,  # label-gated AWS secret (Python lane)
+    "sk-ant-" + "x" * 30,  # anthropic key (Python lane)
+    "password: hunter2hunter2",  # api_key label (Python lane)
+]
+
+wired_fuzzed = st.lists(st.sampled_from(_WIRED_FRAGMENTS), min_size=0, max_size=30).map("".join)
+
+
+@settings(max_examples=500, derandomize=True, deadline=None)
+@given(text=wired_fuzzed)
+def test_backend_equivalence_fuzzed(text):
+    _assert_backend_equiv(text)
+
+
+def test_auto_backend_uses_native_silently(recwarn):
+    """backend='auto' loads native when present and emits no warning."""
+    det = DeterministicDetector(backend="auto")
+    assert det._native is not None
+    assert not recwarn.list

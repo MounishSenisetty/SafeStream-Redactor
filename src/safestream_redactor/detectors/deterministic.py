@@ -9,11 +9,16 @@ from __future__ import annotations
 
 import ipaddress
 import re
+import warnings
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, cast
 
 from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 # The longest span any tier-1 pattern can emit: the private-key body is bounded
 # to keep the whole match within the default overlap (see the PRIVATE_KEY
@@ -315,6 +320,34 @@ _PATTERNS: tuple[Pattern, ...] = (
 )
 
 
+def _load_native(backend: str) -> ModuleType | None:
+    """Import the optional native core, or ``None`` to run pure Python.
+
+    ``backend`` is one of ``"python"`` (never load native), ``"native"`` (load
+    it; warn and fall back to Python if the extension is not installed), or
+    ``"auto"`` (load it when present, silently fall back otherwise). Falling back
+    keeps the package dependency-free: the native extra is build-from-source and
+    optional, and the Python tier is the byte-identical oracle either way.
+    """
+    if backend == "python":
+        return None
+    if backend not in {"native", "auto"}:
+        raise ValueError(f"backend must be 'python', 'native', or 'auto', got {backend!r}")
+    try:
+        import safestream_native  # type: ignore[import-not-found]
+    except ImportError:
+        if backend == "native":
+            warnings.warn(
+                "backend='native' requested but the safestream_native extension is not "
+                "installed; falling back to the pure-Python tier. Build it from native/ "
+                "with maturin to enable the native core.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+        return None
+    return cast("ModuleType", safestream_native)  # pragma: no cover - requires native extension
+
+
 class DeterministicDetector:
     """Runs the built-in regex+validator patterns, optionally a subset of types.
 
@@ -323,23 +356,83 @@ class DeterministicDetector:
     which skips most of the pattern set on secret-sparse text. Prefiltering is
     an optimisation only — output is identical with it disabled
     (``prefilter=False``), and a differential test enforces that.
+
+    ``backend`` selects the detection engine for the patterns the optional native
+    (Rust) core covers. ``"python"`` (the default) runs everything in pure Python.
+    ``"native"``/``"auto"`` route the native-covered patterns through the compiled
+    core (SIMD literal prefilters, GIL released) and the rest through Python; the
+    combined output is byte-identical to ``"python"`` (a differential test enforces
+    this — the re2 precedent), and the extension is optional, so both fall back to
+    pure Python when it is not installed.
     """
 
     name = "deterministic"
     requirements = StreamingRequirements(max_span=DETERMINISTIC_MAX_SPAN)
 
     def __init__(
-        self, types: Iterable[EntityType] | None = None, *, prefilter: bool = True
+        self,
+        types: Iterable[EntityType] | None = None,
+        *,
+        prefilter: bool = True,
+        backend: str = "python",
     ) -> None:
         wanted = set(types) if types is not None else None
         self._patterns = [p for p in _PATTERNS if wanted is None or p.entity_type in wanted]
         self._prefilter = prefilter
+        self._native: Any = _load_native(backend)
+        # Split the (already type-filtered) pattern set into the types the native
+        # core covers and the remainder Python still handles. When native is off,
+        # everything runs in Python. The native branch is exercised only when the
+        # optional extension is built (gated by tests/test_native_backend.py); the
+        # default, no-native CI cannot reach it, hence the coverage pragma.
+        if self._native is not None:  # pragma: no cover - requires native extension
+            covered = frozenset(name for name, _conf, _src in self._native.patterns())
+            self._native_names = frozenset(
+                p.entity_type.value for p in self._patterns if p.entity_type.value in covered
+            )
+            self._py_patterns = [
+                p for p in self._patterns if p.entity_type.value not in self._native_names
+            ]
+        else:
+            self._native_names = frozenset()
+            self._py_patterns = self._patterns
 
     def detect(self, text: str) -> list[Detection]:
+        if self._native is None:
+            return self._detect_python(text, self._patterns)
+        return self._detect_hybrid(text)  # pragma: no cover - requires native extension
+
+    def _detect_hybrid(self, text: str) -> list[Detection]:  # pragma: no cover - native only
+        """Native core for the covered types, Python for the rest.
+
+        Reached only with the optional extension built; byte-identical to the pure
+        Python path (``tests/test_native_backend.py`` enforces this). The native
+        core scans every type it implements, so ``_native_names`` filters its output
+        to the types requested at construction. Spans come back as character offsets
+        (converted in the core), so ``text[s:e]`` is exact even on non-ASCII input;
+        all native-covered patterns are group-0, so the whole span is the detection.
+        """
+        names = self._native_names
+        found = [
+            Detection(
+                start=s,
+                end=e,
+                text=text[s:e],
+                entity_type=EntityType.from_name(ty),
+                confidence=conf,
+                source=self.name,
+            )
+            for s, e, ty, conf in self._native.detect(text)
+            if ty in names
+        ]
+        found.extend(self._detect_python(text, self._py_patterns))
+        return found
+
+    def _detect_python(self, text: str, patterns: list[Pattern]) -> list[Detection]:
         found: list[Detection] = []
         lowered: str | None = None
         has_digit: bool | None = None
-        for pattern in self._patterns:
+        for pattern in patterns:
             if self._prefilter:
                 if pattern.needs_digit:
                     if has_digit is None:

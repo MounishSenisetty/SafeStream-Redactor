@@ -26,6 +26,10 @@ Usage:
     # core-scaling (needs >=~16 MB to split; 64 MB gives up to 8 ranges)
     python benchmarks/baseline.py --sizes 64 --densities medium --workers 1 2 4
 
+    # compare the optional native detection core vs pure Python end-to-end
+    python benchmarks/baseline.py --sizes 10 --densities none low high \
+        --backends python native
+
     # record machine-readable results
     python benchmarks/baseline.py --sizes 10 100 --densities none low high --json out.json
 """
@@ -115,6 +119,7 @@ class Result:
     size_mb: float
     density: str
     workers: int
+    backend: str
     wall_s: float
     read_only_wall_s: float
     throughput_mb_s: float
@@ -145,7 +150,7 @@ def _redact(redactor: object, path: str, out: str, workers: int) -> tuple[int, b
     return stats.total, False
 
 
-def run_one(path: str, workers: int, *, heap: bool = True) -> Result:
+def run_one(path: str, workers: int, *, heap: bool = True, backend: str = "python") -> Result:
     from safestream_redactor import Redactor
     from safestream_redactor.engine import read_chunks
 
@@ -160,7 +165,7 @@ def run_one(path: str, workers: int, *, heap: bool = True) -> Result:
         pass
     read_wall = time.perf_counter() - t0
 
-    redactor = Redactor(load_plugins=False)
+    redactor = Redactor(load_plugins=False, backend=backend)
     # Timed pass — NO tracemalloc (its overhead would corrupt the throughput).
     t0 = time.perf_counter()
     detections, fell_back = _redact(redactor, path, out, workers)
@@ -187,6 +192,7 @@ def run_one(path: str, workers: int, *, heap: bool = True) -> Result:
         size_mb=round(mb, 1),
         density="?",  # filled by caller
         workers=workers,
+        backend=backend,
         wall_s=round(wall, 3),
         read_only_wall_s=round(read_wall, 4),
         throughput_mb_s=round(mb / wall, 3),
@@ -204,8 +210,11 @@ def run_one(path: str, workers: int, *, heap: bool = True) -> Result:
 # --- driver ------------------------------------------------------------------
 
 
-def _run_child(path: str, workers: int, density: str, *, heap: bool) -> Result:
-    cmd = [sys.executable, __file__, "--run-one", "--path", path, "--workers", str(workers)]
+def _run_child(path: str, workers: int, density: str, backend: str, *, heap: bool) -> Result:
+    cmd = [
+        sys.executable, __file__, "--run-one", "--path", path,
+        "--workers", str(workers), "--backend", backend,
+    ]  # fmt: skip
     if not heap:
         cmd.append("--no-heap")
     proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -216,14 +225,15 @@ def _run_child(path: str, workers: int, density: str, *, heap: bool) -> Result:
 
 def _print_table(results: list[Result]) -> None:
     hdr = (
-        f"{'size':>6} {'density':>7} {'wkrs':>4} {'MB/s':>8} {'read MB/s':>10} "
+        f"{'size':>6} {'density':>7} {'backend':>7} {'wkrs':>4} {'MB/s':>8} {'read MB/s':>10} "
         f"{'cores':>5} {'heap MB':>8} {'selfRSS':>8} {'childRSS':>8} {'dets':>10} {'fb':>3}"
     )
     print(hdr)
     print("-" * len(hdr))
     for r in results:
         print(
-            f"{r.size_mb:>5}M {r.density:>7} {r.workers:>4} {r.throughput_mb_s:>8.2f} "
+            f"{r.size_mb:>5}M {r.density:>7} {r.backend:>7} {r.workers:>4} "
+            f"{r.throughput_mb_s:>8.2f} "
             f"{r.read_throughput_mb_s:>10.0f} {r.cores_used:>5.2f} {r.peak_heap_mb:>8.2f} "
             f"{r.self_rss_mb:>8.1f} {r.child_rss_mb:>8.1f} {r.detections:>10} "
             f"{'Y' if r.fell_back else '-':>3}"
@@ -243,6 +253,19 @@ def main() -> None:
     )
     ap.add_argument("--workers", type=int, nargs="+", default=[1])
     ap.add_argument(
+        "--backend",
+        dest="backend",
+        default="python",
+        help="detection backend for --run-one (python|native|auto)",
+    )
+    ap.add_argument(
+        "--backends",
+        nargs="+",
+        default=["python"],
+        choices=["python", "native", "auto"],
+        help="backends to compare in the driver (e.g. python native)",
+    )
+    ap.add_argument(
         "--no-heap", dest="heap", action="store_false", help="skip the tracemalloc pass"
     )
     ap.add_argument("--json", default=None, metavar="FILE", help="write results as JSON")
@@ -251,7 +274,12 @@ def main() -> None:
 
     if args.run_one:
         # measured child: one redaction of --path at --workers, JSON to stdout
-        res = run_one(args.path, args.workers[0] if args.workers else 1, heap=args.heap)
+        res = run_one(
+            args.path,
+            args.workers[0] if args.workers else 1,
+            heap=args.heap,
+            backend=args.backend,
+        )
         print(json.dumps(asdict(res)))
         return
 
@@ -263,9 +291,13 @@ def main() -> None:
                 path = os.path.join(tmp, f"corpus-{size}-{density}.log")
                 print(f"# generating {size} MB, density={density} ...", file=sys.stderr)
                 generate(path, size, density, seed=args.seed)
-                for w in args.workers:
-                    print(f"#   run size={size} density={density} workers={w}", file=sys.stderr)
-                    results.append(_run_child(path, w, density, heap=args.heap))
+                for backend in args.backends:
+                    for w in args.workers:
+                        print(
+                            f"#   run size={size} density={density} backend={backend} workers={w}",
+                            file=sys.stderr,
+                        )
+                        results.append(_run_child(path, w, density, backend, heap=args.heap))
                 os.unlink(path)
     finally:
         with contextlib.suppress(OSError):

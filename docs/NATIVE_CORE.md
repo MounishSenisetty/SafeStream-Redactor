@@ -170,6 +170,49 @@ Byte-identical, gated by the differential test + a 40 000-example fuzz over IPv4
 IPv6 edge cases (invalid octets, leading zeros, `::`, over-long, Unicode digits;
 0 divergences). `credit_card`/`phone` remain the `fancy-regex` slow-lane cases.
 
+### Sub-step 2 — wired into the pipeline (`backend="native"`, end-to-end measured)
+
+The native core is now selectable through the public API:
+`Redactor(..., backend="native")` (also `"auto"`), forwarded to
+`DeterministicDetector(backend=...)`. The deterministic tier runs a **hybrid**:
+the 15 types the core covers go through Rust (`_detect_native`), the remaining 8
+(`credit_card`, two `phone` patterns, and the label-gated
+`aws_secret`/`api_key`/`url_credentials`/`anthropic_key`/`openai_key`) stay in
+Python (`_detect_python`). The combined output is byte-identical to
+`backend="python"` — a differential gate (`tests/test_native_backend.py`:
+`test_backend_equivalence_*`) asserts full-detector equality (span, text, type,
+confidence, source) on the corpus and under Hypothesis fuzz that mixes native-lane
+and Python-lane specimens. The extension is optional: `"native"` warns and falls
+back to pure Python when it isn't installed, `"auto"` falls back silently, so the
+package stays dependency-free.
+
+**End-to-end redaction throughput** — the honest, whole-pipeline number, not the
+detect-loop microbenchmark. Real `redact_file` (read → decode → all detector tiers
+→ arbitration → policy → write), 10 MB, `load_plugins=False`, best of two runs
+(`benchmarks/baseline.py --backends python native`):
+
+| Density | Python | Native | Speedup | Detections (py = native) |
+| --- | --- | --- | --- | --- |
+| none (0%)    | 3.40 MB/s | 5.49 MB/s | **1.6×** | 0 |
+| low (1%)     | 2.74 MB/s | 4.30 MB/s | **1.6×** | 929 |
+| medium (10%) | 2.46 MB/s | 4.06 MB/s | **1.7×** | 10 202 |
+| high (50%)   | 2.07 MB/s | 2.96 MB/s | **1.4×** | 69 594 |
+
+Why only **1.4–1.7×** end-to-end when the deterministic detect loop alone is
+21–33× faster (sub-step 1b)? Because the deterministic tier is no longer the whole
+cost once it's fast: the **entropy tier and contextual scorer still run in
+Python** on every window, and so does the read/decode/arbitration/policy/replace/
+write path. Speeding up one tier by 25× can only move the total by as much as that
+tier's share of it — a textbook Amdahl ceiling. The gain also shrinks as density
+rises (1.7× → 1.4×): more real matches shift work into the still-Python
+replacement/arbitration path. This is the expected shape, reported as measured;
+the remaining headroom is the entropy tier and the arbitration/replace path, not
+the deterministic regex.
+
+The native build also raises RSS ~20 MB → ~43 MB (the compiled regex automata),
+a fixed cost independent of input size — the constant-memory invariant is
+unchanged (still flat across file size), the floor is just higher.
+
 ## Status
 
 - Step 2 (`detectors/_lookaround_free.py` + `tests/test_lookaround_free.py`):
@@ -177,15 +220,20 @@ IPv6 edge cases (invalid octets, leading zeros, `::`, over-long, Unicode digits;
 - Step 3 scaffold + sub-steps 1/1b (`native/`, `benchmarks/native_backend.py`,
   `tests/test_native_backend.py`): **done** — toolchain validated; 12 credential
   patterns + SSN + IPv4 + IPv6 are byte-identical and 9–49× faster (21–33× on the
-  digit-gated PII bottleneck); Unicode-`int()` parity proven complete. Not wired
-  into the default pipeline (zero risk to shipping behavior); the extension is
-  optional and built-from-source only.
+  digit-gated PII bottleneck); Unicode-`int()` parity proven complete. The
+  extension is optional and built-from-source only.
+- Sub-step 2 — wiring (`Redactor(backend=...)` → `DeterministicDetector`): **done**
+  — hybrid native/Python deterministic tier, byte-identical to `backend="python"`
+  end-to-end (differential + fuzz gate), graceful fallback when the extension is
+  absent (`"native"` warns, `"auto"` silent). Measured whole-pipeline redaction
+  gain **1.4–1.7×** (Amdahl-limited by the still-Python entropy/contextual tiers
+  and the arbitration/replace path — see sub-step 2 above).
 - **Next sub-steps** (each benchmark- and byte-identity-gated): (a) add
   `credit_card`/`phone` via the `fancy-regex` slow lane; (b) port the entropy tier
-  or leave it to Python (evaluate); (c) wire `backend="native"` into the
-  deterministic tier behind a `[native]` extra with the pure-Python fallback; (d)
-  run the full baseline harness end-to-end and report the real
-  redaction-throughput gain (ship only if faster AND identical).
-- Open decision for the maintainer before wiring/publishing: whether to publish a
+  or leave it to Python (evaluate) — this is now the dominant remaining cost, so
+  it is where the next end-to-end gain is; (c) add the optional `[native]` extra +
+  the publishing decision below.
+- Open decision for the maintainer before publishing: whether to publish a
   `safestream-redactor-native` wheel (adds a CI wheel-build matrix) or keep it
-  build-from-source; and confirmation to add the optional `[native]` extra.
+  build-from-source; and confirmation to add the optional `[native]` extra. The
+  code path is wired and gated regardless; only the packaging is pending.

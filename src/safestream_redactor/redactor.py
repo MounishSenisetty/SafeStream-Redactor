@@ -77,6 +77,12 @@ class Redactor:
     load_plugins:
         Discover and load third-party detectors registered under the
         ``safestream_redactor.detectors`` entry-point group (on by default).
+    backend:
+        Detection engine for the deterministic tier. ``"python"`` (default) runs
+        everything in pure Python. ``"native"``/``"auto"`` route the patterns the
+        optional compiled core covers through it and the rest through Python, with
+        byte-identical output; both fall back to pure Python when the
+        ``safestream_native`` extension is not installed (``"native"`` warns).
     """
 
     def __init__(
@@ -94,6 +100,7 @@ class Redactor:
         load_plugins: bool = True,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
+        backend: str = "python",
     ) -> None:
         resolved_types = (
             None
@@ -107,7 +114,7 @@ class Redactor:
         self.overlap = overlap
         self._scorer = ContextualScorer()
 
-        self._detectors: list[Detector] = [DeterministicDetector(resolved_types)]
+        self._detectors: list[Detector] = [DeterministicDetector(resolved_types, backend=backend)]
         custom_words = list(custom_words)
         custom_patterns = list(custom_patterns)
         if custom_words or custom_patterns:
