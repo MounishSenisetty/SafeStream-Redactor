@@ -48,6 +48,11 @@ pip install safestream-redactor
 # optional spaCy-based PERSON/ORG/LOC detection:
 pip install 'safestream-redactor[ner]'
 python -m spacy download en_core_web_sm
+
+# optional native (Rust) detection core — a byte-identical accelerator for the
+# deterministic tier, selected with Redactor(backend="native"); the base install
+# stays pure-Python, and backend="native" falls back to Python when it is absent:
+pip install 'safestream-redactor[native]'
 ```
 
 ```bash

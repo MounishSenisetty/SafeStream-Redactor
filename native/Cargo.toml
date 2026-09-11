@@ -1,9 +1,16 @@
 [package]
 name = "safestream_native"
-version = "0.0.1"
+# Kept in lockstep with the safestream-redactor version (src/.../__init__.py): a
+# published native wheel must match the Python pattern spec it accelerates. A
+# runtime spec-guard (deterministic.py::_native_matches_spec) falls back to pure
+# Python if a skewed wheel is ever paired, so this is coordination, not a hard gate.
+version = "0.4.0"
 edition = "2021"
 description = "Native (Rust) detection core for SafeStream-Redactor — optional, byte-identical fast lane"
 license = "MIT"
+repository = "https://github.com/MounishSenisetty/SafeStream-Redactor"
+homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
+# not published to crates.io; distributed only as a PyPI wheel via maturin
 publish = false
 
 [lib]

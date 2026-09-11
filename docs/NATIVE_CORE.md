@@ -330,11 +330,20 @@ benchmark-gated question before that work is worth starting.
   above). It is already the fastest tier (3–8× the deterministic tier); end-to-end
   ceiling ≤1.27×, against a floating-point `log2` byte-identity hazard that cannot be
   proven bit-identical the way the integer cases were. Left in Python.
-- **Next sub-steps**: (c) add the optional `[native]` extra + the publishing decision
-  below. Further detector-tier ports (credit_card/phone hand-rolled scanner; entropy)
-  are open questions the evaluations above answer with "not yet / not worth it" — the
-  deterministic fast lane is the win that's real and gated.
-- Open decision for the maintainer before publishing: whether to publish a
-  `safestream-redactor-native` wheel (adds a CI wheel-build matrix) or keep it
-  build-from-source; and confirmation to add the optional `[native]` extra. The
-  code path is wired and gated regardless; only the packaging is pending.
+- Sub-step (c) — packaging: **done**. `pyproject.toml` gains a `[native]` extra
+  (`pip install safestream-redactor[native]`) depending on the separately-published
+  `safestream-redactor-native` wheel; `.github/workflows/native-wheels.yml` builds
+  abi3 wheels across Linux (x86_64, aarch64), macOS (Intel, Apple Silicon) and
+  Windows (one wheel per platform, since abi3 spans CPython ≥ 3.10) plus an sdist,
+  and publishes them to PyPI via Trusted Publishing on a `native-v*` tag. The native
+  crate is version-locked to the package (`native/Cargo.toml` → 0.4.0), and a
+  runtime **spec-guard** (`_native_matches_spec`) falls back to pure Python with a
+  warning if a version-skewed wheel is ever paired — so a mismatched wheel degrades
+  safely instead of diverging.
+- Remaining detector-tier ports (credit_card/phone hand-rolled scanner; entropy) are
+  open questions the evaluations above answer with "not yet / not worth it" — the
+  deterministic fast lane is the win that's real, gated, and now installable.
+- Maintainer to-do before the first publish (one-time, external to the repo): create
+  the `safestream-redactor-native` project on PyPI (and TestPyPI) and add a GitHub
+  Trusted Publisher for workflow `native-wheels.yml` with environment `pypi-native`
+  (`testpypi-native` on TestPyPI) — as documented in the workflow header.

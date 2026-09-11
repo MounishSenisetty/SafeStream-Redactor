@@ -6,6 +6,23 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Optional native (Rust) detection core** (`Redactor(backend="native")`, and the
+  `pip install safestream-redactor[native]` extra): a compiled, **byte-identical**
+  accelerator for the deterministic tier's finite-automaton patterns (12 credential
+  patterns + SSN/IPv4/IPv6), run behind the existing detector seam. The base install
+  stays pure-Python and dependency-free; `backend="python"` remains the default and
+  the oracle, and `backend="native"`/`"auto"` fall back to Python when the extension
+  is absent. Output is proven identical to the Python tier (differential + Hypothesis
+  gate, including Unicode-digit parity); a runtime spec-guard falls back to Python if
+  a version-skewed wheel is paired. Built and published as separate abi3 wheels by
+  `.github/workflows/native-wheels.yml`. Measured whole-pipeline redaction gain
+  1.4–1.7× (Amdahl-limited by the still-Python entropy/contextual tiers); see
+  `docs/NATIVE_CORE.md`. `credit_card`/`phone` (evaluated on `fancy-regex`) and the
+  entropy tier were measured and deliberately **left in Python** — the doc records
+  why.
+
 ## [0.4.0] - 2026-08-30
 
 ### Added

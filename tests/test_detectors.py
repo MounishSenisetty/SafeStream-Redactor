@@ -6,8 +6,10 @@ import pytest
 
 from safestream_redactor import EntityType, Redactor
 from safestream_redactor.detectors.deterministic import (
+    _PATTERNS,
     DeterministicDetector,
     _load_native,
+    _native_matches_spec,
     luhn_ok,
     ssn_ok,
 )
@@ -275,6 +277,41 @@ def test_backend_auto_missing_falls_back_silently(monkeypatch, recwarn):
     det = DeterministicDetector(backend="auto")
     assert det._native is None
     assert not recwarn.list
+
+
+def test_native_spec_guard_accepts_matching_and_rejects_skew():
+    """The runtime spec-guard accepts a spec-matching native module and rejects skew.
+
+    Guards the published-wheel version-skew case without needing the extension:
+    a fake module exposing patterns() whose sources match the Python spec passes;
+    one with a drifted source, an unknown type, or a broken patterns() fails.
+    """
+
+    class _Good:
+        # every _PATTERNS source is, by construction, in the guard's expected set
+        @staticmethod
+        def patterns():
+            return [(p.entity_type.value, p.confidence, p.regex.pattern) for p in _PATTERNS]
+
+    class _Drifted:
+        @staticmethod
+        def patterns():
+            return [("email", 0.95, "WRONG-PATTERN")]
+
+    class _UnknownType:
+        @staticmethod
+        def patterns():
+            return [("not_a_real_type", 0.5, r"\d+")]
+
+    class _Broken:
+        @staticmethod
+        def patterns():
+            raise RuntimeError("boom")
+
+    assert _native_matches_spec(_Good)
+    assert not _native_matches_spec(_Drifted)
+    assert not _native_matches_spec(_UnknownType)
+    assert not _native_matches_spec(_Broken)
 
 
 # --- expanded credential patterns ---------------------------------------

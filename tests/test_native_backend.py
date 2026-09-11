@@ -202,6 +202,24 @@ def test_native_backend_is_active():
     assert det._py_patterns  # Python still handles the uncovered remainder
 
 
+def test_native_backend_skew_falls_back(monkeypatch):
+    """A version-skewed native wheel (drifted pattern spec) degrades to pure Python.
+
+    Simulated by monkeypatching the installed extension's patterns() to a drifted
+    source; the spec-guard must reject it, warn, and fall back — so a mismatched
+    published wheel can never silently diverge from the Python oracle.
+    """
+    monkeypatch.setattr(sn, "patterns", lambda: [("email", 0.95, "WRONG-PATTERN")])
+    with pytest.warns(RuntimeWarning, match="version skew"):
+        det = DeterministicDetector(backend="native")
+    assert det._native is None
+    # and output is exactly the pure-Python result
+    text = "mail bob@x.io ssn 123-45-6789 ip 10.0.0.1"
+    assert _det_key(det.detect(text)) == _det_key(
+        DeterministicDetector(backend="python").detect(text)
+    )
+
+
 def test_backend_equivalence_on_corpus():
     for text in CORPUS:
         _assert_backend_equiv(text)

@@ -1,0 +1,114 @@
+# Builds the optional native (Rust) detection core, `safestream-redactor-native`,
+# as wheels across platforms and (on a `native-v*` tag) publishes them to PyPI.
+#
+# The wheel is abi3 (`abi3-py310` in native/Cargo.toml), so ONE wheel covers every
+# CPython >= 3.10 on a given platform — the matrix is over OS/arch only, not Python
+# version, which keeps it small. `safestream-redactor-native` is a SEPARATE PyPI
+# project from `safestream-redactor`; publishing is via Trusted Publishing (OIDC),
+# so one-time setup is required on https://pypi.org for that project: Settings ->
+# Publishing -> add a "GitHub" trusted publisher with this repo, workflow file
+# "native-wheels.yml", and environment "pypi-native" (and the same on
+# https://test.pypi.org with environment "testpypi-native" for dry runs).
+#
+# Release flow: bump the version in native/Cargo.toml (kept in lockstep with
+# src/safestream_redactor/__init__.py), then push a tag `native-v<version>`.
+name: Native wheels
+
+permissions:
+  contents: read
+
+on:
+  push:
+    tags: ["native-v*"]
+  # Build-only (no publish) when the crate or this workflow changes, so a broken
+  # build is caught in PRs rather than at release time.
+  pull_request:
+    paths:
+      - "native/**"
+      - ".github/workflows/native-wheels.yml"
+  workflow_dispatch:
+    inputs:
+      publish_testpypi:
+        description: "Publish the built wheels to TestPyPI"
+        type: boolean
+        default: false
+
+jobs:
+  wheels:
+    name: wheel (${{ matrix.runner }} ${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-latest, target: x86_64 }
+          - { runner: ubuntu-latest, target: aarch64 }
+          - { runner: macos-13, target: x86_64 } # Intel
+          - { runner: macos-14, target: aarch64 } # Apple Silicon
+          - { runner: windows-latest, target: x64 }
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --out dist
+          working-directory: native
+          target: ${{ matrix.target }}
+          # applies to the Linux builds only (maturin-action ignores it elsewhere);
+          # `auto` picks the manylinux image / cross toolchain for the target.
+          manylinux: auto
+          sccache: "true"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheels-${{ matrix.runner }}-${{ matrix.target }}
+          path: native/dist/*.whl
+
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+          working-directory: native
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheels-sdist
+          path: native/dist/*.tar.gz
+
+  # Manual dry run: gh workflow run native-wheels.yml -f publish_testpypi=true
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_testpypi
+    needs: [wheels, sdist]
+    runs-on: ubuntu-latest
+    environment: testpypi-native
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    if: startsWith(github.ref, 'refs/tags/native-v')
+    needs: [wheels, sdist]
+    runs-on: ubuntu-latest
+    environment: pypi-native
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

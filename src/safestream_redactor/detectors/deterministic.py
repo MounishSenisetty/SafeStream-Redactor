@@ -345,7 +345,41 @@ def _load_native(backend: str) -> ModuleType | None:
                 stacklevel=3,
             )
         return None
+    if not _native_matches_spec(safestream_native):  # pragma: no cover - requires native
+        # The native wheel is a separate distribution; a version-skewed one could
+        # pair native patterns with a different Python spec and silently diverge.
+        # Fall back to the byte-identical oracle rather than ship wrong output.
+        warnings.warn(
+            "the installed safestream_native extension's pattern spec does not match "
+            "this version of safestream-redactor (version skew); falling back to the "
+            "pure-Python tier. Install matching versions (the [native] extra pins a "
+            "compatible floor).",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        return None
     return cast("ModuleType", safestream_native)  # pragma: no cover - requires native extension
+
+
+def _native_matches_spec(mod: Any) -> bool:
+    """True if the native pattern sources match this package's Python spec.
+
+    Source-string equality only (the same check ``tests/test_native_backend.py``
+    makes at build time), lifted to runtime because a published native wheel is a
+    separate distribution that can be version-skewed against the installed
+    ``safestream-redactor``. It is a necessary condition for byte-identity, not a
+    full proof (the Rust validators are gated by the differential test, which cannot
+    run at import), but it catches the realistic skew — a changed pattern set — so
+    the caller can fall back to the pure-Python oracle instead of diverging.
+    """
+    from safestream_redactor.detectors._lookaround_free import LF_PATTERNS
+
+    expected = {(p.entity_type.value, p.regex.pattern) for p in _PATTERNS}
+    expected |= {(p.entity_type.value, p.candidate.pattern) for p in LF_PATTERNS}
+    try:
+        return all((name, src) in expected for name, _conf, src in mod.patterns())
+    except Exception:
+        return False
 
 
 class DeterministicDetector:
