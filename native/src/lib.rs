@@ -24,6 +24,7 @@
 
 use pyo3::prelude::*;
 use regex::Regex;
+use std::net::Ipv6Addr;
 use std::sync::OnceLock;
 
 /// Post-match check applied to a candidate before it is accepted. `Simple`
@@ -33,6 +34,8 @@ use std::sync::OnceLock;
 enum Check {
     Simple,
     Ssn,
+    Ipv4,
+    Ipv6,
 }
 
 /// (entity_type, confidence, pattern source, check). Sources for `Simple`
@@ -103,10 +106,18 @@ const PATTERNS: &[(&str, f64, &str, Check)] = &[
     ),
     ("twilio_key", 0.9, r"\bSK[0-9a-f]{32}\b", Check::Simple),
     ("npm_token", 0.98, r"\bnpm_[A-Za-z0-9]{36}\b", Check::Simple),
-    // Digit-gated PII pattern (the real bottleneck): lookaround-free candidate +
-    // Unicode-aware boundary check + string-comparison validator. Byte-identical
-    // to Python incl. Unicode-digit SSNs (the validator never does int()).
+    // Digit-gated PII patterns (the real bottleneck): lookaround-free candidate +
+    // Unicode-aware boundary check + validator. Byte-identical to Python including
+    // Unicode-digit values (ssn via string ops; ipv4 via a full Unicode int()).
     ("ssn", 0.85, r"\d{3}-\d{2}-\d{4}", Check::Ssn),
+    ("ipv4", 0.9, r"\d{1,3}(?:\.\d{1,3}){3}", Check::Ipv4),
+    // ipv6 candidate is ASCII hex + colons only, so it has no Unicode-digit case.
+    (
+        "ipv6",
+        0.9,
+        r"[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}",
+        Check::Ipv6,
+    ),
 ];
 
 // One compiled `Regex` per pattern. We deliberately do NOT use `RegexSet`: a
@@ -176,6 +187,116 @@ fn ssn_ok(m: &str) -> bool {
     group != "00" && serial != "0000"
 }
 
+// --- Unicode decimal-digit value (Python int() parity) -----------------------
+//
+// Python's int() accepts ANY Unicode decimal digit (category Nd), so it detects
+// Unicode-digit IPv4 like `٩٩.٩.٩.٩`. Rust's str::parse/char::to_digit are
+// ASCII-only, so IPv4's octet-range validator would under-detect without this.
+//
+// Every Nd character is one of 66 contiguous 10-codepoint blocks: its value is
+// `codepoint - block_zero`. DIGIT_BLOCK_ZEROS lists each block's '0'. The table
+// is derived from the Unicode Character Database (Nd category); a Python-side
+// test (`test_native_backend.py`) verifies native digit value == Python int() for
+// EVERY Nd codepoint, so completeness is proven for the installed toolchains, not
+// merely for a few sampled scripts.
+const DIGIT_BLOCK_ZEROS: &[u32] = &[
+    0x30, 0x660, 0x6F0, 0x7C0, 0x966, 0x9E6, 0xA66, 0xAE6, 0xB66, 0xBE6, 0xC66, 0xCE6, 0xD66, 0xDE6,
+    0xE50, 0xED0, 0xF20, 0x1040, 0x1090, 0x17E0, 0x1810, 0x1946, 0x19D0, 0x1A80, 0x1A90, 0x1B50,
+    0x1BB0, 0x1C40, 0x1C50, 0xA620, 0xA8D0, 0xA900, 0xA9D0, 0xA9F0, 0xAA50, 0xABF0, 0xFF10, 0x104A0,
+    0x10D30, 0x11066, 0x110F0, 0x11136, 0x111D0, 0x112F0, 0x11450, 0x114D0, 0x11650, 0x116C0,
+    0x11730, 0x118E0, 0x11950, 0x11C50, 0x11D50, 0x11DA0, 0x16A60, 0x16AC0, 0x16B50, 0x1D7CE,
+    0x1D7D8, 0x1D7E2, 0x1D7EC, 0x1D7F6, 0x1E140, 0x1E2F0, 0x1E950, 0x1FBF0,
+];
+
+/// Decimal value 0-9 of a Unicode Nd digit, or `None` if `c` is not a decimal
+/// digit — matching Python `int()` on a single character.
+fn digit_value(c: char) -> Option<u32> {
+    let cp = c as u32;
+    if c.is_ascii_digit() {
+        return Some(cp - 0x30);
+    }
+    match DIGIT_BLOCK_ZEROS.binary_search(&cp) {
+        Ok(_) => Some(0), // c is a block's '0'
+        Err(0) => None,   // below the first block
+        Err(i) => {
+            let zero = DIGIT_BLOCK_ZEROS[i - 1];
+            if cp <= zero + 9 {
+                Some(cp - zero)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+/// Value of a `\d{1,3}` octet as Python `int()` computes it (Unicode digits ok).
+/// Returns `None` only if a char is not a decimal digit (never for a `\d` match).
+fn octet_value(o: &str) -> Option<u32> {
+    let mut val: u32 = 0;
+    for c in o.chars() {
+        val = val * 10 + digit_value(c)?;
+    }
+    Some(val)
+}
+
+fn class(re: &'static OnceLock<Regex>, src: &str) -> &'static Regex {
+    re.get_or_init(|| Regex::new(src).expect("class compiles"))
+}
+
+/// Reproduce IPv4's `(?<![\d.])…(?!\d)(?!\.\d)` with Unicode `\d`.
+fn ipv4_boundary_ok(text: &str, start: usize, end: usize) -> bool {
+    static BEFORE: OnceLock<Regex> = OnceLock::new(); // [\d.]
+    static DIGIT: OnceLock<Regex> = OnceLock::new(); // \d
+    let before = char_before(text, start).is_none_or(|c| !in_class(class(&BEFORE, r"[\d.]"), c));
+    let d = class(&DIGIT, r"\d");
+    let after = match char_after(text, end) {
+        None => true,
+        Some(c1) if in_class(d, c1) => false, // (?!\d)
+        Some('.') => {
+            // (?!\.\d): '.' followed by a digit is forbidden
+            let after_dot = text[end..].chars().nth(1);
+            !after_dot.is_some_and(|c2| in_class(d, c2))
+        }
+        Some(_) => true,
+    };
+    before && after
+}
+
+/// Reproduce Python `ipv4_ok`: each octet is "0", or has no ASCII leading zero
+/// and a value <= 255. Uses Unicode-aware `int()` via `octet_value`.
+fn ipv4_ok(m: &str) -> bool {
+    for o in m.split('.') {
+        if o == "0" {
+            continue;
+        }
+        // o[0] != "0" (ASCII zero) and int(o) <= 255
+        if o.starts_with('0') {
+            return false;
+        }
+        match octet_value(o) {
+            Some(v) if v <= 255 => {}
+            _ => return false,
+        }
+    }
+    true
+}
+
+/// Reproduce IPv6's `(?<![\w:.])…(?![\w:])` with Unicode `\w`.
+fn ipv6_boundary_ok(text: &str, start: usize, end: usize) -> bool {
+    static BEFORE: OnceLock<Regex> = OnceLock::new(); // [\w:.]
+    static AFTER: OnceLock<Regex> = OnceLock::new(); // [\w:]
+    let before = char_before(text, start).is_none_or(|c| !in_class(class(&BEFORE, r"[\w:.]"), c));
+    let after = char_after(text, end).is_none_or(|c| !in_class(class(&AFTER, r"[\w:]"), c));
+    before && after
+}
+
+/// Reproduce Python `ipv6_ok`: `ipaddress.IPv6Address(m.split('%')[0])` parses.
+/// The candidate contains no '%', so the split is a no-op; kept for exactness.
+fn ipv6_ok(m: &str) -> bool {
+    let head = m.split('%').next().unwrap_or(m);
+    head.parse::<Ipv6Addr>().is_ok()
+}
+
 /// Translate the byte offsets in `raw` (start, end, idx) to character offsets.
 ///
 /// ASCII fast path: when the text is all ASCII, byte offset == char offset and no
@@ -226,6 +347,8 @@ fn detect(py: Python<'_>, text: &str) -> PyResult<Vec<(usize, usize, &'static st
                 let accept = match check {
                     Check::Simple => true,
                     Check::Ssn => ssn_boundary_ok(text, s, e) && ssn_ok(m.as_str()),
+                    Check::Ipv4 => ipv4_boundary_ok(text, s, e) && ipv4_ok(m.as_str()),
+                    Check::Ipv6 => ipv6_boundary_ok(text, s, e) && ipv6_ok(m.as_str()),
                 };
                 if accept {
                     out.push((s, e, idx));
@@ -254,10 +377,23 @@ fn patterns() -> Vec<(&'static str, f64, &'static str)> {
     PATTERNS.iter().map(|&(n, c, s, _)| (n, c, s)).collect()
 }
 
+/// Test hook: the native decimal value of a single character (Python `int()`
+/// parity check). Returns `None` for a non-digit or a multi-char string. Lets the
+/// test prove the Unicode digit table is complete against Python's `int()`.
+#[pyfunction]
+fn digit_value_of(s: &str) -> Option<u32> {
+    let mut it = s.chars();
+    match (it.next(), it.next()) {
+        (Some(c), None) => digit_value(c),
+        _ => None,
+    }
+}
+
 #[pymodule]
 fn safestream_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(detect, m)?)?;
     m.add_function(wrap_pyfunction!(patterns, m)?)?;
+    m.add_function(wrap_pyfunction!(digit_value_of, m)?)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

@@ -40,6 +40,7 @@ _CREDS = [
     "auth eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6y",
     "npm npm_abcdefghijklmnopqrstuvwxyz0123456789 published",
     "ssn 123-45-6789 on file",  # digit-gated PII: the real bottleneck class
+    "client 10.20.30.40 connected",  # ipv4: digit-gated + validator
 ]
 # Distractor carries digits, so the SSN pattern (digit-gated, no literal prefilter)
 # cannot be prefilter-skipped in Python and must run its regex on every line.
@@ -72,7 +73,7 @@ def main() -> None:
     types = [EntityType.from_name(n) for n in covered]
     pydet = DeterministicDetector(types=types, prefilter=True)
 
-    print(f"native slice: {len(covered)} patterns (12 credential + ssn)")
+    print(f"native slice: {len(covered)} patterns (12 credential + ssn/ipv4/ipv6)")
     print(f"{'corpus':<22} {'matches':>9} {'python':>12} {'native':>12} {'speedup':>8}")
     print("-" * 66)
     for label, frac in [("none (0% PII)", 0.0), ("sparse (1%)", 0.01), ("dense (50%)", 0.5)]:

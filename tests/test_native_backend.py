@@ -41,6 +41,28 @@ def _assert_equiv(text: str) -> None:
     assert _native(text) == _python(text), f"native diverged: {text!r}"
 
 
+def test_unicode_digit_value_matches_python_int():
+    """Prove the native Unicode digit table is COMPLETE, not sampled.
+
+    Python's int() accepts every Unicode decimal digit (category Nd), so it
+    detects Unicode-digit IPv4 (e.g. ٩٩.٩.٩.٩). The native core reproduces int()
+    via a 66-block table; this asserts native digit value == Python int() for
+    EVERY Nd codepoint (and None for non-digits), so IPv4 is byte-identical for
+    the installed toolchains rather than merely for a few sampled scripts.
+    """
+    import unicodedata
+
+    mismatches = []
+    for cp in range(0x110000):
+        c = chr(cp)
+        if unicodedata.category(c) == "Nd" and sn.digit_value_of(c) != int(c):
+            mismatches.append(hex(cp))
+    assert not mismatches, f"native digit value diverges from int() at: {mismatches[:8]}"
+    # a couple of non-Nd characters must be rejected
+    assert sn.digit_value_of("a") is None
+    assert sn.digit_value_of("²") is None  # superscript two: Numeric, not Nd
+
+
 def test_pattern_sources_match_python():
     """The native pattern sources must be byte-for-byte the validated Python spec.
 
@@ -77,6 +99,12 @@ CORPUS = [
     "文字123-45-6789文字",  # unicode-adjacent -> boundary uses Unicode \\d
     "٩٩٩-٩٩-٩٩٩٩ and ١٢٣-٤٥-٦٧٨٩",  # Unicode-digit SSNs Python DOES detect
     "٠٩123-45-6789",  # preceded by a Unicode digit -> boundary rejects
+    # IPv4: octet range + no-leading-zero + Unicode-digit int()
+    "host 10.20.30.40 up 255.255.255.255 ok",
+    "256.1.1.1 010.1.1.1 1.2.3.4.5 999.1.2.3",  # invalid / over-long
+    "٩٩.٩.٩.٩ and ١٢٣.٤.5.6 and ٠٩.1.1.1",  # Unicode-digit IPv4 Python detects
+    # IPv6: ipaddress parity, boundary
+    "addr 2001:db8::1 ::1 :: fe80::1 g2001:db8::1 1:2:3",
     # Unicode-adjacent: native returns byte offsets internally, must emit char offsets
     "文字a@b.io文字 key AKIAIOSFODNN7EXAMPLE",
     "naïve bob@corp.io é ghp_abcdefghijklmnopqrstuvwxyz0123456789",
@@ -101,6 +129,14 @@ _FRAGMENTS = [
     "000-12-3456",
     "٩٩٩-٩٩-٩٩٩٩",
     "١٢٣",
+    "10.20.30.40",
+    "256.1.1.1",
+    "010.0.0.0",
+    "٩٩.٩.٩.٩",
+    "2001:db8::1",
+    "::1",
+    "::",
+    "fe80::1",
     "文",
     "é",
     "٩",
