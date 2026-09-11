@@ -53,28 +53,32 @@ match**; a lookaround-free candidate scanned with `finditer` + post-filter
 consumes the greedy span and cannot recover the shorter valid match. This is
 intrinsic, not a tuning issue — so they are not forced into the `RegexSet`.
 
-Two acceptable native implementations, both gated by the same differential test:
+Two candidate native implementations, both gated by the same differential test:
 
-- **Preferred: `fancy-regex` (Rust) for these two only.** `fancy-regex` supports
-  lookaround/backtracking, so the existing patterns port *verbatim* and stay
-  byte-identical by construction. They are digit-gated and only 2 of 21 patterns,
-  so running them in a small backtracking "slow lane" alongside the `RegexSet`
-  "fast lane" is cheap and simple. Recommended.
-- **Alternative: hand-rolled state machine.** Scan for a start (digit not preceded
-  by `[\d-]`), greedily consume the core counting digits, then apply the trailing
-  boundary with explicit trim-back of trailing groups until the lookahead holds or
-  the minimum length is violated; then Luhn / `phone_ok`. More code, more risk;
-  only worth it if `fancy-regex` proves too slow (unlikely for a digit-gated,
-  2-pattern lane). Must pass the differential+fuzz gate before shipping.
+- **`fancy-regex` (Rust) for these two only** — *built, measured, and rejected*
+  (see "Sub-step (a)" below). `fancy-regex` supports lookaround/backtracking, so the
+  patterns port verbatim; but it is a backtracking engine like CPython's `re`, not
+  faster than it, and its backtrack limit makes it either under-detect (truncates)
+  or catastrophically backtrack on dense digit input. Not viable.
+- **Hand-rolled linear state machine** — the remaining path. Scan for a start (digit
+  not preceded by `[\d-]`), greedily consume the core counting digits, then apply the
+  trailing boundary with explicit trim-back of trailing groups until the lookahead
+  holds or the minimum length is violated; then Luhn / `phone_ok`. More code, but
+  linear-time with no backtracking (so no truncation and no DoS surface). Must pass
+  the differential+fuzz gate before shipping. This is now the only route to a native
+  credit_card/phone; until it exists, they stay in Python.
 
 ## Native core plan (step 3, gated)
 
 1. `[native]` optional extra + `backend="native"` on the deterministic tier;
    pure-Python stays the default and the byte-identical oracle/fallback.
-2. Rust crate (PyO3 + maturin): `aho-corasick` multi-literal prefilter (SIMD
-   `memchr`) → `regex` `RegexSet` for the 19 DFA-ready patterns → `fancy-regex`
-   slow lane for credit_card/phone → return spans to the existing Python
-   arbitration + policy (move those into Rust later only if profiling says so).
+2. Rust crate (PyO3 + maturin): per-pattern `regex` `find_iter` with SIMD literal
+   prefilters for the DFA-ready patterns (a `RegexSet` was measured and rejected —
+   see "Step 3 — first native slice") → a `fancy-regex` slow lane was *planned* for
+   credit_card/phone but **built and rejected** (Sub-step (a)); they stay in Python →
+   return spans to the existing Python arbitration + policy (move those into Rust
+   later only if profiling says so). *This is the original plan; the measured
+   sub-steps below supersede it where they differ.*
 3. Ship only when a differential test proves `native.detect(x) == python.detect(x)`
    byte-for-byte across the corpus + fuzzed Unicode, and the baseline harness
    (`docs/BASELINE.md`) shows a real, measured speedup. Report numbers; if it
@@ -168,7 +172,8 @@ line — the compounding bottleneck):
 
 Byte-identical, gated by the differential test + a 40 000-example fuzz over IPv4/
 IPv6 edge cases (invalid octets, leading zeros, `::`, over-long, Unicode digits;
-0 divergences). `credit_card`/`phone` remain the `fancy-regex` slow-lane cases.
+0 divergences). `credit_card`/`phone` were the intended slow-lane cases — see
+Sub-step (a), where `fancy-regex` was built and rejected.
 
 ### Sub-step 2 — wired into the pipeline (`backend="native"`, end-to-end measured)
 
@@ -203,8 +208,9 @@ faster (sub-step 1b)? Two reasons, both measured in the tier profile below:
 
 1. The 1b microbenchmark ran **only the 15 native-covered types**. The full
    deterministic tier also runs `credit_card` and two `phone` patterns — digit-gated,
-   expensive, and (until the `fancy-regex` slow lane lands) **still Python in the
-   hybrid**. On the realistic corpus they dominate the tier: dropping them takes the
+   expensive, and **still Python in the hybrid** (the `fancy-regex` slow lane meant to
+   move them was built and rejected — Sub-step (a)). On the realistic corpus they
+   dominate the tier: dropping them takes the
    native deterministic tier from **10.5 → 128 MB/s** at 0% density. So the native
    hybrid's deterministic tier is only ~2× faster than Python end-to-end, not 25×,
    because it still pays the Python `credit_card`/`phone` cost on every digit line.
@@ -255,13 +261,49 @@ The `meta={"entropy": f"{…:.2f}"}` string stacks a second float-formatting par
 requirement on top. High risk, ≤1.27× reward.
 
 **Recommendation: do not port the entropy tier now.** The correct next target is
-`credit_card`/`phone` via the `fancy-regex` slow lane (sub-step a): they are ~90% of
-the deterministic tier's cost on real input (10.5 → 128 MB/s when removed) and port
-*verbatim* — `fancy-regex` supports the lookaround, so they stay byte-identical by
-construction, no float hazard. Revisit entropy only if a later step moves the whole
+`credit_card`/`phone` — ~90% of the deterministic tier's cost on real input (10.5 →
+128 MB/s when removed). Revisit entropy only if a later step moves the whole
 detection pass into one native scan (where the entropy candidate scan amortizes into
 a pass already being made, and the float comparison is the only new risk); as a
 standalone port it is the wrong tier.
+
+### Sub-step (a) — credit_card/phone via `fancy-regex`: built, measured, **rejected**
+
+The slow lane was implemented in full: `fancy-regex` 0.19, the three patterns
+(credit_card + two phone) ported verbatim with the lookaround intact, Luhn/`phone_ok`
+validators reproduced (Luhn reuses the proven Unicode `digit_value`; `phone_ok`'s
+`strip()` is a no-op on any match, so the date/SSN-shape rejections and the 7–15
+digit-count run on the match directly). In isolation it was byte-identical — the
+corpus and a 40 000-example fuzz over card/phone edge cases (separators, Unicode-digit
+cards, date/SSN-shape rejection) passed with **0 divergences**. It still does not
+ship, for two independent, measured reasons:
+
+1. **Correctness — silent under-detection (fail-open).** On the 10 MB baseline corpus
+   the native `credit_card` scan **truncated at offset ~1.6 MB, finding 18 of 123
+   cards** the Python tier finds. `fancy-regex`'s `find_iter` hit its backtrack limit
+   on the digit-dense distractor lines and returned an error mid-scan, so every card
+   past that point was missed. For a redaction tool a missed secret is the worst
+   failure mode — and it slipped past the isolated corpus/fuzz tests, surfacing only
+   on multi-MB input. Raising the limit to 10⁹ made it byte-identical again but…
+2. **Performance — no gain, plus a DoS surface.** With the limit raised enough to be
+   correct, the native deterministic tier measured **0.89× at 0 % density and
+   1.03–1.05×** at 1–50 % — i.e. break-even to *slightly slower* than pure Python.
+   `fancy-regex` is a backtracking engine like CPython's `re`; it does not backtrack
+   *faster* than a mature C engine, so there is nothing to win here. The apparent
+   "48× at 0 %" seen before raising the limit was the truncation bug — fast because
+   it was doing less work and under-detecting. Worse, a 10⁹-step backtrack budget
+   reintroduces the catastrophic-backtracking DoS surface that earlier phases
+   deliberately bounded (the `private_key` length cap, assumption A1) — unacceptable
+   for a tool that processes untrusted input.
+
+Byte-identical but **not faster** (and correct only with a limit that is itself a
+liability) fails the shipping bar (ship only if faster *and* identical — the re2
+precedent). The port was reverted; `credit_card`/`phone` stay in Python. The only
+route left to a native version is the **hand-rolled linear scanner** above: linear
+time, no backtracking, no truncation, no DoS surface — the extra code buys the one
+thing `fancy-regex` structurally cannot give. Whether it beats CPython's C `re`
+enough to matter (Python `re` already does ~11 MB/s for the trio) is itself an open,
+benchmark-gated question before that work is worth starting.
 
 ## Status
 
@@ -278,15 +320,20 @@ standalone port it is the wrong tier.
   absent (`"native"` warns, `"auto"` silent). Measured whole-pipeline redaction
   gain **1.4–1.7×** (Amdahl-limited by the still-Python entropy/contextual tiers
   and the arbitration/replace path — see sub-step 2 above).
+- Sub-step (a) — credit_card/phone via `fancy-regex` **built and rejected** (see the
+  evaluation above). Byte-identical in isolation but under-detected on multi-MB input
+  (backtrack-limit truncation, a fail-open miss) and, once made correct, was
+  break-even to slightly slower with a catastrophic-backtracking DoS surface.
+  Reverted; they stay in Python. A hand-rolled linear scanner is the only route left,
+  and is itself benchmark-gated (Python `re` already does ~11 MB/s for the trio).
 - Sub-step (b) — entropy-tier port **evaluated: declined** (see the evaluation
   above). It is already the fastest tier (3–8× the deterministic tier); end-to-end
   ceiling ≤1.27×, against a floating-point `log2` byte-identity hazard that cannot be
   proven bit-identical the way the integer cases were. Left in Python.
-- **Next sub-steps** (each benchmark- and byte-identity-gated): (a) add
-  `credit_card`/`phone` via the `fancy-regex` slow lane — the measured bottleneck
-  (~90% of the deterministic tier on real input) and byte-identical by construction
-  (fancy-regex ports the lookaround verbatim); (c) add the optional `[native]` extra
-  + the publishing decision below.
+- **Next sub-steps**: (c) add the optional `[native]` extra + the publishing decision
+  below. Further detector-tier ports (credit_card/phone hand-rolled scanner; entropy)
+  are open questions the evaluations above answer with "not yet / not worth it" — the
+  deterministic fast lane is the win that's real and gated.
 - Open decision for the maintainer before publishing: whether to publish a
   `safestream-redactor-native` wheel (adds a CI wheel-build matrix) or keep it
   build-from-source; and confirmation to add the optional `[native]` extra. The
