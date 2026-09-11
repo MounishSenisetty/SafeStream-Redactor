@@ -198,20 +198,70 @@ detect-loop microbenchmark. Real `redact_file` (read → decode → all detector
 | medium (10%) | 2.46 MB/s | 4.06 MB/s | **1.7×** | 10 202 |
 | high (50%)   | 2.07 MB/s | 2.96 MB/s | **1.4×** | 69 594 |
 
-Why only **1.4–1.7×** end-to-end when the deterministic detect loop alone is
-21–33× faster (sub-step 1b)? Because the deterministic tier is no longer the whole
-cost once it's fast: the **entropy tier and contextual scorer still run in
-Python** on every window, and so does the read/decode/arbitration/policy/replace/
-write path. Speeding up one tier by 25× can only move the total by as much as that
-tier's share of it — a textbook Amdahl ceiling. The gain also shrinks as density
-rises (1.7× → 1.4×): more real matches shift work into the still-Python
-replacement/arbitration path. This is the expected shape, reported as measured;
-the remaining headroom is the entropy tier and the arbitration/replace path, not
-the deterministic regex.
+Why only **1.4–1.7×** end-to-end when the same-pattern-set detect loop is 21–33×
+faster (sub-step 1b)? Two reasons, both measured in the tier profile below:
+
+1. The 1b microbenchmark ran **only the 15 native-covered types**. The full
+   deterministic tier also runs `credit_card` and two `phone` patterns — digit-gated,
+   expensive, and (until the `fancy-regex` slow lane lands) **still Python in the
+   hybrid**. On the realistic corpus they dominate the tier: dropping them takes the
+   native deterministic tier from **10.5 → 128 MB/s** at 0% density. So the native
+   hybrid's deterministic tier is only ~2× faster than Python end-to-end, not 25×,
+   because it still pays the Python `credit_card`/`phone` cost on every digit line.
+2. The other tiers and the read/decode/arbitration/policy/replace/write path are
+   Python too — an Amdahl ceiling. The gain shrinks as density rises (1.7× → 1.4×)
+   as more matches shift work into the still-Python replace/arbitration path.
+
+The remaining headroom is therefore **`credit_card`/`phone`**, not the entropy tier
+(see the profile).
 
 The native build also raises RSS ~20 MB → ~43 MB (the compiled regex automata),
 a fixed cost independent of input size — the constant-memory invariant is
 unchanged (still flat across file size), the floor is just higher.
+
+### Evaluation — should the entropy tier be ported next? (measured: no)
+
+Profiled per tier on the same 10 MB corpora (standalone `detect()` throughput, and
+the end-to-end effect of turning the tier off), to decide where the next native
+port should go. Higher MB/s = faster:
+
+| Tier (native backend) | 0% | 1% | 10% | 50% |
+| --- | --- | --- | --- | --- |
+| deterministic (hybrid) | 10.0 | 7.2 | 6.9 | 6.5 |
+| **entropy** | **52.9** | **52.4** | **45.4** | **21.7** |
+| contextual | 42.4 | 41.4 | 41.2 | 42.0 |
+
+The entropy tier is **already the fastest tier** — 3–8× faster than the
+deterministic tier it would sit beside. Its end-to-end share (measured as the delta
+from `use_entropy=False`, so it also captures the arbitration it saves) is only
+**10–21%**, an absolute ceiling of **1.11–1.27×** *if the port were free*:
+
+| Density | native+entropy | native, no entropy | entropy share | ceiling |
+| --- | --- | --- | --- | --- |
+| none | 5.48 MB/s | 6.49 MB/s | 15.6% | 1.18× |
+| low | 4.51 MB/s | 5.04 MB/s | 10.5% | 1.12× |
+| medium | 4.12 MB/s | 4.59 MB/s | 10.3% | 1.11× |
+| high | 3.07 MB/s | 3.89 MB/s | 21.2% | 1.27× |
+
+Against that thin ceiling, a port carries a **byte-identity hazard worse than any
+pattern shipped so far**. The classifier is `shannon_entropy(token) >= 4.0` (base64)
+or `>= 3.0` (hex), where entropy is `-Σ (c/n)·log2(c/n)` in float64. Reproducing it
+in Rust needs `f64::log2` and the same summation order to agree with CPython's
+`math.log2` to the last ULP; a token whose true entropy sits within ~1e-12 of a
+threshold could flip classes across the two libm implementations (and platforms).
+Unlike the Unicode-`int()` case — exact integer arithmetic, provable complete — this
+is floating-point equality that cannot be *guaranteed* bit-identical, only tested.
+The `meta={"entropy": f"{…:.2f}"}` string stacks a second float-formatting parity
+requirement on top. High risk, ≤1.27× reward.
+
+**Recommendation: do not port the entropy tier now.** The correct next target is
+`credit_card`/`phone` via the `fancy-regex` slow lane (sub-step a): they are ~90% of
+the deterministic tier's cost on real input (10.5 → 128 MB/s when removed) and port
+*verbatim* — `fancy-regex` supports the lookaround, so they stay byte-identical by
+construction, no float hazard. Revisit entropy only if a later step moves the whole
+detection pass into one native scan (where the entropy candidate scan amortizes into
+a pass already being made, and the float comparison is the only new risk); as a
+standalone port it is the wrong tier.
 
 ## Status
 
@@ -228,11 +278,15 @@ unchanged (still flat across file size), the floor is just higher.
   absent (`"native"` warns, `"auto"` silent). Measured whole-pipeline redaction
   gain **1.4–1.7×** (Amdahl-limited by the still-Python entropy/contextual tiers
   and the arbitration/replace path — see sub-step 2 above).
+- Sub-step (b) — entropy-tier port **evaluated: declined** (see the evaluation
+  above). It is already the fastest tier (3–8× the deterministic tier); end-to-end
+  ceiling ≤1.27×, against a floating-point `log2` byte-identity hazard that cannot be
+  proven bit-identical the way the integer cases were. Left in Python.
 - **Next sub-steps** (each benchmark- and byte-identity-gated): (a) add
-  `credit_card`/`phone` via the `fancy-regex` slow lane; (b) port the entropy tier
-  or leave it to Python (evaluate) — this is now the dominant remaining cost, so
-  it is where the next end-to-end gain is; (c) add the optional `[native]` extra +
-  the publishing decision below.
+  `credit_card`/`phone` via the `fancy-regex` slow lane — the measured bottleneck
+  (~90% of the deterministic tier on real input) and byte-identical by construction
+  (fancy-regex ports the lookaround verbatim); (c) add the optional `[native]` extra
+  + the publishing decision below.
 - Open decision for the maintainer before publishing: whether to publish a
   `safestream-redactor-native` wheel (adds a CI wheel-build matrix) or keep it
   build-from-source; and confirmation to add the optional `[native]` extra. The
