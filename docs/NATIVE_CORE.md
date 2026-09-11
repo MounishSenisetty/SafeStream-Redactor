@@ -14,7 +14,7 @@ Every tier-1 pattern now falls into one of three buckets:
 | --- | --- | --- |
 | **Already lookaround-free** (13) | email, jwt, aws_key, github_token, slack_token, slack_webhook, stripe_key, google_api_key, sendgrid_key, twilio_key, npm_token, url_credentials, api_key, private_key | Drop straight into a Rust `regex` `RegexSet` (single-pass, Unicode-correct `\b`/`\d`). |
 | **Rewritten lookaround-free** (6) | ssn, ipv4, ipv6, aws_secret, anthropic_key, openai_key | `detectors/_lookaround_free.py` — DFA-compatible candidate + code boundary check, **byte-identical** to the originals (`tests/test_lookaround_free.py`, corpus + 800 fuzz examples in CI, 20 000 ad-hoc). Port candidate → `RegexSet`, boundary check → Rust. |
-| **Need a dedicated scanner** (2) | credit_card, phone | Greedy variable-length core over a separator-containing alphabet + negative lookahead ⇒ regex backtracking a candidate+filter cannot reproduce (measured: 104 / 175 / 1644 divergences). Handle verbatim in the native core (see below). |
+| **Need a dedicated scanner** (2) | credit_card, phone | Greedy variable-length core over a separator-containing alphabet + negative lookahead ⇒ regex backtracking a candidate+filter cannot reproduce (measured: 104 / 175 / 1644 divergences). A `fancy-regex` slow lane was built and **rejected** (Sub-step (a)); they stay in Python — a linear scanner is the only route left. |
 
 So **19 of 21** patterns become a single-pass `RegexSet`; **2** get a targeted
 path. This is the concrete artifact the Rust core ports.

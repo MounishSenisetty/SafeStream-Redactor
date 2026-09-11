@@ -51,7 +51,10 @@ python -m spacy download en_core_web_sm
 
 # optional native (Rust) detection core — a byte-identical accelerator for the
 # deterministic tier, selected with Redactor(backend="native"); the base install
-# stays pure-Python, and backend="native" falls back to Python when it is absent:
+# stays pure-Python, and backend="native" falls back to Python when it is absent.
+# The wheel is published separately; until it is on PyPI, build it from source:
+#   pip install maturin && maturin build --release -m native/Cargo.toml --out dist && \
+#     pip install dist/safestream_redactor_native-*.whl
 pip install 'safestream-redactor[native]'
 
 # optional local ONNX NER tier — on-device PERSON/ORG/LOC detection via a
