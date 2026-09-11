@@ -1,9 +1,9 @@
 # SafeStream-Redactor — Demo Guide
 
-A single, guided demo of SafeStream-Redactor across **all four ways to run it** —
-PyPI install, git clone, Docker, and the REST API — plus a full feature tour,
-dataset generation, and the benchmark suite. Every command below is copy-paste
-runnable, and the output shown was captured from an actual run.
+A single, guided demo of SafeStream-Redactor across **all five ways to run it** —
+PyPI install, git clone, Docker, the REST API, and the MCP server — plus a full
+feature tour, dataset generation, and the benchmark suite. Every command below is
+copy-paste runnable, and the output shown was captured from an actual run.
 
 > **What it does, in one line:** streaming PII **and** credential/secret detection &
 > redaction for text of any size, at **constant O(1) memory** — redact a 100 GB log
@@ -28,7 +28,7 @@ examples/run_demo.sh --bench    # also generate a 1 MB corpus and run the benchm
 guide breaks the same features out by install method and shows each command
 individually.
 
-### Which file / command for each of the four methods
+### Which file / command for each of the five methods
 
 | Method | Get it | Entry point | Key files |
 |---|---|---|---|
@@ -36,6 +36,7 @@ individually.
 | **Clone (dev)** | `pip install -e '.[dev]'` | `safestream`, `pytest`, `benchmarks/*.py` | [`pyproject.toml`](../pyproject.toml), [`tests/`](../tests), [`benchmarks/`](../benchmarks) |
 | **Docker** | `docker build -t safestream-redactor .` or pull GHCR | `docker run … safestream …` | [`Dockerfile`](../Dockerfile) |
 | **REST API** | `safestream serve` | `http://127.0.0.1:8000` | [`src/safestream_redactor/api.py`](../src/safestream_redactor/api.py), [`docs/rest-api.md`](rest-api.md) |
+| **MCP server** | `safestream mcp-serve` | stdio JSON-RPC 2.0 (for AI agents) | [`src/safestream_redactor/mcp_server.py`](../src/safestream_redactor/mcp_server.py), [`docs/MCP.md`](MCP.md) |
 
 ---
 
@@ -68,7 +69,19 @@ pip install safestream-redactor
 # optional: spaCy NER tier for free-form PERSON / ORG / LOC
 pip install 'safestream-redactor[ner]'
 python -m spacy download en_core_web_sm
+
+# optional: local ONNX NER tier (PERSON/ORG/LOC via a bring-your-own on-device
+# model, no data egress) — see docs/DETECTORS.md
+pip install 'safestream-redactor[onnx]'
+
+# optional: native (Rust) accelerator for the deterministic tier — byte-identical
+# to pure Python, selected with backend="native"; falls back if not installed
+pip install 'safestream-redactor[native]'
 ```
+
+All extras are opt-in: the base install is standard-library only and every
+optional tier is lazily imported, so a plain `pip install safestream-redactor`
+never pulls spaCy, onnxruntime, or the Rust wheel.
 
 ### CLI
 
@@ -100,11 +113,22 @@ print(stats.summary())          # e.g. '3 detection(s): email=2, ssn=1'
 
 # split one large file across cores; byte-identical to the sequential pass
 Redactor().redact_file("huge.log", "huge_redacted.log", workers=8)
+
+# optional native (Rust) accelerator — byte-identical output, falls back to pure
+# Python when the [native] wheel isn't installed
+Redactor(backend="native").redact("key AKIAIOSFODNN7EXAMPLE")   # -> 'key [REDACTED]'
+
+# optional local ONNX NER tier — bring your own model + vocab, runs on-device
+Redactor(use_onnx=True, onnx_model="model.onnx", onnx_vocab="vocab.json").redact(
+    "John Smith visited Paris"
+)   # -> '[REDACTED] visited [REDACTED]'   (with a PERSON/LOC model)
 ```
 
 Public API: `Redactor`, `RedactionPolicy`, `RedactionMode`, `EntityType`,
 `Detection`, `RedactionStats`, `Calibrator` — see
-[`src/README_PYPI.md`](../src/README_PYPI.md).
+[`src/README_PYPI.md`](../src/README_PYPI.md). The optional `backend="native"`
+accelerator and `use_onnx=` tier are documented in
+[`docs/NATIVE_CORE.md`](NATIVE_CORE.md) and [`docs/DETECTORS.md`](DETECTORS.md).
 
 ---
 
@@ -185,7 +209,7 @@ curl -s http://127.0.0.1:8000/health
 # {"status": "ok"}
 
 curl -s http://127.0.0.1:8000/version
-# {"tool": "safestream-redactor", "version": "0.3.0"}
+# {"tool": "safestream-redactor", "version": "0.4.0"}
 
 curl -s http://127.0.0.1:8000/detectors
 # {"tiers": ["deterministic", "entropy", "contextual"], "entity_types": ["email", ...]}
@@ -205,6 +229,64 @@ curl -s -X POST http://127.0.0.1:8000/scan -H 'Content-Type: application/json' \
 **Files to use:** [`src/safestream_redactor/api.py`](../src/safestream_redactor/api.py)
 and the full reference in [`docs/rest-api.md`](rest-api.md). `/scan` stays
 content-free by design, so it is safe to log or store its responses.
+
+---
+
+## Method 5 — MCP server (for AI agents)
+
+The same engine is exposed as a local [Model Context Protocol](https://modelcontextprotocol.io)
+server, so an AI agent can check text for secrets/PII **as a tool** — without the
+raw secret ever crossing the tool boundary. It speaks newline-delimited JSON-RPC
+2.0 over **stdio**, runs fully offline (the network guard stays installed), opens
+no sockets of its own, and adds no dependency (standard library only).
+
+```bash
+safestream mcp-serve                      # stdio JSON-RPC 2.0, all tiers
+safestream mcp-serve --config policy.toml # apply a policy to the tools
+```
+
+Point any MCP client at the command:
+
+```json
+{ "mcpServers": { "safestream": { "command": "safestream", "args": ["mcp-serve"] } } }
+```
+
+**Tools:** `scan` (finding metadata — type/offsets/severity/detector, **never the
+secret**), `redact` (text with secrets removed + content-free counts),
+`explain_detection` (per-finding rationale, metadata only), `detectors` (active
+tiers), `health` (version/tiers/offline).
+
+Drive it directly to see the wire protocol (captured from a real run):
+
+```bash
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"scan","arguments":{"text":"deploy key AKIAIOSFODNN7EXAMPLE and ssn 123-45-6789"}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"redact","arguments":{"text":"deploy key AKIAIOSFODNN7EXAMPLE and ssn 123-45-6789"}}}' \
+  | safestream mcp-serve
+```
+
+```jsonc
+// initialize
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05",
+  "capabilities":{"tools":{"listChanged":false}},
+  "serverInfo":{"name":"safestream-redactor","version":"0.4.0"}}}
+// scan — metadata only, the AWS key value never appears
+{"jsonrpc":"2.0","id":2,"result":{"structuredContent":{"count":2,"findings":[
+  {"type":"aws_key","start":11,"end":31,"length":20,"confidence":0.58,
+   "severity":"critical","detector":"deterministic","redacted":true},
+  {"type":"ssn","start":40,"end":51,"severity":"high","detector":"deterministic","redacted":true}]}}}
+// redact — secrets already removed
+{"jsonrpc":"2.0","id":3,"result":{"structuredContent":
+  {"redacted_text":"deploy key [REDACTED] and ssn [REDACTED]",
+   "total_detections":2,"detections_by_type":{"aws_key":1,"ssn":1}}}}
+```
+
+The cardinal rule — *a detection tool must not become an exfiltration channel* —
+is enforced by construction: `scan`/`explain_detection` return metadata only
+(covered by `tests/test_mcp.py::test_scan_never_returns_the_secret`), inputs are
+size-capped at 4 MiB, and internal errors surface as the exception *type* only,
+never a message that could echo input. Full reference: [`docs/MCP.md`](MCP.md).
 
 ---
 
@@ -312,7 +394,7 @@ safestream redact sample.txt -o out.txt --stats --report report.json
 # -- 11 detection(s): aws_key=1, credit_card=1, email=1, github_token=1, ipv4=1, …
 ```
 ```json
-{ "tool": "safestream-redactor", "version": "0.3.0", "files": 1,
+{ "tool": "safestream-redactor", "version": "0.4.0", "files": 1,
   "total_detections": 11, "detections_by_type": { "aws_key": 1, "email": 1, … },
   "chars_in": 657, "chars_out": 430, "decode_replacements": 0 }
 ```

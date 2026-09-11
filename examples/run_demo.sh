@@ -135,13 +135,21 @@ run "${SS[*]} init-config -o \"\$WORK/starter-policy.toml\""
 "${SS[@]}" init-config -o "$WORK/starter-policy.toml"
 echo "wrote $WORK/starter-policy.toml ($(wc -l < "$WORK/starter-policy.toml") lines)"
 
+hr "12. MCP server (for AI agents) — stdio JSON-RPC 2.0, secret never crosses the tool boundary"
+run "printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"scan\",...}}' | ${SS[*]} mcp-serve"
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"scan","arguments":{"text":"key AKIAIOSFODNN7EXAMPLE ssn 123-45-6789"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"redact","arguments":{"text":"key AKIAIOSFODNN7EXAMPLE ssn 123-45-6789"}}}' \
+  | "${SS[@]}" mcp-serve 2>/dev/null
+echo "(scan returns type/offsets/severity only — never the secret; redact returns text with secrets removed)"
+
 # ---------------------------------------------------------------------------
 # Optional: generate a tiny corpus and run the regression benchmark. Skipped
 # unless --bench is passed and the benchmark scripts are present (i.e. a clone).
 # ---------------------------------------------------------------------------
 if [ "${1:-}" = "--bench" ]; then
     if [ -f "$REPO_ROOT/benchmarks/generate_dataset.py" ]; then
-        hr "12. benchmark — generate a small labeled corpus, then score the detector"
+        hr "13. benchmark — generate a small labeled corpus, then score the detector"
         run "python benchmarks/generate_dataset.py --size-mb 1 --out \"\$WORK/data\""
         python "$REPO_ROOT/benchmarks/generate_dataset.py" --size-mb 1 --out "$WORK/data"
         run "python benchmarks/run_benchmark.py --data \"\$WORK/data\""
@@ -152,5 +160,5 @@ if [ "${1:-}" = "--bench" ]; then
 fi
 
 hr "Done"
-echo "Full four-method walkthrough (PyPI / clone / Docker / REST API), dataset"
-echo "generation, and benchmarks: docs/DEMO.md"
+echo "Full five-method walkthrough (PyPI / clone / Docker / REST API / MCP server),"
+echo "optional native + ONNX tiers, dataset generation, and benchmarks: docs/DEMO.md"
