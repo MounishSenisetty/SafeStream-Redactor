@@ -53,6 +53,10 @@ python -m spacy download en_core_web_sm
 # deterministic tier, selected with Redactor(backend="native"); the base install
 # stays pure-Python, and backend="native" falls back to Python when it is absent:
 pip install 'safestream-redactor[native]'
+
+# optional local ONNX NER tier — on-device PERSON/ORG/LOC detection via a
+# bring-your-own ONNX model, no data egress (Redactor(use_onnx=True, ...)):
+pip install 'safestream-redactor[onnx]'
 ```
 
 ```bash

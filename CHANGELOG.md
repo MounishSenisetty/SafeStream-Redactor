@@ -8,6 +8,19 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- **Optional local ONNX NER tier** (`Redactor(use_onnx=True, ...)`, CLI `--onnx`,
+  the `pip install safestream-redactor[onnx]` extra): an on-device
+  token-classification model (BIO/IOB2) for the PERSON / ORG / LOC entities
+  deterministic rules cannot catch — the same niche as the spaCy tier, but via a
+  portable ONNX model run through `onnxruntime` with **no data egress** (CPU
+  provider only; verified under the offline network guard). `onnxruntime`/`numpy`
+  are imported lazily so the base install stays pure-Python. Three seams
+  (tokenizer / inference backend / pure-Python BIO decoder) keep the logic
+  testable without a model and let a Hugging Face tokenizer or custom runner plug
+  in; it declares `StreamingRequirements` and pickles its config for the parallel
+  scheduler, like the spaCy tier. Bring your own `.onnx` model + vocab — no model
+  is bundled. See `docs/DETECTORS.md`.
+
 - **Optional native (Rust) detection core** (`Redactor(backend="native")`, and the
   `pip install safestream-redactor[native]` extra): a compiled, **byte-identical**
   accelerator for the deterministic tier's finite-automaton patterns (12 credential
