@@ -2,6 +2,17 @@
 
 Real numbers from running the **shipped** SafeStream-Redactor pipeline over the full Hugging Face `RedactionBench/RedactionBench` dataset. Reproduce with the commands at the bottom; nothing here is estimated.
 
+> **Deep audit & why the score is what it is:** see [`AUDIT.md`](AUDIT.md). Summary:
+> the harness is verified correct (offsets, matching, aggregation, streaming=whole
+> all check out — no false failures); the low all-gold F1 is driven by RedactionBench's
+> subjective `contextual` class (57% of gold characters, ~47.7% human agreement,
+> mostly single characters/date-separators) plus person names (45% of mandatory misses,
+> NER-bound). A **label-anchored identifier cascade** was added to the core as a genuine,
+> precision-safe improvement (mandatory recall 0.686→0.691 core / 0.765→0.769 with NER,
+> precision held, streaming byte-identical). **A near-1.0 score on this dataset is not
+> defensible for a precision-respecting streaming redactor** — the audit explains why in
+> detail (methodology section 7).
+
 ## Setup
 
 - **Dataset**: `RedactionBench/RedactionBench` · revision `d45e9cec89bc49c69355e252fec29cc0229982f6` · 200 documents, 11 domains
