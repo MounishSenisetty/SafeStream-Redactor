@@ -148,12 +148,21 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
     types = None
     if args.types:
         types = [t.strip() for t in args.types.split(",") if t.strip()]
-    return Redactor(
-        types=types,
-        use_ner=args.ner,
-        min_confidence=args.min_confidence,
-        custom_words=tuple(w for w in args.custom_word or []),
-    )
+    kwargs: dict[str, object] = {
+        "types": types,
+        "use_ner": args.ner,
+        "use_gazetteer": getattr(args, "gazetteer", False),
+        "min_confidence": args.min_confidence,
+        "custom_words": tuple(w for w in args.custom_word or []),
+    }
+    if getattr(args, "onnx_model", None):
+        kwargs.update(
+            use_onnx=True,
+            onnx_model=args.onnx_model,
+            onnx_vocab=args.onnx_vocab,
+            onnx_labels=args.onnx_labels,
+        )
+    return Redactor(**kwargs)  # type: ignore[arg-type]
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -918,6 +927,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     pr.add_argument("--min-confidence", type=float, default=0.5)
     pr.add_argument("--ner", action="store_true", help="enable the optional spaCy NER tier")
+    pr.add_argument("--gazetteer", action="store_true",
+                    help="enable the model-free gazetteer/context name+org detector")
+    pr.add_argument("--onnx-model", help="local ONNX token-classifier .onnx for the ONNX NER tier")
+    pr.add_argument("--onnx-vocab", help="JSON vocab (token->id) for the ONNX NER tier")
+    pr.add_argument("--onnx-labels", help="JSON id->label map for the ONNX NER tier (optional)")
     pr.add_argument(
         "--types", default=None, help="restrict SafeStream to these entity types (comma-separated)"
     )

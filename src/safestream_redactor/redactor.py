@@ -99,6 +99,7 @@ class Redactor:
         custom_patterns: Iterable[str] = (),
         use_ner: bool = False,
         ner_model: str = "en_core_web_sm",
+        use_gazetteer: bool = False,
         use_onnx: bool = False,
         onnx_model: str | None = None,
         onnx_vocab: str | dict[str, int] | None = None,
@@ -149,6 +150,10 @@ class Redactor:
             from safestream_redactor.detectors.ner import NERDetector
 
             self._detectors.append(NERDetector(ner_model))
+        if use_gazetteer:
+            from safestream_redactor.detectors.gazetteer_ner import GazetteerNameDetector
+
+            self._detectors.append(GazetteerNameDetector())
         if use_onnx:
             from safestream_redactor.detectors.onnx_ner import OnnxPiiDetector
 
