@@ -44,8 +44,10 @@ from safestream_redactor.entities import Detection, EntityType
 # name characters. Bounded length keeps a runaway match from crossing sentences.
 # the class includes both apostrophe forms (U+0027 and U+2019), real name chars
 _NT = r"[A-ZÀ-ɏ][A-Za-zÀ-ɏ'’.\-]{0,30}"  # noqa: RUF001
-# 1..4 capitalized tokens.
-_NAME = rf"{_NT}(?:\s+{_NT}){{0,3}}"
+# 1..4 capitalized tokens on the SAME line — the separator is horizontal
+# whitespace only (``[^\S\r\n]``), so a name never runs across a line break into
+# the next form field (e.g. "Melissa\n\nAddress").
+_NAME = rf"{_NT}(?:[^\S\r\n]+{_NT}){{0,3}}"
 
 # Capitalized words that are not names/orgs (sentence-initial function words,
 # salutation glue). Filtered from the head of a captured span to curb false
@@ -116,26 +118,47 @@ _ORG = "|".join(sorted(map(re.escape, ORG_DESIGNATORS), key=len, reverse=True))
 _RE_HONORIFIC = re.compile(rf"\b(?i:{_HON})\.?\s+({_NAME})")
 _RE_SUFFIX = re.compile(rf"\b({_NAME})\s*,?\s+(?i:{_SUF})\b")
 _RE_CUE = re.compile(rf"\b(?i:{_CUE})\b\s*[:\-]?\s+({_NAME})")
-_RE_CAPSEQ = re.compile(rf"{_NT}(?:\s+{_NT}){{1,3}}")  # ≥2 capitalized tokens
+_RE_CAPSEQ = re.compile(rf"{_NT}(?:[^\S\r\n]+{_NT}){{1,3}}")  # ≥2 same-line capitalized tokens
 _RE_ORG_TRAIL = re.compile(rf"\b({_NAME})[, ]+(?i:{_ORG})\b\.?")
 _RE_ORG_LEAD = re.compile(rf"\b(?i:{_ORG})\s+of\s+({_NAME})")
 
 
-# Words that must never be the head of a name span: function words plus the cue
-# and label words themselves (so "Patient Name: John" does not redact "Name").
-_HEAD_STOP = _STOP_CAPS | NAME_CUES
+# Capitalized words that are not part of a name and must be trimmed from either
+# end of a captured span: function words, the cue/label words themselves (so
+# "Patient Name: John" does not redact "Name"), and common form-field labels that
+# sit adjacent to a value ("... Melissa Schettler   Date" -> drop "Date").
+_FIELD_LABELS = frozenset(
+    {
+        "date", "address", "signed", "signature", "phone", "email", "fax", "city",
+        "state", "zip", "zipcode", "country", "dob", "ssn", "id", "title", "subject",
+        "from", "to", "re", "page", "total", "amount", "no", "number", "type",
+        "status", "department", "position", "role", "gender", "sex", "age", "time",
+        "recommendation", "comments", "notes", "reference", "account",
+    }
+)
+_EDGE_STOP = _STOP_CAPS | NAME_CUES | _FIELD_LABELS
 
 
 def _trim_stopwords(text: str, start: int, end: int) -> tuple[int, int]:
-    """Drop leading capitalized function/label words from a captured span."""
+    """Trim leading and trailing capitalized function/label words from a span."""
     toks = list(re.finditer(_NT, text[start:end]))
+    if not toks:
+        return start, end
     lead = 0
     for m in toks:
-        if m.group().lower().rstrip(".") in _HEAD_STOP:
+        if m.group().lower().rstrip(".") in _EDGE_STOP:
             lead = m.end()
         else:
             break
-    return start + lead, end
+    trail = len(text[start:end])
+    for m in reversed(toks):
+        if m.start() < lead:
+            break
+        if m.group().lower().rstrip(".") in _EDGE_STOP:
+            trail = m.start()
+        else:
+            break
+    return start + lead, start + trail
 
 
 def _strip_trailing_punct(value: str) -> str:
@@ -183,6 +206,10 @@ class GazetteerNameDetector:
             s += len(raw) - len(raw.lstrip())  # advance past any leading whitespace
             value = _strip_trailing_punct(raw.strip())
             if len(value) < 2:
+                return
+            # must contain a proper-noun (uppercase-initial) token — guards against
+            # a bare designator like "committee" surviving after the name is trimmed.
+            if not re.search(r"[A-ZÀ-ɏ]", value):
                 return
             found.append(
                 Detection(
