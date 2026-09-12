@@ -100,19 +100,37 @@ Written to `--out-dir`:
 
 | File | Contents |
 |---|---|
-| `predictions.jsonl` | one line per document: gold spans (+ mapped type + necessity), every raw prediction (offset, type, confidence, tier), and that document's scores |
-| `results.json` | full metrics: overall, per entity type, per domain, plus the run metadata (dataset revision, resolved fields, config, unsupported categories, failed samples, environment, command) |
-| `per_type.csv` | per-entity-type TP/FP/FN/P/R/F1 + a MICRO row (spreadsheet-friendly) |
+| `predictions.jsonl` | one line per document: gold spans (offsets + necessity), every raw prediction (offset, SafeStream type, confidence, tier), and that document's scores |
+| `results.json` | full metrics: overall (character + span, split by necessity), per domain, plus run metadata (dataset revision, resolved fields, config, predicted-type distribution, failed samples, environment, command) |
+| `per_domain.csv` | per-domain character + span P/R/F1 and mandatory-recall + an OVERALL row (spreadsheet-friendly) |
 | `report.md` | the concise human report (also printed to stdout) |
+
+(For a PII-typed corpus the outputs are instead `per_type.csv` and a per-entity-type report — see *Two scoring modes* below.)
+
+## What RedactionBench actually contains
+
+Each record is `raw_text` plus a list of `spans`, where every span is
+`{start, end, label}` and **`label` is a *necessity* class — `mandatory` or
+`contextual` — not a PII entity type.** RedactionBench is grounded in *contextual
+integrity*: it marks which character ranges must (mandatory) or may, depending on
+context (contextual), be redacted, rather than tagging entities as
+email/person/etc. The dataset's own metric, **R-Score**, is therefore
+**character-level and formatting-agnostic** — it asks whether the right
+*characters* were hidden, not whether a replacement string matched.
+
+Because there is **no per-PII-type gold**, per-entity-type precision/recall is
+**not computable** against this dataset (the harness says so and reports the
+distribution of the *predictions'* types instead). This is a property of the
+dataset, not a limitation of the tool.
 
 ## Methodology
 
 ### Preprocessing
-Each record is normalised to `(doc_id, text, [spans], domain?)`. A span is
-`(start, end, category)` in **character** offsets into `text`; spans whose end
-exceeds the text length are dropped (logged in `load_skipped`). No text is
-altered before it reaches the redactor — the document is fed to the pipeline
-verbatim.
+Each record is normalised to `(doc_id, raw_text, [spans], category)`. A span is
+`(start, end, necessity)` in **character** offsets; spans out of text bounds are
+dropped (RedactionBench has none). The `croissant.json` metadata sidecar is
+skipped. No text is altered before it reaches the redactor — the document is fed
+to the pipeline verbatim.
 
 ### Running the real pipeline
 In `streaming` mode (default) the document is chunked and passed to
@@ -120,52 +138,54 @@ In `streaming` mode (default) the document is chunked and passed to
 `detect_stream` yields `(segment, detections)` with **segment-relative** offsets;
 the adapter accumulates the emitted segment lengths to lift every detection back
 into absolute document coordinates, and asserts the segments reconstruct the
-document exactly. This is what makes the **chunk-boundary** behaviour part of the
-measurement rather than an afterthought — an entity split across a chunk is
-scored at its true position. `whole` mode calls `Redactor.detect` on the full
-string and is used as a cross-check (the two modes agree on the shipped tiers).
+document exactly. This makes **chunk-boundary** behaviour part of the measurement
+— an entity split across a chunk is scored at its true position. `whole` mode
+calls `Redactor.detect` on the full string; the two modes are verified to produce
+**byte-for-byte identical** character metrics on the full corpus.
 
-### Matching predictions to ground truth
-Not exact-string comparison. Three complementary families are reported and kept
-separate because they answer different questions:
+### Two scoring modes
+The harness auto-detects which kind of gold labels a corpus carries
+(`--gold-label-kind auto`, override with `necessity` or `pii_type`):
 
-1. **Span-level P/R/F1 (type-aware)** — a prediction hits a gold span when it
-   overlaps ≥ `--overlap-threshold` (default 50%) of that gold span and the
-   predicted SafeStream type equals the mapped gold type; matching is greedy and
-   one-to-one. Reported per type, plus **micro** (pooled counts) and **macro**
-   (unweighted mean of per-type F1). This credits partial / differently-bounded
-   spans, which exact-match would not.
-2. **Span-level, type-agnostic** — the same overlap match ignoring the label:
-   "did we flag the right *location*?" Useful because SafeStream may detect the
-   right span under a different (but still sensitive) type.
-3. **Character-level coverage (R-Score-style)** — RedactionBench's own metric,
-   R-Score, is character-level and formatting-agnostic. We reproduce that
-   methodology with a per-character redaction mask (gold vs predicted) and score
-   per-character precision/recall/F1 and accuracy. This nullifies masking-style
-   differences (`[REDACTED]` vs `***` vs `<PHONE>`) exactly as R-Score intends.
-   It is a faithful character-level *reimplementation of the methodology*, **not**
-   a call into the paper's official scorer (not bundled) — the report labels it
-   as such. Reported in two scopes: **supported** (gold mask from mapped-type
-   spans only) and **all-gold** (gold mask from every gold span, the honest
-   total-coverage recall including categories SafeStream cannot detect).
+- **Necessity mode (RedactionBench).** Binary redaction — "redact vs keep". No
+  per-type scoring.
+- **PII-type mode (Presidio/CoNLL-style corpora).** Per-entity-type scoring with a
+  label map. Kept for reuse on other datasets.
 
-### Dataset-level accuracy vs precision/recall/F1
-`dataset_level_accuracy.exact_document_rate` is the fraction of **documents**
-whose predicted redaction mask exactly equals the supported-scope gold mask — a
-per-document accuracy. It is reported **separately** from precision/recall/F1
-(which are per-span or per-character rates) and must not be conflated with them.
+### Necessity-mode metrics (what RedactionBench is scored with)
+Not exact-string comparison. Two families, each split by necessity:
 
-### Unsupported categories
-A category the dataset annotates but SafeStream ships no detector for is
-**excluded from type-aware precision/recall** — counting it as a miss would
-penalise the tool for something it never claims to detect — but it is listed in
-the report and **is** included in the all-gold character-coverage recall, so
-total coverage stays honest. Names/orgs/locations require `--ner`; without it
-they show up as recall misses on the `person`/`org`/`loc` rows.
+1. **Character-level coverage (R-Score methodology).** A per-character redaction
+   mask for gold vs predictions → per-character precision/recall/F1 and accuracy.
+   This nullifies masking-style differences (`[REDACTED]` vs `***` vs `<PHONE>`)
+   exactly as R-Score intends. It is a faithful character-level *reimplementation
+   of the methodology*, **not** a call into the paper's official scorer (not
+   bundled) — the report labels it as such. Reported for **all** gold, and as
+   **recall** for the **mandatory** and **contextual** subsets separately
+   (precision is only meaningful on the full mask).
+2. **Span-level, type-agnostic P/R/F1.** A prediction hits a gold span when it
+   covers ≥ `--overlap-threshold` (default 50%) of it; greedy one-to-one. Recall =
+   gold redaction spans covered; precision = predictions landing on a gold span.
+   Reported for all / mandatory / contextual. Span **precision is low by
+   construction** because gold segments one value into many adjacent
+   mandatory/contextual spans while SafeStream emits one span per entity — so
+   character coverage is the faithful measure, and the span numbers are secondary.
+
+### Mandatory protection (a per-document accuracy)
+`mandatory_protection.no_leak_document_rate` is the fraction of **documents**
+where **every mandatory character was redacted** (no must-redact leak) — a
+per-document DLP accuracy, reported **separately** from precision/recall/F1
+(which are per-character or per-span rates) and not to be conflated with them.
 
 ### Confidence interval
-`results.json` → `overall.span_level.micro_f1_bootstrap_ci_95` is a 95% bootstrap
-CI on micro-F1, resampling whole documents (1000 resamples, seed 0).
+`results.json` → `overall.character_level_rscore_style.char_f1_all_bootstrap_ci_95`
+is a 95% bootstrap CI on all-gold character-F1, resampling whole documents (1000
+resamples, seed 0).
+
+### Names / free text
+SafeStream's shipped core (regex + validators + entropy) targets structured PII
+and credentials; names, addresses and other free-text spans need the optional
+`--ner` tier. Both configurations are reported in [`RESULTS.md`](RESULTS.md).
 
 ## Limitations
 
@@ -178,13 +198,16 @@ CI on micro-F1, resampling whole documents (1000 resamples, seed 0).
   formatting-agnostic) but is not the paper's exact scorer; treat it as a
   faithful reimplementation, and if the official scorer is later vendored the
   harness can call it directly.
-- Contextual-integrity labels: if the dataset distinguishes *mandatory* from
-  *contextual* redactions, the necessity flag is preserved per span
-  (`predictions.jsonl`) but the headline metrics score all annotated spans
-  together; a mandatory-only slice can be added once the real field is confirmed
-  via `inspect`.
-- All numbers depend on the resolved schema and label map — check the
-  `inspect` output and `results.json → metadata.resolved_fields` before quoting.
+- Necessity split: mandatory and contextual spans are scored both together (all
+  gold) and separately. Contextual redactions are inherently subjective — the
+  RedactionBench paper reports low human agreement on them (~47.7%) versus high
+  agreement on mandatory (~89.4%) — so the **mandatory** numbers are the more
+  stable signal; contextual recall is expected to be lower for any system.
+- Span-level precision understates real precision (gold over-segments each value
+  into adjacent spans vs one prediction per entity); read character coverage as
+  the faithful precision/recall.
+- All numbers depend on the resolved schema — check the `inspect` output and
+  `results.json → metadata.resolved_fields` before quoting.
 
 ## Dependencies
 

@@ -35,6 +35,7 @@ from typing import Any
 # Candidate field names, most specific first. Overridable via FieldSpec so that
 # once the real schema is known it can be pinned exactly rather than guessed.
 TEXT_KEYS = (
+    "raw_text",
     "text",
     "full_text",
     "document",
@@ -205,12 +206,23 @@ def _iter_raw_rows(files: Iterable[Path]) -> Iterator[dict[str, Any]]:
         yield from reader(path)
 
 
+# Metadata/sidecar files a Hugging Face dataset snapshot ships that are NOT data
+# rows and must not be parsed as records (Croissant metadata, dataset-info, etc.).
+SKIP_BASENAMES = frozenset(
+    {"croissant.json", "dataset_infos.json", "dataset_dict.json", "state.json"}
+)
+
+
 def discover_files(directory: Path) -> list[Path]:
-    """All readable dataset files under ``directory`` (recursively), sorted."""
+    """All readable dataset files under ``directory`` (recursively), sorted.
+
+    Skips known metadata sidecars (e.g. ``croissant.json``) so they are not
+    mistaken for data rows.
+    """
     out: list[Path] = []
     for suffix in _READERS:
         out.extend(directory.rglob(f"*{suffix}"))
-    return sorted(set(out))
+    return sorted(p for p in set(out) if p.name.lower() not in SKIP_BASENAMES)
 
 
 # ---------------------------------------------------------------------------

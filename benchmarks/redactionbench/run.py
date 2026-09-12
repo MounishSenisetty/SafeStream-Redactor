@@ -110,12 +110,27 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     if result.skipped:
         print(f"skipped rows (first {len(result.skipped)}): {json.dumps(result.skipped[:5])}")
     print(f"revision: {result.revision}")
-    print("\n=== gold category counts ===")
+    # Is this a necessity-labelled corpus (RedactionBench: mandatory/contextual)
+    # or a PII-typed one? That decides how `run` scores it.
+    distinct = {label.strip().lower() for label in gold_labels}
+    necessity_mode = bool(distinct) and distinct <= set(metrics.NECESSITY_VOCAB)
+    print("\n=== gold span-label counts ===")
     for label, n in gold_labels.most_common():
-        mapped = adapter.map_gold_label(label, label_map)
-        flag = f"-> {mapped}" if mapped else "-> UNSUPPORTED (SafeStream has no detector)"
-        print(f"  {label:<28} {n:>7}  {flag}")
-    if unsupported:
+        if necessity_mode:
+            note = "(necessity class — binary redaction scoring)"
+        else:
+            mapped = adapter.map_gold_label(label, label_map)
+            note = f"-> {mapped}" if mapped else "-> UNSUPPORTED (SafeStream has no detector)"
+        print(f"  {label:<28} {n:>7}  {note}")
+    if necessity_mode:
+        print(
+            "\nDetected NECESSITY labels (mandatory/contextual): `run` will score this as "
+            "binary redaction — character-level coverage (R-Score style) plus type-agnostic "
+            "spans, split by necessity. The dataset has no per-PII-type gold, so per-type "
+            "precision/recall is not computed; the predicted-type distribution is reported "
+            "instead. Force with `--gold-label-kind necessity`."
+        )
+    elif unsupported:
         print(
             "\nNOTE: unsupported categories are reported but excluded from the "
             "type-aware precision/recall (SafeStream never claims to detect them). "
@@ -152,6 +167,21 @@ def cmd_run(args: argparse.Namespace) -> int:
     records = result.records
     if args.limit:
         records = records[: args.limit]
+
+    # Detect the gold-label kind. RedactionBench labels each span by *necessity*
+    # (mandatory/contextual) rather than a PII type, so it is scored as binary
+    # redaction (character coverage + type-agnostic spans). Other corpora label
+    # PII types and take the per-type path. Auto-detect unless overridden.
+    gold_labels = {span.label.strip().lower() for rec in records for span in rec.spans}
+    kind = args.gold_label_kind
+    if kind == "auto":
+        kind = (
+            "necessity"
+            if gold_labels and gold_labels <= set(metrics.NECESSITY_VOCAB)
+            else "pii_type"
+        )
+    if kind == "necessity":
+        return _run_binary(args, result, records, started)
 
     label_map = adapter.build_label_map(_parse_label_map(args.label_map))
 
@@ -269,6 +299,302 @@ def cmd_run(args: argparse.Namespace) -> int:
         f"{out_dir / 'per_type.csv'}, {out_dir / 'report.md'}"
     )
     return 0
+
+
+def _run_binary(
+    args: argparse.Namespace,
+    result: loader.LoadResult,
+    records: list[loader.RBRecord],
+    started: float,
+) -> int:
+    """Score a necessity-labelled corpus (RedactionBench) as binary redaction."""
+    redactor = _build_redactor(args)
+    scores: list[metrics.BinaryRecordScore] = []
+    predictions_dump: list[dict[str, Any]] = []
+    failed_samples: list[dict[str, Any]] = []
+    pred_type_counts: Counter[str] = Counter()
+
+    for rec in records:
+        try:
+            preds = adapter.predict(redactor, rec.text, args.mode, args.chunk_size)
+        except Exception as exc:
+            failed_samples.append({"doc_id": rec.doc_id, "error": f"{type(exc).__name__}: {exc}"})
+            if args.raise_on_error:
+                raise
+            continue
+        for p in preds:
+            pred_type_counts[p.label] += 1
+        gold: list[metrics.GoldSpan] = [
+            (s.start, s.end, s.label.strip().lower()) for s in rec.spans
+        ]
+        pred_triples = [(p.start, p.end, p.label) for p in preds]
+        sc = metrics.score_binary_record(
+            rec.doc_id, rec.domain, len(rec.text), gold, pred_triples, args.overlap_threshold
+        )
+        scores.append(sc)
+        predictions_dump.append(
+            {
+                "doc_id": rec.doc_id,
+                "domain": rec.domain,
+                "text_length": len(rec.text),
+                "gold": [{"start": s.start, "end": s.end, "necessity": s.label} for s in rec.spans],
+                "predictions": [
+                    {
+                        "start": p.start,
+                        "end": p.end,
+                        "type": p.label,
+                        "confidence": round(p.confidence, 4),
+                        "source": p.source,
+                    }
+                    for p in preds
+                ],
+                "scores": {
+                    "char_all": sc.chars["all"].as_dict(),
+                    "char_mandatory": sc.chars["mandatory"].as_dict(),
+                    "char_contextual": sc.chars["contextual"].as_dict(),
+                    "span_all": sc.spans["all"].as_dict(),
+                    "mandatory_fully_covered": sc.mandatory_fully_covered,
+                },
+            }
+        )
+
+    agg = metrics.aggregate_binary(scores)
+    duration = time.time() - started
+    meta = _build_meta(args, result, records, set(), Counter(), failed_samples, redactor, duration)
+    meta["task"] = (
+        "binary redaction (necessity: mandatory/contextual) — RedactionBench R-Score style"
+    )
+    meta["config"]["gold_label_kind"] = "necessity"
+    meta["predicted_type_distribution"] = dict(pred_type_counts.most_common())
+
+    results_json = _build_binary_results(meta, agg)
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    _write_predictions(out_dir / "predictions.jsonl", predictions_dump)
+    (out_dir / "results.json").write_text(
+        json.dumps(results_json, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    _write_binary_csv(out_dir / "per_domain.csv", agg)
+    report = _render_binary_report(results_json)
+    (out_dir / "report.md").write_text(report, encoding="utf-8")
+
+    print(report)
+    print(
+        f"\nWrote: {out_dir / 'predictions.jsonl'}, {out_dir / 'results.json'}, "
+        f"{out_dir / 'per_domain.csv'}, {out_dir / 'report.md'}"
+    )
+    return 0
+
+
+def _build_binary_results(meta: dict[str, Any], agg: metrics.BinaryAggregate) -> dict[str, Any]:
+    point, lo, hi = agg.char_f1_ci
+    return {
+        "metadata": meta,
+        "overall": {
+            "documents": agg.documents,
+            "predicted_spans_total": agg.n_pred_total,
+            "character_level_rscore_style": {
+                "note": "per-character redaction mask; formatting-agnostic (R-Score methodology). "
+                "Precision/F1/accuracy are meaningful for the 'all' subset; for the "
+                "mandatory/contextual subsets read RECALL (coverage of that subset).",
+                "all": agg.chars["all"].as_dict(),
+                "mandatory": agg.chars["mandatory"].as_dict(),
+                "contextual": agg.chars["contextual"].as_dict(),
+                "char_f1_all_bootstrap_ci_95": [round(point, 4), round(lo, 4), round(hi, 4)],
+            },
+            "span_level_type_agnostic": {
+                "note": ">=threshold overlap, greedy 1:1, any predicted type counts (dataset has "
+                "no PII types). Recall = gold redaction spans covered; precision = predictions "
+                "that land on a gold span.",
+                "all": agg.spans["all"].as_dict(),
+                "mandatory": agg.spans["mandatory"].as_dict(),
+                "contextual": agg.spans["contextual"].as_dict(),
+            },
+            "mandatory_protection": {
+                "note": "fraction of documents with EVERY mandatory character redacted (no leak) "
+                "— a per-document DLP accuracy, distinct from precision/recall.",
+                "no_leak_document_rate": round(agg.mandatory_no_leak_rate, 4),
+            },
+        },
+        "per_domain": agg.per_domain,
+    }
+
+
+def _write_binary_csv(path: Path, agg: metrics.BinaryAggregate) -> None:
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(
+            [
+                "domain",
+                "documents",
+                "char_precision",
+                "char_recall",
+                "char_f1",
+                "char_mandatory_recall",
+                "span_precision",
+                "span_recall",
+                "span_f1",
+            ]
+        )
+        for domain, d in agg.per_domain.items():
+            ca = d["char_all"]  # type: ignore[index]
+            sa = d["span_all"]  # type: ignore[index]
+            w.writerow(
+                [
+                    domain,
+                    d["documents"],
+                    ca["char_precision"],
+                    ca["char_recall"],
+                    ca["char_f1"],
+                    d["char_mandatory_recall"],
+                    sa["precision"],
+                    sa["recall"],
+                    sa["f1"],
+                ]
+            )
+        # overall row
+        ov_c = agg.chars["all"]
+        ov_s = agg.spans["all"]
+        w.writerow(
+            [
+                "OVERALL",
+                agg.documents,
+                f"{ov_c.precision:.4f}",
+                f"{ov_c.recall:.4f}",
+                f"{ov_c.f1:.4f}",
+                f"{agg.chars['mandatory'].recall:.4f}",
+                f"{ov_s.precision:.4f}",
+                f"{ov_s.recall:.4f}",
+                f"{ov_s.f1:.4f}",
+            ]
+        )
+
+
+def _render_binary_report(r: dict[str, Any]) -> str:
+    m = r["metadata"]
+    o = r["overall"]
+    cl = o["character_level_rscore_style"]
+    sl = o["span_level_type_agnostic"]
+    ci = cl["char_f1_all_bootstrap_ci_95"]
+    L: list[str] = []
+    L.append("# RedactionBench results — SafeStream-Redactor\n")
+    L.append(f"- **Dataset**: `{m['dataset']['repo_id']}`  ·  source: {m['dataset']['source']}")
+    L.append(f"- **Revision**: `{m['dataset']['revision']}`")
+    L.append(f"- **Task**: {m['task']}")
+    L.append(
+        f"- **Documents scored**: {o['documents']}  "
+        f"(parsed {m['dataset']['parsed_records']} of {m['dataset']['raw_rows']} raw rows)"
+    )
+    L.append(
+        f"- **SafeStream version**: {m['safestream_version']}  ·  "
+        f"mode: **{m['config']['prediction_mode']}**  ·  chunk={m['config']['chunk_size']}  ·  "
+        f"min_confidence={m['config']['min_confidence']}  ·  NER={m['config']['use_ner']}"
+    )
+    L.append(f"- **Detector tiers**: {', '.join(m['config']['detector_tiers'])}")
+    L.append(
+        f"- **Span match**: ≥{m['config']['overlap_match_threshold']:.0%} overlap, "
+        f"type-agnostic (dataset has no PII types)\n"
+    )
+
+    L.append(
+        "> RedactionBench annotates each span by **necessity** (mandatory vs contextual), "
+        "not by PII type, so this is a **binary redaction** evaluation — did the system hide "
+        "the characters that must be hidden? The character-level metric follows the dataset's "
+        "R-Score methodology (formatting-agnostic). Per-PII-type recall is **not computable** "
+        "from this dataset; the predicted-type distribution is reported instead.\n"
+    )
+
+    ca, cm, cc = cl["all"], cl["mandatory"], cl["contextual"]
+    L.append("## Character-level coverage (R-Score style)\n")
+    L.append("| Subset | Precision | Recall | F1 | Accuracy | char TP | char FP | char FN |")
+    L.append("|---|--:|--:|--:|--:|--:|--:|--:|")
+    L.append(
+        f"| all gold | {ca['char_precision']:.3f} | {ca['char_recall']:.3f} | "
+        f"{ca['char_f1']:.3f} | {ca['char_accuracy']:.3f} | {ca['char_tp']} | "
+        f"{ca['char_fp']} | {ca['char_fn']} |"
+    )
+    L.append(
+        f"| mandatory (read recall) | — | **{cm['char_recall']:.3f}** | — | — | "
+        f"{cm['char_tp']} | — | {cm['char_fn']} |"
+    )
+    L.append(
+        f"| contextual (read recall) | — | {cc['char_recall']:.3f} | — | — | "
+        f"{cc['char_tp']} | — | {cc['char_fn']} |"
+    )
+    L.append("")
+    L.append(
+        f"- **Character-F1 (all gold)**: {ca['char_f1']:.3f}  "
+        f"(95% bootstrap CI [{ci[1]:.3f}, {ci[2]:.3f}])"
+    )
+    L.append(f"- **Mandatory character recall** (must-redact coverage): {cm['char_recall']:.3f}")
+    L.append(f"- **Contextual character recall**: {cc['char_recall']:.3f}")
+    L.append(
+        f"- **No-mandatory-leak document rate**: "
+        f"{o['mandatory_protection']['no_leak_document_rate']:.3f}  "
+        f"(documents with every mandatory character redacted; per-document, not P/R/F1)\n"
+    )
+
+    sa, sm, sc = sl["all"], sl["mandatory"], sl["contextual"]
+    L.append("## Span-level (type-agnostic, ≥overlap match)\n")
+    L.append("| Subset | Precision | Recall | F1 | TP | FP | FN |")
+    L.append("|---|--:|--:|--:|--:|--:|--:|")
+    L.append(
+        f"| all gold | {sa['precision']:.3f} | {sa['recall']:.3f} | {sa['f1']:.3f} | "
+        f"{sa['tp']} | {sa['fp']} | {sa['fn']} |"
+    )
+    L.append(
+        f"| mandatory | {sm['precision']:.3f} | {sm['recall']:.3f} | {sm['f1']:.3f} | "
+        f"{sm['tp']} | {sm['fp']} | {sm['fn']} |"
+    )
+    L.append(
+        f"| contextual | {sc['precision']:.3f} | {sc['recall']:.3f} | {sc['f1']:.3f} | "
+        f"{sc['tp']} | {sc['fp']} | {sc['fn']} |"
+    )
+    L.append(
+        "\n_Span precision is low by construction: SafeStream emits one span per detected "
+        "entity, while gold segments a value into many adjacent mandatory/contextual spans, "
+        "so one prediction can only 1:1-match one of them. Character coverage above is the "
+        "faithful measure._\n"
+    )
+
+    L.append("## Per domain\n")
+    L.append("| Domain | Docs | Char P | Char R | Char F1 | Mandatory char recall | Span F1 |")
+    L.append("|---|--:|--:|--:|--:|--:|--:|")
+    for domain, d in r["per_domain"].items():
+        cad = d["char_all"]
+        sad = d["span_all"]
+        L.append(
+            f"| {domain} | {d['documents']} | {cad['char_precision']:.3f} | "
+            f"{cad['char_recall']:.3f} | {cad['char_f1']:.3f} | "
+            f"{d['char_mandatory_recall']:.3f} | {sad['f1']:.3f} |"
+        )
+    L.append("")
+
+    if m.get("predicted_type_distribution"):
+        L.append("## What SafeStream predicted (by entity type)\n")
+        L.append(
+            "The dataset has no gold PII types, so this is the distribution of the "
+            "**predictions'** types (not scored against gold types).\n"
+        )
+        L.append("| SafeStream type | predicted spans |")
+        L.append("|---|--:|")
+        for t, n in m["predicted_type_distribution"].items():
+            L.append(f"| {t} | {n} |")
+        L.append("")
+
+    if m["failed_samples"]:
+        L.append(f"## Failed samples ({len(m['failed_samples'])})\n")
+        for fs in m["failed_samples"][:20]:
+            L.append(f"- `{fs['doc_id']}`: {fs['error']}")
+        L.append("")
+
+    L.append("## Reproduce\n")
+    L.append("```bash\n" + m["command"] + "\n```")
+    L.append(
+        f"\n_Environment_: Python {m['python']}, {m['platform']}, "
+        f"run took {m['duration_seconds']}s."
+    )
+    return "\n".join(L)
 
 
 def _build_meta(
@@ -581,6 +907,14 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.5,
         help="min fraction of a gold span a prediction must cover to count as a hit",
+    )
+    pr.add_argument(
+        "--gold-label-kind",
+        choices=["auto", "pii_type", "necessity"],
+        default="auto",
+        help="how to interpret gold span labels: PII types (per-type scoring) or necessity "
+        "classes like mandatory/contextual (binary redaction scoring, RedactionBench). "
+        "'auto' detects necessity vocabularies.",
     )
     pr.add_argument("--min-confidence", type=float, default=0.5)
     pr.add_argument("--ner", action="store_true", help="enable the optional spaCy NER tier")

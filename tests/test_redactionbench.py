@@ -169,3 +169,71 @@ def test_unsupported_category_reported(tmp_path: Path) -> None:
     rb_run.main(["run", "--data-dir", str(d), "--out-dir", str(out)])
     results = json.loads((out / "results.json").read_text())
     assert "DNA_SEQUENCE" in results["metadata"]["unsupported_categories"]
+
+
+# --- binary / necessity mode (RedactionBench's real structure) -------------
+
+
+def _write_necessity_fixture(tmp_path: Path) -> Path:
+    # raw_text + spans labelled mandatory/contextual (no PII types), like RedactionBench
+    t = "Email bob@corp.io and key AKIAIOSFODNN7EXAMPLE here."
+    m1 = t.index("bob@corp.io")
+    m2 = t.index("AKIAIOSFODNN7EXAMPLE")
+    rows = [
+        {
+            "raw_text": t,
+            "category": "emails",
+            "genre": "sample",
+            "spans": [
+                {"start": m1, "end": m1 + 11, "label": "mandatory"},
+                {"start": m2, "end": m2 + 20, "label": "mandatory"},
+                {"start": 0, "end": 5, "label": "contextual"},  # "Email" word
+            ],
+        }
+    ]
+    d = tmp_path / "rbn"
+    d.mkdir()
+    with (d / "test.jsonl").open("w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    # a metadata sidecar that must be ignored by the loader
+    (d / "croissant.json").write_text(json.dumps({"@type": "Dataset", "name": "x"}))
+    return d
+
+
+def test_loader_skips_croissant_and_reads_raw_text(tmp_path: Path) -> None:
+    d = _write_necessity_fixture(tmp_path)
+    res = loader.load_from_directory(d, loader.FieldSpec())
+    assert len(res.records) == 1  # croissant.json ignored
+    assert res.resolved_fields["text"] == "raw_text"
+    assert {s.label for s in res.records[0].spans} == {"mandatory", "contextual"}
+
+
+def test_score_spans_binary_and_record() -> None:
+    gold = [(5, 15, "mandatory"), (20, 25, "contextual")]
+    preds = [(5, 15, "email"), (40, 50, "secret")]
+    # one prediction hits the mandatory gold; the other hits nothing
+    sc = metrics.score_binary_record("d", "dom", 60, gold, preds, threshold=0.5)
+    assert sc.spans["all"] == metrics.PRF(1, 1, 1)
+    assert sc.spans["mandatory"] == metrics.PRF(1, 1, 0)
+    assert sc.chars["mandatory"].recall == 1.0  # all 10 mandatory chars covered
+    assert sc.mandatory_fully_covered is True
+
+
+def test_binary_mode_end_to_end(tmp_path: Path) -> None:
+    d = _write_necessity_fixture(tmp_path)
+    out = tmp_path / "out"
+    rc = rb_run.main(["run", "--data-dir", str(d), "--out-dir", str(out), "--chunk-size", "8"])
+    assert rc == 0
+    results = json.loads((out / "results.json").read_text())
+    # auto-detected necessity/binary mode
+    assert results["metadata"]["config"]["gold_label_kind"] == "necessity"
+    overall = results["overall"]
+    assert "character_level_rscore_style" in overall
+    assert "span_level_type_agnostic" in overall
+    assert "mandatory_protection" in overall
+    # the two mandatory secrets are structured -> mandatory char recall should be perfect
+    assert overall["character_level_rscore_style"]["mandatory"]["char_recall"] == 1.0
+    # predicted-type distribution is reported instead of per-type gold scoring
+    assert results["metadata"]["predicted_type_distribution"].get("email", 0) >= 1
+    assert (out / "per_domain.csv").is_file()

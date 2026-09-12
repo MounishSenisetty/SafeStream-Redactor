@@ -37,6 +37,7 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Any
 
 # A scored span is reduced to (start, end, safestream_type).
 Triple = tuple[int, int, str]
@@ -353,6 +354,170 @@ def bootstrap_micro_f1_ci(
     rng = random.Random(seed)
     n = len(scores)
     stats = sorted(micro_f1([scores[rng.randrange(n)] for _ in range(n)]) for _ in range(resamples))
+    lo = stats[int((alpha / 2) * resamples)]
+    hi = stats[min(resamples - 1, int((1 - alpha / 2) * resamples))]
+    return point, lo, hi
+
+
+# ---------------------------------------------------------------------------
+# binary / necessity-mode scoring
+#
+# RedactionBench does NOT annotate PII entity types: each gold span is a region
+# that must be redacted, labelled by *necessity* (``mandatory`` vs
+# ``contextual``) per its contextual-integrity design. There is therefore no
+# per-PII-type gold to score against. The correct evaluation — the one the
+# dataset's own character-level R-Score embodies — is binary "redact vs keep":
+# did the system hide the characters that should be hidden? These helpers score
+# that, overall and split by necessity, both at the character level (R-Score
+# methodology) and at the span level (type-agnostic, >=threshold overlap).
+# ---------------------------------------------------------------------------
+
+# Gold label vocabularies that mean "this span must be redacted" rather than a
+# PII type. If every distinct gold label is in here, the harness scores in
+# binary/necessity mode instead of per-type mode.
+NECESSITY_VOCAB = frozenset(
+    {"mandatory", "contextual", "optional", "required", "must", "safe", "sensitive"}
+)
+
+# The necessity subsets reported, in order. "all" is every gold span.
+NECESSITY_SUBSETS = ("all", "mandatory", "contextual")
+
+# A gold span in binary mode: (start, end, necessity).
+GoldSpan = tuple[int, int, str]
+
+
+def score_spans_binary(
+    gold_spans: list[tuple[int, int]], pred_spans: list[tuple[int, int]], threshold: float
+) -> PRF:
+    """Type-agnostic span P/R/F1 over ALL gold spans (greedy 1:1 by position).
+
+    A predicted span hits a gold span when it covers >= ``threshold`` of it;
+    each gold and each prediction is used at most once. Recall = gold spans hit;
+    precision = predictions that hit a gold span.
+    """
+    matched: set[int] = set()
+    tp = 0
+    for ps, pe in pred_spans:
+        for i, g in enumerate(gold_spans):
+            if i not in matched and span_hits((ps, pe), g, threshold):
+                matched.add(i)
+                tp += 1
+                break
+    fp = len(pred_spans) - tp
+    fn = len(gold_spans) - tp
+    return PRF(tp, fp, fn)
+
+
+@dataclass
+class BinaryRecordScore:
+    doc_id: str
+    domain: str | None
+    chars: dict[str, CharCounts]  # keys: NECESSITY_SUBSETS
+    spans: dict[str, PRF]  # keys: NECESSITY_SUBSETS
+    n_gold: dict[str, int]
+    n_pred: int
+    mandatory_fully_covered: bool  # every mandatory character was redacted (no leak)
+
+
+def score_binary_record(
+    doc_id: str,
+    domain: str | None,
+    text_len: int,
+    gold: list[GoldSpan],
+    preds: list[tuple[int, int, str]],
+    threshold: float,
+) -> BinaryRecordScore:
+    pred_spans = [(s, e) for s, e, _ in preds]
+    subsets: dict[str, list[tuple[int, int]]] = {
+        "all": [(s, e) for s, e, _ in gold],
+        "mandatory": [(s, e) for s, e, n in gold if n == "mandatory"],
+        "contextual": [(s, e) for s, e, n in gold if n == "contextual"],
+    }
+    chars: dict[str, CharCounts] = {}
+    spans: dict[str, PRF] = {}
+    n_gold: dict[str, int] = {}
+    for key, gs in subsets.items():
+        chars[key] = score_chars(gs, pred_spans, text_len)
+        spans[key] = score_spans_binary(gs, pred_spans, threshold)
+        n_gold[key] = len(gs)
+    mand = chars["mandatory"]
+    fully = mand.fn == 0  # no mandatory character left unredacted
+    return BinaryRecordScore(doc_id, domain, chars, spans, n_gold, len(pred_spans), fully)
+
+
+@dataclass
+class BinaryAggregate:
+    documents: int
+    chars: dict[str, CharCounts]  # summed per subset
+    spans: dict[str, PRF]  # summed per subset
+    per_domain: dict[str, dict[str, Any]]
+    char_f1_ci: tuple[float, float, float]  # bootstrap on char-F1 (all)
+    n_pred_total: int
+    mandatory_no_leak_rate: float  # fraction of docs with every mandatory char redacted
+
+
+def aggregate_binary(scores: list[BinaryRecordScore]) -> BinaryAggregate:
+    chars = {k: CharCounts(0, 0, 0, 0) for k in NECESSITY_SUBSETS}
+    spans = {k: PRF(0, 0, 0) for k in NECESSITY_SUBSETS}
+    n_pred = 0
+    no_leak = 0
+    by_domain: dict[str, list[BinaryRecordScore]] = defaultdict(list)
+    for sc in scores:
+        for k in NECESSITY_SUBSETS:
+            chars[k] = chars[k] + sc.chars[k]
+            spans[k] = spans[k] + sc.spans[k]
+        n_pred += sc.n_pred
+        no_leak += 1 if sc.mandatory_fully_covered else 0
+        by_domain[sc.domain or "(none)"].append(sc)
+
+    per_domain: dict[str, dict[str, Any]] = {}
+    for domain, dscores in sorted(by_domain.items()):
+        dchars = CharCounts(0, 0, 0, 0)
+        dchars_mand = CharCounts(0, 0, 0, 0)
+        dspan = PRF(0, 0, 0)
+        for sc in dscores:
+            dchars = dchars + sc.chars["all"]
+            dchars_mand = dchars_mand + sc.chars["mandatory"]
+            dspan = dspan + sc.spans["all"]
+        per_domain[domain] = {
+            "documents": len(dscores),
+            "char_all": dchars.as_dict(),
+            "char_mandatory_recall": round(dchars_mand.recall, 4),
+            "span_all": dspan.as_dict(),
+        }
+
+    return BinaryAggregate(
+        documents=len(scores),
+        chars=chars,
+        spans=spans,
+        per_domain=per_domain,
+        char_f1_ci=bootstrap_char_f1_ci(scores),
+        n_pred_total=n_pred,
+        mandatory_no_leak_rate=no_leak / len(scores) if scores else 0.0,
+    )
+
+
+def bootstrap_char_f1_ci(
+    scores: list[BinaryRecordScore],
+    *,
+    resamples: int = 1000,
+    seed: int = 0,
+    alpha: float = 0.05,
+) -> tuple[float, float, float]:
+    """Point character-F1 (all gold) and a bootstrap CI, resampling documents."""
+
+    def char_f1(sample: list[BinaryRecordScore]) -> float:
+        agg = CharCounts(0, 0, 0, 0)
+        for sc in sample:
+            agg = agg + sc.chars["all"]
+        return agg.f1
+
+    point = char_f1(scores)
+    if len(scores) < 2 or resamples <= 0:
+        return point, point, point
+    rng = random.Random(seed)
+    n = len(scores)
+    stats = sorted(char_f1([scores[rng.randrange(n)] for _ in range(n)]) for _ in range(resamples))
     lo = stats[int((alpha / 2) * resamples)]
     hi = stats[min(resamples - 1, int((1 - alpha / 2) * resamples))]
     return point, lo, hi
