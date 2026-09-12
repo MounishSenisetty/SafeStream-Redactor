@@ -371,3 +371,63 @@ COMMON_GIVEN_NAMES: frozenset[str] = frozenset(
         "sanjay",
     }
 )
+
+
+# Common English surnames (general high-frequency list; not corpus-derived). Used
+# as one weak evidence signal in the calibrated ensemble, never on its own.
+COMMON_SURNAMES: frozenset[str] = frozenset(
+    {
+        "smith", "johnson", "williams", "brown", "jones", "garcia", "miller",
+        "davis", "rodriguez", "martinez", "hernandez", "lopez", "gonzalez",
+        "wilson", "anderson", "thomas", "taylor", "moore", "jackson", "martin",
+        "lee", "perez", "thompson", "white", "harris", "sanchez", "clark",
+        "ramirez", "lewis", "robinson", "walker", "young", "allen", "king",
+        "wright", "scott", "torres", "nguyen", "hill", "flores", "green",
+        "adams", "nelson", "baker", "hall", "rivera", "campbell", "mitchell",
+        "carter", "roberts", "gomez", "phillips", "evans", "turner", "diaz",
+        "parker", "cruz", "edwards", "collins", "reyes", "stewart", "morris",
+        "morales", "murphy", "cook", "rogers", "gutierrez", "ortiz", "morgan",
+        "cooper", "peterson", "bailey", "reed", "kelly", "howard", "ramos",
+        "kim", "cox", "ward", "richardson", "watson", "brooks", "chavez",
+        "wood", "james", "bennett", "gray", "mendoza", "ruiz", "hughes",
+        "price", "alvarez", "castillo", "sanders", "patel", "myers", "long",
+        "ross", "foster", "jimenez", "powell", "jenkins", "perry", "russell",
+        "sullivan", "bell", "coleman", "butler", "henderson", "barnes",
+        "gonzales", "fisher", "vasquez", "simmons", "romero", "jordan",
+        "patterson", "alexander", "hamilton", "graham", "reynolds", "griffin",
+        "wallace", "moreno", "west", "cole", "hayes", "bryant", "herrera",
+        "gibson", "ellis", "tran", "medina", "aguilar", "stevens", "murray",
+        "ford", "castro", "marshall", "owens", "harrison", "fernandez",
+        "mcdonald", "woods", "washington", "kennedy", "wells", "vargas",
+        "henry", "chen", "freeman", "webb", "tucker", "guzman", "burns",
+        "crawford", "olson", "simpson", "porter", "hunter", "gordon", "mendez",
+        "silva", "shaw", "snyder", "mason", "dixon", "munoz", "hunt", "hicks",
+        "holmes", "palmer", "wagner", "black", "robertson", "boyd", "rose",
+        "stone", "salazar", "fox", "warren", "mills", "meyer", "rice",
+        "schmidt", "garza", "daniels", "ferguson", "nichols", "stephens",
+        "soto", "weaver", "ryan", "gardner", "payne", "grant", "dunn",
+        "kelley", "spencer", "hawkins", "arnold", "pierce", "vazquez",
+        "hansen", "peters", "santos", "hart", "bradley", "knight", "elliott",
+        "cunningham", "duncan", "armstrong", "hudson", "carroll", "lane",
+        "riley", "andrews", "alvarado", "ray", "delgado", "berry", "perkins",
+        "hoffman", "johnston", "matthews", "pena", "richards", "contreras",
+        "willis", "carpenter", "lawrence", "sandoval", "guerrero", "george",
+        "chapman", "rios", "estrada", "ortega", "watkins", "greene", "nunez",
+        "wheeler", "valdez", "harper", "burke", "larson", "santiago", "maldonado",
+        "morrison", "franklin", "carlson", "austin", "dominguez", "carr",
+        "lawson", "jacobs", "obrien", "lynch", "singh", "vance", "qureshi",
+        "tanner", "solis", "luna",
+    }
+)
+
+# Cue words for organizations and for addresses/locations (label-anchored).
+ORG_CUES: frozenset[str] = frozenset(
+    {"company", "employer", "organization", "organisation", "firm", "vendor",
+     "institution", "school", "university", "college", "hospital", "clinic",
+     "bank", "agency", "department", "corporation", "business"}
+)
+ADDRESS_CUES: frozenset[str] = frozenset(
+    {"address", "street", "city", "state", "county", "province", "district",
+     "town", "residence", "residing", "located", "location", "region",
+     "barangay", "purok", "ward", "zip", "postal", "country"}
+)

@@ -100,6 +100,8 @@ class Redactor:
         use_ner: bool = False,
         ner_model: str = "en_core_web_sm",
         use_gazetteer: bool = False,
+        use_ensemble: bool = False,
+        semantic_policy: str = "strict",
         use_onnx: bool = False,
         onnx_model: str | None = None,
         onnx_vocab: str | dict[str, int] | None = None,
@@ -154,6 +156,10 @@ class Redactor:
             from safestream_redactor.detectors.gazetteer_ner import GazetteerNameDetector
 
             self._detectors.append(GazetteerNameDetector())
+        if use_ensemble:
+            from safestream_redactor.detectors.semantic_ensemble import SemanticEnsembleDetector
+
+            self._detectors.append(SemanticEnsembleDetector(policy=semantic_policy))
         if use_onnx:
             from safestream_redactor.detectors.onnx_ner import OnnxPiiDetector
 

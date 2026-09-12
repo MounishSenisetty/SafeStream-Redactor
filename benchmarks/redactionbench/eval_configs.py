@@ -63,8 +63,11 @@ def build_redactor(config: str, min_conf: float, args: argparse.Namespace) -> Re
     kw: dict[str, Any] = {"min_confidence": min_conf}
     if config in ("gazetteer", "ner+gaz"):
         kw["use_gazetteer"] = True
-    if config in ("ner", "ner+gaz"):
+    if config in ("ner", "ner+gaz", "ensemble+ner"):
         kw["use_ner"] = True
+    if config in ("ensemble", "ensemble_hr", "ensemble+ner"):
+        kw["use_ensemble"] = True
+        kw["semantic_policy"] = "high_recall" if config == "ensemble_hr" else "strict"
     if config == "onnx":
         if not (args.onnx_model and args.onnx_vocab):
             raise SystemExit("--config onnx needs --onnx-model and --onnx-vocab")
@@ -184,7 +187,9 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     ap.add_argument(
-        "--config", default="core", choices=["core", "gazetteer", "ner", "ner+gaz", "onnx"]
+        "--config", default="core",
+        choices=["core", "gazetteer", "ner", "ner+gaz", "ensemble", "ensemble_hr",
+                 "ensemble+ner", "onnx"],
     )
     ap.add_argument("--data-dir", default="benchmarks/data/redactionbench")
     ap.add_argument("--benign-dir", default="benchmarks/data/benign")

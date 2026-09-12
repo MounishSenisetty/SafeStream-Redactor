@@ -1,0 +1,35 @@
+{"raw_text": "James Watson and Francis Crick described the structure of DNA in 1953.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Grace Hopper developed the first compiler and popularized the term debugging.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The economist Adam Smith wrote The Wealth of Nations in 1776.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Mark Twain, born Samuel Clemens, wrote Adventures of Huckleberry Finn.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Isaac Newton formulated the laws of motion and universal gravitation.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The physicist Richard Feynman taught at the California Institute of Technology.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "In April the team will review the May roadmap and mark the June milestones.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "We have faith and hope that the plan will grant real progress.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Please mark the box and grant access so the bill can pass this fall.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The will was read on Monday; her grace under pressure was admired.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "North Carolina borders South Carolina, Virginia, Tennessee, and Georgia.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "New York City comprises Manhattan, Brooklyn, Queens, the Bronx, and Staten Island.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The Amazon River flows through Brazil, Peru, and Colombia toward the Atlantic.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Microsoft, Apple, and Alphabet are among the largest technology companies.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The World Health Organization and the Red Cross coordinated the response.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Toyota Motor Corporation and Ford Motor Company reported quarterly earnings.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The HttpClient class wraps ConnectionPool and retries on TimeoutError.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Call UserService.getProfile then pass the Result to RenderEngine.draw().", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The Dockerfile installs Python, sets WORKDIR, and runs EntryPoint.sh.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Import the NumPy and Pandas libraries, then build a DataFrame from the CSV.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Bayes Theorem underlies Naive Bayes classifiers used in Machine Learning.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Newton, Pascal, and Joule are SI-derived units named after scientists.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The Doppler Effect explains the redshift observed by Edwin Hubble.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The office moved from Oak Street to Maple Avenue near Central Park last year.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Directions: head north on Main Street, then east toward Riverside Drive.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The Prime Minister met the President to discuss trade and border security.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The committee chair and the vice chair approved the annual budget report.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The baker and the miller opened a shop; the smith forged the gate.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "A cook, a carpenter, and a gardener volunteered for the community project.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The API returns JSON; parse the Response and check the Status field for OK.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Kubernetes schedules Pods across Nodes and exposes them via a Service.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The GDP grew 3 percent while the CPI rose 2 percent over the quarter.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Chapter 4 covers the French Revolution, the Enlightenment, and the Reformation.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "The Mona Lisa hangs in the Louvre; the Sistine Chapel is in Vatican City.", "category": "benign_hard", "genre": "public", "spans": []}
+{"raw_text": "Mount Kilimanjaro, Mount Fuji, and Mount Rainier are famous stratovolcanoes.", "category": "benign_hard", "genre": "public", "spans": []}
