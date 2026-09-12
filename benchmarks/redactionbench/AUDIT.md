@@ -1,5 +1,16 @@
 # RedactionBench deep audit — why the scores are what they are, what changed, and the real ceiling
 
+> **CORRECTION (see [`VALIDATION.md`](VALIDATION.md)).** A later validity pass against
+> the dataset card found that this document's **"0.431 all-gold RChar ceiling" is a
+> metric artifact and is withdrawn**: the card defines `contextual` spans as
+> "may-redact-without-penalty", so counting un-redacted contextual characters as recall
+> failures is wrong. The recall-relevant metric is **mandatory recall (0.69 core / 0.77
+> NER)**, whose perfect-detector ceiling is 1.0. The characterization of contextual as
+> mostly "utility-destroying glue" is also wrong (glue is 8.8% of contextual). The
+> "near its achievable ceiling" conclusion is **not supported** — there is real NER
+> headroom. The official R-Score implementation is unreleased, so nothing here is an
+> R-Score value. Read `VALIDATION.md` first.
+
 This document answers the end-to-end audit request: verify the benchmark is not
 manufacturing false failures, trace every real failure to a component, fix what
 is genuinely fixable in a generalizable way (no benchmark hacks), and state

@@ -1,5 +1,14 @@
 # RedactionBench forensic diagnosis — where recall is lost, and the architectural verdict
 
+> **CORRECTION (see [`VALIDATION.md`](VALIDATION.md)).** The streaming/detection
+> attribution below is confirmed and strengthened (1,401 adversarial cases + chunk-64
+> full-corpus equivalence, 0 divergences). But two conclusions here are corrected by the
+> validity pass: the **"0.431 all-gold RChar ceiling" is withdrawn** (a metric artifact
+> from counting optional `contextual` spans as required), and the **"near its achievable
+> ceiling"** framing is **not supported** — the recall-relevant metric is mandatory
+> recall (0.69/0.77) and there is real NER headroom (class B / names sits at 0.013).
+> No number here is an official R-Score (that scorer is unreleased).
+
 Produced by the instrumentation in [`diagnose.py`](diagnose.py) over the full
 200-document corpus (revision `d45e9cec…`). Every number below is measured, not
 asserted. The instrumentation traces each **mandatory** gold character through
