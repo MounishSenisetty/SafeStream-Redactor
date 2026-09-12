@@ -61,6 +61,11 @@ dev = ["pytest>=7.0", "pytest-cov>=4.1", "hypothesis>=6.90", "ruff>=0.4", "mypy>
 # google-re2 is used only by benchmarks/re2_backend.py (the evaluated-and-not-
 # adopted compiled-regex backend); it is never imported by the shipped package.
 bench = ["presidio-analyzer>=2.2", "google-re2>=1.1"]
+# Optional deps for the RedactionBench evaluation harness (benchmarks/redactionbench/).
+# Only needed to DOWNLOAD the dataset from Hugging Face (`datasets`/`huggingface_hub`)
+# or to read a vendored `.parquet` export (`pyarrow`); JSON/JSONL/CSV exports need
+# none of these. The shipped package never imports them.
+redactionbench = ["datasets>=2.14", "huggingface_hub>=0.20", "pyarrow>=12"]
 
 [project.urls]
 Homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"

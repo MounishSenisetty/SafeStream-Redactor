@@ -216,5 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-benchmarks/data/
+# Generated synthetic corpora (run_benchmark.py / generate_dataset.py) are not tracked.
+# Ignore everything under benchmarks/data/ EXCEPT the RedactionBench staging area,
+# which is a deliberate, reproducible drop point for the vendored dataset export.
+benchmarks/data/*
+!benchmarks/data/redactionbench/
 benchmarks/data_hard/
+# Benchmark run outputs (predictions/results/reports) are regenerated, not tracked.
+benchmarks/results/

@@ -35,6 +35,23 @@ names/addresses to be far below the synthetic numbers unless `--ner` is on — t
 is the honest state of a regex-first detector and is what the roadmap's calibration and
 NER work targets.
 
+### RedactionBench: a turnkey external benchmark (`redactionbench/`)
+
+For the Hugging Face [`RedactionBench/RedactionBench`](https://huggingface.co/datasets/RedactionBench/RedactionBench)
+dataset (200 manually-annotated documents across 11 domains) there is a dedicated,
+self-contained harness that downloads/loads the data, runs it through the **real
+streaming pipeline**, and computes span-level P/R/F1 (type-aware + agnostic),
+character-level R-Score-style coverage, and dataset-level accuracy — writing raw
+predictions, a results JSON/CSV, and a markdown report. It is isolated from the core
+and does not change detector behaviour. Full docs and reproduce commands:
+[`redactionbench/README.md`](redactionbench/README.md).
+
+```bash
+python -m benchmarks.redactionbench.run inspect --data-dir benchmarks/data/redactionbench
+python -m benchmarks.redactionbench.run run     --data-dir benchmarks/data/redactionbench \
+    --out-dir benchmarks/results/redactionbench
+```
+
 The harness also carries the machinery a journal reviewer expects (see
 [`../docs/RESEARCH_PLAN.md`](../docs/RESEARCH_PLAN.md)):
 
