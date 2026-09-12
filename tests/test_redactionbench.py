@@ -237,3 +237,38 @@ def test_binary_mode_end_to_end(tmp_path: Path) -> None:
     # predicted-type distribution is reported instead of per-type gold scoring
     assert results["metadata"]["predicted_type_distribution"].get("email", 0) >= 1
     assert (out / "per_domain.csv").is_file()
+
+
+# --- hand-verified metric trust check ---------------------------------------
+
+
+def test_char_metric_hand_verified() -> None:
+    """Independently hand-computed char P/R/F1 must match the harness exactly.
+
+    text length 20; gold mandatory [0,5), contextual [10,12); pred [0,5),[11,15).
+      gold-all mask = {0,1,2,3,4,10,11}   (7 chars)
+      pred mask     = {0,1,2,3,4,11,12,13,14} (9 chars)
+      TP = {0,1,2,3,4,11} = 6 ; FP = {12,13,14} = 3 ; FN = {10} = 1
+      P = 6/9 = 0.6667 ; R = 6/7 = 0.8571 ; F1 = 0.75
+      mandatory mask {0..4} fully covered -> mandatory recall = 1.0
+    """
+    gold = [(0, 5, "mandatory"), (10, 12, "contextual")]
+    preds = [(0, 5, "x"), (11, 15, "y")]
+    sc = metrics.score_binary_record("d", None, 20, gold, preds, threshold=0.5)
+    c = sc.chars["all"]
+    assert (c.tp, c.fp, c.fn) == (6, 3, 1)
+    assert round(c.precision, 4) == 0.6667
+    assert round(c.recall, 4) == 0.8571
+    assert c.f1 == 0.75
+    assert sc.chars["mandatory"].recall == 1.0
+    assert sc.chars["contextual"].recall == 0.5  # 1 of 2 contextual chars (11) covered
+
+
+def test_char_metric_no_overlap_and_full_miss() -> None:
+    # disjoint prediction: zero TP
+    sc = metrics.score_binary_record("d", None, 10, [(0, 4, "mandatory")], [(6, 9, "z")], 0.5)
+    assert (sc.chars["all"].tp, sc.chars["all"].fn) == (0, 4)
+    assert sc.chars["all"].recall == 0.0
+    # perfect prediction: full coverage
+    sc2 = metrics.score_binary_record("d", None, 10, [(0, 4, "mandatory")], [(0, 4, "z")], 0.5)
+    assert sc2.chars["all"].recall == 1.0 and sc2.chars["all"].precision == 1.0
