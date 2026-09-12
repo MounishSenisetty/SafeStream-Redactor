@@ -125,6 +125,22 @@ class Redactor:
         self._scorer = ContextualScorer()
 
         self._detectors: list[Detector] = [DeterministicDetector(resolved_types, backend=backend)]
+        # Label-anchored identifier cascade: a high-precision contextual tier that
+        # promotes otherwise-ambiguous values (bare id/account/DOB numbers) to
+        # redactions only when a cue word names them. On by default; it emits its
+        # own entity types (plus SSN/PHONE/CREDIT_CARD), so it is active whenever
+        # any of those are in scope, or when no explicit type filter is set.
+        from safestream_redactor.detectors.labeled_id import LabeledIdentifierDetector
+
+        _labeled_types = {
+            EntityType.SSN,
+            EntityType.PHONE,
+            EntityType.CREDIT_CARD,
+            EntityType.DOB,
+            EntityType.ID_NUMBER,
+        }
+        if resolved_types is None or _labeled_types.intersection(resolved_types):
+            self._detectors.append(LabeledIdentifierDetector())
         custom_words = list(custom_words)
         custom_patterns = list(custom_patterns)
         if custom_words or custom_patterns:

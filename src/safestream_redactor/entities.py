@@ -39,6 +39,11 @@ class EntityType(str, Enum):
     PERSON = "person"
     ORG = "org"
     LOC = "loc"
+    # date of birth (label-anchored)
+    DOB = "dob"
+    # generic sensitive identifier caught only via an adjacent label cue
+    # (student/employee/member/patient/account/MRN/licence/passport/... numbers)
+    ID_NUMBER = "id_number"
     # user-supplied words / regexes
     CUSTOM = "custom"
 
