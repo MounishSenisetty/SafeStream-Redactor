@@ -221,6 +221,8 @@ __marimo__/
 # which is a deliberate, reproducible drop point for the vendored dataset export.
 benchmarks/data/*
 !benchmarks/data/redactionbench/
+# The benign public-prose false-positive set is authored, tracked test data.
+!benchmarks/data/benign/
 benchmarks/data_hard/
 # Benchmark run outputs (predictions/results/reports) are regenerated, not tracked.
 benchmarks/results/
