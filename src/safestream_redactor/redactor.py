@@ -170,11 +170,18 @@ class Redactor:
                     onnx_model, onnx_vocab, onnx_labels, min_score=onnx_min_score
                 )
             )
-        # statistical tier: generic high-entropy secrets (on by default)
+        # statistical tier: generic high-entropy secrets (on by default). The
+        # compound-secret tier closes the symbol-containing-secret gap the base
+        # entropy candidate splits on (see detectors/entropy.py); both are gated
+        # by the same use_entropy / SECRET-in-scope condition.
         if use_entropy and (resolved_types is None or EntityType.SECRET in resolved_types):
-            from safestream_redactor.detectors.entropy import EntropyDetector
+            from safestream_redactor.detectors.entropy import (
+                CompoundSecretDetector,
+                EntropyDetector,
+            )
 
             self._detectors.append(EntropyDetector())
+            self._detectors.append(CompoundSecretDetector())
         self._detectors.extend(extra_detectors)
         # third-party detectors registered via entry points
         if load_plugins:

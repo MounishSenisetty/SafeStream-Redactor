@@ -27,7 +27,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Constant-memory streaming** — process very large files without loading the entire file into memory.
 - **Multi-tier detection** — deterministic patterns, entropy analysis, optional NER, and contextual scoring.
 - **PII detection** — emails, phone numbers, credit cards, SSNs, IPv4/IPv6, and optional names/organizations/locations.
-- **Credential detection** — API keys, cloud credentials, tokens, JWTs, private keys, and high-entropy secrets.
+- **Credential detection** — API keys, cloud credentials, tokens, JWTs, private keys, high-entropy secrets, and symbol-containing (compound) passwords/blobs.
 - **Multiple redaction modes** — replace, mask, pseudonymize, and per-type replacements.
 - **Parallel processing** — process directory trees or split large files across workers.
 - **Offline network guard** — prevents non-loopback network access by default during CLI redaction.

@@ -8,6 +8,20 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- **Compound-secret tier** (`detectors/entropy.py`, `CompoundSecretDetector`; on
+  by default with the entropy tier). Closes the documented cause-#4 gap
+  (`benchmarks/redactionbench/AUDIT.md`): a high-entropy secret carrying an
+  *embedded strong special* (`! # $ % ^ & * ~`) — e.g. `devPass_pP0p18yO3n!vT8wZ`
+  — that the base64 entropy candidate splits on and misses entirely. It fires
+  only on a whitespace-free run whose strong special sits *between* two
+  alphanumerics, with character-class diversity and an entropy floor, so URLs,
+  hosts, e-mail addresses, file paths, and base64/hex blobs cannot trip it. Span
+  length is bounded to `MAX_SPAN`, so the streaming/parallel equivalence
+  guarantees and the audited locality constants are unchanged. Measured on
+  RedactionBench (200 docs, streaming): mandatory recall 0.691 → 0.708, character
+  precision 0.7525 → 0.7543 (up), no-mandatory-leak docs 0.125 → 0.135, with **0**
+  new false positives on the 55-doc benign public-prose set.
+
 - **Optional local ONNX NER tier** (`Redactor(use_onnx=True, ...)`, CLI `--onnx`,
   the `pip install safestream-redactor[onnx]` extra): an on-device
   token-classification model (BIO/IOB2) for the PERSON / ORG / LOC entities
@@ -35,6 +49,19 @@ Notable changes to this project. The format follows
   `docs/NATIVE_CORE.md`. `credit_card`/`phone` (evaluated on `fancy-regex`) and the
   entropy tier were measured and deliberately **left in Python** — the doc records
   why.
+
+### Fixed
+
+- **Audited locality constants corrected and made self-checking**
+  (`docs/FORMAL_MODEL.md`, `paper/ftnct09/`, `tests/test_formal_constants.py`).
+  The default-on label-anchored identifier cascade reads a 96-character
+  cue→value window, so the formal model's hand-traced `C_left = 48` /
+  `C_right = 2` were stale for the shipped pipeline. The constants are now derived
+  mechanically from the detectors' declared `StreamingRequirements`
+  (`C_left = 96`, `C_right = 8`, `L_max = 8192`) and pinned by a regression test
+  that fails if any future tier reads wider context, keeping the doc and paper in
+  lockstep with the code. The equivalence guarantee is unaffected — the default
+  overlap (8192) already dwarfs the corrected constants.
 
 ## [0.4.0] - 2026-08-30
 
