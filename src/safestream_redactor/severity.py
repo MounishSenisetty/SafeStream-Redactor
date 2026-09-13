@@ -40,6 +40,8 @@ _SEVERITY: dict[EntityType, str] = {
     # Regulated / directly identifying PII.
     EntityType.SSN: HIGH,
     EntityType.CREDIT_CARD: HIGH,
+    EntityType.ID_NUMBER: HIGH,
+    EntityType.DOB: MEDIUM,
     EntityType.EMAIL: MEDIUM,
     EntityType.PHONE: MEDIUM,
     EntityType.PERSON: MEDIUM,

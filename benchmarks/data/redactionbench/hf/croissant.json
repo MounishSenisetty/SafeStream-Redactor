@@ -1,0 +1,1152 @@
+{
+  "@context": {
+    "@language": "en",
+    "@vocab": "https://schema.org/",
+    "arrayShape": "cr:arrayShape",
+    "citeAs": "cr:citeAs",
+    "column": "cr:column",
+    "conformsTo": "dct:conformsTo",
+    "containedIn": "cr:containedIn",
+    "cr": "http://mlcommons.org/croissant/",
+    "data": {
+      "@id": "cr:data",
+      "@type": "@json"
+    },
+    "dataBiases": "cr:dataBiases",
+    "dataCollection": "cr:dataCollection",
+    "dataType": {
+      "@id": "cr:dataType",
+      "@type": "@vocab"
+    },
+    "dct": "http://purl.org/dc/terms/",
+    "extract": "cr:extract",
+    "field": "cr:field",
+    "fileProperty": "cr:fileProperty",
+    "fileObject": "cr:fileObject",
+    "fileSet": "cr:fileSet",
+    "format": "cr:format",
+    "includes": "cr:includes",
+    "isArray": "cr:isArray",
+    "isLiveDataset": "cr:isLiveDataset",
+    "jsonPath": "cr:jsonPath",
+    "key": "cr:key",
+    "md5": "cr:md5",
+    "parentField": "cr:parentField",
+    "path": "cr:path",
+    "personalSensitiveInformation": "cr:personalSensitiveInformation",
+    "recordSet": "cr:recordSet",
+    "references": "cr:references",
+    "regex": "cr:regex",
+    "repeated": "cr:repeated",
+    "replace": "cr:replace",
+    "sc": "https://schema.org/",
+    "separator": "cr:separator",
+    "source": "cr:source",
+    "subField": "cr:subField",
+    "transform": "cr:transform",
+    "rai": "http://mlcommons.org/croissant/RAI/",
+    "prov": "http://www.w3.org/ns/prov#"
+  },
+  "@type": "sc:Dataset",
+  "distribution": [
+    {
+      "@type": "cr:FileObject",
+      "@id": "repo",
+      "name": "repo",
+      "description": "The Hugging Face git repository.",
+      "contentUrl": "https://huggingface.co/datasets/RedactionBench/RedactionBench/tree/refs%2Fconvert%2Fparquet",
+      "encodingFormat": "git+https",
+      "sha256": "https://github.com/mlcommons/croissant/issues/80"
+    },
+    {
+      "@type": "cr:FileSet",
+      "@id": "parquet-files-for-config-default",
+      "containedIn": {
+        "@id": "repo"
+      },
+      "encodingFormat": "application/x-parquet",
+      "includes": "default/*/*.parquet"
+    }
+  ],
+  "recordSet": [
+    {
+      "@type": "cr:RecordSet",
+      "dataType": "cr:Split",
+      "key": {
+        "@id": "default_splits/split_name"
+      },
+      "@id": "default_splits",
+      "name": "default_splits",
+      "description": "Splits for the default config.",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "default_splits/split_name",
+          "dataType": "sc:Text"
+        }
+      ],
+      "data": [
+        {
+          "default_splits/split_name": "test"
+        }
+      ]
+    },
+    {
+      "@type": "cr:RecordSet",
+      "@id": "default",
+      "description": "RedactionBench/RedactionBench - 'default' subset",
+      "field": [
+        {
+          "@type": "cr:Field",
+          "@id": "default/split",
+          "dataType": "sc:Text",
+          "source": {
+            "fileSet": {
+              "@id": "parquet-files-for-config-default"
+            },
+            "extract": {
+              "fileProperty": "fullpath"
+            },
+            "transform": {
+              "regex": "default/(?:partial-)?(test)/.+parquet$"
+            }
+          },
+          "references": {
+            "field": {
+              "@id": "default_splits/split_name"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "default/raw_text",
+          "dataType": "sc:Text",
+          "source": {
+            "fileSet": {
+              "@id": "parquet-files-for-config-default"
+            },
+            "extract": {
+              "column": "raw_text"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "default/spans",
+          "subField": [
+            {
+              "@type": "cr:Field",
+              "@id": "default/spans/end",
+              "dataType": "cr:Int64",
+              "source": {
+                "fileSet": {
+                  "@id": "parquet-files-for-config-default"
+                },
+                "extract": {
+                  "column": "spans"
+                },
+                "transform": {
+                  "jsonPath": "end"
+                }
+              }
+            },
+            {
+              "@type": "cr:Field",
+              "@id": "default/spans/label",
+              "dataType": "sc:Text",
+              "source": {
+                "fileSet": {
+                  "@id": "parquet-files-for-config-default"
+                },
+                "extract": {
+                  "column": "spans"
+                },
+                "transform": {
+                  "jsonPath": "label"
+                }
+              }
+            },
+            {
+              "@type": "cr:Field",
+              "@id": "default/spans/start",
+              "dataType": "cr:Int64",
+              "source": {
+                "fileSet": {
+                  "@id": "parquet-files-for-config-default"
+                },
+                "extract": {
+                  "column": "spans"
+                },
+                "transform": {
+                  "jsonPath": "start"
+                }
+              }
+            }
+          ],
+          "isArray": true,
+          "arrayShape": "-1"
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "default/category",
+          "dataType": "sc:Text",
+          "source": {
+            "fileSet": {
+              "@id": "parquet-files-for-config-default"
+            },
+            "extract": {
+              "column": "category"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "default/genre",
+          "dataType": "sc:Text",
+          "source": {
+            "fileSet": {
+              "@id": "parquet-files-for-config-default"
+            },
+            "extract": {
+              "column": "genre"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "default/is_synthetic",
+          "dataType": "sc:Boolean",
+          "source": {
+            "fileSet": {
+              "@id": "parquet-files-for-config-default"
+            },
+            "extract": {
+              "column": "is_synthetic"
+            }
+          }
+        },
+        {
+          "@type": "cr:Field",
+          "@id": "default/original_document_url",
+          "dataType": "sc:Text",
+          "source": {
+            "fileSet": {
+              "@id": "parquet-files-for-config-default"
+            },
+            "extract": {
+              "column": "original_document_url"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "conformsTo": "http://mlcommons.org/croissant/1.1",
+  "name": "RedactionBench",
+  "description": "RedactionBench/RedactionBench dataset hosted on Hugging Face and contributed by the HF Datasets community",
+  "alternateName": [
+    "RedactionBench/RedactionBench"
+  ],
+  "creator": {
+    "@type": "Person",
+    "name": "Redaction Bench",
+    "url": "https://huggingface.co/RedactionBench"
+  },
+  "keywords": [
+    "cc-by-4.0",
+    "< 1K",
+    "parquet",
+    "optimized-parquet",
+    "Text",
+    "Datasets",
+    "pandas",
+    "Polars",
+    "Croissant",
+    "🇺🇸 Region: US"
+  ],
+  "license": "https://choosealicense.com/licenses/cc-by-4.0/",
+  "url": "https://huggingface.co/datasets/RedactionBench/RedactionBench",
+  "rai:dataLimitations": "RedactionBench is a 200-document evaluation-only benchmark and is strictly not intended for model training or fine-tuning; it provides only a `test` split. Coverage is restricted to English-language textual documents, but fragments of non-English script do appear. No images, audio, structured tables outside text serializations, or non-English content are included. The 11-category taxonomy (academic, code, emails, files, financial, government, legal, logs, medical, operations, terminal) reflect soft collections of document genres and should not be treated as exhaustive of real-world redaction surfaces. Real samples (101 of 200) have been sourced from predominantly U.S./English-speaking institutional contexts, publicly downloadable forms and templates. Synthetic samples (99 of 200) were authored to fill genre gaps and may not statistically match the long tail of in-the-wild documents in their category. A crucial gap in the distribution is largely public or wiki-like content which is full of entities but none need to be redacted; all documents are generally private or semi-private, so this benchmark may fail to capture the prevalence of false positives in benign data. This benchmark is not recommended for certifying compliance with HIPAA/GDPR/CCPA, evaluating multilingual redaction, audit of clinical or legal deployments, or any use where benchmark performance would be treated as evidence of deployment readiness.",
+  "rai:dataBiases": "The real-document subset (101/200) over-represents U.S. government forms, medical forms, English-language institutional templates, and publicly downloadable documents—under-representing private correspondence, non-Western legal/medical formats, and non-English content. The categories are split into the structured (code, files, logs, terminal) and unstructured categories (academic, email, financial, legal, medical, government, operations). The structured categories were created synthetically while the unstructured documents were initialized from real world representatives. All documents were augmented by a mix of frontier LLMs, and so their entities originated from biased distributions---several passes of randomization ensued but low-entropy patterns not visible to the human eye may remain; some randomized entities often fall outside of real parameters and can be detected as such. Genre coverage within categories is mostly even, except the `files` category is intentionally over-represented (36 rows) because structured-file formats fragment into many distinct serializations. All 200 documents' span annotations were produced by a single annotator, so labeling decisions on `mandatory` vs `contextual` cases (e.g., job titles, organization names, partial identifiers) are correlated rather than independent, though the benchmark's user study verifies that this single-authorship bias is not an issue. Furthermore, since real documents were targeted, the distribution of entity types is inherently skewed, so entities which are more probable appear more often, and models which miss infrequent categories may not be impacted.",
+  "rai:personalSensitiveInformation": "No real PII is present. The real-document rows (101/200) are sourced from documents publicly available on the open web (e.g., government form templates, public filings); these documents are released by their publishers as forms or examples and any embedded names/identifiers are either placeholders, public officials acting in their official capacity, or values already published by the source. Synthetic rows (99/200) contain entirely fabricated identifiers generated by the project team and are not associated with any real individual. All entities were randomized in post-processing, so any reference to real individuals, even if permissible, should be cleared. No new PII was collected from human subjects.",
+  "rai:dataUseCases": "RedactionBench is designed to measure the ability of a model or system to identify and bound character spans in text that must be redacted (`mandatory`) versus spans that may optionally be redacted without penalty (`contextual`), but does not verify that the contextual decisions form a coherent policy. Performance on RedactionBench is hence a lower-bound. RedactionBench is intended to be extended with custom prompts and other ways of embedding the documents to provide the additional context required for Contextual Integrity to completely decide the contextuality of each entity. The benchmark has been used to evaluate generative LLM extractors (B2NER, instruction-locked extractors), discriminative NER models (GLiNER variants), and rule-based baselines, with per-category breakdowns and threshold-convexity reports published by the project; a human user study collected pairwise IoU judgments against the same span schema. RedactionBench can be used for cross-model comparison under a fixed metric and ablation of category-specific performance. It is also good to manually check the places the model fails to understand failure modes.",
+  "rai:dataSocialImpact": "RedactionBench may have negative implications related to over-reliance; models that score highly pass a minimum standard of privacy and not a necessarily a sufficient standard depending on the use case. Hence, this benchmark cannot certify a system as safe for clinical, legal, or financial deployment.",
+  "rai:hasSyntheticData": true,
+  "prov:wasDerivedFrom": [
+    {
+      "@id": "https://www.wicourts.gov/formdisplay/CA-120.doc?formNumber=CA-120&formType=Form&formatId=1&language=en",
+      "prov:label": "academic/academic_probation_appeal",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.wicourts.gov",
+      "sc:description": "Public-web source document for benchmark row `academic/academic_probation_appeal`. Publisher domain: www.wicourts.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.ivcc.edu/union/Sample_Syllabus_WFD_Division.pdf",
+      "prov:label": "academic/course_syllabus",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.ivcc.edu",
+      "sc:description": "Public-web source document for benchmark row `academic/course_syllabus`. Publisher domain: www.ivcc.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.chester.ac.uk/media/media/documents/Sample-Diploma-Supplement.pdf",
+      "prov:label": "academic/diploma",
+      "sc:license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "sc:creditText": "www.chester.ac.uk",
+      "sc:description": "Public-web source document for benchmark row `academic/diploma`. Publisher domain: www.chester.ac.uk. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://d3c8vuno0dl3b4.cloudfront.net/abcte_courses/prepare_to_teach/workshops/FormC.pdf",
+      "prov:label": "academic/disciplinary_record",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "d3c8vuno0dl3b4.cloudfront.net (ABCTE)",
+      "sc:description": "Public-web source document for benchmark row `academic/disciplinary_record`. Publisher domain: d3c8vuno0dl3b4.cloudfront.net (ABCTE workshop materials). License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://basc.edu.ph/wp-content/uploads/2022/03/COLLEGE-ENROLLMENT-FORM.pdf",
+      "prov:label": "academic/enrollment",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "basc.edu.ph",
+      "sc:description": "Public-web source document for benchmark row `academic/enrollment`. Publisher domain: basc.edu.ph. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://seattlecentral.edu/sites/default/files/2022-08/Enrollment%20Form%20Fillable%20PDF.pdf",
+      "prov:label": "academic/fafsa",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "seattlecentral.edu",
+      "sc:description": "Public-web source document for benchmark row `academic/fafsa`. Publisher domain: seattlecentral.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.ed.gov/media/document/sample-aid-offer-2pdf-57113.pdf",
+      "prov:label": "academic/financial_aid_award_letter",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.ed.gov",
+      "sc:description": "Public-web source document for benchmark row `academic/financial_aid_award_letter`. Publisher domain: www.ed.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.icom.edu/wp-content/uploads/2023/09/ICOM-Title-IX-Complaint-Form-2023.pdf",
+      "prov:label": "academic/grade_appeal",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.icom.edu",
+      "sc:description": "Public-web source document for benchmark row `academic/grade_appeal`. Publisher domain: www.icom.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://centerforlit.com/wp-content/uploads/2024/08/Elementary-Graded-Assignment-Sample.pdf",
+      "prov:label": "academic/graded_assignment",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "centerforlit.com",
+      "sc:description": "Public-web source document for benchmark row `academic/graded_assignment`. Publisher domain: centerforlit.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://gsi.berkeley.edu/media/sample-recommendation-letter.pdf",
+      "prov:label": "academic/recommendation_letter",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "gsi.berkeley.edu",
+      "sc:description": "Public-web source document for benchmark row `academic/recommendation_letter`. Publisher domain: gsi.berkeley.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.hud.gov/sites/dfiles/OCHCO/documents/90105b.pdf",
+      "prov:label": "academic/research_agreement",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.hud.gov",
+      "sc:description": "Public-web source document for benchmark row `academic/research_agreement`. Publisher domain: www.hud.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://courts.ca.gov/sites/default/files/courts/default/2024-11/app003.pdf",
+      "prov:label": "academic/student_grievance",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "courts.ca.gov",
+      "sc:description": "Public-web source document for benchmark row `academic/student_grievance`. Publisher domain: courts.ca.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.friscoisd.org/docs/default-source/hr/title-ix-complaint-form.pdf?sfvrsn=2eb47fd7_0",
+      "prov:label": "academic/title_ix",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.friscoisd.org",
+      "sc:description": "Public-web source document for benchmark row `academic/title_ix`. Publisher domain: www.friscoisd.org. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.cs.toronto.edu/~benson21/source/Transcript.pdf",
+      "prov:label": "academic/transcript",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.cs.toronto.edu",
+      "sc:description": "Public-web source document for benchmark row `academic/transcript`. Publisher domain: www.cs.toronto.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.edenchristianacademy.org/editoruploads/files/MN%20Forms%20and%20Files/Official%20Transcript%20Request%20Form.pdf",
+      "prov:label": "academic/transcript_request",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.edenchristianacademy.org",
+      "sc:description": "Public-web source document for benchmark row `academic/transcript_request`. Publisher domain: www.edenchristianacademy.org. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.sec.gov/Archives/edgar/data/1654948/000165494818000002/exhibit10.1-loanagreement.htm",
+      "prov:label": "files/loan_agreement",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.sec.gov",
+      "sc:description": "Public-web source document for benchmark row `files/loan_agreement`. Publisher domain: www.sec.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://raw.githubusercontent.com/davetang/learning_vcf_file/master/eg/ex.vcf",
+      "prov:label": "files/vcf",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "raw.githubusercontent.com",
+      "sc:description": "Public-web source document for benchmark row `files/vcf`. Publisher domain: raw.githubusercontent.com. License: License of source GitHub repository applies (license unspecified at source)."
+    },
+    {
+      "@id": "https://www.irs.gov/pub/irs-pdf/f1040.pdf",
+      "prov:label": "financial/1040",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.irs.gov",
+      "sc:description": "Public-web source document for benchmark row `financial/1040`. Publisher domain: www.irs.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.reginfo.gov/public/do/DownloadDocument?objectID=1954301",
+      "prov:label": "financial/account_application",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.reginfo.gov",
+      "sc:description": "Public-web source document for benchmark row `financial/account_application`. Publisher domain: www.reginfo.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://harie.org/wp-content/uploads/Accord_GL_Form.pdf",
+      "prov:label": "financial/acord_claim_form",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "harie.org",
+      "sc:description": "Public-web source document for benchmark row `financial/acord_claim_form`. Publisher domain: harie.org. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://farmlandinfo.org/wp-content/uploads/sites/2/2020/03/08_LP1_Financial-Document-Samples_01.28.19.pdf",
+      "prov:label": "financial/bank_statement",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "farmlandinfo.org",
+      "sc:description": "Public-web source document for benchmark row `financial/bank_statement`. Publisher domain: farmlandinfo.org. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://coldcard.com/docs/static/pdf/coldcard-backup-card-v2.pdf",
+      "prov:label": "financial/bitcoin_wallet_export",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "coldcard.com",
+      "sc:description": "Public-web source document for benchmark row `financial/bitcoin_wallet_export`. Publisher domain: coldcard.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://files.consumerfinance.gov/f/documents/cfpb_building_block_activities_sample-credit-card-statement_handout.pdf",
+      "prov:label": "financial/card_statement",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "files.consumerfinance.gov",
+      "sc:description": "Public-web source document for benchmark row `financial/card_statement`. Publisher domain: files.consumerfinance.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://chargebackhelp.com/wp-content/uploads/2020/11/Chargeback-Rebuttal-Template.pdf",
+      "prov:label": "financial/chargeback_rebuttal_letter",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "chargebackhelp.com",
+      "sc:description": "Public-web source document for benchmark row `financial/chargeback_rebuttal_letter`. Publisher domain: chargebackhelp.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.bmo.com/pdf/163104_Dec6_13_En.pdf",
+      "prov:label": "financial/deposit_slip",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.bmo.com",
+      "sc:description": "Public-web source document for benchmark row `financial/deposit_slip`. Publisher domain: www.bmo.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.eforms.com/images/2016/10/generic-direct-deposit-authorization-form.pdf",
+      "prov:label": "financial/direct_deposit_authorization_form",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.eforms.com",
+      "sc:description": "Public-web source document for benchmark row `financial/direct_deposit_authorization_form`. Publisher domain: www.eforms.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://slicedinvoices.com/pdf/wordpress-pdf-invoice-plugin-sample.pdf",
+      "prov:label": "financial/invoice",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "slicedinvoices.com",
+      "sc:description": "Public-web source document for benchmark row `financial/invoice`. Publisher domain: slicedinvoices.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.irs.gov/pub/irs-pdf/f1065sk1.pdf",
+      "prov:label": "financial/k1",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.irs.gov",
+      "sc:description": "Public-web source document for benchmark row `financial/k1`. Publisher domain: www.irs.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://gis.harnett.org/case_attachments/CEZO1909-0003/OpenReceipt.pdf",
+      "prov:label": "financial/receipt",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "gis.harnett.org",
+      "sc:description": "Public-web source document for benchmark row `financial/receipt`. Publisher domain: gis.harnett.org. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://business.bofa.com/content/dam/boamlimages/documents/PDFs/sample_pushpay.pdf",
+      "prov:label": "financial/remittance_advice",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "business.bofa.com",
+      "sc:description": "Public-web source document for benchmark row `financial/remittance_advice`. Publisher domain: business.bofa.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.citizensbanktrust.com/_/kcms-doc/631/9398/Signature-Card.pdf",
+      "prov:label": "financial/signature_card",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.citizensbanktrust.com",
+      "sc:description": "Public-web source document for benchmark row `financial/signature_card`. Publisher domain: www.citizensbanktrust.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.tashicell.com/themes/tashicell/assets/forms_v2/SIM%20Registration%20Form_2025_01_01_10_01_39.pdf",
+      "prov:label": "financial/sim_registration",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.tashicell.com",
+      "sc:description": "Public-web source document for benchmark row `financial/sim_registration`. Publisher domain: www.tashicell.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.irs.gov/pub/irs-pdf/fw9.pdf",
+      "prov:label": "financial/w9",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.irs.gov",
+      "sc:description": "Public-web source document for benchmark row `financial/w9`. Publisher domain: www.irs.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://controller.nd.edu/assets/254122/combined_wire_transfer_form_1_.pdf",
+      "prov:label": "financial/wire_transfer_request",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "controller.nd.edu",
+      "sc:description": "Public-web source document for benchmark row `financial/wire_transfer_request`. Publisher domain: controller.nd.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.cdc.gov/nchs/data/dvs/birth11-03final-ACC.pdf",
+      "prov:label": "government/birth_certificate",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.cdc.gov",
+      "sc:description": "Public-web source document for benchmark row `government/birth_certificate`. Publisher domain: www.cdc.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.broward.org/CodeAppeals/Documents/FILLABLE%20-%202022%20Broward%20County%20Uniform%20Building%20Permit%20Application.pdf",
+      "prov:label": "government/building_permit",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.broward.org",
+      "sc:description": "Public-web source document for benchmark row `government/building_permit`. Publisher domain: www.broward.org. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www2.census.gov/programs-surveys/decennial/2020/technical-documentation/questionnaires-and-instructions/questionnaires/2020-informational-questionnaire-english_DI-Q1.pdf",
+      "prov:label": "government/census_form",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www2.census.gov",
+      "sc:description": "Public-web source document for benchmark row `government/census_form`. Publisher domain: www2.census.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.cbp.gov/sites/default/files/2024-07/cbp_form_6059b_english_0.pdf",
+      "prov:label": "government/customs_declaration",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.cbp.gov",
+      "sc:description": "Public-web source document for benchmark row `government/customs_declaration`. Publisher domain: www.cbp.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://transportation.wv.gov/DMV/DMVFormSearch/DMV-DS-23P_Application-for-a-Drivers-License-or-Photo-ID-Card-WF.pdf",
+      "prov:label": "government/drivers_license",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "transportation.wv.gov",
+      "sc:description": "Public-web source document for benchmark row `government/drivers_license`. Publisher domain: transportation.wv.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.uscis.gov/sites/default/files/document/forms/i-589.pdf",
+      "prov:label": "government/form_i_589",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.uscis.gov",
+      "sc:description": "Public-web source document for benchmark row `government/form_i_589`. Publisher domain: www.uscis.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.corpuschristitx.gov/media/sqtf5sjq/corpus-christi-tx-blank-jury-summons.pdf",
+      "prov:label": "government/jury_summons",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.corpuschristitx.gov",
+      "sc:description": "Public-web source document for benchmark row `government/jury_summons`. Publisher domain: www.corpuschristitx.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.columbus.gov/files/sharedassets/city/v/1/public-safety/police/sample-incident-report-missing-person.pdf",
+      "prov:label": "government/police_report",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.columbus.gov",
+      "sc:description": "Public-web source document for benchmark row `government/police_report`. Publisher domain: www.columbus.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.rpvca.gov/DocumentCenter/View/239/Public-Records-Request-Form-PDF",
+      "prov:label": "government/public_records_request",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.rpvca.gov",
+      "sc:description": "Public-web source document for benchmark row `government/public_records_request`. Publisher domain: www.rpvca.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.ssa.gov/forms/ss-5.pdf",
+      "prov:label": "government/social_security",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.ssa.gov",
+      "sc:description": "Public-web source document for benchmark row `government/social_security`. Publisher domain: www.ssa.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://floridarevenue.com/property/Documents/dr453.pdf",
+      "prov:label": "government/tax_lien",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "floridarevenue.com",
+      "sc:description": "Public-web source document for benchmark row `government/tax_lien`. Publisher domain: floridarevenue.com. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.immunize.org/wp-content/uploads/images/LifetimeCard.pdf",
+      "prov:label": "government/vaccination",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.immunize.org",
+      "sc:description": "Public-web source document for benchmark row `government/vaccination`. Publisher domain: www.immunize.org. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.michigan.gov/-/media/Project/Websites/sos/27lawensn/tr11L.pdf?rev=c301c7fee24d415783170bcd84132397",
+      "prov:label": "government/vehicle_title_registration",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.michigan.gov",
+      "sc:description": "Public-web source document for benchmark row `government/vehicle_title_registration`. Publisher domain: www.michigan.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.uscis.gov/sites/default/files/document/forms/i-129f.pdf",
+      "prov:label": "government/visa",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.uscis.gov",
+      "sc:description": "Public-web source document for benchmark row `government/visa`. Publisher domain: www.uscis.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://sos.oregon.gov/elections/Documents/SEL500.pdf",
+      "prov:label": "government/voter_registration_card",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "sos.oregon.gov",
+      "sc:description": "Public-web source document for benchmark row `government/voter_registration_card`. Publisher domain: sos.oregon.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.workforcesafety.com/sites/www/files/documents/Forms/FROI%20-%20CLAIMS.pdf",
+      "prov:label": "government/workers_compensation_claim",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.workforcesafety.com",
+      "sc:description": "Public-web source document for benchmark row `government/workers_compensation_claim`. Publisher domain: www.workforcesafety.com. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://insurance.maryland.gov/producer/documents/bail-bond-installment-agreement.pdf",
+      "prov:label": "legal/bail_bond",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "insurance.maryland.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/bail_bond`. Publisher domain: insurance.maryland.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.sec.gov/Archives/edgar/data/90896/000009089602000016/bylaws.pdf",
+      "prov:label": "legal/bylaws",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.sec.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/bylaws`. Publisher domain: www.sec.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.federalreserve.gov/newsevents/pressreleases/files/enf20200806a1.pdf",
+      "prov:label": "legal/cease_desist",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.federalreserve.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/cease_desist`. Publisher domain: www.federalreserve.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.sec.gov/files/rules/sro/chx/34-50892exa.pdf",
+      "prov:label": "legal/certificate_of_incorporation",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.sec.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/certificate_of_incorporation`. Publisher domain: www.sec.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "urn:redactionbench:legal/declarations:source-unknown",
+      "prov:label": "legal/declarations",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "Unknown",
+      "sc:description": "Source document for benchmark row `legal/declarations` could not be re-identified at publication time; the original public-web URL is unknown. License: All rights reserved (license unspecified at source)."
+    },
+    {
+      "@id": "https://www.odysseytravels.net/travel-agents/pdf/us-visa-form.pdf",
+      "prov:label": "legal/ds_160",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.odysseytravels.net",
+      "sc:description": "Public-web source document for benchmark row `legal/ds_160`. Publisher domain: www.odysseytravels.net. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://isss.illinois.edu/wp-content/uploads/2025/08/SAMPLE-DS-2019.pdf",
+      "prov:label": "legal/ds_2019",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "isss.illinois.edu",
+      "sc:description": "Public-web source document for benchmark row `legal/ds_2019`. Publisher domain: isss.illinois.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.sec.gov/Archives/edgar/data/1139614/000110313204000055/wdlqx10a.pdf",
+      "prov:label": "legal/employment",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.sec.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/employment`. Publisher domain: www.sec.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.uscis.gov/sites/default/files/document/forms/i-765.pdf",
+      "prov:label": "legal/i765_ead",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.uscis.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/i765_ead`. Publisher domain: www.uscis.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.uscis.gov/sites/default/files/document/forms/i-9.pdf",
+      "prov:label": "legal/i9",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.uscis.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/i9`. Publisher domain: www.uscis.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.unr.edu/main/pdfs/verified-accessible/divisions-offices/student-services/student-life-services/union/sampleleaseagreement.pdf",
+      "prov:label": "legal/lease_agreement",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.unr.edu",
+      "sc:description": "Public-web source document for benchmark row `legal/lease_agreement`. Publisher domain: www.unr.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.ventura.courts.ca.gov/local_forms/vn185.pdf",
+      "prov:label": "legal/marital_settlement",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.ventura.courts.ca.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/marital_settlement`. Publisher domain: www.ventura.courts.ca.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.mcle.org/ePrograms/2180102P01/Sample-Offer-Letter.pdf",
+      "prov:label": "legal/offer_letter",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.mcle.org",
+      "sc:description": "Public-web source document for benchmark row `legal/offer_letter`. Publisher domain: www.mcle.org. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.lbwcc.edu/Content/Uploads/LBWCCredesign/files/Performance%20Improvement%20Plan.pdf",
+      "prov:label": "legal/pip",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.lbwcc.edu",
+      "sc:description": "Public-web source document for benchmark row `legal/pip`. Publisher domain: www.lbwcc.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://eforms.com/images/2019/11/California-Prenuptial-Agreement.pdf",
+      "prov:label": "legal/prenuptial",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "eforms.com",
+      "sc:description": "Public-web source document for benchmark row `legal/prenuptial`. Publisher domain: eforms.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.wsba.org/docs/default-source/licensing/lpo-and-lllt-remote-exam-forms/lpo-mock-exam-forms/28a-05-note.doc?sfvrsn=453c0af1_5",
+      "prov:label": "legal/promissory_note",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.wsba.org",
+      "sc:description": "Public-web source document for benchmark row `legal/promissory_note`. Publisher domain: www.wsba.org. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.nyc.gov/assets/nycppf/downloads/pdf/220_drosamples.pdf",
+      "prov:label": "legal/qdro",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.nyc.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/qdro`. Publisher domain: www.nyc.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.uscourts.gov/file/18747/download",
+      "prov:label": "legal/sofa",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.uscourts.gov",
+      "sc:description": "Public-web source document for benchmark row `legal/sofa`. Publisher domain: www.uscourts.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://988lifeline.org/wp-content/uploads/2017/09/Brown_StanleySafetyPlanTemplate1.pdf",
+      "prov:label": "medical/behavioral_health_safety_plan",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "988lifeline.org",
+      "sc:description": "Public-web source document for benchmark row `medical/behavioral_health_safety_plan`. Publisher domain: 988lifeline.org. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://media.southernnevadahealthdistrict.org/download/boh25/20250318/item-vi-2.pdf",
+      "prov:label": "medical/break_the_glass",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "media.southernnevadahealthdistrict.org",
+      "sc:description": "Public-web source document for benchmark row `medical/break_the_glass`. Publisher domain: media.southernnevadahealthdistrict.org. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.carelonbehavioralhealth.com/content/dam/digital/carelon/cbh-assets/documents/global/billing-and-claims/cms-1500-claim-form.pdf",
+      "prov:label": "medical/cms_1500",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.carelonbehavioralhealth.com",
+      "sc:description": "Public-web source document for benchmark row `medical/cms_1500`. Publisher domain: www.carelonbehavioralhealth.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.mynavyhr.navy.mil/Portals/55/Reference/Instructions/BUPERS/BUPERSINST%201640.29.pdf",
+      "prov:label": "medical/confinement_form",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.mynavyhr.navy.mil",
+      "sc:description": "Public-web source document for benchmark row `medical/confinement_form`. Publisher domain: www.mynavyhr.navy.mil. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.gsa.gov/cdnstatic/SF_513.pdf",
+      "prov:label": "medical/consultation_note",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.gsa.gov",
+      "sc:description": "Public-web source document for benchmark row `medical/consultation_note`. Publisher domain: www.gsa.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.uthsc.edu/pediatrics/clerkship/documents/discharge-summary-template.pdf",
+      "prov:label": "medical/discharge_summary",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.uthsc.edu",
+      "sc:description": "Public-web source document for benchmark row `medical/discharge_summary`. Publisher domain: www.uthsc.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://ecg-od.com/wp-content/uploads/2021/09/Sample-12-lead-PDF.pdf",
+      "prov:label": "medical/ecg_tracing",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "ecg-od.com",
+      "sc:description": "Public-web source document for benchmark row `medical/ecg_tracing`. Publisher domain: ecg-od.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.cms.gov/files/document/11819-sample-explanation-benefits-508.pdf",
+      "prov:label": "medical/explanation_of_benefits",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.cms.gov",
+      "sc:description": "Public-web source document for benchmark row `medical/explanation_of_benefits`. Publisher domain: www.cms.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://www.monterotherapyservices.com/wp-content/uploads/2018/03/MDS3.0_NPE_Part_A_PPS_Discharge_v1.16.0.pdf",
+      "prov:label": "medical/mds_3",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.monterotherapyservices.com",
+      "sc:description": "Public-web source document for benchmark row `medical/mds_3`. Publisher domain: www.monterotherapyservices.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.briangilmermd.com/pdf/quad-tendon-repair-template.pdf",
+      "prov:label": "medical/operative_report",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.briangilmermd.com",
+      "sc:description": "Public-web source document for benchmark row `medical/operative_report`. Publisher domain: www.briangilmermd.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.accessdata.fda.gov/Static/widgets/tobacco/MRTP/09%20appendix-2h-smna-smkng-cstn/sm-08-01/1.%20CSR/16.1.2-sample-case-report-form.pdf",
+      "prov:label": "medical/prescription",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.accessdata.fda.gov",
+      "sc:description": "Public-web source document for benchmark row `medical/prescription`. Publisher domain: www.accessdata.fda.gov. License: Public domain (work of the U.S. federal government, 17 USC §105)."
+    },
+    {
+      "@id": "https://medi-calrx.dhcs.ca.gov/cms/medicalrx/static-assets/documents/provider/forms-and-information/Medi-Cal_Rx_PA_Request_Form.pdf",
+      "prov:label": "medical/prior_authorization_request_form",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "medi-calrx.dhcs.ca.gov",
+      "sc:description": "Public-web source document for benchmark row `medical/prior_authorization_request_form`. Publisher domain: medi-calrx.dhcs.ca.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://cdn.prod.website-files.com/6626cd90a59907680f6ccb64/67e47f890f1a2b7873a0300f_Psychotherapy%20Notes%20Template%20%E2%80%94%20Fillable.pdf",
+      "prov:label": "medical/psychotherapy_notes",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "cdn.prod.website-files.com",
+      "sc:description": "Public-web source document for benchmark row `medical/psychotherapy_notes`. Publisher domain: cdn.prod.website-files.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.acpmed.org/forms/Radiologic-Report-Standardized-Format.pdf",
+      "prov:label": "medical/radiology_report",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.acpmed.org",
+      "sc:description": "Public-web source document for benchmark row `medical/radiology_report`. Publisher domain: www.acpmed.org. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.blueshieldca.com/content/dam/bsca/en/sites/docs/2022/January/BSP_2022_70.2.39-Sterilization-Informed-Consent.pdf",
+      "prov:label": "medical/sterilization_consent",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.blueshieldca.com",
+      "sc:description": "Public-web source document for benchmark row `medical/sterilization_consent`. Publisher domain: www.blueshieldca.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.dshs.texas.gov/sites/default/files/rls/nursing/forms/core8.pdf",
+      "prov:label": "medical/triage_note",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.dshs.texas.gov",
+      "sc:description": "Public-web source document for benchmark row `medical/triage_note`. Publisher domain: www.dshs.texas.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.dmba.com/nsc/forms/PDF/E03.pdf",
+      "prov:label": "operations/benefits_enrollment",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.dmba.com",
+      "sc:description": "Public-web source document for benchmark row `operations/benefits_enrollment`. Publisher domain: www.dmba.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://my.ediexpressinc.com/pdf/0.5122797.pdf",
+      "prov:label": "operations/bill_of_lading",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "my.ediexpressinc.com",
+      "sc:description": "Public-web source document for benchmark row `operations/bill_of_lading`. Publisher domain: my.ediexpressinc.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://indico.un.org/event/1009476/attachments/14322/41380/Hotel-reservation-form.docx",
+      "prov:label": "operations/hotel_reservation",
+      "sc:license": "https://www.un.org/en/about-us/copyright",
+      "sc:creditText": "indico.un.org",
+      "sc:description": "Public-web source document for benchmark row `operations/hotel_reservation`. Publisher domain: indico.un.org. License: United Nations document; UN materials are generally free for non-commercial use without alteration (UN copyright policy)."
+    },
+    {
+      "@id": "https://www.smartsheet.com/sites/default/files/IC-Interview-Schedule-9264-PDF.pdf",
+      "prov:label": "operations/interview_schedule",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.smartsheet.com",
+      "sc:description": "Public-web source document for benchmark row `operations/interview_schedule`. Publisher domain: www.smartsheet.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://community.pepperdine.edu/studentemployment/content/job-offer-letter-template.pdf",
+      "prov:label": "operations/offer_letter",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "community.pepperdine.edu",
+      "sc:description": "Public-web source document for benchmark row `operations/offer_letter`. Publisher domain: community.pepperdine.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.lynden.com/wp-content/uploads/vendor-onboarding-usa.pdf",
+      "prov:label": "operations/onboarding_packet",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.lynden.com",
+      "sc:description": "Public-web source document for benchmark row `operations/onboarding_packet`. Publisher domain: www.lynden.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.dir.ca.gov/dlse/paystub.pdf",
+      "prov:label": "operations/pay_stub",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "www.dir.ca.gov",
+      "sc:description": "Public-web source document for benchmark row `operations/pay_stub`. Publisher domain: www.dir.ca.gov. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://smartroutes.io/docs/basic-proof-of-delivery-template.pdf",
+      "prov:label": "operations/proof_of_delivery",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "smartroutes.io",
+      "sc:description": "Public-web source document for benchmark row `operations/proof_of_delivery`. Publisher domain: smartroutes.io. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://mccmeetingspublic.blob.core.usgovcloudapi.net/whitewatwi-meet-d15b4e20f43e475fbf0c28eb156f5d21/ITEM-Attachment-001-775d754a63e0442a8dd60e2be09fda51.pdf",
+      "prov:label": "operations/property_tax",
+      "sc:license": "https://www.usa.gov/government-copyright",
+      "sc:creditText": "mccmeetingspublic.blob.core.usgovcloudapi.net",
+      "sc:description": "Public-web source document for benchmark row `operations/property_tax`. Publisher domain: mccmeetingspublic.blob.core.usgovcloudapi.net. License: All rights reserved (U.S. state/local government work — license unspecified at source)."
+    },
+    {
+      "@id": "https://adpca.org/wp-content/uploads/2020/11/Transcript-of-Therapy-Session-by-Douglas-Bower.pdf",
+      "prov:label": "operations/session_transcript",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "adpca.org",
+      "sc:description": "Public-web source document for benchmark row `operations/session_transcript`. Publisher domain: adpca.org. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://doc.phomemo.com/Labels-Sample.pdf",
+      "prov:label": "operations/shipping_label",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "doc.phomemo.com",
+      "sc:description": "Public-web source document for benchmark row `operations/shipping_label`. Publisher domain: doc.phomemo.com. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://www.ocers.org/sites/main/files/file-attachments/agency_transfer_notice.pdf",
+      "prov:label": "operations/transfer_notice",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "www.ocers.org",
+      "sc:description": "Public-web source document for benchmark row `operations/transfer_notice`. Publisher domain: www.ocers.org. License: All rights reserved (commercial or organizational template — license unspecified at source)."
+    },
+    {
+      "@id": "https://sabo.rutgers.edu/sites/default/files/sample-pdf-of-uber-receipt.pdf",
+      "prov:label": "operations/uber_receipt",
+      "sc:license": "https://en.wikipedia.org/wiki/All_rights_reserved",
+      "sc:creditText": "sabo.rutgers.edu",
+      "sc:description": "Public-web source document for benchmark row `operations/uber_receipt`. Publisher domain: sabo.rutgers.edu. License: All rights reserved (institutional/educational template — license unspecified at source)."
+    }
+  ],
+  "prov:wasGeneratedBy": [
+    {
+      "@type": "prov:Activity",
+      "prov:type": {
+        "@id": "https://www.wikidata.org/wiki/Q4929239"
+      },
+      "prov:label": "Genre Compilation",
+      "sc:description": "Around a thousand genres were proposed by an ensemble of language models (GPT-5.1, Opus-4.5, Gemini-3.1 Pro), which were then manually deduplicated and refined down to a list of semi-private genres. Each genre was then manually scraped from the internet with some care taken to ensure diverse origins between states/disabling location recommendations while searching.",
+      "prov:atTime": "2026-01-15T12:00:00Z",
+      "prov:wasAttributedTo": [
+        {
+          "@type": "prov:Agent",
+          "@id": "redactionbench_team",
+          "prov:label": "RedactionBench project team",
+          "sc:description": "Research team responsible for genre proposal review, deduplication, manual web scraping, and final genre-list curation."
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://openai.com/index/gpt-5/",
+          "prov:label": "GPT-5.1",
+          "sc:description": "OpenAI frontier model used as one of three independent genre-proposal generators."
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://www.anthropic.com/news/claude-opus-4-5",
+          "prov:label": "Claude Opus 4.5",
+          "sc:description": "Anthropic frontier model used as one of three independent genre-proposal generators."
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://deepmind.google/technologies/gemini/",
+          "prov:label": "Gemini 3.1 Pro",
+          "sc:description": "Google DeepMind frontier model used as one of three independent genre-proposal generators."
+        }
+      ]
+    },
+    {
+      "@type": "prov:Activity",
+      "prov:type": {
+        "@id": "https://www.wikidata.org/wiki/Q4929239"
+      },
+      "prov:label": "Real-document Sourcing",
+      "sc:description": "For each unstructured-category genre (academic, emails, financial, legal, medical, government, operations) a real-world representative document was sourced via manual web search. Searches were conducted with location personalization disabled and across rotated state/region queries to avoid clustering on a single jurisdiction. Sourced documents were normalized to plain text and retained their public-form provenance; the source URL of each non-synthetic row is preserved as `original_document_url`. A few real documents do not have a source, which corresponds to us personally adding them using our own documents.",
+      "prov:atTime": "2026-02-01T12:00:00Z",
+      "prov:wasAttributedTo": [
+        {
+          "@type": "prov:Agent",
+          "@id": "redactionbench_team",
+          "prov:label": "RedactionBench project team",
+          "sc:description": "Performed all manual web sourcing and normalization."
+        }
+      ]
+    },
+    {
+      "@type": "prov:Activity",
+      "prov:type": {
+        "@id": "https://www.wikidata.org/wiki/Q4929239"
+      },
+      "prov:label": "Synthetic-document Authoring",
+      "sc:description": "Structured-category documents (code, files, logs, terminal) and a small number of unstructured-category fillers were authored from scratch by the project team with frontier-LLM assistance. Authors specified a target genre and constraints; the LLM ensemble drafted candidate documents which were then manually edited, fact-stripped, and re-instantiated with fabricated identifiers. Synthetic rows are marked by a leading underscore in their genre folder name and have `is_synthetic=true`, `original_document_url=null`.",
+      "prov:atTime": "2026-02-15T12:00:00Z",
+      "prov:wasAttributedTo": [
+        {
+          "@type": "prov:Agent",
+          "@id": "redactionbench_team",
+          "prov:label": "RedactionBench project team",
+          "sc:description": "Authored prompts, edited LLM drafts, and finalized synthetic documents."
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://openai.com/index/gpt-5/",
+          "prov:label": "GPT-5.1"
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://www.anthropic.com/news/claude-opus-4-5",
+          "prov:label": "Claude Sonnet 4.5"
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://deepmind.google/technologies/gemini/",
+          "prov:label": "Gemini 3.1 Pro"
+        }
+      ]
+    },
+    {
+      "@type": "prov:Activity",
+      "prov:type": {
+        "@id": "https://en.wikipedia.org/wiki/Data_pre-processing"
+      },
+      "prov:label": "LLM Document Augmentation",
+      "sc:description": "All 200 documents (real and synthetic) were augmented by a mix of frontier LLMs to enrich realism (e.g., adding plausible boilerplate, expanding terse fields, harmonizing formatting) without changing the document's high-level intent or structure. Augmentation was prompted independently per document and reviewed by the project team before acceptance. Because the LLM ensemble inherits the bias distributions of its training data, augmented entities originate from biased distributions; this is partially mitigated by the subsequent randomization pass.",
+      "prov:atTime": "2026-03-01T12:00:00Z",
+      "prov:wasAttributedTo": [
+        {
+          "@type": "prov:Agent",
+          "@id": "redactionbench_team",
+          "prov:label": "RedactionBench project team"
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://openai.com/index/gpt-5/",
+          "prov:label": "GPT-5.3-Codex"
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://openai.com/index/gpt-5/",
+          "prov:label": "GPT-5.4"
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://www.anthropic.com/news/claude-opus-4-5",
+          "prov:label": "Claude Sonnet 4.6"
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://deepmind.google/technologies/gemini/",
+          "prov:label": "Gemini 3.1 Pro"
+        }
+      ]
+    },
+    {
+      "@type": "prov:Activity",
+      "prov:type": {
+        "@id": "https://en.wikipedia.org/wiki/Data_pre-processing"
+      },
+      "prov:label": "Entity Randomization",
+      "sc:description": "Several passes of entity randomization were applied to ensure that no real-individual identifier survives in any document. Names, addresses, identifiers, account numbers, dates, and other PII-shaped tokens are replaced with type-consistent fabricated values via deterministic and LLM-assisted rewriting. Multiple passes are used because single-pass randomization can leave low-entropy patterns (e.g., shared prefixes, plausible-but-correlated values); residual artifacts not visible to a human reader may still remain, and some randomized entities can fall slightly outside the real parameter range and be detectable as synthetic.",
+      "prov:atTime": "2026-03-20T12:00:00Z",
+      "prov:wasAttributedTo": [
+        {
+          "@type": "prov:Agent",
+          "@id": "redactionbench_team",
+          "prov:label": "RedactionBench project team",
+          "sc:description": "Authored the randomization pipeline and reviewed sampled outputs after each pass."
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://openai.com/index/gpt-5/",
+          "prov:label": "GPT-5.3-Codex",
+          "sc:description": "Used in LLM-assisted randomization passes to propose type-consistent replacements."
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://openai.com/index/gpt-5/",
+          "prov:label": "GPT-5.4",
+          "sc:description": "Used in LLM-assisted randomization passes to propose type-consistent replacements."
+        },
+        {
+          "@type": "prov:SoftwareAgent",
+          "@id": "https://www.anthropic.com/news/claude-opus-4-5",
+          "prov:label": "Claude Opus 4.5"
+        }
+      ]
+    },
+    {
+      "@type": "prov:Activity",
+      "prov:type": {
+        "@id": "https://www.wikidata.org/wiki/Q109719325"
+      },
+      "prov:label": "Span Annotation",
+      "sc:description": "All 200 documents were span-annotated by a single lead annotator into the two-tier mandatory/unsafe vs. contextual schema. Annotation markers are parsed at build time into `fine_grained_entities`; `contiguous_entities` are then produced by a deterministic combinator-aware fusion algorithm that merges adjacent unsafe spans linked by a single-character non-ASCII-alnum contextual combinator (excluding `\\ / { } [ ] @ ( )`). Exact rules specifying combination can be found in the 'Labeling Procedure' section of the paper, with two related algorithms from the Appendix.",
+      "prov:atTime": "2026-04-01T12:00:00Z",
+      "prov:wasAttributedTo": [
+        {
+          "@type": "prov:Agent",
+          "@id": "redactionbench_lead_annotator",
+          "prov:label": "Lead annotator (RedactionBench project team)",
+          "sc:description": "Single annotator who labeled all 200 documents using under the contextual integrity assumptions outlined in the section 'Contextual Integrity for Language Model Interactions'."
+        }
+      ]
+    },
+    {
+      "@type": "prov:Activity",
+      "prov:type": {
+        "@id": "https://www.wikidata.org/wiki/Q109719325"
+      },
+      "prov:label": "User-study",
+      "sc:description": "85 Participants were recruited off the Prolific platform; constraints: 25-65 y.o., college degree, currently residing in the US. Participants passed a brief tutorial before redacting documents via the user study project tool. Median completion time was under 30 minutes. More details in the 'Study Details' section of the appendix.",
+      "prov:atTime": "2026-04-15T12:00:00Z",
+      "prov:wasAttributedTo": [
+        {
+          "@type": "prov:Agent",
+          "@id": "redactionbench_team",
+          "prov:label": "RedactionBench project team",
+          "sc:description": "Designed the study protocol, hosted the labeling UI, and analyzed the results."
+        },
+        {
+          "@type": "prov:Agent",
+          "@id": "redactionbench_study_participants",
+          "prov:label": "User-study participants",
+          "sc:description": "Human participants who provided redactions via the project's study tool. Participants passed a brief tutorial."
+        }
+      ]
+    }
+  ]
+}

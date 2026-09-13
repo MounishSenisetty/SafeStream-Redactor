@@ -99,6 +99,9 @@ class Redactor:
         custom_patterns: Iterable[str] = (),
         use_ner: bool = False,
         ner_model: str = "en_core_web_sm",
+        use_gazetteer: bool = False,
+        use_ensemble: bool = False,
+        semantic_policy: str = "strict",
         use_onnx: bool = False,
         onnx_model: str | None = None,
         onnx_vocab: str | dict[str, int] | None = None,
@@ -125,6 +128,22 @@ class Redactor:
         self._scorer = ContextualScorer()
 
         self._detectors: list[Detector] = [DeterministicDetector(resolved_types, backend=backend)]
+        # Label-anchored identifier cascade: a high-precision contextual tier that
+        # promotes otherwise-ambiguous values (bare id/account/DOB numbers) to
+        # redactions only when a cue word names them. On by default; it emits its
+        # own entity types (plus SSN/PHONE/CREDIT_CARD), so it is active whenever
+        # any of those are in scope, or when no explicit type filter is set.
+        from safestream_redactor.detectors.labeled_id import LabeledIdentifierDetector
+
+        _labeled_types = {
+            EntityType.SSN,
+            EntityType.PHONE,
+            EntityType.CREDIT_CARD,
+            EntityType.DOB,
+            EntityType.ID_NUMBER,
+        }
+        if resolved_types is None or _labeled_types.intersection(resolved_types):
+            self._detectors.append(LabeledIdentifierDetector())
         custom_words = list(custom_words)
         custom_patterns = list(custom_patterns)
         if custom_words or custom_patterns:
@@ -133,6 +152,14 @@ class Redactor:
             from safestream_redactor.detectors.ner import NERDetector
 
             self._detectors.append(NERDetector(ner_model))
+        if use_gazetteer:
+            from safestream_redactor.detectors.gazetteer_ner import GazetteerNameDetector
+
+            self._detectors.append(GazetteerNameDetector())
+        if use_ensemble:
+            from safestream_redactor.detectors.semantic_ensemble import SemanticEnsembleDetector
+
+            self._detectors.append(SemanticEnsembleDetector(policy=semantic_policy))
         if use_onnx:
             from safestream_redactor.detectors.onnx_ner import OnnxPiiDetector
 
