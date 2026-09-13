@@ -230,11 +230,21 @@ def _score(pos: dict[str, float], neg: dict[str, float]) -> tuple[float, dict[st
     return max(0.0, min(0.99, total)), trace
 
 
+# Longest span the candidate regex can emit: _CAND matches at most 4 tokens of
+# <=31 chars (``_NT``) plus 3 separators = 127 characters; trimming in
+# ``_normalize`` only shrinks a span, so no emitted span exceeds this. Rounded up.
+_MAX_SPAN = 128
+# Characters left of a candidate ``_normalize`` reads to detect its cue word.
+_CUE_LOOKBACK = 40
+# Right-context read by ``_person_evidence`` (``text[c.end : c.end + 8]``) plus
+# margin for the suffix regex; the declared value is a safe upper bound.
+_RIGHT_CONTEXT = 32
+
+
 class SemanticEnsembleDetector:
     """Calibrated multi-signal PERSON/ORG detector with evidence tracing."""
 
     name = "semantic_ensemble"
-    requirements = StreamingRequirements(max_span=80, left_context=96, right_context=32)
 
     def __init__(
         self,
@@ -249,6 +259,24 @@ class SemanticEnsembleDetector:
         self.propagation_window = propagation_window
         self.max_confirmed = max_confirmed
         self.use_repeated_mention = use_repeated_mention
+        # Truthful streaming contract, derived from the actual state-propagation
+        # parameter rather than hard-coded. The repeated-mention signal boosts a
+        # bare token from a *strong name confirmed earlier in the same window*, up
+        # to ``propagation_window`` characters back. For streaming to reproduce
+        # the whole-document verdict, that confirming name — which spans up to
+        # ``_MAX_SPAN`` and reads its own cue up to ``_CUE_LOOKBACK`` further left
+        # — must lie inside the window. So the TRUE left-context dependency is
+        # ``propagation_window + _MAX_SPAN + _CUE_LOOKBACK`` when repeated-mention
+        # is on (just ``_CUE_LOOKBACK`` when off), not the 96 previously declared.
+        # Deriving ``left_context`` here keeps required_overlap()/min_safe_overlap
+        # correct and makes the bounded-context contract mechanically enforceable
+        # (tests/test_streaming_contract.py verifies declared >= actual).
+        prop = propagation_window if use_repeated_mention else 0
+        self.requirements = StreamingRequirements(
+            max_span=_MAX_SPAN,
+            left_context=_CUE_LOOKBACK + prop + (_MAX_SPAN if use_repeated_mention else 0),
+            right_context=_RIGHT_CONTEXT,
+        )
 
     def detect(self, text: str) -> list[Detection]:
         confirmed: deque[tuple[int, frozenset[str]]] = deque(maxlen=self.max_confirmed)

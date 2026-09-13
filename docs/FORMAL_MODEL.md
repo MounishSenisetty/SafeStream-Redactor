@@ -97,6 +97,20 @@ engine's behaviour cannot diverge. `tests/test_formal_constants.py` pins the
 values below and fails if any future detector reads wider context, forcing this
 document (and the paper) to be corrected in lockstep.
 
+A declaration is only trustworthy if it is a true **upper bound** on the context
+the detector actually reads — a declaration smaller than the real dependency
+makes `required_overlap` report an unsafe overlap as safe (this occurred: the
+semantic ensemble once declared `left_context=96` while its repeated-mention
+state looked back `2048`, so streaming could leak a name the whole-document pass
+redacted). Two things now enforce declared ≥ actual: (i) a **stateful** tier
+derives its declared `left_context` from its own state-propagation parameter
+rather than hard-coding it (`semantic_ensemble.py`, §3.5), and (ii)
+`tests/test_streaming_contract.py` measures the real dependency by differential
+probing and fails if it exceeds the declaration. The theorems below therefore
+apply only to detectors whose declared bounds are verified to be at least their
+true dependencies; a detector that hides a wider dependency in its logic is
+outside the contract until its declaration is corrected.
+
 ### 3.1 `C_left = 96`
 
 The left-context reach of the default pipeline is set by the **label-anchored
@@ -109,8 +123,11 @@ tiers read less — the contextual scorer reads a 48-character left window
 regex patterns (`AWS_SECRET`, `API_KEY`) fold their cue into the match itself — so
 the cascade's 96 is the governing `C_left`. (Historically, before the cascade was
 added, `C_left` was 48; the mechanical derivation above prevents that stale value
-from persisting.) The opt-in semantic ensemble (`semantic_ensemble.py`) also
-declares `left_context=96`, so enabling it does not raise `C_left`.
+from persisting.) The opt-in semantic ensemble (`semantic_ensemble.py`) reads
+much further left — up to its `propagation_window` (2048) plus a candidate span
+and cue — so enabling it raises `C_left` to `2216` by default (§3.5); this is
+still far below the overlap, and the engine sizes the overlap from that declared
+value, so equivalence holds when the tier is enabled.
 
 ### 3.2 `C_right = 8`
 
@@ -162,6 +179,32 @@ Both A1 and A2 hold at the default configuration, so
 unconditionally at the default. `DEFAULT_OVERLAP`, the private-key bound, and
 `MAX_SPAN` are kept in sync (see the cross-referencing comments in
 `engine.py`, `deterministic.py`, and `entropy.py`).
+
+### 3.5 Stateful detectors declare their propagation window
+
+Most tiers are stateless: each `detect` call is a pure function of its window.
+The optional semantic ensemble (`semantic_ensemble.py`) carries one bounded piece
+of within-window state — a **repeated-mention** signal that boosts a bare surname
+if the same token appeared in a *strong full name confirmed earlier in the same
+window*, up to `propagation_window` (default 2048) characters back. That makes the
+verdict for a span depend on text up to `propagation_window + L_ens + cue` to its
+left, where `L_ens (=128)` bounds the confirming name's own span and `cue (=40)`
+its own left reach. The detector therefore declares
+
+```
+left_context = propagation_window + L_ens + cue      (= 2216 by default)
+```
+
+derived in `__init__` from the actual `propagation_window`, not hard-coded, so
+`required_overlap` sizes the engine's overlap to cover the real dependency and
+`min_safe_overlap` never reports an unsafe overlap as safe. Because the state is
+recomputed from scratch on every `detect(prefix + buffer)` call and never carried
+*across* calls, and because the window always contains the full
+`propagation_window` of real left context (A2 with `C_left >= left_context`), the
+tier still satisfies the bounded-window contract and Theorem 1 applies to it. A
+stateful tier that could *not* bound its propagation this way — e.g. one whose
+state must span the whole document — would violate A2 and is explicitly **not**
+covered (§5).
 
 ---
 
@@ -285,17 +328,28 @@ Reviewers reward stating precisely where a guarantee ends. The assumptions fail
 in exactly these cases, all of them detectable or documented:
 
 - **A span longer than `w`.** After WI-1 no built-in detector produces one at the
-  default overlap. It can still arise if a user lowers `overlap` below 8192, adds
-  a custom detector with an unbounded span, or supplies a single high-entropy run
-  longer than `w` that must be treated as one atom. In sequential mode such a span
-  may be split at a chunk boundary; in parallel mode the seam valve catches it and
-  falls back (Theorem 2). The over-long entropy run is redacted regardless — as
-  consecutive `<= w` spans (Section 3.3).
-- **A detector needing unbounded right context.** A2 fixes `C_right = 2`. Any
-  future tier that must look arbitrarily far to the right — most notably an LLM
-  tier that conditions on a whole document — breaks A2, and neither theorem
-  applies to it. This is the principled reason the offline, bounded-window
-  detectors are the ones that carry the equivalence guarantee.
+  default overlap. It can still arise if a user lowers `overlap` below the safe
+  minimum, adds a custom detector with an unbounded span, or supplies a single
+  high-entropy run longer than `w` that must be treated as one atom. Lowering the
+  overlap below `min_safe_overlap` is now **rejected by default** (`Redactor`
+  raises unless `allow_unsafe_overlap=True`), so this regime is entered only
+  deliberately. If it is entered, sequential mode may split such a span at a chunk
+  boundary and parallel mode's seam valve catches it and falls back (Theorem 2).
+  The over-long entropy run is redacted regardless — as consecutive `<= w` spans
+  (Section 3.3).
+- **A detector whose declared context understates its real dependency.** The
+  guarantee is only as sound as the declarations `required_overlap` sums. A tier
+  that reads more context than it declares (as the ensemble once did, §3) makes
+  the safety check unsound; `tests/test_streaming_contract.py` guards against this
+  by measuring the real dependency, and stateful tiers derive their declaration
+  from their propagation parameter (§3.5). A third-party detector that declares
+  too little is outside the contract until corrected.
+- **A detector needing unbounded (or document-global) context.** A2 fixes a small
+  finite `C_right` (8 in the default pipeline). Any tier that must look
+  arbitrarily far — most notably an LLM tier that conditions on a whole document,
+  or a stateful tier whose propagation window is unbounded — breaks A2, and
+  neither theorem applies to it. This is the principled reason the offline,
+  bounded-window detectors are the ones that carry the equivalence guarantee.
 - **Non-splittable encodings.** Only self-synchronising encodings (UTF-8,
   single-byte codecs) can be split for parallelism; others fall back to the
   sequential path by construction (`parallel.splittable_encoding`). Theorem 1

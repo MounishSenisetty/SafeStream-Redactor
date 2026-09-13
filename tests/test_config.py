@@ -25,6 +25,7 @@ words = ["ProjectX"]
 [streaming]
 chunk_size = 1024
 overlap = 128
+allow_unsafe_overlap = true  # tiny overlap here exercises config plumbing, not safety
 """
 
 

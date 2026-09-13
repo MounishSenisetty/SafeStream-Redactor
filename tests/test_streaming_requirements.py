@@ -53,9 +53,19 @@ def test_redactor_min_safe_overlap_matches_default() -> None:
     assert Redactor().min_safe_overlap == DEFAULT_OVERLAP
 
 
-def test_shrinking_overlap_below_requirement_warns(caplog) -> None:
-    with caplog.at_level(logging.WARNING, logger="safestream_redactor.redactor"):
+def test_shrinking_overlap_below_requirement_is_rejected() -> None:
+    # Fail-closed by default: an unsafe overlap raises rather than silently
+    # risking a boundary-induced redaction leak (privacy tool).
+    import pytest
+
+    with pytest.raises(ValueError, match="safe minimum"):
         Redactor(overlap=16)
+
+
+def test_unsafe_overlap_opt_in_warns_instead_of_raising(caplog) -> None:
+    # The explicit escape hatch downgrades the error to a warning.
+    with caplog.at_level(logging.WARNING, logger="safestream_redactor.redactor"):
+        Redactor(overlap=16, allow_unsafe_overlap=True)
     assert any("below" in rec.message for rec in caplog.records)
 
 

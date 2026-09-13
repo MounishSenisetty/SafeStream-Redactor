@@ -20,7 +20,7 @@ TEXT = (
 @pytest.mark.parametrize("chunk_size", [1, 3, 7, 16, 64, 256, 10_000])
 def test_streaming_equals_whole_text(chunk_size):
     """Streaming output must be identical to whole-text redaction for ANY chunking."""
-    r = Redactor(overlap=128)
+    r = Redactor(overlap=128, allow_unsafe_overlap=True)
     assert "".join(r.redact_stream(chunked(TEXT, chunk_size))) == r.redact(TEXT)
 
 
@@ -29,13 +29,13 @@ def test_entity_split_across_two_chunks():
     text = "hello jane.doe@example.org bye"
     cut = text.index("@")  # boundary right through the entity
     chunks = [text[:cut], text[cut:]]
-    r = Redactor(overlap=64)
+    r = Redactor(overlap=64, allow_unsafe_overlap=True)
     assert "".join(r.redact_stream(chunks)) == "hello [REDACTED] bye"
 
 
 def test_ssn_split_across_three_chunks():
     chunks = ["ssn: 123", "-45-", "6789 end"]
-    out = "".join(Redactor(overlap=32).redact_stream(chunks))
+    out = "".join(Redactor(overlap=32, allow_unsafe_overlap=True).redact_stream(chunks))
     assert out == "ssn: [REDACTED] end"
 
 
@@ -43,7 +43,7 @@ def test_detection_spanning_emit_boundary_is_not_cut():
     # entity longer than a chunk but shorter than the overlap
     key = "password = " + "a" * 100
     text = f"start {key} end"
-    out = "".join(Redactor(overlap=128).redact_stream(chunked(text, 16)))
+    out = "".join(Redactor(overlap=128, allow_unsafe_overlap=True).redact_stream(chunked(text, 16)))
     assert out == "start password = [REDACTED] end"
 
 
@@ -55,7 +55,7 @@ def test_empty_and_tiny_inputs():
 
 
 def test_detect_stream_offsets_are_segment_relative():
-    r = Redactor(overlap=16)
+    r = Redactor(overlap=16, allow_unsafe_overlap=True)
     text = "a" * 50 + " bob@x.io " + "b" * 50
     total = 0
     found = []
@@ -87,6 +87,6 @@ def test_long_entropy_run_up_to_overlap_streams_identically():
 def test_redact_file(tmp_path):
     src, dst = tmp_path / "in.txt", tmp_path / "out.txt"
     src.write_text("contact bob@x.io ok\n" * 100)
-    r = Redactor(chunk_size=64, overlap=32)
+    r = Redactor(chunk_size=64, overlap=32, allow_unsafe_overlap=True)
     r.redact_file(src, dst)
     assert dst.read_text() == "contact [REDACTED] ok\n" * 100

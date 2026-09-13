@@ -95,6 +95,12 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--chunk-size", type=int, default=None, metavar="BYTES")
     common.add_argument("--overlap", type=int, default=None, metavar="CHARS")
     common.add_argument(
+        "--allow-unsafe-overlap",
+        action="store_true",
+        help="permit an --overlap below the detectors' safe minimum (fail-open); "
+        "by default a too-small overlap is rejected to avoid boundary-induced leaks",
+    )
+    common.add_argument(
         "--memory-limit",
         default=None,
         metavar="SIZE",
@@ -328,6 +334,7 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
             use_entropy=args.entropy,
             chunk_size=args.chunk_size or DEFAULT_CHUNK_SIZE,
             overlap=args.overlap if args.overlap is not None else DEFAULT_OVERLAP,
+            allow_unsafe_overlap=args.allow_unsafe_overlap,
         )
 
     # config file provided: overlay any explicitly passed flags
@@ -358,6 +365,15 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         redactor.chunk_size = args.chunk_size
     if args.overlap is not None:
         redactor.overlap = args.overlap
+    # Overriding overlap or the detector set after construction can invalidate the
+    # boundary-safety guard that ran inside redactor_from_config, so re-check it
+    # here (fail-closed). Honour either the CLI flag or the config's opt-in.
+    from safestream_redactor.config import load_config as _load_config
+
+    cfg_streaming = _load_config(args.config).get("streaming", {})
+    redactor.enforce_overlap_safety(
+        args.allow_unsafe_overlap or bool(cfg_streaming.get("allow_unsafe_overlap", False))
+    )
     return redactor
 
 

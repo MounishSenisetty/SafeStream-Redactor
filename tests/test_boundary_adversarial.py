@@ -41,7 +41,7 @@ def test_secret_survives_every_split_position(name: str) -> None:
     """Splitting the secret at EVERY byte offset yields identical output."""
     secret = SECRETS[name]
     text = f"prefix text {secret} suffix text"
-    r = Redactor(overlap=256)
+    r = Redactor(overlap=256, allow_unsafe_overlap=True)
     whole = r.redact(text)
     # The secret must actually be redacted in the reference output.
     assert secret not in whole
@@ -55,20 +55,20 @@ def test_secret_survives_every_split_position(name: str) -> None:
 def test_secret_survives_every_chunk_size(name: str, size: int) -> None:
     secret = SECRETS[name]
     text = f"leading {secret} trailing"
-    r = Redactor(overlap=256)
+    r = Redactor(overlap=256, allow_unsafe_overlap=True)
     assert "".join(r.redact_stream(fixed_chunks(text, size))) == r.redact(text)
 
 
 def test_secret_at_byte_zero() -> None:
     text = "AKIAIOSFODNN7EXAMPLE is the leaked key"
-    r = Redactor(overlap=128)
+    r = Redactor(overlap=128, allow_unsafe_overlap=True)
     for cut in range(len(text) + 1):
         assert "".join(r.redact_stream(chunked_at(text, cut))) == r.redact(text)
 
 
 def test_secret_ending_at_eof() -> None:
     text = "the leaked key is AKIAIOSFODNN7EXAMPLE"
-    r = Redactor(overlap=128)
+    r = Redactor(overlap=128, allow_unsafe_overlap=True)
     assert text.endswith("AKIAIOSFODNN7EXAMPLE")
     for cut in range(len(text) + 1):
         assert "".join(r.redact_stream(chunked_at(text, cut))) == r.redact(text)
@@ -76,7 +76,7 @@ def test_secret_ending_at_eof() -> None:
 
 def test_multiple_entities_crossing_boundaries() -> None:
     text = "a@b.com and AKIAIOSFODNN7EXAMPLE and 4111 1111 1111 1111 and ghp_" + "z" * 36 + " end"
-    r = Redactor(overlap=256)
+    r = Redactor(overlap=256, allow_unsafe_overlap=True)
     whole = r.redact(text)
     for size in (1, 2, 7, 32):
         assert "".join(r.redact_stream(fixed_chunks(text, size))) == whole
@@ -99,7 +99,7 @@ def test_unicode_multibyte_split_is_safe() -> None:
     # corrupt output or miss the secret. (The engine works on decoded text, so
     # chunk boundaries fall between code points, never inside one.)
     text = "café ☕ jane.doe@example.com µ end"
-    r = Redactor(overlap=128)
+    r = Redactor(overlap=128, allow_unsafe_overlap=True)
     whole = r.redact(text)
     for size in (1, 2, 5):
         streamed = "".join(r.redact_stream(fixed_chunks(text, size)))
@@ -119,8 +119,8 @@ def test_entity_larger_than_overlap_documented_behaviour() -> None:
     """
     secret = "A" * 200  # a 200-char high-entropy-ish run
     text = f"token = {secret} end"
-    small = Redactor(overlap=32)
-    big = Redactor(overlap=512)
+    small = Redactor(overlap=32, allow_unsafe_overlap=True)
+    big = Redactor(overlap=512, allow_unsafe_overlap=True)
     # Big enough overlap: streaming equals whole-text.
     assert "".join(big.redact_stream(fixed_chunks(text, 8))) == big.redact(text)
     # Too-small overlap: output is still well-formed (no lost/dup characters);

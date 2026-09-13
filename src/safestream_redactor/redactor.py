@@ -82,6 +82,13 @@ class Redactor:
     load_plugins:
         Discover and load third-party detectors registered under the
         ``safestream_redactor.detectors`` entry-point group (on by default).
+    allow_unsafe_overlap:
+        Off by default (fail-closed). When ``overlap`` is below the safe minimum
+        the active detectors require (:attr:`min_safe_overlap`), construction
+        raises ``ValueError`` rather than silently risking a boundary-induced
+        redaction leak. Set this to ``True`` to knowingly accept the unsafe
+        regime (e.g. a boundary test on entities known to be short); the guard
+        then only logs a warning, restoring the pre-fail-closed behaviour.
     backend:
         Detection engine for the deterministic tier. ``"python"`` (default) runs
         everything in pure Python. ``"native"``/``"auto"`` route the patterns the
@@ -113,6 +120,7 @@ class Redactor:
         load_plugins: bool = True,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
+        allow_unsafe_overlap: bool = False,
         backend: str = "python",
     ) -> None:
         resolved_types = (
@@ -193,21 +201,44 @@ class Redactor:
             self._detectors.append(self._scorer)
         logger.debug("detector tiers active: %s", [d.name for d in self._detectors])
 
-        # Boundary-correctness guard: the overlap must cover the longest span any
-        # active detector can emit (plus the context it reads), or an entity that
-        # straddles a chunk boundary could be silently missed — a fail-open
-        # coverage loss. The default overlap already satisfies the built-in tiers;
-        # this warns only when a caller shrinks it below what the detectors need.
+        self.enforce_overlap_safety(allow_unsafe_overlap)
+
+    def enforce_overlap_safety(self, allow_unsafe: bool = False) -> None:
+        """Fail closed unless ``overlap`` covers what the active detectors require.
+
+        The overlap must be at least :attr:`min_safe_overlap` — the largest span
+        any active detector can emit *plus the context it reads*, derived from
+        each tier's declared :class:`StreamingRequirements`. Below it, an entity
+        that straddles a chunk boundary can be missed and streaming output can
+        diverge from a whole-document pass — a redaction leak
+        (``docs/FORMAL_MODEL.md``, Theorem 1's premise). Because this is a privacy
+        tool the default is to **raise**; a caller that knowingly wants the unsafe
+        regime (e.g. a boundary test on short entities) passes ``allow_unsafe`` to
+        downgrade the error to a warning. Callers that mutate ``overlap`` or the
+        detector set after construction (the CLI does) should re-invoke this.
+        """
         needed = self.min_safe_overlap
-        if self.overlap < needed:
+        if self.overlap >= needed:
+            return
+        names = ", ".join(sorted({d.name for d in self._detectors}))
+        if allow_unsafe:
             logger.warning(
                 "overlap=%d is below the %d characters the active detectors require "
                 "(%s); entities longer than the overlap that straddle a chunk boundary "
-                "may be missed",
+                "may be missed. Proceeding because allow_unsafe_overlap=True.",
                 self.overlap,
                 needed,
-                ", ".join(sorted({d.name for d in self._detectors})),
+                names,
             )
+            return
+        raise ValueError(
+            f"overlap={self.overlap} is below the {needed}-character safe minimum "
+            f"required by the active detectors ({names}). At a smaller overlap an "
+            "entity that straddles a chunk boundary can be missed and streaming "
+            "output can diverge from a whole-document pass (a redaction leak). "
+            f"Raise overlap to at least {needed}, or pass allow_unsafe_overlap=True "
+            "to override (not recommended for redaction)."
+        )
 
     @property
     def detector_names(self) -> list[str]:
