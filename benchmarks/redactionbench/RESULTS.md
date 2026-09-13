@@ -25,8 +25,14 @@ Real numbers from running the **shipped** SafeStream-Redactor pipeline over the 
 
 | Configuration | Char precision | Char recall | Char F1 (95% CI) | Char accuracy | Mandatory recall | Contextual recall | No-mandatory-leak docs |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| Core (regex+validators+entropy, **no NER**) | 0.753 | 0.401 | 0.524 [0.462, 0.569] | 0.895 | 0.686 | 0.185 | 0.125 |
+| Core (regex+validators+entropy+compound, **no NER**) | 0.754 | 0.412 | 0.533 [0.472, 0.579] | 0.896 | 0.708 | 0.187 | 0.135 |
 | Core **+ spaCy NER** (`--ner`) | 0.544 | 0.531 | 0.538 [0.450, 0.607] | 0.869 | 0.765 | 0.354 | 0.175 |
+
+> The core numbers above include the **compound-secret tier** (added in
+> `[Unreleased]`). For reference, the pre-compound core scored char P/R/F1
+> 0.753 / 0.401 / 0.524, mandatory recall 0.686 (0.691 with the label-anchored
+> cascade), no-leak 0.125. The compound tier is the only change and it *raised*
+> precision while lifting mandatory recall — see `AUDIT.md` §1 (cause #4).
 
 **Reading these numbers.** *Char precision/recall/F1* are per-character over the whole redaction mask. *Mandatory recall* is the fraction of must-redact characters that were hidden — the DLP-critical number. NER raises recall (names/free-text) at a cost to precision (more over-redaction); the core favours precision. *No-mandatory-leak docs* is the fraction of documents with **every** mandatory character redacted — a strict per-document accuracy, distinct from precision/recall.
 

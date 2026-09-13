@@ -88,25 +88,41 @@ makes streaming and parallel execution equivalent to the whole-document pass.
 
 ## 3. Audited constants
 
-The constants are read from the implementation, not assumed. A trace of every
-detector's decision function yields the following.
+The constants are read from the implementation, not assumed. They are derived
+**mechanically** from the `StreamingRequirements` each active detector declares
+(`detectors/base.py`), taking the maximum over the *default* pipeline — the
+detectors `Redactor()` actually installs. This is what the engine itself uses to
+size its overlap (`engine.required_overlap`), so the audited constants and the
+engine's behaviour cannot diverge. `tests/test_formal_constants.py` pins the
+values below and fails if any future detector reads wider context, forcing this
+document (and the paper) to be corrected in lockstep.
 
-### 3.1 `C_left = 48`
+### 3.1 `C_left = 96`
 
-The contextual scorer reads a **48-character** left window for its boost/suppress
-decision (`contextual.py`, `ContextualScorer.__init__(window=48)`, used in
-`adjust` as `text[max(0, det.start - self.window) : det.start]`). The
-label-anchored patterns (`AWS_SECRET`, `API_KEY`) fold their cue label into the
-match itself (~30 characters), so their left reach is inside the match, not
-beyond it. No detector reads further left than 48 characters.
+The left-context reach of the default pipeline is set by the **label-anchored
+identifier cascade** (`labeled_id.py`, `LabeledIdentifierDetector`), which is on
+by default and reads a **96-character** cue→value window
+(`_CUE_WINDOW = 96`, declared as `left_context=96`): a cue word such as
+`Student ID` may sit up to 96 characters before the value it promotes. The base
+tiers read less — the contextual scorer reads a 48-character left window
+(`contextual.py`, `ContextualScorer.__init__(window=48)`), and the label-anchored
+regex patterns (`AWS_SECRET`, `API_KEY`) fold their cue into the match itself — so
+the cascade's 96 is the governing `C_left`. (Historically, before the cascade was
+added, `C_left` was 48; the mechanical derivation above prevents that stale value
+from persisting.) The opt-in semantic ensemble (`semantic_ensemble.py`) also
+declares `left_context=96`, so enabling it does not raise `C_left`.
 
-### 3.2 `C_right = 2`
+### 3.2 `C_right = 8`
 
-The widest right-context assertion is the negative lookahead `(?!\.\d)` on the
-phone and IPv4 patterns (`deterministic.py`), which inspects 2 characters. All
-other lookaheads and word boundaries reach at most 2 characters. Every validator
-(`luhn_ok`, `ssn_ok`, `ipv4_ok`, `ipv6_ok`, `phone_ok`) reads only the matched
-text and nothing outside it — zero external right reach.
+The widest declared right-context in the default pipeline is the label-anchored
+cascade's `right_context=8` (`labeled_id.py`), a conservative bound on the
+trailing separators/suffix a cue→value match may consult; the underlying regex
+reaches at most ~2 characters past the value. The base tiers reach less: the
+widest right-context assertion elsewhere is the negative lookahead `(?!\.\d)` on
+the phone and IPv4 patterns (`deterministic.py`), inspecting 2 characters, and
+every validator (`luhn_ok`, `ssn_ok`, `ipv4_ok`, `ipv6_ok`, `phone_ok`) reads
+only the matched text. The opt-in ensemble declares `right_context=32`, which
+raises `C_right` to 32 when it is enabled — still far below the overlap.
 
 ### 3.3 `L_max = 8192` (after WI-1)
 
@@ -118,6 +134,7 @@ tier:
 | --- | --- | --- |
 | `private_key` | key-type fields `{0,20}` + body `{1,8100}` + fixed markers ⇒ span `<= 8192` | `deterministic.py`, `EntityType.PRIVATE_KEY` |
 | `secret` (entropy) | candidate `{20,8192}`; runs longer than 8192 emit as consecutive `<= 8192` spans | `entropy.py`, `_CANDIDATE`, `MAX_SPAN = 8192` |
+| `secret` (compound) | candidate `{20,8192}` over an extended alphabet; same `MAX_SPAN` cap | `entropy.py`, `_COMPOUND_CANDIDATE`, `CompoundSecretDetector` |
 | all other patterns | `< ~260` by construction | `deterministic.py` |
 
 The private-key bound is exact: with the two `{0,20}` type fields, the two
@@ -137,7 +154,7 @@ A1 true for every emitted span while still redacting the entire secret.
 ### 3.4 Consequence
 
 ```
-max(C_left, C_right) = 48  <=  L_max = 8192  =  w = DEFAULT_OVERLAP
+max(C_left, C_right) = 96  <=  L_max = 8192  =  w = DEFAULT_OVERLAP
 ```
 
 Both A1 and A2 hold at the default configuration, so

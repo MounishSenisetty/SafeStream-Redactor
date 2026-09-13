@@ -54,7 +54,20 @@ dominate everything below:
 | 1 | **The `contextual` class is subjective and ultra-fine-grained.** 57% of all gold *characters*; median span length **1 character**; 20,598 of 36,293 spans are single characters — individual date digits, `/` separators, even the space inside a name. The paper reports **~47.7% human inter-annotator agreement** on contextual redactions. | span-length histogram; necessity split | ~57% of gold chars; the majority of "missed recall" | **No — and shouldn't be.** A DLP tool that blanket-redacts single spaces, date digits and separators destroys precision and document utility. This is the ceiling, not a bug. |
 | 2 | **Names dominate the recoverable (mandatory) misses.** 45.5% of missed mandatory characters are person names (`Melissa`, `Schettler`, `Brændá`). Only **14%** of missed names have a label cue nearby; 86% are in prose/signatures. | mandatory-miss taxonomy; name-cue analysis | 45.5% of mandatory FN | **Only via NER.** Names have no regex signature. The optional spaCy tier lifts mandatory recall 0.686→0.765; higher needs a transformer-grade model that conflicts with the constant-memory/high-throughput/local-first design. |
 | 3 | **Label-anchored identifiers were skipped.** Bare student/employee/account/national-id numbers and DOBs (`202184673`, `102294080031`, `03/08/1996`) — the deterministic tier skips them to protect precision. | mandatory-miss taxonomy: ssn-like 8.7% + numeric IDs within date/number 11.4% + part of alnum-id 17.6% | ~15–20% of mandatory FN | **Yes — fixed** (see §2). Recoverable precisely because the text names them. |
-| 4 | **Compound / symbol-containing secrets slip the entropy tier.** e.g. `devPass_pP0p18yO3n!vT8wZ` splits on `!` into sub-tokens below the length/entropy floor. | direct entropy probes | small slice of alnum/other-text misses | Partially (a precision-sensitive lever; deliberately not force-tuned on this PII-centric corpus). |
+| 4 | **Compound / symbol-containing secrets slip the entropy tier.** e.g. `devPass_pP0p18yO3n!vT8wZ` splits on `!` into sub-tokens below the length/entropy floor. | direct entropy probes | small slice of alnum/other-text misses | **Yes — fixed** (see below). A dedicated compound-secret tier catches these without lowering entropy-tier precision. |
+
+> **UPDATE — cause #4 is now addressed.** A `CompoundSecretDetector`
+> (`src/safestream_redactor/detectors/entropy.py`) closes this gap precisely: it
+> fires only on a whitespace-free run whose *strong* password special
+> (`! # $ % ^ & * ~`) sits **between two alphanumerics**, with character-class
+> diversity and an entropy floor — a shape prose, URLs, hosts, e-mail addresses,
+> paths, and base64/hex do not produce. It is **not** a loosening of the entropy
+> floor (which §2/§7 rightly warned against): on RedactionBench (200 docs,
+> streaming) it *raised* character precision (0.7525 → 0.7543) while lifting
+> mandatory recall 0.691 → 0.708 and no-mandatory-leak docs 0.125 → 0.135, with
+> **0** new false positives on the 55-doc benign public-prose set. Span length is
+> bounded to `MAX_SPAN`, so the streaming/parallel equivalence guarantees are
+> unchanged. Tests: `tests/test_compound_secret.py`.
 | 5 | **Precision is dragged by the entropy tier over-firing.** 83% of all over-redaction (char FP) is `secret` (42,135 chars) — long high-entropy strings in `code`/`terminal`/`logs` docs that RedactionBench does not annotate as sensitive. | FP-by-type analysis | ~83% of char FP | This is largely a **benchmark domain mismatch** (RB doesn't comprehensively label secrets), not a defect — see §7. |
 
 ## 2. Core architectural changes made, and why they address the causes
