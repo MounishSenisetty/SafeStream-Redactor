@@ -192,6 +192,15 @@ class CompoundSecretDetector:
         return shannon_entropy(token) >= self.entropy_floor
 
     def detect(self, text: str) -> list[Detection]:
+        # Prefilter: a compound secret must contain a strong special embedded
+        # between alphanumerics, so if the window has no strong special at all,
+        # no candidate can qualify. A cheap C-level substring scan then avoids the
+        # regex pass and per-candidate work entirely on secret-sparse input (e.g.
+        # long base64/alpha blobs), keeping this tier near-free there. This is an
+        # optimisation only: output is identical to running the scan unconditionally
+        # (a strong special is a necessary condition in ``_is_compound_secret``).
+        if not any(s in text for s in _STRONG_SPECIALS):
+            return []
         found: list[Detection] = []
         for m in _COMPOUND_CANDIDATE.finditer(text):
             token = m.group()

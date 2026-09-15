@@ -124,3 +124,14 @@ def test_streaming_matches_whole_document() -> None:
 def test_disabling_entropy_disables_compound_tier() -> None:
     assert "compound_secret" not in Redactor(use_entropy=False).detector_names
     assert "compound_secret" in Redactor().detector_names
+
+
+def test_prefilter_skips_input_without_strong_special() -> None:
+    # A window with no strong special (! # $ % ^ & * ~) cannot contain a compound
+    # secret, so the detector short-circuits and returns [] without scanning. This
+    # keeps the tier near-free on large secret-sparse blobs (e.g. base64/alpha runs)
+    # and is detection-neutral: a strong special is a necessary condition.
+    assert CompoundSecretDetector().detect("A" * 200_000) == []
+    assert CompoundSecretDetector().detect("base64 " + "aGVsbG8" * 5000) == []
+    # a strong special still triggers full detection
+    assert CompoundSecretDetector().detect("the value Hunter2!SummerBreeze#42x here")
