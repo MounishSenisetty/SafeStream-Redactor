@@ -929,12 +929,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     pr.add_argument("--min-confidence", type=float, default=0.5)
     pr.add_argument("--ner", action="store_true", help="enable the optional spaCy NER tier")
-    pr.add_argument("--gazetteer", action="store_true",
-                    help="enable the model-free gazetteer/context name+org detector")
-    pr.add_argument("--ensemble", action="store_true",
-                    help="enable the calibrated semantic ensemble (PERSON/ORG)")
-    pr.add_argument("--semantic-policy", choices=["strict", "high_recall"], default="strict",
-                    help="ensemble policy: strict (cue-gated, utility) or high_recall (privacy)")
+    pr.add_argument(
+        "--gazetteer",
+        action="store_true",
+        help="enable the model-free gazetteer/context name+org detector",
+    )
+    pr.add_argument(
+        "--ensemble",
+        action="store_true",
+        help="enable the calibrated semantic ensemble (PERSON/ORG)",
+    )
+    pr.add_argument(
+        "--semantic-policy",
+        choices=["strict", "high_recall"],
+        default="strict",
+        help="ensemble policy: strict (cue-gated, utility) or high_recall (privacy)",
+    )
     pr.add_argument("--onnx-model", help="local ONNX token-classifier .onnx for the ONNX NER tier")
     pr.add_argument("--onnx-vocab", help="JSON vocab (token->id) for the ONNX NER tier")
     pr.add_argument("--onnx-labels", help="JSON id->label map for the ONNX NER tier (optional)")
