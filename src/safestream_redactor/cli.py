@@ -348,7 +348,11 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
     if args.min_confidence is not None:
         redactor.min_confidence = args.min_confidence
     if not args.entropy:
-        redactor._detectors = [d for d in redactor._detectors if d.name != "entropy"]
+        # Match the constructor path: use_entropy gates BOTH the base entropy
+        # tier and the compound-secret tier, so remove them together.
+        redactor._detectors = [
+            d for d in redactor._detectors if d.name not in ("entropy", "compound_secret")
+        ]
     if args.custom_word or args.custom_regex:
         from safestream_redactor.detectors.custom import CustomDetector
 

@@ -119,7 +119,11 @@ def redact_tree(
     """
     in_root = Path(input_dir)
     out_root = Path(output_dir)
-    files = sorted(p for p in in_root.rglob("*") if p.is_file())
+    # Skip symlinks: ``p.is_file()`` follows them, so a symlink inside the input
+    # tree pointing outside it would otherwise be read and a redacted copy
+    # written into the output tree (an out-of-tree read). Confine traversal to
+    # real files within ``input_dir``.
+    files = sorted(p for p in in_root.rglob("*") if p.is_file() and not p.is_symlink())
     if not files:
         return []
     jobs = [(str(p), str(out_root / p.relative_to(in_root))) for p in files]

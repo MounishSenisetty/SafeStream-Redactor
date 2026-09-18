@@ -31,7 +31,13 @@ class CustomDetector:
             joined = "|".join(re.escape(w) for w in words)
             self._regexes.append(re.compile(joined, flags))
         for p in patterns:
-            self._regexes.append(re.compile(p, flags))
+            try:
+                self._regexes.append(re.compile(p, flags))
+            except re.error as exc:
+                # Surface a clear configuration error (which pattern, why) rather
+                # than a bare re.error, so a mistyped --custom-regex fails loudly
+                # and actionably instead of leaking regex-engine internals.
+                raise ValueError(f"invalid custom pattern {p!r}: {exc}") from exc
 
     def detect(self, text: str) -> list[Detection]:
         found: list[Detection] = []
