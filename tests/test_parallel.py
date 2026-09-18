@@ -74,7 +74,13 @@ def run_both(tmp_path, text: str, workers: int, encoding: str = "utf-8", **redac
     seq_out = tmp_path / "seq.txt"
     par_out = tmp_path / "par.txt"
     overlap = redactor_kwargs.pop("overlap", DEFAULT_OVERLAP)
-    r = Redactor(chunk_size=1024, overlap=overlap, load_plugins=False, **redactor_kwargs)
+    r = Redactor(
+        chunk_size=1024,
+        overlap=overlap,
+        load_plugins=False,
+        allow_unsafe_overlap=True,
+        **redactor_kwargs,
+    )
     seq_stats = r.redact_file(src, seq_out, encoding=encoding)
     outcome = redact_file_parallel(r, str(src), str(par_out), workers=workers, encoding=encoding)
     return seq_out.read_bytes(), par_out.read_bytes(), seq_stats, outcome
@@ -146,7 +152,9 @@ def test_no_corruption_beyond_overlap(tmp_path, small_ranges):
     whole-text yields identical fully-redacted text (a difference could only be
     an unredacted-but-present entity, never missing/duplicated content)."""
     text = make_corpus(seed=99, blocks=400)  # PEMs are ~450 chars
-    r = Redactor(chunk_size=1024, overlap=256, load_plugins=False)  # < PEM length
+    r = Redactor(
+        chunk_size=1024, overlap=256, load_plugins=False, allow_unsafe_overlap=True
+    )  # < PEM length
     src = tmp_path / "in.txt"
     src.write_text(text)
     seq_out, par_out = tmp_path / "seq.txt", tmp_path / "par.txt"
@@ -172,7 +180,7 @@ def test_invalid_utf8_bytes_mid_range(tmp_path, small_ranges):
     blob = ("email a@b.io line\n" * 2000).encode()
     blob = blob[:12000] + b"\xff\xfe\xff" + blob[12000:]
     src.write_bytes(blob)
-    r = Redactor(chunk_size=1024, overlap=256, load_plugins=False)
+    r = Redactor(chunk_size=1024, overlap=256, load_plugins=False, allow_unsafe_overlap=True)
     seq_out, par_out = tmp_path / "seq.txt", tmp_path / "par.txt"
     seq_stats = r.redact_file(src, seq_out)
     outcome = redact_file_parallel(r, str(src), str(par_out), workers=4)
@@ -217,7 +225,7 @@ def test_redact_file_workers_kwarg(tmp_path, small_ranges):
     src = tmp_path / "in.txt"
     text = make_corpus(seed=7, blocks=300)
     src.write_text(text)
-    r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False)
+    r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False, allow_unsafe_overlap=True)
     seq_out, par_out = tmp_path / "seq.txt", tmp_path / "par.txt"
     seq_stats = r.redact_file(src, seq_out)
     par_stats = r.redact_file(src, par_out, workers=4)
@@ -299,7 +307,7 @@ def test_inprocess_worker_byte_identity(tmp_path, small_ranges, inprocess_pool):
     text = make_corpus(seed=5, blocks=400)
     src = tmp_path / "in.txt"
     src.write_text(text)
-    r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False)
+    r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False, allow_unsafe_overlap=True)
     seq_out, par_out = tmp_path / "seq.txt", tmp_path / "par.txt"
     r.redact_file(src, seq_out)
     outcome = redact_file_parallel(r, str(src), str(par_out), workers=4)
@@ -335,7 +343,7 @@ def test_parallel_byte_identical_to_sequential_fuzzed(
     tmp_path = tmp_path_factory.mktemp("par_fuzz")
     src = tmp_path / "in.txt"
     src.write_text(text)
-    r = Redactor(chunk_size=1024, overlap=512, load_plugins=False)
+    r = Redactor(chunk_size=1024, overlap=512, load_plugins=False, allow_unsafe_overlap=True)
     seq_out, par_out = tmp_path / "seq.txt", tmp_path / "par.txt"
     seq_stats = r.redact_file(src, seq_out)
     outcome = redact_file_parallel(r, str(src), str(par_out), workers=workers)
@@ -352,7 +360,7 @@ def test_seam_disagreement_falls_back(tmp_path, small_ranges, monkeypatch):
     src = tmp_path / "in.txt"
     src.write_text(make_corpus(seed=1, blocks=400))
     dst = tmp_path / "out.txt"
-    r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False)
+    r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False, allow_unsafe_overlap=True)
 
     calls = {"n": 0}
 
@@ -436,7 +444,7 @@ def test_offline_guard_installed_in_worker(tmp_path, small_ranges, inprocess_poo
     try:
         src = tmp_path / "in.txt"
         src.write_text(make_corpus(4, 400))
-        r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False)
+        r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False, allow_unsafe_overlap=True)
         redact_file_parallel(r, str(src), str(tmp_path / "o.txt"), workers=4, offline_guard=True)
         # the in-process shim ran the worker initializer, which installs the guard
         assert netguard.is_installed()
@@ -459,7 +467,7 @@ def test_redact_range_direct_tiny_middle_range(tmp_path):
 
     src = tmp_path / "in.txt"
     src.write_bytes(b"aaa bob@x.io bbb ccc ddd eee fff ggg hhh\n" * 4)
-    r = Redactor(chunk_size=64, overlap=8, load_plugins=False)
+    r = Redactor(chunk_size=64, overlap=8, load_plugins=False, allow_unsafe_overlap=True)
     _init_worker(r, "utf-8", offline_guard=False)
     job = _Job(str(src), str(tmp_path / "part"), 40, 60, 1, is_first=False, is_last=False)
     res = _redact_range(job)
@@ -502,7 +510,7 @@ def test_temp_cleanup_on_reassembly_failure(tmp_path, small_ranges, inprocess_po
     src = tmp_path / "in.txt"
     src.write_text(make_corpus(6, 400))
     out = tmp_path / "out.txt"
-    r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False)
+    r = Redactor(chunk_size=1024, overlap=1024, load_plugins=False, allow_unsafe_overlap=True)
 
     real_replace = os.replace
 

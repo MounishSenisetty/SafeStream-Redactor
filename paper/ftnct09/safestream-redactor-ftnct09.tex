@@ -78,8 +78,8 @@ identical to an idealised whole-document pass, and the multi-core output is
 byte-identical to the sequential pass or the engine transparently falls back to
 it through a seam cross-check. The guarantee is stated only for detectors that
 satisfy a bounded-window, chunk-independent contract, and the constants
-($\Cleft=48$, $\Cright=2$, $\Lmax=8192$) are read from the implementation rather
-than assumed. The detection layer is a calibrated ensemble of a deterministic
+($\Cleft=96$, $\Cright=8$, $\Lmax=8192$) are derived mechanically from the
+shipped detectors rather than assumed, and pinned by a regression test. The detection layer is a calibrated ensemble of a deterministic
 regex-plus-validator tier, a Shannon-entropy tier for undocumented secrets, a
 contextual-scoring tier, and an optional named-entity tier, with a
 dependency-free logistic calibrator that turns hand-set confidences into
@@ -479,16 +479,21 @@ whether $s\in\Pipe(\T)$ and its final confidence depend only on the substring
 $\T[\,i-\Cleft : j+\Cright\,]$.
 \end{description}
 A2 says the pipeline never needs more than $\Cleft$ characters left or $\Cright$
-right of a span to decide it; A1 says no span exceeds $\Lmax$. Tracing each
-built-in tier's decision function fixes the constants
-(Table~\ref{tab:constants}). The contextual scorer reads a 48-character left
-window; the widest right-context assertion is a two-character negative lookahead;
-every validator reads only the matched text. Two historically long patterns
-(private-key PEM bodies and high-entropy runs) are explicitly bounded to the
-default overlap: the private-key span is capped at exactly $8192$ characters by
-bounding its key-type fields and body, and the entropy candidate is capped at
-$8192$ with longer runs emitted as consecutive capped spans (covering the whole
-run with no gap). Hence $\max(\Cleft,\Cright)=48 \le \Lmax = 8192 = w =
+right of a span to decide it; A1 says no span exceeds $\Lmax$. The constants are
+derived \emph{mechanically} as the maximum over the default pipeline of the
+bounded-window requirements each tier declares (Table~\ref{tab:constants}); a
+regression test recomputes them from the shipped detectors and fails if any tier
+reads wider context, so the audited values cannot silently drift from the code.
+The governing left context is the $96$-character cue$\rightarrow$value window of
+the default-on label-anchored identifier cascade; the base tiers read less (the
+contextual scorer reads $48$). The widest declared right context is that
+cascade's $8$-character bound (the base tiers' widest is a two-character negative
+lookahead; every validator reads only the matched text). Two historically long
+patterns (private-key PEM bodies and high-entropy runs) are explicitly bounded to
+the default overlap: the private-key span is capped at exactly $8192$ characters
+by bounding its key-type fields and body, and the entropy candidates are capped
+at $8192$ with longer runs emitted as consecutive capped spans (covering the
+whole run with no gap). Hence $\max(\Cleft,\Cright)=96 \le \Lmax = 8192 = w =
 \texttt{DEFAULT\_OVERLAP}$, so the premise $w\ge\max(\Lmax,\Cleft,\Cright)$ holds
 \emph{unconditionally at the default configuration} for the built-in tiers.
 
@@ -502,8 +507,8 @@ hold; they are read from the code, not assumed.}
 \toprule
 Constant & Value & Source in implementation \\
 \midrule
-$\Cleft$ (left context) & $48$ & contextual scorer window \\
-$\Cright$ (right context) & $2$ & widest lookahead \verb|(?!\.\d)| (phone, IPv4) \\
+$\Cleft$ (left context) & $96$ & label-anchored cascade cue$\rightarrow$value window (base tiers: $48$) \\
+$\Cright$ (right context) & $8$ & label-anchored cascade bound (base tiers: $2$) \\
 $\Lmax$ (max span) & $8192$ & private-key bound; entropy candidate cap \\
 $w$ (default overlap) & $8192$ & engine \texttt{DEFAULT\_OVERLAP} \\
 $\mathit{chunk\_size}$ & $65536$ & default read size (64\,KiB) \\
@@ -583,8 +588,9 @@ The assumptions fail in exactly these cases, all detectable or documented.
 but a user may lower $w$, add a custom detector with an unbounded span, or supply
 a single high-entropy run longer than $w$; in sequential mode such a span may be
 split, and in parallel mode the seam valve falls back. (ii)~A detector needing
-unbounded right context: A2 fixes $\Cright=2$, so any future tier that conditions
-on a whole document---most notably a large-language-model tier---breaks A2, and
+unbounded right context: A2 fixes a small finite $\Cright$, so any future tier
+that conditions on a whole document---most notably a large-language-model
+tier---breaks A2, and
 \emph{neither theorem applies to it}. This is the principled reason the bounded,
 offline tiers are the ones that carry the equivalence guarantee. We note that the
 optional NER and ONNX tiers declare a bounded ($256$-character) context window but

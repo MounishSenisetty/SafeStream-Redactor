@@ -69,7 +69,7 @@ _SCHEMA: dict[str, set[str]] = {
         "pseudonym_length",
     },
     "custom": {"words", "patterns"},
-    "streaming": {"chunk_size", "overlap"},
+    "streaming": {"chunk_size", "overlap", "allow_unsafe_overlap"},
     "calibration": {"model"},
 }
 
@@ -161,4 +161,5 @@ def redactor_from_config(path: str | os.PathLike[str]) -> Redactor:
         calibrator=calibrator,
         chunk_size=streaming.get("chunk_size", DEFAULT_CHUNK_SIZE),
         overlap=streaming.get("overlap", DEFAULT_OVERLAP),
+        allow_unsafe_overlap=streaming.get("allow_unsafe_overlap", False),
     )

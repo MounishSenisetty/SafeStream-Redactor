@@ -187,9 +187,18 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     ap.add_argument(
-        "--config", default="core",
-        choices=["core", "gazetteer", "ner", "ner+gaz", "ensemble", "ensemble_hr",
-                 "ensemble+ner", "onnx"],
+        "--config",
+        default="core",
+        choices=[
+            "core",
+            "gazetteer",
+            "ner",
+            "ner+gaz",
+            "ensemble",
+            "ensemble_hr",
+            "ensemble+ner",
+            "onnx",
+        ],
     )
     ap.add_argument("--data-dir", default="benchmarks/data/redactionbench")
     ap.add_argument("--benign-dir", default="benchmarks/data/benign")

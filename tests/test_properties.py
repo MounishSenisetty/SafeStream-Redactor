@@ -68,7 +68,7 @@ def chunked(text: str, size: int):
 @settings(max_examples=80, derandomize=True, deadline=None)
 @given(text=texts, chunk_size=st.integers(min_value=1, max_value=97))
 def test_streaming_equals_whole_text_for_any_input_and_chunking(text, chunk_size):
-    r = Redactor(overlap=128, load_plugins=False)
+    r = Redactor(overlap=128, load_plugins=False, allow_unsafe_overlap=True)
     assert "".join(r.redact_stream(chunked(text, chunk_size))) == r.redact(text)
 
 
@@ -84,7 +84,7 @@ def test_streaming_equals_whole_text_for_any_input_and_chunking(text, chunk_size
     overlap=st.integers(min_value=64, max_value=256),
 )
 def test_streaming_equals_whole_text_across_fuzzed_overlap(text, chunk_size, overlap):
-    r = Redactor(overlap=overlap, load_plugins=False)
+    r = Redactor(overlap=overlap, load_plugins=False, allow_unsafe_overlap=True)
     assert "".join(r.redact_stream(chunked(text, chunk_size))) == r.redact(text)
 
 
@@ -106,7 +106,7 @@ BOUNDARY_SPECIMENS = [
 @given(cut=st.integers(min_value=0, max_value=60))
 @settings(max_examples=61, derandomize=True, deadline=None)
 def test_single_entity_redacted_at_every_boundary_position(cut):
-    r = Redactor(overlap=64, load_plugins=False)
+    r = Redactor(overlap=64, load_plugins=False, allow_unsafe_overlap=True)
     for text, needle in BOUNDARY_SPECIMENS:
         if cut > len(text):
             continue
@@ -120,7 +120,7 @@ def test_single_entity_redacted_at_every_boundary_position(cut):
 @settings(max_examples=80, derandomize=True, deadline=None)
 @given(text=texts, chunk_size=st.integers(min_value=1, max_value=97))
 def test_detect_stream_segments_reassemble_and_offsets_hold(text, chunk_size):
-    r = Redactor(overlap=128, load_plugins=False)
+    r = Redactor(overlap=128, load_plugins=False, allow_unsafe_overlap=True)
     rebuilt = []
     for segment, detections in r.detect_stream(chunked(text, chunk_size)):
         for d in detections:

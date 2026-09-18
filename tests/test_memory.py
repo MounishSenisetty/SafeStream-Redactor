@@ -43,7 +43,7 @@ def big_file(tmp_path_factory):
 @pytest.mark.memory
 def test_constant_memory_on_large_file(big_file, tmp_path):
     out = tmp_path / "out.log"
-    redactor = Redactor(chunk_size=64 * 1024, overlap=4 * 1024)
+    redactor = Redactor(chunk_size=64 * 1024, overlap=4 * 1024, allow_unsafe_overlap=True)
 
     tracemalloc.start()
     redactor.redact_file(big_file, out)
