@@ -80,16 +80,20 @@ def test_allows_loopback_sendto():
             pass
 
 
-def test_uninstall_restores_all_four_methods():
+def test_uninstall_restores_patched_methods():
     orig_connect = socket.socket.connect
     orig_connect_ex = socket.socket.connect_ex
     orig_sendto = socket.socket.sendto
-    orig_sendmsg = socket.socket.sendmsg
+    # sendmsg is Unix-only; guard the assertions so this passes on Windows too.
+    has_sendmsg = hasattr(socket.socket, "sendmsg")
+    orig_sendmsg = socket.socket.sendmsg if has_sendmsg else None
     netguard.install()
     assert socket.socket.sendto is not orig_sendto
-    assert socket.socket.sendmsg is not orig_sendmsg
+    if has_sendmsg:
+        assert socket.socket.sendmsg is not orig_sendmsg
     netguard.uninstall()
     assert socket.socket.connect is orig_connect
     assert socket.socket.connect_ex is orig_connect_ex
     assert socket.socket.sendto is orig_sendto
-    assert socket.socket.sendmsg is orig_sendmsg
+    if has_sendmsg:
+        assert socket.socket.sendmsg is orig_sendmsg

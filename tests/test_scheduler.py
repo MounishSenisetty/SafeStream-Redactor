@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from safestream_redactor import Redactor
 from safestream_redactor.scheduler import ram_aware_workers, redact_tree
 
@@ -118,7 +120,10 @@ def test_redact_tree_ignores_external_symlinks(tmp_path):
     src.mkdir()
     (src / "real.txt").write_text("email a@b.io", encoding="utf-8")
     link = src / "link.txt"
-    link.symlink_to(outside)
+    try:
+        link.symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("platform does not permit creating symlinks")
 
     dst = tmp_path / "out"
     results = redact_tree(src, dst, Redactor(), workers=1)
