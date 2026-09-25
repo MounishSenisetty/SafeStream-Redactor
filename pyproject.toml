@@ -1,5 +1,7 @@
 [build-system]
-requires = ["hatchling"]
+# >=1.27: first release emitting PEP 639 metadata (the SPDX `license` string and
+# `license-files` below); older hatchling rejects this [project] table.
+requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -34,6 +36,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Security",
   "Topic :: Text Processing :: Filters",
   "Typing :: Typed",
@@ -56,7 +59,9 @@ onnx = ["onnxruntime>=1.16", "numpy>=1.21"]
 # dependency-free, and backend="native" falls back to Python when this is absent.
 # The wheel is a separate distribution published by .github/workflows/native-wheels.yml;
 # a runtime spec-guard falls back to Python if a version-skewed wheel is paired.
-native = ["safestream-redactor-native>=0.4.0"]
+# Bounded to the lockstep minor series: a newer native minor may carry a different
+# pattern spec (the runtime spec-guard would then silently fall back to Python).
+native = ["safestream-redactor-native>=0.4.0,<0.5"]
 dev = ["pytest>=7.0", "pytest-cov>=4.1", "hypothesis>=6.90", "ruff>=0.4", "mypy>=1.8"]
 # google-re2 is used only by benchmarks/re2_backend.py (the evaluated-and-not-
 # adopted compiled-regex backend); it is never imported by the shipped package.
@@ -81,6 +86,23 @@ path = "src/safestream_redactor/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/safestream_redactor"]
+
+# Explicit sdist manifest: the package, its test suite and exactly what the tests
+# read. Without it hatchling ships every tracked file (paper PDF, the 1.5 MB
+# RedactionBench parquet, PNGs, CI config): a 2.5 MB sdist for a 116 KB wheel.
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+  "/benchmarks/**/*.py",
+  "/benchmarks/data/benign",
+  "/examples",
+  "/action.yml",
+  "/.pre-commit-hooks.yaml",
+  "/CHANGELOG.md",
+  "/README.md",
+  "/SECURITY.md",
+]
 
 [tool.pytest.ini_options]
 addopts = "-m 'not memory'"
@@ -141,5 +163,7 @@ files = ["src"]
 # imported lazily so the core install can skip it entirely. tomli is only
 # installed on Python < 3.11 (stdlib tomllib elsewhere) and ships no stubs.
 # onnxruntime (the [onnx] extra) ships no stubs and is likewise lazily imported.
-module = ["spacy", "tomli", "onnxruntime", "numpy"]
+# safestream_native (the [native] extra) is a stub-less compiled module that may
+# or may not be installed; listing it keeps mypy green in both states.
+module = ["spacy", "tomli", "onnxruntime", "numpy", "safestream_native"]
 ignore_missing_imports = true

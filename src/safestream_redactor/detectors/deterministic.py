@@ -10,7 +10,7 @@ from __future__ import annotations
 import ipaddress
 import re
 import warnings
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
@@ -108,9 +108,53 @@ class Pattern:
     anchors: tuple[str, ...] = ()  # case-sensitive, checked against the raw text
     anchors_lower: tuple[str, ...] = ()  # checked against text.lower()
     needs_digit: bool = False  # every match contains at least one ASCII digit
+    # Optional replacement for ``regex.finditer`` that must yield exactly the same
+    # matches, used where the backtracking engine is super-linear on adversarial
+    # input. An optimisation only: a differential test pins it to ``finditer``.
+    scanner: Callable[[re.Pattern[str], str], Iterator[re.Match[str]]] | None = None
 
 
 _DIGIT = re.compile(r"\d")
+
+# The e-mail local-part alphabet (the first character class of the EMAIL regex).
+_EMAIL_LOCAL = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._%+-")
+_WORD_BOUNDARY = re.compile(r"\b")
+
+
+def _email_scan(regex: re.Pattern[str], text: str) -> Iterator[re.Match[str]]:
+    """``regex.finditer(text)`` for the EMAIL pattern, in linear time.
+
+    ``finditer`` tries the pattern at every word boundary, and from each one the
+    local part ``[A-Za-z0-9._%+-]+`` scans to the end of its run before failing
+    on a missing ``@`` — O(n^2) on a long run such as ``"a.a.a.…"`` (a 32K-char
+    window took ~1.3 s; an 8 MiB API body would take hours). A match needs its
+    local part to be a run of local-part characters ending *exactly* at an
+    ``@`` (the class excludes ``@``), so this visits only the ``@`` positions:
+
+    * the candidate starts are the local-part run immediately left of the
+      ``@``, clipped at the previous match's end (``finditer`` never starts a
+      match inside an earlier one);
+    * everything after the ``@`` is independent of where the local part
+      started, so the pattern either matches from the *first* word boundary in
+      that run or from none of them — one ``regex.match`` per ``@`` decides it.
+
+    Each character is walked a bounded number of times, and the yielded matches
+    are the same ``re.Match`` objects ``finditer`` would produce.
+    """
+    last_end = 0
+    at = text.find("@")
+    while at != -1:
+        start = at
+        while start > last_end and text[start - 1] in _EMAIL_LOCAL:
+            start -= 1
+        if start < at:
+            boundary = _WORD_BOUNDARY.search(text, start, at)
+            if boundary is not None and boundary.start() < at:
+                m = regex.match(text, boundary.start())
+                if m is not None:
+                    yield m
+                    last_end = m.end()
+        at = text.find("@", max(at + 1, last_end))
 
 
 _PATTERNS: tuple[Pattern, ...] = (
@@ -119,6 +163,7 @@ _PATTERNS: tuple[Pattern, ...] = (
         re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
         0.95,
         anchors=("@",),
+        scanner=_email_scan,
     ),
     Pattern(
         EntityType.PRIVATE_KEY,
@@ -334,7 +379,7 @@ def _load_native(backend: str) -> ModuleType | None:
     if backend not in {"native", "auto"}:
         raise ValueError(f"backend must be 'python', 'native', or 'auto', got {backend!r}")
     try:
-        import safestream_native  # type: ignore[import-not-found]
+        import safestream_native
     except ImportError:
         if backend == "native":
             warnings.warn(
@@ -481,7 +526,12 @@ class DeterministicDetector:
                     low = lowered
                     if not any(a in low for a in pattern.anchors_lower):
                         continue
-            for m in pattern.regex.finditer(text):
+            matches = (
+                pattern.scanner(pattern.regex, text)
+                if pattern.scanner is not None
+                else pattern.regex.finditer(text)
+            )
+            for m in matches:
                 matched = m.group(pattern.group)
                 if pattern.validator is not None and not pattern.validator(matched):
                     continue

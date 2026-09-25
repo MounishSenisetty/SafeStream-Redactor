@@ -42,10 +42,19 @@ _CUE_WINDOW = 96
 # Separators allowed between a cue and its value: ``: = # - .`` and whitespace,
 # plus short connective words ("is", "no", "number", "#"). Kept tight so a cue
 # cannot reach across a sentence to a coincidental number.
-_SEP = r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*[:=#\-.]?\s*"
+#
+# The optional punctuation owns its trailing whitespace (``(?:[:=#\-.]\s*)?``)
+# rather than sitting between two bare ``\s*``: with ``\s*[…]?\s*`` an absent
+# separator leaves two adjacent ``\s*`` that backtracking splits every possible
+# way, which is O(n^2) per cue on a long whitespace run (a cue followed by 32K
+# spaces took ~19 s in one ``detect`` call). This form matches the same language
+# with the same greedy choice, in O(n).
+_SEP = r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.]\s*)?"
 
 # Each rule: (cue alternation, value pattern, entity type, confidence).
-# The value pattern must use a single capturing group around the emitted span.
+# The value pattern must use a single capturing group around the emitted span,
+# and every value must be bounded to ``_MAX_VALUE`` characters: that bound is the
+# ``max_span`` this tier declares to the engine's overlap sizing.
 # Values are required to contain a digit (or be a formatted id) so ordinary words
 # after a cue are not swept up.
 _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
@@ -71,7 +80,7 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     # Phone / fax numbers named by a label
     (
         r"phone|tel(?:ephone)?|mobile|cell|fax|contact\s*(?:no|number)",
-        r"(\+?\d[\d\s().-]{6,}\d)",
+        r"(\+?\d[\d\s().-]{6,61}\d)",
         EntityType.PHONE,
         0.8,
     ),
@@ -85,7 +94,7 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     # Financial account / routing / IBAN / SWIFT
     (
         r"account|acct|routing|aba|iban|swift|bic|bank|sort\s*code",
-        r"([A-Z]{2}\d{2}[A-Z0-9]{6,30}|\d[\d\s-]{4,}\d)",
+        r"([A-Z]{2}\d{2}[A-Z0-9]{6,30}|\d[\d\s-]{4,62}\d)",
         EntityType.ID_NUMBER,
         0.8,
     ),
@@ -97,7 +106,7 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
         r"student|employee|emp|staff|member|customer|client|patient|"
         r"badge|tax|medical\s*record|mrn|npi|licen[cs]e|passport|"
         r"national\s*id|registration|enrol?lment",
-        r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,})",
+        r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
         EntityType.ID_NUMBER,
         0.75,
     ),
@@ -132,9 +141,9 @@ class LabeledIdentifierDetector:
                 # group(1) is the value; emit only that span (never the label).
                 start, end = m.start(1), m.end(1)
                 value = m.group(1)
-                # Guard: the gap between cue and value must be small, so a cue
-                # cannot anchor a number far away in the text.
-                if start - m.start() - len(value) > _CUE_WINDOW:
+                # Guard: the cue plus its gap must fit in the declared window,
+                # so a cue cannot anchor a number far away in the text.
+                if start - m.start() > _CUE_WINDOW:
                     continue
                 found.append(
                     Detection(

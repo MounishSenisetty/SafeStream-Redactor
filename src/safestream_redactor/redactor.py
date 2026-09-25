@@ -289,7 +289,7 @@ class Redactor:
         Yields ``(segment, detections)`` pairs; segments concatenate to the
         full input, and each detection's offsets are relative to its segment.
         """
-        return stream_windows(chunks, self.detect, self.overlap)
+        return stream_windows(chunks, self.detect, self.overlap, min_emit=self.chunk_size)
 
     def redact_stream(
         self, chunks: Iterable[str], stats: RedactionStats | None = None
@@ -303,13 +303,17 @@ class Redactor:
         per-type counts and sizes while streaming.
         """
         if stats is None:
-            return stream_transform(chunks, self.detect, self.policy.apply, self.overlap)
+            return stream_transform(
+                chunks, self.detect, self.policy.apply, self.overlap, min_emit=self.chunk_size
+            )
         return self._redact_stream_with_stats(chunks, stats)
 
     def _redact_stream_with_stats(
         self, chunks: Iterable[str], stats: RedactionStats
     ) -> Iterator[str]:
-        for segment, detections in stream_windows(chunks, self.detect, self.overlap):
+        for segment, detections in stream_windows(
+            chunks, self.detect, self.overlap, min_emit=self.chunk_size
+        ):
             redacted = self.policy.apply(segment, detections)
             stats.add_segment(segment, redacted, detections)
             yield redacted
@@ -363,7 +367,8 @@ class Redactor:
             suffix=".tmp",
         )
         try:
-            with open(fd, "w", encoding=encoding) as out:
+            # newline="": write exactly what was read (no \n -> os.linesep)
+            with open(fd, "w", encoding=encoding, newline="") as out:
                 for redacted in self.redact_stream(chunks, stats):
                     out.write(redacted)
             _match_destination_mode(tmp_path, out_path)

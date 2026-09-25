@@ -40,7 +40,10 @@ At the busiest instant a single streaming worker holds, in characters:
   (``chunk_size + 2*overlap``),
 * the emitted ``segment`` and its ``redacted`` form (~``chunk_size`` each).
 
-Summed, that is ``<= 3*chunk_size + 4*overlap`` live characters. We round the
+Summed, that is ``<= 3*chunk_size + 4*overlap`` live characters. The engine
+coalesces input until it can emit at least ``overlap`` characters per detection
+pass, so when ``chunk_size < overlap`` the effective chunk is up to
+``chunk_size + overlap``; the estimate substitutes that for ``chunk_size``. We round the
 model up to ``STREAM_CHAR_FACTOR * (chunk_size + overlap)`` characters to stay a
 safe upper bound, times ``bytes_per_char`` for the string storage width CPython
 picks for the input (1 for Latin-1-representable text, up to 4 for astral
@@ -338,7 +341,9 @@ class MemoryBudget:
 
     def per_worker_estimate(self, chunk_size: int, overlap: int) -> int:
         """Estimated peak working set of one streaming worker, in bytes."""
-        chars = STREAM_CHAR_FACTOR * (chunk_size + overlap)
+        # the engine coalesces small chunks up to ``overlap`` emitted chars/pass
+        effective_chunk = chunk_size if chunk_size >= overlap else chunk_size + overlap
+        chars = STREAM_CHAR_FACTOR * (effective_chunk + overlap)
         return chars * self.bytes_per_char + self.per_worker_fixed
 
     @property
