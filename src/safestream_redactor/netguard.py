@@ -64,7 +64,8 @@ def install() -> None:
     Patches the connection-oriented calls (``connect``/``connect_ex``) *and* the
     connectionless datagram calls (``sendto``/``sendmsg``), so a UDP payload sent
     without a prior ``connect`` — statsd/telemetry libraries, custom exfil — is
-    stopped too, not just TCP dials.
+    stopped too, not just TCP dials. ``sendmsg`` is Unix-only (absent on
+    Windows), so it is patched only when the platform provides it.
 
     Caveat: DNS resolution via ``socket.getaddrinfo`` happens in C and can leak a
     hostname before any socket call, and guarding it would also break loopback
@@ -78,7 +79,8 @@ def install() -> None:
     _original_connect = socket.socket.connect
     _original_connect_ex = socket.socket.connect_ex
     _original_sendto = socket.socket.sendto
-    _original_sendmsg = socket.socket.sendmsg
+    # sendmsg is Unix-only; on Windows socket.socket has no such attribute.
+    _original_sendmsg = getattr(socket.socket, "sendmsg", None)
 
     def guarded_connect(self: socket.socket, address: Any) -> Any:
         _block(address)
@@ -112,7 +114,8 @@ def install() -> None:
     socket.socket.connect = guarded_connect  # type: ignore[assignment,method-assign]
     socket.socket.connect_ex = guarded_connect_ex  # type: ignore[assignment,method-assign]
     socket.socket.sendto = guarded_sendto  # type: ignore[assignment,method-assign]
-    socket.socket.sendmsg = guarded_sendmsg  # type: ignore[assignment,method-assign]
+    if _original_sendmsg is not None:
+        socket.socket.sendmsg = guarded_sendmsg  # type: ignore[assignment,method-assign]
 
 
 def uninstall() -> None:
@@ -122,7 +125,8 @@ def uninstall() -> None:
         socket.socket.connect = _original_connect  # type: ignore[method-assign]
         socket.socket.connect_ex = _original_connect_ex  # type: ignore[method-assign]
         socket.socket.sendto = _original_sendto  # type: ignore[method-assign]
-        socket.socket.sendmsg = _original_sendmsg  # type: ignore[method-assign]
+        if _original_sendmsg is not None:  # only patched where the platform has it
+            socket.socket.sendmsg = _original_sendmsg  # type: ignore[method-assign]
         _original_connect = None
         _original_connect_ex = None
         _original_sendto = None
