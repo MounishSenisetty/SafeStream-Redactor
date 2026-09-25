@@ -156,7 +156,7 @@ def test_no_corruption_beyond_overlap(tmp_path, small_ranges):
         chunk_size=1024, overlap=256, load_plugins=False, allow_unsafe_overlap=True
     )  # < PEM length
     src = tmp_path / "in.txt"
-    src.write_text(text)
+    src.write_bytes(text.encode())  # exact bytes: seam placement depends on them
     seq_out, par_out = tmp_path / "seq.txt", tmp_path / "par.txt"
     r.redact_file(src, seq_out)
     outcome = redact_file_parallel(r, str(src), str(par_out), workers=4)

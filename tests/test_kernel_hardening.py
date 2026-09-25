@@ -86,6 +86,9 @@ def test_email_scan_matches_finditer_seeded_fuzz():
 @pytest.mark.parametrize(
     "hostile",
     ["a." * 100_000 + " @", "x@" + "a-" * 100_000, ("u.v" * 50 + "@") * 2_000],
+    # short ids: pytest exports the id in PYTEST_CURRENT_TEST, which Windows
+    # caps at 32767 characters
+    ids=["dotted-local-part", "hyphenated-domain", "many-at-signs"],
 )
 def test_email_scan_is_linear_on_hostile_input(hostile):
     started = time.perf_counter()
@@ -118,7 +121,9 @@ def test_labeled_identifier_is_linear_on_whitespace_runs(cue):
     assert time.perf_counter() - started < 5
 
 
-@pytest.mark.parametrize("text", ["phone 1" + " 1" * 6000, "account 1" + "-1" * 6000])
+@pytest.mark.parametrize(
+    "text", ["phone 1" + " 1" * 6000, "account 1" + "-1" * 6000], ids=["phone", "account"]
+)
 def test_labeled_identifier_spans_respect_declared_max_span(text):
     detections = LabeledIdentifierDetector().detect(text)
     assert detections

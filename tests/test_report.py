@@ -11,7 +11,7 @@ SAMPLE = "email bob@x.io and again alice@y.co ssn: 123-45-6789\n"
 
 def test_redact_file_returns_stats(tmp_path):
     src, dst = tmp_path / "in.txt", tmp_path / "out.txt"
-    src.write_text(SAMPLE * 3)
+    src.write_bytes((SAMPLE * 3).encode())  # exact bytes, same on every OS
     stats = Redactor().redact_file(src, dst)
     assert stats.counts == {"email": 6, "ssn": 3}
     assert stats.total == 9

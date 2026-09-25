@@ -12,7 +12,7 @@ SAMPLE = "email bob@x.io ssn: 123-45-6789 codename ProjectX\n"
 @pytest.fixture
 def sample(tmp_path):
     p = tmp_path / "in.txt"
-    p.write_text(SAMPLE)
+    p.write_bytes(SAMPLE.encode())  # exact bytes: line endings pass through verbatim
     return p
 
 
