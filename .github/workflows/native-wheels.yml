@@ -17,6 +17,11 @@ name: Native wheels
 permissions:
   contents: read
 
+# a new push to a PR supersedes its in-flight build; tag/release runs never cancel
+concurrency:
+  group: native-wheels-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
     tags: ["native-v*"]
@@ -43,7 +48,9 @@ jobs:
         include:
           - { runner: ubuntu-latest, target: x86_64 }
           - { runner: ubuntu-latest, target: aarch64 }
-          - { runner: macos-13, target: x86_64 } # Intel
+          # GitHub retired the Intel `macos-13` runners (jobs on that label queue
+          # forever), so the Intel wheel is cross-compiled on Apple Silicon.
+          - { runner: macos-14, target: x86_64 } # Intel
           - { runner: macos-14, target: aarch64 } # Apple Silicon
           - { runner: windows-latest, target: x64 }
     steps:
