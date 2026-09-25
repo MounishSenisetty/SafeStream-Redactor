@@ -54,7 +54,7 @@ pip install 'safestream-redactor[native]'
 Docker:
 
 ```bash
-docker run --rm -v "$PWD":/data ghcr.io/mounishsenisetty/safestream-redactor \
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data ghcr.io/mounishsenisetty/safestream-redactor \
     redact /data/input.txt -o /data/output.txt
 ```
 
