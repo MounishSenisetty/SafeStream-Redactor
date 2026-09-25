@@ -83,17 +83,15 @@ def resolve_overlaps(detections: list[Detection]) -> list[Detection]:
     On overlap the higher-confidence detection wins; ties go to the longer
     span (a credit card should beat the phone number hiding inside it).
     """
-    import bisect
-
+    # Process candidates best-first; a candidate is kept only if it overlaps
+    # nothing already kept (equivalently, no higher-priority detection covers
+    # it). Kept spans are collected in priority order and sorted by start once at
+    # the end, avoiding the O(n) mid-list insertions the previous parallel-array
+    # bookkeeping performed on every candidate.
     ordered = sorted(detections, key=lambda d: (-d.confidence, d.start - d.end, d.start))
-    # kept intervals stay sorted by start and never overlap each other, so a
-    # candidate can only collide with the interval just before its end point
-    starts: list[int] = []
     kept: list[Detection] = []
     for cand in ordered:
-        i = bisect.bisect_left(starts, cand.end)
-        if i > 0 and kept[i - 1].end > cand.start:
-            continue
-        starts.insert(i, cand.start)
-        kept.insert(i, cand)
+        if not any(cand.overlaps(k) for k in kept):
+            kept.append(cand)
+    kept.sort(key=lambda d: d.start)
     return kept

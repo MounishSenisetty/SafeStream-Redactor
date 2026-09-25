@@ -115,7 +115,21 @@ def make_handler(
         protocol_version = "HTTP/1.1"
 
         def _handle(self, method: str) -> None:
-            length = int(self.headers.get("Content-Length") or 0)
+            raw = self.headers.get("Content-Length")
+            try:
+                # Validate up front. A negative Content-Length is truthy and
+                # would make ``rfile.read(-1)`` read until EOF — on an HTTP/1.1
+                # keep-alive socket that blocks the worker thread until the peer
+                # closes. A non-numeric value used to raise ValueError out of
+                # do_POST and drop the connection with no reply. Both now yield
+                # a bounded 400 instead.
+                length = int(raw) if raw is not None else 0
+            except (TypeError, ValueError):
+                self._send(400, {"error": "invalid Content-Length header"})
+                return
+            if length < 0:
+                self._send(400, {"error": "invalid Content-Length header"})
+                return
             if length > max_body_bytes:
                 # refuse before reading the oversized body into memory
                 self._send(413, {"error": f"request body exceeds {max_body_bytes} bytes"})

@@ -122,3 +122,30 @@ def test_memory_limit_caps_workers(sample, tmp_path, capsys):
 def test_memory_limit_bad_value_errors(sample, capsys):
     assert main(["detect", str(sample), "--memory-limit", "notasize"]) == 1
     assert "error" in capsys.readouterr().err
+
+
+def test_no_entropy_flag_disables_both_entropy_tiers_with_config(tmp_path):
+    # Regression (F3): via the --config overlay path, --no-entropy must remove
+    # BOTH the base entropy tier and the compound-secret tier, matching the
+    # constructor's use_entropy gating.
+    from safestream_redactor.cli import _build_parser, _build_redactor
+
+    cfg = tmp_path / "policy.toml"
+    cfg.write_text("[detection]\nuse_entropy = true\n", encoding="utf-8")
+    args = _build_parser().parse_args(
+        ["redact", "in.txt", "-o", "out.txt", "--config", str(cfg), "--no-entropy"]
+    )
+    redactor = _build_redactor(args)
+    assert "entropy" not in redactor.detector_names
+    assert "compound_secret" not in redactor.detector_names
+
+
+def test_constructor_use_entropy_false_disables_both_tiers():
+    from safestream_redactor.redactor import Redactor
+
+    names = Redactor(use_entropy=False).detector_names
+    assert "entropy" not in names
+    assert "compound_secret" not in names
+    # sanity: they are present when entropy is enabled (the default)
+    on = Redactor(use_entropy=True).detector_names
+    assert "entropy" in on and "compound_secret" in on
