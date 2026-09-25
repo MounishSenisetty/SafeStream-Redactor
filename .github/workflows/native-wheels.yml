@@ -17,6 +17,11 @@ name: Native wheels
 permissions:
   contents: read
 
+# a new push to a PR supersedes its in-flight build; tag/release runs never cancel
+concurrency:
+  group: native-wheels-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
     tags: ["native-v*"]
@@ -43,7 +48,9 @@ jobs:
         include:
           - { runner: ubuntu-latest, target: x86_64 }
           - { runner: ubuntu-latest, target: aarch64 }
-          - { runner: macos-13, target: x86_64 } # Intel
+          # GitHub retired the Intel `macos-13` runners (jobs on that label queue
+          # forever), so the Intel wheel is cross-compiled on Apple Silicon.
+          - { runner: macos-14, target: x86_64 } # Intel
           - { runner: macos-14, target: aarch64 } # Apple Silicon
           - { runner: windows-latest, target: x64 }
     steps:
@@ -64,6 +71,26 @@ jobs:
           name: wheels-${{ matrix.runner }}-${{ matrix.target }}
           path: native/dist/*.whl
 
+  # The native wheel is only publishable if it is byte-identical to the pure-Python
+  # oracle. The differential tests skip when the extension is absent, so the
+  # import is asserted first: a broken install must fail here, not skip green.
+  byte-identity:
+    name: byte-identity (built wheel vs Python oracle)
+    needs: wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v8
+        with:
+          name: wheels-ubuntu-latest-x86_64
+          path: wheelhouse/
+      - run: pip install -e .[dev] wheelhouse/*.whl
+      - run: python -c "import safestream_native as n; print(n.__version__, len(n.patterns()))"
+      - run: pytest -q tests/test_native_backend.py tests/test_lookaround_free.py
+
   sdist:
     name: sdist
     runs-on: ubuntu-latest
@@ -83,7 +110,7 @@ jobs:
   # Manual dry run: gh workflow run native-wheels.yml -f publish_testpypi=true
   publish-testpypi:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_testpypi
-    needs: [wheels, sdist]
+    needs: [wheels, byte-identity, sdist]
     runs-on: ubuntu-latest
     environment: testpypi-native
     permissions:
@@ -100,7 +127,7 @@ jobs:
 
   publish-pypi:
     if: startsWith(github.ref, 'refs/tags/native-v')
-    needs: [wheels, sdist]
+    needs: [wheels, byte-identity, sdist]
     runs-on: ubuntu-latest
     environment: pypi-native
     permissions:

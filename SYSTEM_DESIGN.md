@@ -2445,7 +2445,7 @@ Docker, only Docker is required on the host.
 - **CLI:** `safestream redact IN -o OUT [...]`, `safestream detect IN [...]`,
   `safestream init-config -o policy.toml`.
 - **Module:** `python -m safestream_redactor` (via `__main__.py`).
-- **Docker:** `docker run --rm -v "$PWD":/data safestream-redactor redact /data/in.txt -o /data/out.txt`;
+- **Docker:** `docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data safestream-redactor redact /data/in.txt -o /data/out.txt`;
   add `--network none` for a hard egress boundary.
 - **API:** `from safestream_redactor import Redactor`.
 

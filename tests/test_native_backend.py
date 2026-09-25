@@ -46,7 +46,7 @@ def test_unicode_digit_value_matches_python_int():
 
     Python's int() accepts every Unicode decimal digit (category Nd), so it
     detects Unicode-digit IPv4 (e.g. ٩٩.٩.٩.٩). The native core reproduces int()
-    via a 66-block table; this asserts native digit value == Python int() for
+    via a 76-block (Unicode 16.0) table; this asserts native digit value == Python int() for
     EVERY Nd codepoint (and None for non-digits), so IPv4 is byte-identical for
     the installed toolchains rather than merely for a few sampled scripts.
     """

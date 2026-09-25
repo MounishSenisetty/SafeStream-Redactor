@@ -458,7 +458,7 @@ def _atomic_write_stream(path: str, pieces: Iterator[str], encoding: str) -> Non
         dir=os.path.dirname(path) or ".", prefix=os.path.basename(path) + "."
     )
     try:
-        with open(fd, "w", encoding=encoding) as out:
+        with open(fd, "w", encoding=encoding, newline="") as out:
             for piece in pieces:
                 out.write(piece)
         os.replace(tmp, path)
@@ -468,10 +468,35 @@ def _atomic_write_stream(path: str, pieces: Iterator[str], encoding: str) -> Non
         raise
 
 
+def _write_stdout(pieces: Iterator[str], encoding: str) -> None:
+    """Write output to stdout in ``encoding`` with line endings untouched."""
+    sys.stdout.flush()
+    raw = getattr(sys.stdout, "buffer", None)
+    for piece in pieces:
+        if raw is None:
+            sys.stdout.write(piece)
+        else:
+            raw.write(piece.encode(encoding))
+    (raw or sys.stdout).flush()
+
+
 def _input_chunks(path: str, chunk_size: int, encoding: str = "utf-8") -> Iterator[str]:
     if path == "-":
-        while chunk := sys.stdin.read(chunk_size):
-            yield chunk
+        raw = getattr(sys.stdin, "buffer", None)
+        if raw is None:  # a text-only stand-in (e.g. io.StringIO in embedding code)
+            while chunk := sys.stdin.read(chunk_size):
+                yield chunk
+            return
+        # Decode stdin bytes exactly like a file: the requested --encoding (not
+        # the locale's), errors="replace", and no newline translation.
+        import codecs
+
+        decoder = codecs.getincrementaldecoder(encoding)(errors="replace")
+        while data := raw.read(chunk_size):
+            if text := decoder.decode(data):
+                yield text
+        if tail := decoder.decode(b"", True):
+            yield tail
     else:
         from safestream_redactor.engine import read_chunks
 
@@ -522,9 +547,7 @@ def _cmd_redact(args: argparse.Namespace) -> int:
     stats = RedactionStats()
     chunks = _input_chunks(args.input, redactor.chunk_size, encoding)
     if args.output == "-":
-        for piece in redactor.redact_stream(chunks, stats):
-            sys.stdout.write(piece)
-        sys.stdout.flush()
+        _write_stdout(redactor.redact_stream(chunks, stats), encoding)
     elif args.input == "-":
         _atomic_write_stream(args.output, redactor.redact_stream(chunks, stats), encoding)
     elif getattr(args, "workers", None) and args.workers > 1:

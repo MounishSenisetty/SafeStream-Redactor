@@ -1,16 +1,10 @@
-# keep the build context small and reproducible
-.git
-.github
-benchmarks/data
-docs
-tests
-dist
-build
-*.egg-info
-__pycache__
-*.pyc
-.pytest_cache
-.ruff_cache
-.mypy_cache
-.venv
-venv
+# Allow-list: the build context is only what the Dockerfile COPYs. Anything new
+# in the repo (datasets, papers, local venvs, build outputs, secrets in a stray
+# .env) stays out of the context by default instead of by remembering to list it.
+*
+!pyproject.toml
+!LICENSE
+!src/
+!docker/build-requirements.txt
+**/__pycache__
+**/*.pyc

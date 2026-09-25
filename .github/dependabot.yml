@@ -8,6 +8,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # hash-locked build backend of the container image
+  - package-ecosystem: pip
+    directory: /docker
+    schedule:
+      interval: weekly
   - package-ecosystem: docker
     directory: /
     schedule:

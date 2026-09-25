@@ -27,8 +27,31 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: pip install build
+      - run: pip install build twine
       - run: python -m build
+      # A release tag must name the version being published (v0.4.1 -> 0.4.1);
+      # PyPI never accepts the same version twice, so a mismatch is unrecoverable.
+      - name: Tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/safestream_redactor/__init__.py)
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::release tag $GITHUB_REF_NAME does not match package version $version"; exit 1
+          fi
+      # metadata and the PyPI README must render, or the upload is rejected
+      - run: twine check --strict dist/*
+      # install each artifact into a clean environment and run the CLI
+      - name: Smoke-test the wheel and the sdist
+        run: |
+          set -euo pipefail
+          for artifact in dist/*.whl dist/*.tar.gz; do
+            python -m venv "/tmp/venv-$$" && "/tmp/venv-$$/bin/pip" install -q "$artifact"
+            "/tmp/venv-$$/bin/safestream" --version
+            out=$(printf 'mail bob@corp.io\n' | "/tmp/venv-$$/bin/safestream" redact - -o -)
+            test "$out" = "mail [REDACTED]"
+            rm -rf "/tmp/venv-$$"
+          done
       - uses: actions/upload-artifact@v7
         with:
           name: dist

@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import codecs
 import contextlib
-import io
 import itertools
 import logging
 import os
@@ -120,11 +119,10 @@ def _align_utf8(f: IO[bytes], offset: int, size: int) -> int:
 def _align(f: IO[bytes], offset: int, size: int, utf8: bool) -> int:
     """A split point that neither cuts a character nor a ``\\r\\n`` pair.
 
-    The sequential reader collapses ``\\r\\n`` to ``\\n`` (universal newlines);
-    splitting between the two bytes would make each half decode to its own
-    ``\\n`` and desynchronise the parallel text from the sequential text, so
-    such a point is nudged past the ``\\n``. Both bytes are unambiguous in
-    UTF-8 and in every allowed single-byte codec.
+    Line endings are preserved verbatim (no universal-newline translation), so
+    a split between ``\\r`` and ``\\n`` would be safe; seams are still kept off
+    the pair so a line terminator is never divided between two workers. Both
+    bytes are unambiguous in UTF-8 and in every allowed single-byte codec.
     """
     if utf8:
         offset = _align_utf8(f, offset, size)
@@ -150,14 +148,12 @@ def _decode_bytes(
 ) -> Iterator[str]:
     """Decode bytes ``[start, end)`` of ``path`` as a stream of text chunks.
 
-    Uses the same incremental decoder (``errors="replace"``) plus the same
-    universal-newline translation the sequential text reader applies, so for
-    ranges aligned by :func:`_align` the decoded text is exactly the
+    Uses the same incremental decoder (``errors="replace"``) and the same
+    verbatim line endings (no newline translation) as the sequential reader, so
+    for ranges aligned by :func:`_align` the decoded text is exactly the
     sequential pass's substring.
     """
-    decoder = io.IncrementalNewlineDecoder(
-        codecs.getincrementaldecoder(encoding)(errors="replace"), translate=True
-    )
+    decoder = codecs.getincrementaldecoder(encoding)(errors="replace")
     with open(path, "rb") as f:
         f.seek(start)
         remaining = end - start
@@ -321,7 +317,7 @@ def _redact_range(job: _Job) -> _RangeResult:
         prefix=os.path.basename(job.part_path) + ".",
     )
     try:
-        with open(fd, "w", encoding=encoding) as out:
+        with open(fd, "w", encoding=encoding, newline="") as out:
             for segment, detections in stream_windows(
                 feed(), redactor.detect, ov, initial_context=context
             ):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from bisect import bisect_left, insort
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -85,13 +86,19 @@ def resolve_overlaps(detections: list[Detection]) -> list[Detection]:
     """
     # Process candidates best-first; a candidate is kept only if it overlaps
     # nothing already kept (equivalently, no higher-priority detection covers
-    # it). Kept spans are collected in priority order and sorted by start once at
-    # the end, avoiding the O(n) mid-list insertions the previous parallel-array
-    # bookkeeping performed on every candidate.
+    # it). The kept spans are pairwise non-overlapping, so ordered by
+    # (start, end) their ends are non-decreasing too; the only kept span that can
+    # overlap a candidate [s, e) is therefore the last one starting before e. One
+    # bisection per candidate replaces the linear scan over everything kept,
+    # making this O(n log n) instead of O(n^2) on detection-dense windows.
     ordered = sorted(detections, key=lambda d: (-d.confidence, d.start - d.end, d.start))
     kept: list[Detection] = []
+    spans: list[tuple[int, int]] = []  # kept (start, end), sorted
     for cand in ordered:
-        if not any(cand.overlaps(k) for k in kept):
-            kept.append(cand)
+        i = bisect_left(spans, (cand.end,))
+        if i and spans[i - 1][1] > cand.start:
+            continue
+        insort(spans, (cand.start, cand.end))
+        kept.append(cand)
     kept.sort(key=lambda d: d.start)
     return kept

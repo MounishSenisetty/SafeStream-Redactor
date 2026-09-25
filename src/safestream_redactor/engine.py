@@ -10,9 +10,10 @@ the buffer's end is emitted; the rest is carried into the next iteration so
 an entity that straddles a chunk boundary is always seen whole at least once.
 
 If a detection spans the planned emit boundary, the boundary retreats to the
-detection's start so a match is never cut in half. Memory use is therefore
-bounded by ``chunk_size + overlap`` (plus the largest single detection),
-independent of total input size.
+detection's start so a match is never cut in half. Small input chunks are coalesced
+until a pass can emit at least ``overlap`` characters, so memory use is
+bounded by ``max(chunk_size, overlap) + overlap`` plus one chunk (and the
+largest single detection), independent of total input size.
 
 Guarantee: any entity whose text is at most ``overlap`` characters long is
 detected even when it is split across chunk boundaries.
@@ -58,8 +59,14 @@ def required_overlap(detectors: Iterable[object]) -> int:
 def read_chunks(
     path: str, chunk_size: int = DEFAULT_CHUNK_SIZE, encoding: str = "utf-8"
 ) -> Iterator[str]:
-    """Yield a file's contents in fixed-size text chunks."""
-    with open(path, encoding=encoding, errors="replace") as f:
+    """Yield a file's contents in fixed-size text chunks.
+
+    ``newline=""`` disables universal-newline translation: ``\r\n`` and lone
+    ``\r`` reach the detectors and the output exactly as they are in the file,
+    so bytes outside redacted spans are preserved (a redactor must not rewrite
+    line endings).
+    """
+    with open(path, encoding=encoding, errors="replace", newline="") as f:
         while chunk := f.read(chunk_size):
             yield chunk
 
@@ -70,6 +77,7 @@ def stream_windows(
     overlap: int = DEFAULT_OVERLAP,
     *,
     initial_context: str = "",
+    min_emit: int | None = None,
 ) -> Iterator[tuple[str, list[Detection]]]:
     """Yield ``(segment, detections)`` pairs covering the input exactly once.
 
@@ -82,6 +90,12 @@ def stream_windows(
     it, but detections inside it are dropped and it is never yielded. The
     parallel file engine uses this so a worker starting mid-file scores its
     first characters exactly as the sequential pass would.
+
+    ``min_emit`` is the fewest characters a detection pass should emit; small
+    input chunks are coalesced until it is reached. It defaults to ``overlap``
+    and is never below it. :class:`~safestream_redactor.redactor.Redactor`
+    passes its ``chunk_size`` so any chunking of the input costs the same as
+    reading a file in ``chunk_size`` blocks.
     """
     if overlap < 0:
         raise ValueError("overlap must be >= 0")
@@ -102,21 +116,40 @@ def stream_windows(
 
     prefix = initial_context[-overlap:] if overlap else ""
     buffer = ""
+    # Every detection pass rescans ``prefix + buffer`` (up to ``2*overlap`` chars
+    # beyond what it emits), so a pass is only worth running once at least
+    # ``min_emit`` new characters can be emitted. Without this, a caller feeding
+    # small chunks (a line iterator, a socket) triggered a full rescan per chunk:
+    # ~100x slower on ~100-char lines. Coalescing bounds the rescan cost per
+    # emitted character by a constant, independent of how the input is chunked.
+    # Output is unaffected: segmentation is not part of the contract, only the
+    # concatenated segments and their detections are.
+    min_emit = max(overlap, min_emit or 0, 1)
+    need = overlap + min_emit
+    pieces: list[str] = []
+    buffered = 0
     warned_overlong = False
     for chunk in chunks:
-        buffer += chunk
-        if len(buffer) <= overlap:
+        pieces.append(chunk)
+        buffered += len(chunk)
+        if buffered < need:
             continue
+        buffer = "".join(pieces)
         emit_upto = len(buffer) - overlap
         detections = window_detect(prefix, buffer)
         warned_overlong = _warn_if_overlong(detections, overlap, warned_overlong)
         emit_upto = _retreat_boundary(detections, emit_upto)
         if emit_upto <= 0:
+            # a detection pins the whole buffer; wait for another ``min_emit``
+            # characters rather than rescanning on every small chunk
+            pieces, need = [buffer], buffered + min_emit
             continue
         ready = [d for d in detections if d.end <= emit_upto]
         yield buffer[:emit_upto], ready
         prefix = (prefix + buffer[:emit_upto])[-overlap:] if overlap else ""
         buffer = buffer[emit_upto:]
+        pieces, buffered, need = [buffer], len(buffer), overlap + min_emit
+    buffer = "".join(pieces)
     if buffer:
         detections = window_detect(prefix, buffer)
         _warn_if_overlong(detections, overlap, warned_overlong)
@@ -178,7 +211,9 @@ def stream_transform(
     detect: DetectFn,
     apply: ApplyFn,
     overlap: int = DEFAULT_OVERLAP,
+    *,
+    min_emit: int | None = None,
 ) -> Iterator[str]:
     """Yield redacted output for an iterable of text chunks, using O(1) memory."""
-    for segment, detections in stream_windows(chunks, detect, overlap):
+    for segment, detections in stream_windows(chunks, detect, overlap, min_emit=min_emit):
         yield apply(segment, detections)

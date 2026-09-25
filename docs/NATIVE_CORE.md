@@ -151,8 +151,8 @@ Hypothesis fuzz stressing SSN boundaries and Unicode digits (0 divergences).
 Python detects **Unicode-digit** IPv4 too (`٩٩.٩.٩.٩` → ipv4), because `ipv4_ok`
 calls `int(octet)` and Python's `int()` accepts any Unicode decimal digit, while
 Rust's `str::parse`/`char::to_digit` are ASCII-only. Solved with a complete
-Unicode digit-value function: every `Nd` character is one of **66 contiguous
-10-codepoint blocks**, so its value is `codepoint − block_zero`; the 66 block
+Unicode digit-value function: every `Nd` character is one of **76 contiguous
+10-codepoint blocks**, so its value is `codepoint − block_zero`; the 76 block
 "zeros" are embedded as a table and `octet_value` folds digit values exactly as
 `int()` does (mixed scripts included: `int("٩5") == 95`). Completeness is
 **proven, not sampled**: a test asserts native digit value == Python `int()` for
