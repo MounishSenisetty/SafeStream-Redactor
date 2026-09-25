@@ -69,11 +69,11 @@ pip install -e '.[dev]'
 ```bash
 # 3. Docker — nothing to install locally; mount a directory and go
 docker build -t safestream-redactor .
-docker run --rm -v "$PWD":/data safestream-redactor \
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data safestream-redactor \
     redact /data/input.txt -o /data/output.txt
 
 # released multi-arch images (amd64/arm64, with SBOM + provenance) are on GHCR:
-docker run --rm -v "$PWD":/data ghcr.io/mounishsenisetty/safestream-redactor \
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data ghcr.io/mounishsenisetty/safestream-redactor \
     redact /data/input.txt -o /data/output.txt
 ```
 

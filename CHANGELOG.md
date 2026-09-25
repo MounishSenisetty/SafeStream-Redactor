@@ -52,6 +52,29 @@ Notable changes to this project. The format follows
 
 ### Fixed
 
+- **Security: quadratic backtracking (ReDoS) in the default-on labeled-identifier
+  tier.** Its separator `\s*[:=#\-.]?\s*` let the regex engine split a whitespace
+  run every possible way, so a cue word followed by a long whitespace run cost
+  O(n²): `"ssn" + 32K spaces` took ~19 s in one `detect()` call, and the REST API
+  and MCP server (which detect over whole request bodies of up to 8 / 4 MiB) could
+  be pinned for hours by a single request. The rewritten separator matches the
+  same language in O(n) (8 ms for the same input).
+- **Security: quadratic EMAIL scan.** `finditer` retried the local part from every
+  word boundary of a long `a.a.a.…` run (1.3 s per 32K chars). A linear
+  `@`-anchored scanner now yields exactly the matches `finditer` would
+  (differential-tested); the pattern source, and so the native spec, is unchanged.
+- **Line endings are preserved.** File input used universal newlines, silently
+  rewriting `\r\n` and lone `\r` to `\n` in *unredacted* text (and writing
+  `os.linesep` on Windows), while stdin preserved them — the same bytes redacted
+  to different output by path. All paths now pass line endings through verbatim.
+- **`--encoding` is honoured for stdin/stdout**, which previously used the
+  locale's encoding regardless of the flag.
+- The labeled-identifier tier emitted spans of unbounded length (12,001 chars
+  observed) despite declaring `max_span=64` to the overlap sizing; values are now
+  bounded to 64 chars, and its cue-distance guard subtracted the value length
+  from the gap by mistake.
+- `mypy` failed whenever the optional native wheel was installed.
+
 - **Audited locality constants corrected and made self-checking**
   (`docs/FORMAL_MODEL.md`, `paper/ftnct09/`, `tests/test_formal_constants.py`).
   The default-on label-anchored identifier cascade reads a 96-character
@@ -62,6 +85,31 @@ Notable changes to this project. The format follows
   that fails if any future tier reads wider context, keeping the doc and paper in
   lockstep with the code. The equivalence guarantee is unaffected — the default
   overlap (8192) already dwarfs the corrected constants.
+
+### Performance
+
+- `resolve_overlaps` is O(n log n) (was O(n²)): 20,000 adjacent e-mails went from
+  14.9 s to 0.25 s; on ordinary log windows it had been the single largest cost.
+- The streaming engine coalesces small input chunks before a detection pass, so
+  `redact_stream` over a line iterator no longer rescans the whole window per
+  line (0.01 → 1.47 MB/s on ~100-char lines, now on par with 64 KiB chunks).
+- CI's hard-corpus benchmark throughput: 0.12 → 1.74 MB/s. Output and
+  precision/recall are identical before and after.
+
+### Packaging & container
+
+- Build backend bounded to `hatchling>=1.27,<2` (the PEP 639 metadata used here
+  needs 1.27); `[native]` extra bounded to the lockstep `<0.5` series; Python 3.14
+  classifier and CI job (the container's interpreter was never tested in CI).
+- Explicit sdist manifest: 2.5 MB → 248 KB, and the test suite runs from it.
+- Dockerfile: hash-locked build backend, pip-less runtime venv with precompiled
+  bytecode (app layer ~11.8 MB → ~1 MB), numeric non-root `USER 10001:10001`,
+  base image pinned by digest, bit-reproducible layers with `SOURCE_DATE_EPOCH`,
+  allow-list `.dockerignore`. The documented `docker run -v "$PWD":/data` failed
+  with *Permission denied* on Linux hosts; docs now pass `--user`.
+- The Docker workflow smoke-tests the image before pushing; the native-wheel
+  workflow now runs the byte-identity tests against the built wheel and gates
+  publishing on them (they previously never ran in CI).
 
 ## [0.4.0] - 2026-08-30
 

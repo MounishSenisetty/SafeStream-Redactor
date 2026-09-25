@@ -150,7 +150,7 @@ docker pull ghcr.io/mounishsenisetty/safestream-redactor
 **One-shot redaction** — mount a directory as `/data` and redact a file in place:
 
 ```bash
-docker run --rm -v "$PWD":/data safestream-redactor \
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data safestream-redactor \
     redact /data/sample.txt -o /data/out.txt
 ```
 

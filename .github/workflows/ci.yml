@@ -32,7 +32,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        # 3.14 is the interpreter the container image ships, so it is tested too
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         include:
           # the scheduler, netguard, and atomic writes touch OS-specific
           # surfaces (sockets, /proc, process spawn, os.replace) — exercise

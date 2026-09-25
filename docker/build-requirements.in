@@ -1,0 +1,5 @@
+# Build backend for the container image (Dockerfile build stage). Compile the
+# hash-locked docker/build-requirements.txt from this file with:
+#   uv pip compile docker/build-requirements.in --generate-hashes --universal \
+#     --python-version 3.10 -o docker/build-requirements.txt
+hatchling>=1.27,<2
