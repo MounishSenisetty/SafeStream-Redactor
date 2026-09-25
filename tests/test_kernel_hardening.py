@@ -224,3 +224,15 @@ def test_cli_stdio_text_only_streams_and_truncated_input(capsysbinary, monkeypat
     monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO(raw)))
     assert main(["redact", "-", "-o", "-"]) == 0
     assert capsysbinary.readouterr().out == "mail [REDACTED] �".encode()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("card 4111 1111 1111 1111 key", "card [REDACTED] key"),
+        ("Card number: 4111-1111-1111-1111- next", "Card number: [REDACTED]- next"),
+    ],
+)
+def test_labeled_card_never_swallows_a_trailing_separator(text, expected):
+    assert all(d.text[-1].isdigit() for d in LabeledIdentifierDetector().detect(text))
+    assert Redactor(load_plugins=False).redact(text) == expected

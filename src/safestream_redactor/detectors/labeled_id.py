@@ -87,7 +87,9 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     # Payment-card numbers named by a label
     (
         r"card(?:\s*(?:no|number|#))?|credit\s*card|debit\s*card|pan",
-        r"((?:\d[ -]?){13,19})",
+        # 13-19 digits ending on a digit, so a trailing separator is never
+        # swallowed ("card 4111 1111 1111 1111 key" must keep its space)
+        r"((?:\d[ -]?){12,18}\d)",
         EntityType.CREDIT_CARD,
         0.85,
     ),
