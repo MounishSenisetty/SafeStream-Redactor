@@ -73,22 +73,29 @@ class EntropyDetector:
         self.hex_entropy = hex_entropy
         self.confidence = confidence
 
-    def _is_secret(self, token: str) -> bool:
+    def _secret_entropy(self, token: str) -> float | None:
+        """The token's Shannon entropy if it qualifies as a secret, else ``None``.
+
+        Returns the computed entropy so callers reuse it (for the detection's
+        ``meta``) instead of recomputing it — it is the one non-trivial cost on
+        the hot path and was previously calculated twice per emitted secret.
+        """
         if len(token) < self.min_length:
-            return False
+            return None
         # a run of only letters is almost always prose/an identifier, not a secret
         if _ALPHA_ONLY.match(token):
-            return False
+            return None
         entropy = shannon_entropy(token)
         if _HEX.match(token):
-            return len(token) >= 32 and entropy >= self.hex_entropy
-        return entropy >= self.base64_entropy
+            return entropy if (len(token) >= 32 and entropy >= self.hex_entropy) else None
+        return entropy if entropy >= self.base64_entropy else None
 
     def detect(self, text: str) -> list[Detection]:
         found: list[Detection] = []
         for m in _CANDIDATE.finditer(text):
             token = m.group()
-            if self._is_secret(token):
+            entropy = self._secret_entropy(token)
+            if entropy is not None:
                 found.append(
                     Detection(
                         start=m.start(),
@@ -97,7 +104,7 @@ class EntropyDetector:
                         entity_type=EntityType.SECRET,
                         confidence=self.confidence,
                         source=self.name,
-                        meta={"entropy": f"{shannon_entropy(token):.2f}"},
+                        meta={"entropy": f"{entropy:.2f}"},
                     )
                 )
         return found

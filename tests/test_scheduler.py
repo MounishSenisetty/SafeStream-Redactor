@@ -105,3 +105,25 @@ def test_ram_aware_workers():
     assert ram_aware_workers(r, requested=3) == 3
     assert ram_aware_workers(r, requested=0) == 1  # floored at 1
     assert ram_aware_workers(r) >= 1
+
+
+def test_redact_tree_ignores_external_symlinks(tmp_path):
+    # Regression (F4): a symlink inside the input tree pointing at a file outside
+    # it must not be followed — otherwise its content would be read and a
+    # redacted copy written into the output tree (an out-of-tree read).
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret ssn: 123-45-6789", encoding="utf-8")
+
+    src = tmp_path / "in"
+    src.mkdir()
+    (src / "real.txt").write_text("email a@b.io", encoding="utf-8")
+    link = src / "link.txt"
+    link.symlink_to(outside)
+
+    dst = tmp_path / "out"
+    results = redact_tree(src, dst, Redactor(), workers=1)
+
+    names = {Path(r.input_path).name for r in results}
+    assert names == {"real.txt"}  # the symlink was skipped
+    assert (dst / "real.txt").exists()
+    assert not (dst / "link.txt").exists()

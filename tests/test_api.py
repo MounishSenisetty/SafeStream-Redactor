@@ -208,3 +208,62 @@ def test_serve_default_redactor_is_constructed(monkeypatch: pytest.MonkeyPatch) 
     serve(host="127.0.0.1", port=12345)
     assert captured["addr"] == ("127.0.0.1", 12345)
     assert captured["closed"] is True
+
+
+# --------------------------------------------------------------------------
+# malformed Content-Length (F1): must fail fast with 400, never block a thread
+# --------------------------------------------------------------------------
+
+import socket as _socket  # noqa: E402
+from urllib.parse import urlparse  # noqa: E402
+
+
+def _raw_post_status(base_url: str, content_length: str) -> int:
+    """POST with a raw, attacker-controlled Content-Length; return the status code.
+
+    Uses a socket timeout so that if the server ever blocked on the body (the
+    pre-fix ``rfile.read(-1)`` hang), the recv would time out and fail the test
+    rather than hang the suite.
+    """
+    parsed = urlparse(base_url)
+    assert parsed.hostname is not None and parsed.port is not None
+    with _socket.create_connection((parsed.hostname, parsed.port), timeout=5) as sock:
+        sock.settimeout(5)
+        request = (
+            "POST /redact HTTP/1.1\r\n"
+            f"Host: {parsed.hostname}\r\n"
+            f"Content-Length: {content_length}\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+        ).encode("latin-1")
+        sock.sendall(request)
+        data = b""
+        while b"\r\n" not in data:
+            chunk = sock.recv(1024)
+            if not chunk:
+                break
+            data += chunk
+    status_line = data.split(b"\r\n", 1)[0].decode("latin-1")
+    parts = status_line.split()
+    assert len(parts) >= 2, f"no HTTP status line received (got {data!r})"
+    return int(parts[1])
+
+
+def test_live_negative_content_length_400(live_server: str) -> None:
+    # A negative Content-Length must be rejected immediately, not passed to
+    # rfile.read(-1) (which would block the worker thread until EOF).
+    assert _raw_post_status(live_server, "-1") == 400
+
+
+def test_live_non_numeric_content_length_400(live_server: str) -> None:
+    # A non-numeric Content-Length must yield a bounded 400, not an unhandled
+    # ValueError that drops the connection with no response.
+    assert _raw_post_status(live_server, "not-a-number") == 400
+
+
+def test_dispatch_still_enforces_max_body(redactor: Redactor) -> None:
+    # The pure dispatch path still guards oversized bodies independently of the
+    # handler's Content-Length pre-check.
+    payload = json.dumps({"text": "x" * 100}).encode()
+    status, _ = dispatch(redactor, "POST", "/redact", payload, max_body_bytes=10)
+    assert status == 413

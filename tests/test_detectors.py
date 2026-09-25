@@ -200,6 +200,15 @@ def test_custom_words_and_patterns():
     assert all(d.entity_type is EntityType.CUSTOM for d in found)
 
 
+def test_custom_invalid_pattern_raises_clear_error():
+    # Regression (F6): a malformed custom regex must raise a clear, actionable
+    # ValueError naming the pattern, not a bare re.error.
+    from safestream_redactor.detectors.custom import CustomDetector
+
+    with pytest.raises(ValueError, match=r"invalid custom pattern"):
+        CustomDetector(patterns=["(unclosed"])
+
+
 def test_types_filter():
     text = "bob@x.io and 10.0.0.1"
     assert types_in(text, types=["email"]) == {EntityType.EMAIL}
