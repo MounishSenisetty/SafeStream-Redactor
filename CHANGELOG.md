@@ -73,6 +73,9 @@ Notable changes to this project. The format follows
   observed) despite declaring `max_span=64` to the overlap sizing; values are now
   bounded to 64 chars, and its cue-distance guard subtracted the value length
   from the gap by mistake.
+- The labeled card rule swallowed a trailing space or hyphen, so
+  `card 4111 1111 1111 1111 key` became `card [REDACTED]key`; card values now end on a
+  digit.
 - `mypy` failed whenever the optional native wheel was installed.
 
 - **Audited locality constants corrected and made self-checking**
@@ -101,7 +104,15 @@ Notable changes to this project. The format follows
 - Build backend bounded to `hatchling>=1.27,<2` (the PEP 639 metadata used here
   needs 1.27); `[native]` extra bounded to the lockstep `<0.5` series; Python 3.14
   classifier and CI job (the container's interpreter was never tested in CI).
-- Explicit sdist manifest: 2.5 MB → 248 KB, and the test suite runs from it.
+- The sdist now contains only what pip needs (`src/`, `LICENSE`, metadata): 2.5 MB →
+  100 KB; the paper PDF, datasets, images, tests and CI files are no longer published.
+- The PyPI project page (`src/README_PYPI.md`) is rewritten around installing and using
+  the package: every CLI command and its options, entity types, config file, exit codes
+  and the Python API. It no longer advertises `pip install '…[native]'`, which fails
+  because the native wheel has never been published.
+- `publish.yml` now refuses to upload unless the release tag matches `__version__`,
+  `twine check --strict` passes, and both the wheel and the sdist install into a clean
+  environment and redact correctly. Release steps are documented in `docs/RELEASING.md`.
 - Dockerfile: hash-locked build backend, pip-less runtime venv with precompiled
   bytecode (app layer ~11.8 MB → ~1 MB), numeric non-root `USER 10001:10001`,
   base image pinned by digest, bit-reproducible layers with `SOURCE_DATE_EPOCH`,

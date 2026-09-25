@@ -1,143 +1,287 @@
-# SafeStream-Redactor
+# safestream-redactor
 
 [![PyPI](https://img.shields.io/pypi/v/safestream-redactor.svg)](https://pypi.org/project/safestream-redactor/)
 [![Python](https://img.shields.io/pypi/pyversions/safestream-redactor.svg)](https://pypi.org/project/safestream-redactor/)
 [![License](https://img.shields.io/pypi/l/safestream-redactor.svg)](https://pypi.org/project/safestream-redactor/)
 
-Streaming PII & credential redaction for massive text files — constant **O(1) memory**,
-multi-tier detection (regex + validators + entropy + optional NER + contextual heuristics),
-fully customizable redaction.
+Detect and redact PII and credentials in text files of any size, with constant memory.
+The file is streamed in chunks, so a 100 GB log uses the same memory as a 1 KB one.
+Bytes outside a redacted span, line endings included, are left exactly as they were.
 
-Redact a 100 GB log file with the same memory footprint as a 1 KB one.
+## Requirements
 
-Unlike general PII engines (Presidio, scrubadub) it also detects **credentials and
-secrets** — AWS keys, GitHub/Slack/Stripe/Google/SendGrid/Twilio/npm tokens, JWTs,
-private-key blocks, and *undocumented* high-entropy secrets — in the same streaming pass.
+- Python 3.10 or newer, on Linux, macOS or Windows.
+- No third-party runtime dependencies (`tomli` only on Python 3.10). Optional extras are
+  listed below.
 
-## Why?
-
-Most PII tools load the whole document into memory. SafeStream-Redactor processes text in
-fixed-size chunks with an overlapping context window, so entities that straddle chunk
-boundaries are still caught — and memory use never grows with file size (proven by a test
-that redacts a generated 1 GB file under a 16 MB allocation cap).
-
-## Features
-
-- **Constant-memory streaming** — process very large files without loading them into memory.
-- **Multi-tier detection** — deterministic patterns + validators, entropy analysis,
-  optional spaCy NER, and contextual scoring.
-- **PII** — emails, phone numbers, credit cards, SSNs, IPv4/IPv6, and optional
-  names/organizations/locations.
-- **Credentials & secrets** — API keys, cloud credentials, service tokens, JWTs, private
-  keys, and generic high-entropy secrets.
-- **Redaction modes** — replace, mask, deterministic pseudonymize, and per-type replacements.
-- **Parallel processing** — directory trees, or a single large file split across workers
-  (output byte-identical to the sequential pass).
-- **Offline network guard** — blocks non-loopback network access by default during CLI redaction.
-- **Extensible** — add custom detection tiers via Python entry points.
-- **Configurable policies** — define detection and redaction behavior in TOML.
-
-## Install
+## Installation
 
 ```bash
 pip install safestream-redactor
-
-# optional spaCy-based PERSON/ORG/LOC detection:
-pip install 'safestream-redactor[ner]'
-python -m spacy download en_core_web_sm
-
-# optional native (Rust) accelerator for the deterministic tier
-# (byte-identical; use Redactor(backend="native"), falls back to Python if absent):
-pip install 'safestream-redactor[native]'
 ```
 
-Docker:
+Only need the command-line tool? Install it into an isolated environment with pipx:
 
 ```bash
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data ghcr.io/mounishsenisetty/safestream-redactor \
-    redact /data/input.txt -o /data/output.txt
+pipx install safestream-redactor
 ```
 
-## Quickstart
+Check the install:
 
-### CLI
+```bash
+safestream --version                # prints e.g. "safestream 0.4.0"
+python -m safestream_redactor --version
+```
+
+### Optional extras
+
+| Extra | Install | Adds |
+|---|---|---|
+| `ner` | `pip install 'safestream-redactor[ner]'` then `python -m spacy download en_core_web_sm` | spaCy person / organisation / location detection (`--ner`) |
+| `onnx` | `pip install 'safestream-redactor[onnx]'` | On-device ONNX NER model (`--onnx MODEL.onnx --onnx-vocab VOCAB.json`); you supply the model |
+
+An optional compiled (Rust) core gives the same output as the pure-Python pattern tier,
+faster; enable it with `Redactor(backend="native")`. Its wheel is not on PyPI yet, so build
+it from source (needs a Rust toolchain):
+
+```bash
+pip install "safestream-redactor-native @ git+https://github.com/MounishSenisetty/SafeStream-Redactor#subdirectory=native"
+```
+
+Without it, `backend="native"` falls back to pure Python with a warning.
+
+Upgrade or remove:
+
+```bash
+pip install --upgrade safestream-redactor
+pip uninstall safestream-redactor
+```
+
+## Command-line usage
+
+The package installs one command, `safestream`, with five subcommands:
+
+| Command | What it does |
+|---|---|
+| `safestream redact INPUT -o OUTPUT` | Redact a file, a directory, or stdin (`-`) |
+| `safestream detect INPUT...` | List what would be redacted, without changing anything |
+| `safestream init-config` | Print a documented starter policy file (TOML) |
+| `safestream serve` | Run a local REST API (standard library only) |
+| `safestream mcp-serve` | Run a local Model Context Protocol server over stdio |
+
+Run `safestream <command> --help` for the full option list.
+
+### `redact`
 
 ```bash
 # redact everything detectable
-safestream redact input.txt -o out.txt
+safestream redact input.txt -o output.txt
 
-# only emails + SSNs, custom replacement
-safestream redact input.txt -o out.txt --types email,ssn --replace "***"
+# only some entity types, with a custom replacement
+safestream redact input.txt -o output.txt --types email,ssn --replace "***"
 
-# mask all but the last 4 characters
+# keep the last 4 characters visible
 safestream redact cards.csv -o masked.csv --mode mask --keep-last 4
 
-# stream from stdin to stdout
-cat input.log | safestream redact - -o -
+# consistent keyed tokens, e.g. <EMAIL_75e802c7c314f5a2> (same input -> same token)
+safestream redact input.txt -o output.txt --mode pseudonymize --hmac-key "$SECRET"
 
-# CI / pre-commit secret gate: non-zero exit if anything is found
-safestream detect build.log --fail-on-detect
+# per-type replacement text, plus your own words and regexes
+safestream redact input.txt -o output.txt --replace-type email='<EMAIL>' \
+    --custom-word ProjectX --custom-regex 'INT-\d+'
 
-# generate a documented, validated starter policy
-safestream init-config -o policy.toml
+# stdin to stdout
+cat app.log | safestream redact - -o -
+
+# a whole directory, in parallel; print counts and write a JSON report
+safestream redact logs/ -o redacted/ --workers 4 --stats --report run.json
 ```
 
-While redacting, the CLI installs a best-effort **offline network guard** by default
-(pass `--allow-network` to disable it).
+Example:
 
-### Python API
+```text
+$ printf 'contact bob@corp.io, ssn: 123-45-6789\n' | safestream redact - -o -
+contact [REDACTED], ssn: [REDACTED]
+```
+
+`--report FILE` writes counts and sizes only, never the matched text.
+
+### `detect`
+
+```bash
+safestream detect app.log                     # human-readable list
+safestream detect app.log --json              # one JSON object per detection
+safestream detect src/*.py --sarif > out.sarif  # SARIF 2.1.0
+safestream detect build.log --fail-on-detect  # exit status 1 if anything is found
+```
+
+```text
+$ safestream detect app.log
+        email  conf=1.00  'bob@corp.io'
+          ssn  conf=1.00  '123-45-6789'
+-- 2 detection(s)
+```
+
+### `init-config`
+
+```bash
+safestream init-config -o policy.toml
+safestream redact input.txt -o output.txt --config policy.toml
+```
+
+Flags given on the command line override the file. Unknown keys are rejected.
+
+```toml
+[detection]
+# types = ["email", "ssn", "credit_card"]   # omit for all types
+min_confidence = 0.5
+use_ner = false
+use_entropy = true
+
+[redaction]
+mode = "replace"                            # replace | mask | pseudonymize
+replacement = "[REDACTED]"
+mask_keep_last = 4
+
+[redaction.replacements]
+# email = "<EMAIL>"
+
+[custom]
+# words = ["ProjectX"]
+# patterns = ['\\binternal-[a-z]+\\b']
+```
+
+### `serve`
+
+```bash
+safestream serve                     # http://127.0.0.1:8000 (loopback only)
+safestream serve --port 9000 --config policy.toml --max-body 1048576
+```
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/redact \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "email bob@corp.io"}'
+# {"redacted": "email [REDACTED]", "total_detections": 1, "detections_by_type": {"email": 1}}
+```
+
+Endpoints: `GET /health`, `GET /version`, `GET /detectors`, `POST /redact`, `POST /scan`.
+Request bodies are never logged.
+
+### `mcp-serve`
+
+Exposes the tools `scan`, `redact`, `explain_detection`, `detectors` and `health` to an MCP
+client over stdio. Register it in your client's configuration as:
+
+```json
+{ "command": "safestream", "args": ["mcp-serve"] }
+```
+
+### Common options (`redact` and `detect`)
+
+| Option | Meaning |
+|---|---|
+| `--types a,b,c` | Only detect these entity types (default: all) |
+| `--config FILE` | Load a TOML policy file |
+| `--min-confidence X` | Drop detections scoring below `X` (default 0.5) |
+| `--custom-word W`, `--custom-regex R` | Always redact these (repeatable) |
+| `--no-entropy` | Turn off generic high-entropy secret detection |
+| `--ner`, `--onnx MODEL.onnx` | Enable an NER tier (needs its extra) |
+| `--encoding ENC` | Input/output encoding (default `utf-8`) |
+| `--workers N` | Parallel workers (directories, or one large file) |
+| `--memory-limit SIZE` | Stay within a memory budget, e.g. `256MiB` |
+| `--allow-network` | Turn off the network guard (see below) |
+| `--offline-hard MODE` | Linux only: kernel-enforced offline mode (`seccomp`, `netns`, `auto`) |
+
+Redaction options (`redact` only): `--mode {replace,mask,pseudonymize}`, `--replace TEXT`,
+`--replace-type TYPE=TEXT`, `--keep-last N`, `--mask-char C`, `--hmac-key KEY`.
+
+While `redact` or `detect` runs, an in-process guard blocks outbound (non-loopback) network
+connections by default. On Linux, `--offline-hard` adds a kernel-enforced block on top.
+
+### Exit status
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Runtime error (e.g. unreadable input, invalid config), or `detect --fail-on-detect` found something |
+| `2` | Invalid command-line usage (unknown option, missing argument) |
+| `3` | The run could not fit in `--memory-limit` |
+
+## Entity types
+
+| Group | Types |
+|---|---|
+| Personal data | `email`, `phone`, `credit_card`, `ssn`, `ipv4`, `ipv6`, `dob`, `id_number` |
+| Credentials | `aws_key`, `aws_secret`, `github_token`, `api_key`, `jwt`, `private_key`, `slack_token`, `slack_webhook`, `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`, `openai_key`, `anthropic_key`, `url_credentials` |
+| Generic secrets | `secret` (high-entropy strings with no known format) |
+| Names (needs `ner` or `onnx`) | `person`, `org`, `loc` |
+| Your own | `custom` (from `--custom-word` / `--custom-regex`) |
+
+## Python API
 
 ```python
-from safestream_redactor import Redactor, RedactionPolicy, EntityType
+from safestream_redactor import EntityType, RedactionPolicy, Redactor
 
 redactor = Redactor()
 redactor.redact("email bob@corp.io, ssn: 123-45-6789")
 # 'email [REDACTED], ssn: [REDACTED]'
 
-# per-type replacements
+# inspect without redacting
+[(d.entity_type.value, d.text) for d in redactor.detect("mail bob@corp.io from 10.0.0.1")]
+# [('email', 'bob@corp.io'), ('ipv4', '10.0.0.1')]
+
+# choose types and how they are rewritten
+Redactor(types=["email"]).redact("bob@corp.io 123-45-6789")
+# '[REDACTED] 123-45-6789'
 policy = RedactionPolicy(replacements={EntityType.EMAIL: "<EMAIL>"})
-Redactor(policy=policy).redact("write to bob@corp.io")   # 'write to <EMAIL>'
+Redactor(policy=policy).redact("write to bob@corp.io")
+# 'write to <EMAIL>'
+Redactor(policy=RedactionPolicy(mode="mask", mask_keep_last=4)).redact("card 4111 1111 1111 1111")
+# 'card ***************1111'
 
-# constant-memory file-to-file; the write is atomic, and the returned stats
-# carry per-type counts (content-free audit evidence)
-stats = Redactor().redact_file("huge.log", "huge_redacted.log")
-print(stats.summary())   # '3 detection(s): email=2, ssn=1'
+# your own words and patterns
+Redactor(custom_words=["ProjectX"], custom_patterns=[r"INT-\d+"]).redact("ProjectX ticket INT-42")
+# '[REDACTED] ticket [REDACTED]'
 
-# split one large file across cores; byte-identical to the sequential pass
-Redactor().redact_file("huge.log", "huge_redacted.log", workers=8)
+# file to file with constant memory; the output is written atomically
+stats = redactor.redact_file("huge.log", "huge.redacted.log")
+stats.summary()   # '2 detection(s): email=1, ssn=1'
+
+# split one large file across processes (same output as a single process)
+redactor.redact_file("huge.log", "huge.redacted.log", workers=8)
+
+# any iterable of text chunks (a socket, a generator, a file object)
+with open("app.log", newline="") as source:
+    for piece in redactor.redact_stream(source):
+        print(piece, end="")
 ```
 
-### REST API
+### Adding a detector from another package
 
-An optional, standard-library-only REST server wraps the same `Redactor` (no extra
-dependency, loopback-only by default, request bodies never logged):
+A package can add a detection tier by declaring an entry point; it is picked up
+automatically once installed (`Redactor(load_plugins=False)` turns this off):
 
-```bash
-safestream serve                       # http://127.0.0.1:8000
-curl -s -X POST http://127.0.0.1:8000/redact \
-  -H 'Content-Type: application/json' \
-  -d '{"text": "email bob@corp.io key AKIAIOSFODNN7EXAMPLE"}'
-# {"redacted": "email [REDACTED] key [REDACTED]", "total_detections": 2, ...}
+```toml
+[project.entry-points."safestream_redactor.detectors"]
+my_detector = "my_package.detectors:MyDetector"
 ```
 
-Endpoints: `GET /health`, `GET /version`, `GET /detectors`, `POST /redact`, `POST /scan`.
+A detector is any object with a `name` attribute and a `detect(text) -> list[Detection]` method.
 
-## Detection accuracy & limitations
+## Limitations
 
-SafeStream is tuned to favour **precision** on structured PII and credentials. Free-form
-names and addresses need the optional NER tier (`[ner]` extra); without it they are not
-detected. 100% recall and precision together are not achievable for free-text PII by any
-tool — treat this as high-recall for credentials and structured PII, and best-effort for
-free prose.
+Structured data (e-mails, cards, SSNs, keys, tokens) is detected with high precision.
+Names and street addresses in free prose are only detected with the `ner` or `onnx` extra,
+and even then on a best-effort basis. Review redacted output before sharing it where a miss
+would be costly.
 
-## Documentation
+## Links
 
-Full documentation — architecture diagrams (Mermaid & PlantUML), REST API reference,
-security model, benchmarks, and the research/comparison material — lives in the GitHub
-project:
-
-**https://github.com/MounishSenisetty/SafeStream-Redactor**
+- Source and full documentation: https://github.com/MounishSenisetty/SafeStream-Redactor
+- Issues: https://github.com/MounishSenisetty/SafeStream-Redactor/issues
+- Changelog: https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/CHANGELOG.md
 
 ## License
 
-MIT.
+MIT

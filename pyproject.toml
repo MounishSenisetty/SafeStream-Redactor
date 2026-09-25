@@ -87,22 +87,12 @@ path = "src/safestream_redactor/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/safestream_redactor"]
 
-# Explicit sdist manifest: the package, its test suite and exactly what the tests
-# read. Without it hatchling ships every tracked file (paper PDF, the 1.5 MB
-# RedactionBench parquet, PNGs, CI config): a 2.5 MB sdist for a 116 KB wheel.
+# The sdist carries only what pip needs to build and install the package: the
+# source (with its PyPI README) and the license; pyproject.toml, PKG-INFO and
+# .gitignore (hatchling reads it when pip builds the wheel from this sdist) are
+# always added. Tests, benchmarks, docs, datasets and CI files stay in the repo.
 [tool.hatch.build.targets.sdist]
-include = [
-  "/src",
-  "/tests",
-  "/benchmarks/**/*.py",
-  "/benchmarks/data/benign",
-  "/examples",
-  "/action.yml",
-  "/.pre-commit-hooks.yaml",
-  "/CHANGELOG.md",
-  "/README.md",
-  "/SECURITY.md",
-]
+include = ["/src", "/LICENSE"]
 
 [tool.pytest.ini_options]
 addopts = "-m 'not memory'"
