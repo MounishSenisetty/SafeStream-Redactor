@@ -39,6 +39,7 @@ python -m safestream_redactor --version
 |---|---|---|
 | `ner` | `pip install 'safestream-redactor[ner]'` then `python -m spacy download en_core_web_sm` | spaCy person / organisation / location detection (`--ner`) |
 | `onnx` | `pip install 'safestream-redactor[onnx]'` | On-device ONNX NER model (`--onnx MODEL.onnx --onnx-vocab VOCAB.json`); you supply the model |
+| `ui` | `pip install 'safestream-redactor[ui]'` | Local web playground (`safestream ui`, Streamlit) |
 
 An optional compiled (Rust) core gives the same output as the pure-Python pattern tier,
 faster; enable it with `Redactor(backend="native")`. Its wheel is not on PyPI yet, so build
@@ -59,7 +60,7 @@ pip uninstall safestream-redactor
 
 ## Command-line usage
 
-The package installs one command, `safestream`, with five subcommands:
+The package installs one command, `safestream`, with six subcommands:
 
 | Command | What it does |
 |---|---|
@@ -68,6 +69,7 @@ The package installs one command, `safestream`, with five subcommands:
 | `safestream init-config` | Print a documented starter policy file (TOML) |
 | `safestream serve` | Run a local REST API (standard library only) |
 | `safestream mcp-serve` | Run a local Model Context Protocol server over stdio |
+| `safestream ui` | Open the local web playground (needs the `ui` extra) |
 
 Run `safestream <command> --help` for the full option list.
 
@@ -177,6 +179,22 @@ client over stdio. Register it in your client's configuration as:
 ```json
 { "command": "safestream", "args": ["mcp-serve"] }
 ```
+
+### `ui`
+
+Opens an interactive playground in your browser (requires the `ui` extra):
+
+```bash
+pip install 'safestream-redactor[ui]'
+safestream ui                          # http://127.0.0.1:8501
+```
+
+Paste text or upload a `.txt`, `.log`, `.json` or `.csv` file of up to 5 MiB. **Detect**
+highlights findings by severity, with a table of types, confidence and `line:col`
+locations. **Redact** shows the original and sanitized text side by side (replace, mask,
+or keyed hash) and lets you download the result. The page listens on 127.0.0.1 only, with
+Streamlit usage statistics off and the offline network guard on. A banner confirms these
+settings, or warns when they are missing.
 
 ### Common options (`redact` and `detect`)
 

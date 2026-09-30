@@ -24,6 +24,7 @@ from typing import Any
 
 from safestream_redactor import __version__
 from safestream_redactor.entities import EntityType
+from safestream_redactor.locate import LineTracker
 from safestream_redactor.policy import RedactionPolicy
 from safestream_redactor.redactor import Redactor
 from safestream_redactor.report import RedactionStats
@@ -247,6 +248,20 @@ def _build_parser() -> argparse.ArgumentParser:
     mcp.add_argument("--config", help="TOML policy file used for every tool call")
     mcp.add_argument(
         "--enable-plugins", action="store_true", help="load third-party detector plugins"
+    )
+
+    ui = sub.add_parser(
+        "ui",
+        help="open the local web playground (Streamlit; needs the [ui] extra)",
+        description="Start the detection/redaction playground in your browser. Runs "
+        "Streamlit bound to loopback with usage telemetry off and the offline guard on.",
+    )
+    ui.add_argument(
+        "--host", default="127.0.0.1", help="bind address (default: 127.0.0.1, loopback)"
+    )
+    ui.add_argument("--port", type=int, default=8501, help="bind port (default: 8501)")
+    ui.add_argument(
+        "--headless", action="store_true", help="do not open a browser window automatically"
     )
     return parser
 
@@ -669,34 +684,6 @@ def _expand_inputs(paths: list[str]) -> Iterator[str]:
                 yield str(p)
 
 
-class _LineTracker:
-    """Map absolute character offsets in a stream to 1-based (line, column).
-
-    Fed segment by segment, in order, with the (sorted) offsets inside each, so
-    locating every finding costs one pass over the text — no need to hold the
-    input to compute positions after the fact.
-    """
-
-    def __init__(self) -> None:
-        self._line = 1
-        self._line_start = 0  # absolute offset of the current line's first char
-        self._pos = 0  # absolute offset scanned up to
-
-    def locate(self, segment: str, seg_offset: int, abs_offset: int) -> tuple[int, int]:
-        i = self._pos - seg_offset
-        stop = abs_offset - seg_offset
-        while (nl := segment.find("\n", i, stop)) != -1:
-            self._line += 1
-            self._line_start = seg_offset + nl + 1
-            i = nl + 1
-        self._pos = abs_offset
-        return self._line, abs_offset - self._line_start + 1
-
-    def finish(self, segment: str, seg_offset: int) -> None:
-        """Account for the rest of ``segment`` before the next one arrives."""
-        self.locate(segment, seg_offset, seg_offset + len(segment))
-
-
 def _cmd_detect(args: argparse.Namespace) -> int:
     redactor = _build_redactor(args)
     # validate the single-stream footprint; fail closed if it can't fit
@@ -717,7 +704,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     for path in _expand_inputs(args.input):
         offset = 0
         uri = path if path != "-" else "stdin"
-        lines = _LineTracker()
+        lines = LineTracker()
         for segment, detections in redactor.detect_stream(
             _input_chunks(path, redactor.chunk_size, encoding)
         ):
@@ -821,6 +808,18 @@ def _cmd_mcp_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_ui(args: argparse.Namespace) -> int:
+    from safestream_redactor.ui.launcher import launch
+
+    if not _is_loopback(args.host):
+        print(
+            f"safestream: warning: binding {args.host!r} exposes the playground (and "
+            "anything pasted into it) beyond this machine; prefer 127.0.0.1",
+            file=sys.stderr,
+        )
+    return launch(args.host, args.port, headless=args.headless)
+
+
 def _apply_offline_hard(mode: str | None) -> None:
     """Enable an opt-in kernel-enforced offline mode, warning on fallback.
 
@@ -887,6 +886,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_serve(args)
     if args.command == "mcp-serve":
         return _cmd_mcp_serve(args)
+    if args.command == "ui":
+        return _cmd_ui(args)
     if getattr(args, "offline_guard", True):
         from safestream_redactor import netguard
 
