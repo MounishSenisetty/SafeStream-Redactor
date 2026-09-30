@@ -13,6 +13,10 @@ none of which are Streamlit's defaults:
   200 MB in memory before the page can refuse them.
 * ``--client.toolbarMode minimal`` — hides the toolbar's "Deploy" button, which
   would publish the page to Streamlit Community Cloud.
+* ``--server.headless true`` — always. Outside headless mode Streamlit's first
+  run stops at an interactive "Email:" prompt before serving anything, which
+  looks like a hang. The launcher opens the browser itself instead, once the
+  server answers its health check.
 """
 
 from __future__ import annotations
@@ -20,6 +24,10 @@ from __future__ import annotations
 import importlib.util
 import subprocess
 import sys
+import threading
+import time
+import urllib.request
+import webbrowser
 from pathlib import Path
 
 from safestream_redactor.ui.core import MAX_INPUT_BYTES
@@ -38,9 +46,7 @@ def streamlit_available() -> bool:
     return importlib.util.find_spec("streamlit") is not None
 
 
-def build_command(
-    host: str = "127.0.0.1", port: int = 8501, *, headless: bool = False
-) -> list[str]:
+def build_command(host: str = "127.0.0.1", port: int = 8501) -> list[str]:
     """The ``streamlit run`` invocation for the playground."""
     return [
         sys.executable,
@@ -53,7 +59,7 @@ def build_command(
         "--server.port",
         str(port),
         "--server.headless",
-        "true" if headless else "false",
+        "true",
         "--server.maxUploadSize",
         str(MAX_UPLOAD_MB),
         "--browser.gatherUsageStats",
@@ -68,13 +74,40 @@ def build_command(
     ]
 
 
-def launch(host: str = "127.0.0.1", port: int = 8501, *, headless: bool = False) -> int:
+def browse_url(host: str, port: int) -> str:
+    """Where to point the browser: a wildcard bind is still reached via loopback."""
+    if host in ("0.0.0.0", "::", ""):
+        host = "127.0.0.1"
+    if ":" in host:  # IPv6 literal
+        host = f"[{host}]"
+    return f"http://{host}:{port}"
+
+
+def _open_when_ready(url: str, server: subprocess.Popen[bytes], timeout: float = 30.0) -> None:
+    """Open ``url`` in a browser once the server's health check answers."""
+    # a direct opener: the health check must not be routed through an HTTP proxy
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline and server.poll() is None:
+        try:
+            with opener.open(f"{url}/_stcore/health", timeout=1):
+                webbrowser.open(url)
+                return
+        except OSError:
+            time.sleep(0.25)
+
+
+def launch(host: str = "127.0.0.1", port: int = 8501, *, open_browser: bool = True) -> int:
     """Run the playground until interrupted. Returns the process exit status."""
     if not streamlit_available():
         print(f"safestream: error: {INSTALL_HINT}", file=sys.stderr)
         return 1
-    print(f"-- SafeStream web UI on http://{host}:{port} (Ctrl-C to stop)", file=sys.stderr)
+    url = browse_url(host, port)
+    print(f"-- SafeStream web UI on {url} (Ctrl-C to stop)", file=sys.stderr)
+    server = subprocess.Popen(build_command(host, port))
+    if open_browser:
+        threading.Thread(target=_open_when_ready, args=(url, server), daemon=True).start()
     try:
-        return subprocess.call(build_command(host, port, headless=headless))
-    except KeyboardInterrupt:  # Ctrl-C reaches the child too; exit quietly
-        return 0
+        return server.wait()
+    except KeyboardInterrupt:  # Ctrl-C reaches the child too; let it finish quietly
+        return server.wait()

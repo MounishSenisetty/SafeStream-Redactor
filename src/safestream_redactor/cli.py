@@ -817,7 +817,7 @@ def _cmd_ui(args: argparse.Namespace) -> int:
             "anything pasted into it) beyond this machine; prefer 127.0.0.1",
             file=sys.stderr,
         )
-    return launch(args.host, args.port, headless=args.headless)
+    return launch(args.host, args.port, open_browser=not args.headless)
 
 
 def _apply_offline_hard(mode: str | None) -> None:
