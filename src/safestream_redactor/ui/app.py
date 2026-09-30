@@ -445,6 +445,7 @@ def _large_output(name: str, state: dict[str, Any]) -> None:
             st.error(str(exc), icon="🚫")
             return
         state["saved"] = str(destination)
+        discard_workdir(state["workdir"])  # the output moved out; nothing left in it
         st.rerun()
 
 

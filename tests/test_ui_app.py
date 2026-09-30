@@ -190,6 +190,7 @@ def test_large_upload_is_processed_on_request_and_saved(app, large_upload, tmp_p
         assert AWS not in text and "bob@corp.example" not in text
         assert text.count("[REDACTED]") == 600
         assert "Saved to" in app.success[-1].value
+        assert not Path(workdir).exists()  # scratch folder removed once saved
     finally:
         for key, value in saved_config.items():
             st_config.set_option(key, value)
