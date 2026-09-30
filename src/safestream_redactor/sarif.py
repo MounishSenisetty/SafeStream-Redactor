@@ -38,6 +38,27 @@ class Finding:
     confidence: float
     detector: str
     uri: str = "input"
+    # 1-based position of ``start`` / ``end`` (``end`` exclusive, as SARIF's
+    # endColumn is). GitHub code scanning requires ``region.startLine`` to place
+    # an alert on a file, so the CLI always fills these in; they stay optional
+    # for callers that only have character offsets.
+    line: int | None = None
+    column: int | None = None
+    end_line: int | None = None
+    end_column: int | None = None
+
+
+def _region(f: Finding) -> dict[str, int]:
+    region = {"charOffset": f.start, "charLength": f.end - f.start}
+    for key, value in (
+        ("startLine", f.line),
+        ("startColumn", f.column),
+        ("endLine", f.end_line),
+        ("endColumn", f.end_column),
+    ):
+        if value is not None:
+            region[key] = value
+    return region
 
 
 def _rules(types: Iterable[EntityType]) -> list[dict[str, object]]:
@@ -84,10 +105,7 @@ def build_sarif(findings: Iterable[Finding], *, version: str) -> dict[str, objec
                     {
                         "physicalLocation": {
                             "artifactLocation": {"uri": f.uri},
-                            "region": {
-                                "charOffset": f.start,
-                                "charLength": f.end - f.start,
-                            },
+                            "region": _region(f),
                         }
                     }
                 ],
@@ -111,6 +129,9 @@ def build_sarif(findings: Iterable[Finding], *, version: str) -> dict[str, objec
                     }
                 },
                 "results": results,
+                # Python string offsets count code points; SARIF's default column
+                # unit is UTF-16 code units, which differs on astral characters.
+                "columnKind": "unicodeCodePoints",
             }
         ],
     }

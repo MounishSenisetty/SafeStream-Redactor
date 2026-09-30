@@ -26,7 +26,11 @@ class CustomDetector:
     ) -> None:
         flags = 0 if case_sensitive else re.IGNORECASE
         self._regexes: list[re.Pattern[str]] = []
-        words = [w for w in words if w]
+        # Longest first: regex alternation is leftmost-*first*, not longest, so
+        # with ``Jo|John`` the text "John" matched only "Jo" and "hn" leaked
+        # through unredacted. Sorting (and de-duplicating) makes a longer phrase
+        # always win over any word that is its prefix.
+        words = sorted({w for w in words if w}, key=lambda w: (-len(w), w))
         if words:
             joined = "|".join(re.escape(w) for w in words)
             self._regexes.append(re.compile(joined, flags))

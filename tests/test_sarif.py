@@ -76,3 +76,21 @@ def test_cli_detect_sarif_fail_on_detect(tmp_path) -> None:
     src = tmp_path / "in.env"
     src.write_text(f"aws key {SECRET}\n")
     assert main(["detect", str(src), "--sarif", "--fail-on-detect"]) == 1
+
+
+def test_cli_sarif_regions_carry_line_and_column(tmp_path, capsys) -> None:
+    # GitHub code scanning requires region.startLine to place an alert
+    src = tmp_path / "in.env"
+    src.write_text(f"# header\nexport AWS={SECRET}\n")
+    main(["detect", str(src), "--sarif"])
+    run = json.loads(capsys.readouterr().out)["runs"][0]
+    assert run["columnKind"] == "unicodeCodePoints"
+    region = run["results"][0]["locations"][0]["physicalLocation"]["region"]
+    assert region["startLine"] == 2 and region["startColumn"] == 12
+    assert region["endLine"] == 2 and region["endColumn"] == 12 + len(SECRET)
+
+
+def test_sarif_region_omits_unknown_lines() -> None:
+    doc = build_sarif([Finding(EntityType.EMAIL, 3, 8, 0.9, "deterministic")], version="1")
+    region = doc["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["region"]
+    assert region == {"charOffset": 3, "charLength": 5}

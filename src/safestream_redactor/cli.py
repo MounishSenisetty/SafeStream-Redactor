@@ -7,6 +7,7 @@ Examples::
     safestream redact secrets.env -o - --mode mask --keep-last 4
     cat input.txt | safestream redact - -o -
     safestream detect input.txt --json
+    safestream detect . --hide-text --fail-on-detect
 """
 
 from __future__ import annotations
@@ -17,9 +18,10 @@ import os
 import sys
 import time
 from collections.abc import Iterator
+from pathlib import Path
+from typing import Any
 
 from safestream_redactor import __version__
-from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from safestream_redactor.entities import EntityType
 from safestream_redactor.policy import RedactionPolicy
 from safestream_redactor.redactor import Redactor
@@ -181,10 +183,17 @@ def _build_parser() -> argparse.ArgumentParser:
     detect.add_argument(
         "input",
         nargs="+",
-        help="one or more input file paths, or '-' for stdin (accepts many files "
-        "so it works as a pre-commit/CI secret gate)",
+        help="one or more files or directories, or '-' for stdin (accepts many so it "
+        "works as a pre-commit/CI secret gate; directories are walked recursively, "
+        "skipping symlinks, .git/.hg/.svn, and binary files)",
     )
     detect.add_argument("--json", action="store_true", help="one JSON object per detection")
+    detect.add_argument(
+        "--hide-text",
+        action="store_true",
+        help="never print the matched text, only its type, location, and confidence "
+        "(use in CI and hooks so a found secret is not copied into build logs)",
+    )
     detect.add_argument(
         "--sarif",
         action="store_true",
@@ -243,6 +252,10 @@ use_onnx = false                            # local ONNX NER tier ([onnx] extra,
 # onnx_labels = "labels.json"               # optional id->tag (default: CoNLL IOB2)
 # onnx_min_score = 0.5
 use_entropy = true                          # high-entropy secret detection
+# use_gazetteer = false                     # dictionary-backed person-name tier (no deps)
+# use_ensemble = false                      # semantic PERSON/ORG ensemble (no deps)
+# semantic_policy = "strict"                # ensemble policy: strict | high_recall
+# backend = "python"                        # python | native | auto ([native] extra)
 
 [redaction]
 mode = "replace"                            # replace | mask | pseudonymize
@@ -280,105 +293,87 @@ def _cmd_init_config(args: argparse.Namespace) -> int:
         return 0
     if os.path.exists(args.output) and not args.force:
         raise SystemExit(f"{args.output} already exists (pass --force to overwrite)")
-    with open(args.output, "w", encoding="utf-8") as f:
-        f.write(_STARTER_CONFIG)
+    _atomic_write_stream(args.output, iter([_STARTER_CONFIG]), "utf-8")
     print(f"-- wrote starter policy to {args.output}", file=sys.stderr)
     return 0
 
 
 def _build_redactor(args: argparse.Namespace) -> Redactor:
+    """Build the run's :class:`Redactor`: config file first, CLI flags on top.
+
+    Both layers are merged into one set of constructor arguments and the
+    redactor is built exactly once, so every flag means the same thing with or
+    without ``--config`` and every constructor-side check (entity types, policy
+    and streaming validation, the overlap-safety guard) runs on the final
+    configuration rather than an intermediate one.
+    """
+    kwargs: dict[str, Any] = {}
+    policy_kwargs: dict[str, Any] = {}
     if args.config:
-        from safestream_redactor.config import load_config, policy_from_config, redactor_from_config
+        from safestream_redactor.config import (
+            load_config,
+            policy_kwargs_from_config,
+            redactor_kwargs_from_config,
+        )
 
-        redactor = redactor_from_config(args.config)
-        policy = policy_from_config(load_config(args.config))
-    else:
-        redactor = None
-        policy = RedactionPolicy()
+        data = load_config(args.config)
+        policy_kwargs = policy_kwargs_from_config(data)
+        kwargs = redactor_kwargs_from_config(data, base_dir=os.path.dirname(args.config))
 
-    # CLI flags override the config file
-    if getattr(args, "mode", None):
-        policy.mode = policy.mode.__class__(args.mode)
-    if getattr(args, "replace", None) is not None:
-        policy.replacement = args.replace
-    if getattr(args, "keep_last", None) is not None:
-        policy.mask_keep_last = args.keep_last
-    if getattr(args, "mask_char", None) is not None:
-        policy.mask_char = args.mask_char
-    if getattr(args, "hmac_key", None) is not None:
-        policy.hmac_key = args.hmac_key.encode()
+    # policy flags (redact only; `detect` has none of these)
+    for flag, key in (
+        ("mode", "mode"),
+        ("replace", "replacement"),
+        ("keep_last", "mask_keep_last"),
+        ("mask_char", "mask_char"),
+        ("hmac_key", "hmac_key"),
+    ):
+        value = getattr(args, flag, None)
+        if value is not None:
+            policy_kwargs[key] = value
+    replacements = dict(policy_kwargs.get("replacements", {}))
     for spec in getattr(args, "replace_type", []):
-        type_name, _, replacement = spec.partition("=")
-        if not _:
+        type_name, sep, replacement = spec.partition("=")
+        if not sep:
             raise SystemExit(f"--replace-type expects TYPE=TEXT, got {spec!r}")
-        policy.replacements[EntityType.from_name(type_name)] = replacement
-    if policy.mode.value == "pseudonymize" and not policy.hmac_key:
+        replacements[EntityType.from_name(type_name)] = replacement
+    if replacements:
+        policy_kwargs["replacements"] = replacements
+    if policy_kwargs.get("mode") == "pseudonymize" and not policy_kwargs.get("hmac_key"):
         raise SystemExit("--mode pseudonymize requires --hmac-key")
     if args.onnx and not args.onnx_vocab:
         raise SystemExit("--onnx requires --onnx-vocab (a JSON token->id vocab)")
 
-    if redactor is None:
-        types = args.types.split(",") if args.types else None
-        return Redactor(
-            types=types,
-            policy=policy,
-            min_confidence=args.min_confidence if args.min_confidence is not None else 0.5,
-            custom_words=args.custom_word,
-            custom_patterns=args.custom_regex,
-            use_ner=args.ner,
-            use_onnx=bool(args.onnx),
+    # detection / streaming flags: scalars override the config, custom words and
+    # patterns add to it, and boolean switches only ever turn their tier on
+    # (--ner, --onnx) or off (--no-entropy) relative to the config
+    if args.types:
+        kwargs["types"] = args.types.split(",")
+    if args.min_confidence is not None:
+        kwargs["min_confidence"] = args.min_confidence
+    if args.custom_word:
+        kwargs["custom_words"] = [*kwargs.get("custom_words", ()), *args.custom_word]
+    if args.custom_regex:
+        kwargs["custom_patterns"] = [*kwargs.get("custom_patterns", ()), *args.custom_regex]
+    if args.ner:
+        kwargs["use_ner"] = True
+    if args.onnx:
+        kwargs.update(
+            use_onnx=True,
             onnx_model=args.onnx,
             onnx_vocab=args.onnx_vocab,
             onnx_labels=args.onnx_labels,
             onnx_min_score=args.onnx_min_score,
-            use_entropy=args.entropy,
-            chunk_size=args.chunk_size or DEFAULT_CHUNK_SIZE,
-            overlap=args.overlap if args.overlap is not None else DEFAULT_OVERLAP,
-            allow_unsafe_overlap=args.allow_unsafe_overlap,
         )
-
-    # config file provided: overlay any explicitly passed flags
-    redactor.policy = policy
-    if args.types:
-        from safestream_redactor.detectors.deterministic import DeterministicDetector
-
-        redactor._detectors[0] = DeterministicDetector(
-            [EntityType.from_name(t) for t in args.types.split(",")]
-        )
-    if args.min_confidence is not None:
-        redactor.min_confidence = args.min_confidence
     if not args.entropy:
-        # Match the constructor path: use_entropy gates BOTH the base entropy
-        # tier and the compound-secret tier, so remove them together.
-        redactor._detectors = [
-            d for d in redactor._detectors if d.name not in ("entropy", "compound_secret")
-        ]
-    if args.custom_word or args.custom_regex:
-        from safestream_redactor.detectors.custom import CustomDetector
-
-        redactor._detectors.insert(1, CustomDetector(args.custom_word, args.custom_regex))
-    if args.onnx and not any(d.name == "onnx" for d in redactor._detectors):
-        from safestream_redactor.detectors.onnx_ner import OnnxPiiDetector
-
-        redactor._detectors.append(
-            OnnxPiiDetector.from_files(
-                args.onnx, args.onnx_vocab, args.onnx_labels, min_score=args.onnx_min_score
-            )
-        )
-    if args.chunk_size:
-        redactor.chunk_size = args.chunk_size
+        kwargs["use_entropy"] = False
+    if args.chunk_size is not None:
+        kwargs["chunk_size"] = args.chunk_size
     if args.overlap is not None:
-        redactor.overlap = args.overlap
-    # Overriding overlap or the detector set after construction can invalidate the
-    # boundary-safety guard that ran inside redactor_from_config, so re-check it
-    # here (fail-closed). Honour either the CLI flag or the config's opt-in.
-    from safestream_redactor.config import load_config as _load_config
-
-    cfg_streaming = _load_config(args.config).get("streaming", {})
-    redactor.enforce_overlap_safety(
-        args.allow_unsafe_overlap or bool(cfg_streaming.get("allow_unsafe_overlap", False))
-    )
-    return redactor
+        kwargs["overlap"] = args.overlap
+    if args.allow_unsafe_overlap:
+        kwargs["allow_unsafe_overlap"] = True
+    return Redactor(policy=RedactionPolicy(**policy_kwargs), **kwargs)
 
 
 def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
@@ -446,26 +441,15 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
 
 
 def _atomic_write_stream(path: str, pieces: Iterator[str], encoding: str) -> None:
-    """Write streamed output to a temp file, then move it into place atomically.
+    """Stream output into ``path`` atomically (same durability as ``redact_file``).
 
-    Matches :meth:`Redactor.redact_file` durability for the stdin->file path: a
-    crash mid-stream can't leave a truncated file that looks fully redacted.
+    A crash mid-stream can't leave a truncated file that looks fully redacted.
     """
-    import contextlib
-    import tempfile
+    from safestream_redactor._atomic import atomic_output
 
-    fd, tmp = tempfile.mkstemp(
-        dir=os.path.dirname(path) or ".", prefix=os.path.basename(path) + "."
-    )
-    try:
-        with open(fd, "w", encoding=encoding, newline="") as out:
-            for piece in pieces:
-                out.write(piece)
-        os.replace(tmp, path)
-    except BaseException:
-        with contextlib.suppress(OSError):
-            os.unlink(tmp)
-        raise
+    with atomic_output(path, encoding=encoding) as out:
+        for piece in pieces:
+            out.write(piece)
 
 
 def _write_stdout(pieces: Iterator[str], encoding: str) -> None:
@@ -608,60 +592,136 @@ def _redact_directory(args: argparse.Namespace, redactor: Redactor) -> int:
     return 0
 
 
+# Directories that hold version-control internals, never tracked content: a
+# `detect .` in a repo would otherwise scan every packed object in .git/.
+_SKIP_DIRS = frozenset({".git", ".hg", ".svn"})
+# Bytes sniffed to classify a file found by directory traversal as binary.
+_BINARY_SNIFF = 8192
+
+
+def _is_binary(path: Path) -> bool:
+    """A NUL byte in the first block marks a binary file (the heuristic git uses)."""
+    try:
+        with path.open("rb") as f:
+            return b"\0" in f.read(_BINARY_SNIFF)
+    except OSError:
+        return False  # unreadable: let the scan itself report the error
+
+
+def _expand_inputs(paths: list[str]) -> Iterator[str]:
+    """Expand directory arguments into the files beneath them, in sorted order.
+
+    Files and ``-`` pass through untouched (an explicitly named file is always
+    scanned). Traversal mirrors :func:`~safestream_redactor.scheduler.redact_tree`
+    — symlinks are skipped so a link cannot pull an out-of-tree file into the
+    scan — and additionally skips VCS metadata directories and binary files,
+    which hold no reviewable text and only produce decode noise.
+    """
+    for path in paths:
+        if path == "-" or not os.path.isdir(path):
+            yield path
+            continue
+        root = Path(path)
+        for p in sorted(root.rglob("*")):
+            if p.is_symlink() or not p.is_file():
+                continue
+            if _SKIP_DIRS.intersection(p.relative_to(root).parts[:-1]):
+                continue
+            if not _is_binary(p):
+                yield str(p)
+
+
+class _LineTracker:
+    """Map absolute character offsets in a stream to 1-based (line, column).
+
+    Fed segment by segment, in order, with the (sorted) offsets inside each, so
+    locating every finding costs one pass over the text — no need to hold the
+    input to compute positions after the fact.
+    """
+
+    def __init__(self) -> None:
+        self._line = 1
+        self._line_start = 0  # absolute offset of the current line's first char
+        self._pos = 0  # absolute offset scanned up to
+
+    def locate(self, segment: str, seg_offset: int, abs_offset: int) -> tuple[int, int]:
+        i = self._pos - seg_offset
+        stop = abs_offset - seg_offset
+        while (nl := segment.find("\n", i, stop)) != -1:
+            self._line += 1
+            self._line_start = seg_offset + nl + 1
+            i = nl + 1
+        self._pos = abs_offset
+        return self._line, abs_offset - self._line_start + 1
+
+    def finish(self, segment: str, seg_offset: int) -> None:
+        """Account for the rest of ``segment`` before the next one arrives."""
+        self.locate(segment, seg_offset, seg_offset + len(segment))
+
+
 def _cmd_detect(args: argparse.Namespace) -> int:
     redactor = _build_redactor(args)
-    _plan_budget(
-        args, redactor
-    )  # validate the single-stream footprint; fail closed if it can't fit
+    # validate the single-stream footprint; fail closed if it can't fit
+    _plan_budget(args, redactor)
     sarif = getattr(args, "sarif", False)
+    show_text = not getattr(args, "hide_text", False)
     findings = []
     if sarif:
         from safestream_redactor.sarif import Finding
 
     count = 0
-    # `detect` accepts one or more inputs; each is scanned independently and its
-    # findings carry that file's URI. SARIF findings accumulate into one report.
-    inputs = args.input if isinstance(args.input, list) else [args.input]
+    # `detect` accepts one or more inputs (files, directories, or '-'); each file
+    # is scanned independently and its findings carry that file's path. SARIF
+    # findings accumulate into one report.
     encoding = getattr(args, "encoding", "utf-8")
-    for path in inputs:
+    for path in _expand_inputs(args.input):
         offset = 0
         uri = path if path != "-" else "stdin"
+        lines = _LineTracker()
         for segment, detections in redactor.detect_stream(
             _input_chunks(path, redactor.chunk_size, encoding)
         ):
             for det in detections:
                 count += 1
+                start, end = offset + det.start, offset + det.end
+                line, col = lines.locate(segment, offset, start)
                 if sarif:
+                    end_line, end_col = lines.locate(segment, offset, end)
                     findings.append(
                         Finding(
                             det.entity_type,
-                            offset + det.start,
-                            offset + det.end,
+                            start,
+                            end,
                             det.confidence,
                             det.source,
                             uri=uri,
+                            line=line,
+                            column=col,
+                            end_line=end_line,
+                            end_column=end_col,
                         )
                     )
                 elif args.json:
-                    print(
-                        json.dumps(
-                            {
-                                "file": uri,
-                                "type": det.entity_type.value,
-                                "start": offset + det.start,
-                                "end": offset + det.end,
-                                "text": det.text,
-                                "confidence": round(det.confidence, 3),
-                                "source": det.source,
-                            }
-                        )
-                    )
+                    record: dict[str, object] = {
+                        "file": uri,
+                        "type": det.entity_type.value,
+                        "start": start,
+                        "end": end,
+                        "line": line,
+                        "column": col,
+                    }
+                    if show_text:
+                        record["text"] = det.text
+                    record["confidence"] = round(det.confidence, 3)
+                    record["source"] = det.source
+                    print(json.dumps(record))
                 else:
-                    prefix = f"{uri}: " if len(inputs) > 1 else ""
+                    shown = f"  {det.text!r}" if show_text else ""
                     print(
-                        f"{prefix}{det.entity_type.value:>13}  "
-                        f"conf={det.confidence:.2f}  {det.text!r}"
+                        f"{uri}:{line}:{col}: {det.entity_type.value}  "
+                        f"conf={det.confidence:.2f}{shown}"
                     )
+            lines.finish(segment, offset)
             offset += len(segment)
     if sarif:
         from safestream_redactor.sarif import build_sarif
@@ -674,6 +734,17 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _is_loopback(host: str) -> bool:
+    import ipaddress
+
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False  # a hostname other than localhost: assume reachable
+
+
 def _cmd_serve(args: argparse.Namespace) -> int:
     from safestream_redactor.api import DEFAULT_MAX_BODY_BYTES, serve
 
@@ -684,6 +755,14 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     else:
         redactor = Redactor()
     max_body = args.max_body if args.max_body is not None else DEFAULT_MAX_BODY_BYTES
+    if not _is_loopback(args.host):
+        print(
+            f"safestream: warning: binding {args.host!r} exposes an unauthenticated "
+            "redaction API beyond this machine; anyone who can reach the port can submit "
+            "text (and read /redact results). Prefer 127.0.0.1 behind an authenticating "
+            "proxy.",
+            file=sys.stderr,
+        )
     print(
         f"-- safestream REST API on http://{args.host}:{args.port} "
         f"(tiers: {', '.join(redactor.detector_names)})",

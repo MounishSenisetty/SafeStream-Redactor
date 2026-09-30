@@ -47,6 +47,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import IO, TYPE_CHECKING
 
+from safestream_redactor._atomic import atomic_output_bytes
 from safestream_redactor.entities import Detection
 from safestream_redactor.report import RedactionStats
 
@@ -486,23 +487,11 @@ def redact_file_parallel(
                 return sequential("seam")
 
         stats = RedactionStats()
-        fd, tmp_out = tempfile.mkstemp(
-            dir=os.path.dirname(out_path) or ".", prefix=os.path.basename(out_path) + "."
-        )
-        try:
-            with open(fd, "wb") as out:
-                for res in results:
-                    with open(res.part_path, "rb") as part:
-                        shutil.copyfileobj(part, out, 1 << 20)
-                    stats.merge(res.stats)
-            from safestream_redactor.redactor import _match_destination_mode
-
-            _match_destination_mode(tmp_out, out_path)
-            os.replace(tmp_out, out_path)
-        except BaseException:
-            with contextlib.suppress(OSError):
-                os.unlink(tmp_out)
-            raise
+        with atomic_output_bytes(out_path) as out:
+            for res in results:
+                with open(res.part_path, "rb") as part:
+                    shutil.copyfileobj(part, out, 1 << 20)
+                stats.merge(res.stats)
         return ParallelOutcome(stats, ranges=n_ranges)
     finally:
         shutil.rmtree(part_dir, ignore_errors=True)

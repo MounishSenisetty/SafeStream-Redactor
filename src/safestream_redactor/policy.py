@@ -34,9 +34,12 @@ class RedactionPolicy:
     mode: RedactionMode = RedactionMode.REPLACE
     replacement: str = "[REDACTED]"
     replacements: dict[EntityType, str] = field(default_factory=dict)
+    # Mask mode: trailing characters left visible. Capped at half the entity's
+    # length when rendering, so a short value is never shown in full.
     mask_keep_last: int = 4
     mask_char: str = "*"
-    hmac_key: bytes | None = None
+    # ``str`` keys are accepted and UTF-8 encoded (a TOML/CLI key is text).
+    hmac_key: bytes | str | None = None
     # Hex digits kept from the HMAC in pseudonymize mode. 16 hex = 64 bits,
     # which pushes the birthday-collision point past ~4 billion distinct
     # values; the old 10-hex (40-bit) default collided around ~1 million,
@@ -46,6 +49,12 @@ class RedactionPolicy:
     def __post_init__(self) -> None:
         if isinstance(self.mode, str):
             self.mode = RedactionMode(self.mode)
+        if isinstance(self.hmac_key, str):
+            self.hmac_key = self.hmac_key.encode("utf-8")
+        if not self.mask_char:
+            # an empty mask char would delete the masked span instead of hiding
+            # it, silently changing the output length and shape
+            raise ValueError("mask_char must be a non-empty string")
         if self.mode is RedactionMode.PSEUDONYMIZE and not self.hmac_key:
             raise ValueError("pseudonymize mode requires an hmac_key")
         if not 8 <= self.pseudonym_length <= 64:
@@ -57,11 +66,15 @@ class RedactionPolicy:
         if override is not None:
             return override
         if self.mode is RedactionMode.MASK:
-            keep = max(0, self.mask_keep_last)
-            visible = detection.text[-keep:] if keep else ""
-            return self.mask_char * max(0, len(detection.text) - keep) + visible
+            n = len(detection.text)
+            # Never reveal more than half the value: with a fixed keep_last a
+            # short entity (a 3-letter name, a 4-digit PIN) would otherwise be
+            # rendered entirely unmasked — a redaction that redacts nothing.
+            keep = min(max(0, self.mask_keep_last), n // 2)
+            visible = detection.text[n - keep :] if keep else ""
+            return self.mask_char * (n - keep) + visible
         if self.mode is RedactionMode.PSEUDONYMIZE:
-            assert self.hmac_key is not None
+            assert isinstance(self.hmac_key, bytes)
             digest = hmac.new(self.hmac_key, detection.text.encode(), hashlib.sha256)
             token = digest.hexdigest()[: self.pseudonym_length]
             return f"<{detection.entity_type.value.upper()}_{token}>"

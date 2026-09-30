@@ -15,6 +15,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from safestream_redactor._atomic import atomic_output
 from safestream_redactor.entities import Detection
 
 
@@ -79,6 +80,7 @@ def build_report(
 
 
 def write_report(path: str, report: dict[str, object]) -> None:
-    with open(path, "w", encoding="utf-8") as f:
+    """Write ``report`` as JSON, atomically: a filed report is never truncated."""
+    with atomic_output(path) as f:
         json.dump(report, f, indent=2)
         f.write("\n")

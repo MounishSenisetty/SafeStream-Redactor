@@ -95,7 +95,24 @@ def test_missing_input_file_errors(capsys, tmp_path):
     assert "error" in capsys.readouterr().err
 
 
-def test_memory_limit_generous_admits(sample, tmp_path, capsys):
+@pytest.fixture
+def no_kernel_limit(monkeypatch):
+    """Keep --memory-limit from capping the pytest process itself.
+
+    The real RLIMIT_AS is irreversible for a non-root process, so in-process
+    CLI tests exercise admission control only; tests/test_memory_enforcement.py
+    covers the kernel cap inside forked children.
+    """
+    import safestream_redactor.memory_budget as mb
+
+    monkeypatch.setattr(
+        mb,
+        "enforce_address_space_limit",
+        lambda _growth: mb.AddressSpaceLimit(False, "none", None, "stubbed in tests"),
+    )
+
+
+def test_memory_limit_generous_admits(sample, tmp_path, capsys, no_kernel_limit):
     out = tmp_path / "out.txt"
     assert main(["redact", str(sample), "-o", str(out), "--memory-limit", "256MB"]) == 0
     assert "memory budget" in capsys.readouterr().err
@@ -108,7 +125,7 @@ def test_memory_limit_fail_closed_exit_3(sample, capsys):
     assert "resource-exhaustion" in capsys.readouterr().err
 
 
-def test_memory_limit_caps_workers(sample, tmp_path, capsys):
+def test_memory_limit_caps_workers(sample, tmp_path, capsys, no_kernel_limit):
     out = tmp_path / "out.txt"
     # Ask for many workers under a tight budget; the run still succeeds because
     # the budget silently caps concurrency rather than exceeding the limit.
@@ -149,3 +166,140 @@ def test_constructor_use_entropy_false_disables_both_tiers():
     # sanity: they are present when entropy is enabled (the default)
     on = Redactor(use_entropy=True).detector_names
     assert "entropy" in on and "compound_secret" in on
+
+
+# --------------------------------------------------------------------------
+# detect: log-safe output, file:line:col locations, directory inputs
+# --------------------------------------------------------------------------
+
+AWS = "AKIAIOSFODNN7EXAMPLE"
+
+
+def test_hide_text_keeps_secrets_out_of_output(tmp_path, capsys):
+    # The pre-commit hook and GitHub Action promise never to print the secret;
+    # plain `detect` output (what CI logs capture) used to include it verbatim.
+    src = tmp_path / "leak.env"
+    src.write_text(f"key = {AWS}\nmail bob@x.io\n")
+    for extra in ([], ["--json"]):
+        assert main(["detect", str(src), "--hide-text", "--fail-on-detect", *extra]) == 1
+        captured = capsys.readouterr()
+        assert AWS not in captured.out + captured.err
+        assert "bob@x.io" not in captured.out + captured.err
+        assert "aws_key" in captured.out
+
+
+def test_detect_reports_line_and_column(tmp_path, capsys):
+    src = tmp_path / "f.txt"
+    src.write_bytes(b"first line\r\n  mail bob@x.io\nkey " + AWS.encode() + b"\n")
+    out = run(capsys, "detect", src)
+    assert f"{src}:2:8: email" in out
+    assert f"{src}:3:5: aws_key" in out
+    records = [json.loads(line) for line in run(capsys, "detect", src, "--json").splitlines()]
+    assert [(r["line"], r["column"]) for r in records] == [(2, 8), (3, 5)]
+
+
+def test_line_numbers_survive_chunk_boundaries(tmp_path, capsys):
+    # a small window (still wider than every entity here) splits the input into
+    # ~20 segments; positions carried across them must still be exact
+    lines = [f"filler line {i}" for i in range(40)]
+    lines[5] = "  contact bob@x.io"
+    lines[33] = "mail al@y.io"
+    src = tmp_path / "f.txt"
+    src.write_text("\n".join(lines) + "\n")
+    argv = ["detect", src, "--chunk-size", "16", "--overlap", "32", "--allow-unsafe-overlap"]
+    out = run(capsys, *argv)
+    assert f"{src}:6:11: email" in out
+    assert f"{src}:34:6: email" in out
+
+
+def test_detect_walks_directories(tmp_path, capsys):
+    root = tmp_path / "repo"
+    (root / "src").mkdir(parents=True)
+    (root / "src" / "cfg.env").write_text(f"key = {AWS}\n")
+    (root / "clean.txt").write_text("nothing here\n")
+    # VCS internals and binary files are skipped when found by traversal
+    (root / ".git").mkdir()
+    (root / ".git" / "config").write_text("mail bob@x.io\n")
+    (root / "blob.bin").write_bytes(b"\x00\x01 mail bob@x.io")
+    assert main(["detect", str(root), "--json", "--fail-on-detect"]) == 1
+    files = {json.loads(line)["file"] for line in capsys.readouterr().out.splitlines()}
+    assert files == {str(root / "src" / "cfg.env")}
+
+
+def test_explicitly_named_binary_file_is_still_scanned(tmp_path, capsys):
+    blob = tmp_path / "blob.bin"
+    blob.write_bytes(b"\x00\x01 mail bob@x.io")
+    assert main(["detect", str(blob), "--fail-on-detect"]) == 1
+    capsys.readouterr()
+
+
+@pytest.mark.skipif(not hasattr(__import__("os"), "symlink"), reason="needs symlinks")
+def test_detect_directory_walk_skips_symlinks(tmp_path, capsys):
+    outside = tmp_path / "outside.txt"
+    outside.write_text("mail bob@x.io\n")
+    root = tmp_path / "repo"
+    root.mkdir()
+    try:
+        (root / "link.txt").symlink_to(outside)
+    except OSError:
+        pytest.skip("symlinks not permitted here")
+    assert main(["detect", str(root), "--fail-on-detect"]) == 0
+    capsys.readouterr()
+
+
+def test_zero_chunk_size_flag_is_an_error_not_an_empty_output(sample, tmp_path, capsys):
+    out = tmp_path / "out.txt"
+    assert main(["redact", str(sample), "-o", str(out), "--chunk-size", "0"]) == 1
+    assert "chunk_size must be a positive integer" in capsys.readouterr().err
+    assert not out.exists()
+
+
+@pytest.mark.parametrize(
+    ("host", "loopback"),
+    [("127.0.0.1", True), ("::1", True), ("localhost", True), ("0.0.0.0", False)],
+)
+def test_serve_warns_when_not_loopback(monkeypatch, capsys, host, loopback):
+    monkeypatch.setattr("safestream_redactor.api.serve", lambda *a, **k: None)
+    assert main(["serve", "--host", host, "--port", "0"]) == 0
+    assert ("unauthenticated" in capsys.readouterr().err) is not loopback
+
+
+def test_flags_merge_over_config_into_one_construction(tmp_path, monkeypatch):
+    # The optional tiers need spaCy/onnxruntime, so capture the constructor
+    # arguments instead: this is the contract (config first, flags on top).
+    from safestream_redactor import cli
+
+    captured = {}
+
+    class _Spy:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    cfg = tmp_path / "p.toml"
+    cfg.write_text('[custom]\npatterns = ["cfg-\\\\d+"]\n[detection]\nuse_ner = false\n')
+    monkeypatch.setattr(cli, "Redactor", _Spy)
+    args = cli._build_parser().parse_args(
+        [
+            "redact", "in", "-o", "-", "--config", str(cfg),
+            "--custom-regex", "cli-\\d+", "--ner",
+            "--onnx", "m.onnx", "--onnx-vocab", "v.json", "--onnx-min-score", "0.7",
+        ]
+    )  # fmt: skip
+    cli._build_redactor(args)
+    assert captured["custom_patterns"] == ["cfg-\\d+", "cli-\\d+"]
+    assert captured["use_ner"] is True
+    assert captured["use_onnx"] is True
+    assert (captured["onnx_model"], captured["onnx_vocab"]) == ("m.onnx", "v.json")
+    assert captured["onnx_min_score"] == 0.7
+
+
+@pytest.mark.parametrize(
+    ("argv", "message"),
+    [
+        (["--replace-type", "email"], "TYPE=TEXT"),
+        (["--onnx", "m.onnx"], "--onnx-vocab"),
+    ],
+)
+def test_malformed_flags_exit_with_a_message(sample, argv, message):
+    with pytest.raises(SystemExit, match=message):
+        main(["redact", str(sample), "-o", "-", *argv])
