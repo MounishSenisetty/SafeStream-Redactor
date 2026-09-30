@@ -16,7 +16,9 @@ tier; overlaps are resolved most-specific/highest-confidence wins.
 | 4. Contextual | `detectors/contextual.py` | Nudges confidence from surrounding trigger words; promotes trigger-gated spans (bare SSN next to "ssn:"). |
 
 Custom words/regexes (`detectors/custom.py`) and third-party plugins
-(entry-point group `safestream_redactor.detectors`) plug in alongside these.
+(entry-point group `safestream_redactor.detectors`, loaded only when enabled with
+`load_plugins=True` / `--enable-plugins` / `[plugins] enabled = true`) plug in
+alongside these.
 
 ### The optional ONNX NER tier
 

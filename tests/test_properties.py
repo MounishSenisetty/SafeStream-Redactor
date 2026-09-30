@@ -183,3 +183,40 @@ def test_resolve_overlaps_tiebreak_is_deterministic():
     right = Detection(2, 7, "bbbbb", EntityType.CUSTOM, 0.7)
     assert resolve_overlaps([right, left]) == [left]
     assert resolve_overlaps([left, right]) == [left]
+
+
+@settings(max_examples=200, derandomize=True, deadline=None)
+@given(
+    text=st.text(alphabet="ab\n\r", max_size=60),
+    cuts=st.lists(st.integers(min_value=0, max_value=60), max_size=6),
+    picks=st.lists(st.integers(min_value=0, max_value=60), max_size=8),
+)
+def test_line_tracker_matches_naive_positions(text, cuts, picks):
+    # For any text, any segmentation, and any sorted offsets, the streaming
+    # (line, column) must equal the one computed over the whole text at once.
+    from safestream_redactor.cli import _LineTracker
+
+    bounds = sorted({0, len(text), *(c for c in cuts if c <= len(text))})
+    offsets = sorted({p for p in picks if p < len(text)})
+    tracker = _LineTracker()
+    got = []
+    for seg_start, seg_end in itertools.pairwise(bounds):
+        segment = text[seg_start:seg_end]
+        for off in offsets:
+            if seg_start <= off < seg_end:
+                got.append(tracker.locate(segment, seg_start, off))
+        tracker.finish(segment, seg_start)
+    naive = [(text.count("\n", 0, o) + 1, o - (text.rfind("\n", 0, o) + 1) + 1) for o in offsets]
+    assert got == naive
+
+
+@settings(max_examples=200, derandomize=True, deadline=None)
+@given(value=st.text(min_size=1, max_size=30), keep=st.integers(min_value=-2, max_value=40))
+def test_mask_never_reveals_more_than_half(value, keep):
+    from safestream_redactor.policy import RedactionPolicy
+
+    det = Detection(0, len(value), value, EntityType.CUSTOM, 1.0)
+    out = RedactionPolicy(mode="mask", mask_keep_last=keep).render(det)
+    assert len(out) == len(value)  # shape preserved
+    visible = min(max(0, keep), len(value) // 2)
+    assert out == "*" * (len(value) - visible) + value[len(value) - visible :]

@@ -80,10 +80,89 @@ def test_plugin_constructor_failure_is_skipped_with_warning(monkeypatch, caplog)
     assert any("failed to load" in r.getMessage() for r in caplog.records)
 
 
-def test_redactor_uses_plugins(monkeypatch):
+def test_redactor_uses_plugins_when_enabled(monkeypatch):
     monkeypatch.setattr(registry, "entry_points", lambda group: [_FakeEntryPoint(_PluginDetector)])
-    out = Redactor().redact("launch code TOPSECRET now")
+    out = Redactor(load_plugins=True).redact("launch code TOPSECRET now")
     assert out == "launch code [REDACTED] now"
+
+
+class _MustNotLoad:
+    name = "evil"
+
+    def load(self):  # pragma: no cover - the assertion is that this never runs
+        raise AssertionError("plugin code was imported although loading is off")
+
+
+def test_plugins_are_not_loaded_by_default(monkeypatch, caplog):
+    # Installing a package must not inject code into every redaction run. The
+    # skip warning reads entry-point metadata only; the plugin is never imported.
+    monkeypatch.setattr(registry, "entry_points", lambda group: [_MustNotLoad()])
+    monkeypatch.setattr(registry, "_unloaded_checked", False)
+    with caplog.at_level("WARNING", logger="safestream_redactor"):
+        assert Redactor().redact("launch code TOPSECRET now") == "launch code TOPSECRET now"
+        Redactor()  # warned once per process, not once per Redactor
+    skipped = [r for r in caplog.records if "installed but not loaded" in r.getMessage()]
+    assert len(skipped) == 1
+    assert "evil" in skipped[0].getMessage()
+
+
+def test_no_skip_warning_without_installed_plugins(monkeypatch, caplog):
+    monkeypatch.setattr(registry, "entry_points", lambda group: [])
+    monkeypatch.setattr(registry, "_unloaded_checked", False)
+    with caplog.at_level("WARNING", logger="safestream_redactor"):
+        Redactor()
+    assert not caplog.records
+
+
+def test_plugins_enabled_from_config_and_cli(monkeypatch, tmp_path, capsys):
+    from safestream_redactor.cli import main
+    from safestream_redactor.config import redactor_from_config
+
+    monkeypatch.setattr(registry, "entry_points", lambda group: [_FakeEntryPoint(_PluginDetector)])
+    cfg = tmp_path / "p.toml"
+    cfg.write_text("[plugins]\nenabled = true\n")
+    assert "plugin" in redactor_from_config(cfg).detector_names
+    cfg.write_text("[plugins]\nenabled = false\n")
+    assert "plugin" not in redactor_from_config(cfg).detector_names
+
+    src = tmp_path / "in.txt"
+    src.write_text("launch code TOPSECRET now")
+    assert main(["redact", str(src), "-o", "-", "--enable-plugins"]) == 0
+    assert capsys.readouterr().out == "launch code [REDACTED] now"
+    assert main(["redact", str(src), "-o", "-"]) == 0
+    assert capsys.readouterr().out == "launch code TOPSECRET now"
+
+
+def test_cli_surfaces_plugin_skip_warning(monkeypatch, tmp_path, capsys):
+    # the library logs through a NullHandler; the CLI must still show the warning
+    from safestream_redactor.cli import main
+
+    monkeypatch.setattr(registry, "entry_points", lambda group: [_FakeEntryPoint(_PluginDetector)])
+    monkeypatch.setattr(registry, "_unloaded_checked", False)
+    src = tmp_path / "in.txt"
+    src.write_text("nothing\n")
+    assert main(["redact", str(src), "-o", "-"]) == 0
+    err = capsys.readouterr().err
+    assert "safestream: warning: 1 detector plugin(s) installed but not loaded" in err
+
+
+def test_server_commands_accept_enable_plugins(monkeypatch):
+    from safestream_redactor import cli
+
+    monkeypatch.setattr(registry, "entry_points", lambda group: [_FakeEntryPoint(_PluginDetector)])
+    seen = {}
+    monkeypatch.setattr(
+        "safestream_redactor.api.serve",
+        lambda redactor, **kw: seen.__setitem__("serve", redactor.detector_names),
+    )
+    monkeypatch.setattr(
+        "safestream_redactor.mcp_server.serve_stdio",
+        lambda redactor: seen.__setitem__("mcp", redactor.detector_names),
+    )
+    monkeypatch.setattr("safestream_redactor.netguard.install", lambda: None)
+    assert cli.main(["serve", "--port", "0", "--enable-plugins"]) == 0
+    assert cli.main(["mcp-serve", "--enable-plugins"]) == 0
+    assert "plugin" in seen["serve"] and "plugin" in seen["mcp"]
 
 
 def test_plugins_can_be_disabled(monkeypatch):

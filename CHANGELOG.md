@@ -6,6 +6,113 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Breaking changes
+
+- **`detect` hides matched text by default.** Findings print as
+  `file:line:col: type  conf=…`. JSON records carry `line`/`column` and **no
+  `text` field**. Pass `--show-text` (alias `--reveal-matches`) to include the
+  matched value for local triage.
+  *Why:* `detect` output goes to CI logs, hook output, and shared terminals. The
+  bundled pre-commit hook and GitHub Action both promised never to print a
+  secret, yet they ran plain `detect`, which wrote the value verbatim into every
+  log.
+  *Migrate:* scripts that read `text` from `detect --json` must add
+  `--show-text`. Anything that only checks the exit code or counts is unaffected.
+- **Detector plugins are opt-in.** `Redactor(load_plugins=...)` now defaults to
+  `False`. Enable plugins with `load_plugins=True`, `--enable-plugins` (on
+  `redact`, `detect`, `serve`, and `mcp-serve`), or `[plugins] enabled = true`
+  in a policy file.
+  *Why:* plugin code runs with full privileges inside a tool that handles
+  secrets, so installing a package (possibly as a transitive dependency) must
+  not be enough to run it.
+  *Migrate:* if you rely on a plugin, enable it explicitly. Nothing fails
+  silently: when plugins are installed but not enabled, a one-time warning
+  names them. Discovery reads entry-point metadata only; no plugin code is
+  imported.
+- **`memstream` is no longer distributed.** The unfinished event-log subsystem
+  (`safestream_redactor.memstream`) was never used by the redaction path. It is
+  now excluded from the wheel and sdist, and the publish workflow fails if it
+  ever reappears. It remains in the source tree as work in progress.
+- **Stricter inputs** (see *Fixed*): `chunk_size <= 0`, a negative `overlap`,
+  `min_confidence` outside `[0, 1]`, an empty `mask_char`, and ill-typed policy
+  values now raise instead of misbehaving. `--chunk-size 0` is an error, where it
+  used to mean "use the default".
+
+### Security
+
+- **`detect` never prints a matched secret unless asked** (see *Breaking
+  changes*). The pre-commit hook and GitHub Action rely on this default.
+- **Mask mode never reveals more than half a value.** `mask_keep_last` is now
+  capped at half the entity's length. Before, a value no longer than
+  `mask_keep_last` came out *completely unmasked* (a name `Bob` stayed `Bob`), and
+  a slightly longer one showed almost everything (`Alice` → `*lice`).
+- **Custom words match longest first.** Regex alternation takes the first
+  alternative that matches, not the longest, so with the words `Jo` and `John`,
+  the text `John` was redacted to `[REDACTED]hn`.
+- **REST API connection hygiene.** Rejected requests (`400`/`413`) left their
+  unread body on the keep-alive socket, where it was parsed and *executed as the
+  next request* (HTTP desync). Rejected requests now close the connection. Chunked
+  bodies get `411` instead of being read as empty, and connections have an idle
+  timeout (30 s, `serve(timeout=...)`) against slow-loris thread exhaustion.
+  `safestream serve` warns when bound to a non-loopback address.
+- **GitHub Action inputs** reach its scripts through environment variables, not
+  `${{ }}` interpolation into the script text (script injection).
+
+### Fixed
+
+- **The GitHub Action failed on its default input.** `paths: "."` always exited 1
+  with `Is a directory`. `detect` now accepts directories and walks them
+  recursively, skipping symlinks, `.git`/`.hg`/`.svn`, and binary files. A file
+  named explicitly is always scanned.
+- **`chunk_size=0` silently wrote an empty output file** (the whole input was
+  dropped), and a negative size read the entire file into memory. `Redactor` now
+  rejects a non-positive `chunk_size`, a negative `overlap`, or a
+  `min_confidence` outside `[0, 1]`, whichever entry point supplied it.
+- **Policy values are type-checked**, not just key names. `use_entropy = "no"`
+  (truthy, so the tier stayed on) and `min_confidence = "0.5"` (a mid-stream
+  `TypeError` after partial output) are now clear errors before any input is
+  read. Invalid TOML is reported as a normal configuration error.
+- **`--types` (and `--ner`) are honoured with `--config`.** The CLI rebuilt only
+  the regex tier from `--types`, so the label and entropy tiers kept emitting
+  out-of-scope types, and `--ner` was ignored entirely. Config and flags are now
+  merged into one set of arguments and the `Redactor` is built once, with no
+  patching of private state.
+- **SARIF results carry `startLine`/`startColumn`/`endLine`/`endColumn`**, which
+  GitHub code scanning requires to place an alert. `columnKind` is declared as
+  `unicodeCodePoints`.
+- `stdin` → file output now gets the same permissions as file → file output
+  (it was left at `0o600`). JSON run reports and `init-config` files are written
+  atomically. All four writers share one atomic-replace helper.
+
+### Added
+
+- `detect` prints each finding as `file:line:col`, and JSON records carry `line`
+  and `column`.
+- **The CLI shows library warnings on stderr** as `safestream: warning: …`. The
+  package logs through a `NullHandler`, so the CLI used to swallow them: an
+  accepted unsafe overlap, a span longer than the overlap, and plugins that
+  failed to load or were skipped.
+- Config keys `use_gazetteer`, `use_ensemble`, `semantic_policy`, and `backend`,
+  so every tier the library offers can be selected from a policy file.
+- `RedactionPolicy` accepts a `str` `hmac_key` (UTF-8 encoded) and rejects an
+  empty `mask_char`.
+
+### Developer experience
+
+- `.pre-commit-config.yaml` (ruff pinned to the CI series, strict mypy, TOML/YAML
+  checks), `.editorconfig`, and a pull-request template.
+- The `dev` extra pins ruff to one minor series and adds `pyyaml`. Without it,
+  `tests/test_ci_integrations.py` was *skipped in CI*, which is how the Action's
+  broken default went unnoticed. That module now also runs the Action's scan step
+  end to end.
+- Property tests for masking and for streaming line/column tracking. Every fix
+  above has a regression test that fails on the previous code.
+- **Test isolation:** two in-process `--memory-limit` CLI tests put a real,
+  irreversible RLIMIT_AS on the pytest process itself. Whether a later test then
+  crashed the run with `MemoryError` depended on library versions. Those tests
+  now stub the kernel call, and an autouse guard in `tests/conftest.py` fails any
+  test that leaves the process's RLIMIT_AS changed.
+
 ## [0.4.0] - 2026-09-25
 
 ### Added

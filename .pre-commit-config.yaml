@@ -1,0 +1,37 @@
+# Local checks for contributors (distinct from .pre-commit-hooks.yaml, which
+# publishes the `safestream-detect` hook for OTHER repositories to consume).
+#
+#   pip install -e '.[dev]' && pre-commit install
+#
+# The ruff rev is pinned to the same minor series as the `dev` extra in
+# pyproject.toml, so the formatter behaves identically here and in CI; bump both
+# together (`pre-commit autoupdate` updates this file only).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-toml
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: mixed-line-ending
+        args: ["--fix=no"]
+        # test and benchmark fixtures deliberately carry CRLF / lone-CR input
+        exclude: ^(tests|benchmarks)/
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.8
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      # uses the project's own environment so optional-extra stubs resolve the
+      # same way CI's strict type check sees them
+      - id: mypy
+        name: mypy (strict)
+        entry: mypy
+        language: system
+        types: [python]
+        pass_filenames: false

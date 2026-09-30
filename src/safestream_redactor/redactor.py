@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import os
-import stat
-import tempfile
 from collections.abc import Iterable, Iterator
 
+from safestream_redactor._atomic import atomic_output
 from safestream_redactor.calibration import Calibrator
 from safestream_redactor.detectors.base import Detector
 from safestream_redactor.detectors.contextual import ContextualScorer
@@ -28,22 +26,26 @@ from safestream_redactor.report import RedactionStats
 logger = logging.getLogger(__name__)
 
 
-def _match_destination_mode(tmp_path: str, out_path: str) -> None:
-    """Give the temp file the permissions the destination would have had.
+def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence: object) -> None:
+    """Reject argument values that would silently corrupt or drop output.
 
-    ``mkstemp`` creates 0o600 files; a plain ``open(out, "w")`` would instead
-    keep an existing file's mode, or apply the process umask to a new one.
-    Matching that keeps atomic replacement behaviourally identical to the
-    direct write it replaced.
+    ``chunk_size=0`` made every reader return an empty first read, so the
+    whole input vanished and an empty "redacted" file was written; a negative
+    one read the entire file at once, defeating the memory bound. Neither is a
+    meaningful configuration, so both fail closed here — once, for every entry
+    point (library, CLI, config file, REST, MCP).
     """
-    try:
-        mode = stat.S_IMODE(os.stat(out_path).st_mode)
-    except OSError:
-        umask = os.umask(0)
-        os.umask(umask)
-        mode = 0o666 & ~umask
-    with contextlib.suppress(OSError):
-        os.chmod(tmp_path, mode)
+    # bool is an int subclass; ``chunk_size=True`` is a bug, not a size
+    if isinstance(chunk_size, bool) or not isinstance(chunk_size, int) or chunk_size < 1:
+        raise ValueError(f"chunk_size must be a positive integer, got {chunk_size!r}")
+    if isinstance(overlap, bool) or not isinstance(overlap, int) or overlap < 0:
+        raise ValueError(f"overlap must be a non-negative integer, got {overlap!r}")
+    if (
+        isinstance(min_confidence, bool)
+        or not isinstance(min_confidence, (int, float))
+        or not 0.0 <= min_confidence <= 1.0
+    ):
+        raise ValueError(f"min_confidence must be a number in [0, 1], got {min_confidence!r}")
 
 
 class Redactor:
@@ -81,7 +83,10 @@ class Redactor:
         Any additional objects implementing the :class:`Detector` protocol.
     load_plugins:
         Discover and load third-party detectors registered under the
-        ``safestream_redactor.detectors`` entry-point group (on by default).
+        ``safestream_redactor.detectors`` entry-point group. **Off by default**:
+        plugin code runs with full process privileges, so it must be trusted
+        explicitly. When it is off and plugins are installed, a one-time warning
+        names them so the reduced coverage is never silent.
     allow_unsafe_overlap:
         Off by default (fail-closed). When ``overlap`` is below the safe minimum
         the active detectors require (:attr:`min_safe_overlap`), construction
@@ -117,7 +122,7 @@ class Redactor:
         use_entropy: bool = True,
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
-        load_plugins: bool = True,
+        load_plugins: bool = False,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
         allow_unsafe_overlap: bool = False,
@@ -128,6 +133,7 @@ class Redactor:
             if types is None
             else [t if isinstance(t, EntityType) else EntityType.from_name(t) for t in types]
         )
+        _validate_streaming_args(chunk_size, overlap, min_confidence)
         self.policy = policy or RedactionPolicy()
         self.min_confidence = min_confidence
         self.calibrator = calibrator
@@ -191,11 +197,15 @@ class Redactor:
             self._detectors.append(EntropyDetector())
             self._detectors.append(CompoundSecretDetector())
         self._detectors.extend(extra_detectors)
-        # third-party detectors registered via entry points
+        # third-party detectors registered via entry points (opt-in)
         if load_plugins:
             from safestream_redactor.detectors.registry import load_plugins as _load_plugins
 
             self._detectors.extend(_load_plugins())
+        else:
+            from safestream_redactor.detectors.registry import warn_if_plugins_skipped
+
+            warn_if_plugins_skipped()
         # contextual tier also contributes trigger-gated detections of its own
         if resolved_types is None or EntityType.SSN in resolved_types:
             self._detectors.append(self._scorer)
@@ -361,20 +371,7 @@ class Redactor:
                 )
         stats = RedactionStats()
         chunks = read_chunks(in_path, self.chunk_size, encoding)
-        fd, tmp_path = tempfile.mkstemp(
-            dir=os.path.dirname(out_path) or ".",
-            prefix=os.path.basename(out_path) + ".",
-            suffix=".tmp",
-        )
-        try:
-            # newline="": write exactly what was read (no \n -> os.linesep)
-            with open(fd, "w", encoding=encoding, newline="") as out:
-                for redacted in self.redact_stream(chunks, stats):
-                    out.write(redacted)
-            _match_destination_mode(tmp_path, out_path)
-            os.replace(tmp_path, out_path)
-        except BaseException:
-            with contextlib.suppress(OSError):
-                os.unlink(tmp_path)
-            raise
+        with atomic_output(out_path, encoding=encoding) as out:
+            for redacted in self.redact_stream(chunks, stats):
+                out.write(redacted)
         return stats

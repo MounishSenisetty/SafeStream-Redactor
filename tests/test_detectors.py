@@ -200,6 +200,15 @@ def test_custom_words_and_patterns():
     assert all(d.entity_type is EntityType.CUSTOM for d in found)
 
 
+@pytest.mark.parametrize("words", [["Jo", "John"], ["John", "Jo"], ["Jo", "John", "Jo"]])
+def test_custom_words_longest_match_wins(words):
+    # Regex alternation is leftmost-first: with "Jo|John" the text "John" used to
+    # match only "Jo", and "hn" leaked through as "[REDACTED]hn".
+    assert Redactor(custom_words=words).redact("call John or Jo") == (
+        "call [REDACTED] or [REDACTED]"
+    )
+
+
 def test_custom_invalid_pattern_raises_clear_error():
     # Regression (F6): a malformed custom regex must raise a clear, actionable
     # ValueError naming the pattern, not a bare re.error.

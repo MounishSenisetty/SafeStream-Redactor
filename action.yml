@@ -29,25 +29,37 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Inputs reach the scripts only through environment variables, never by
+    # ${{ }} interpolation into the script text: an interpolated value is
+    # spliced in before bash parses it, so a crafted input could run commands.
     - name: Install safestream-redactor
       shell: bash
+      env:
+        SAFESTREAM_VERSION: ${{ inputs.version }}
       run: |
-        if [ -n "${{ inputs.version }}" ]; then
-          python -m pip install "safestream-redactor==${{ inputs.version }}"
+        if [ -n "$SAFESTREAM_VERSION" ]; then
+          python -m pip install "safestream-redactor==$SAFESTREAM_VERSION"
         else
           python -m pip install safestream-redactor
         fi
 
     - name: Scan for secrets and PII
       shell: bash
+      env:
+        SCAN_PATHS: ${{ inputs.paths }}
+        SCAN_CONFIG: ${{ inputs.config }}
+        SARIF_FILE: ${{ inputs.sarif-file }}
       run: |
-        CONFIG_ARG=""
-        if [ -n "${{ inputs.config }}" ]; then CONFIG_ARG="--config ${{ inputs.config }}"; fi
-        if [ -n "${{ inputs.sarif-file }}" ]; then
-          # Produce a SARIF report AND fail the job on any finding. The report
-          # is content-free (no secret text) and safe to upload as an artifact.
-          safestream detect ${{ inputs.paths }} $CONFIG_ARG --sarif > "${{ inputs.sarif-file }}"
-          safestream detect ${{ inputs.paths }} $CONFIG_ARG --fail-on-detect
-        else
-          safestream detect ${{ inputs.paths }} $CONFIG_ARG --fail-on-detect
+        # SCAN_PATHS is space-separated by contract. Expanding the variable
+        # unquoted word-splits and glob-expands it (so `src/*.py` still works)
+        # but, unlike expression interpolation, never evaluates $(...) or backticks.
+        # shellcheck disable=SC2206
+        args=($SCAN_PATHS)
+        if [ -n "$SCAN_CONFIG" ]; then args+=(--config "$SCAN_CONFIG"); fi
+        if [ -n "$SARIF_FILE" ]; then
+          # The SARIF report is content-free (no secret text) and safe to upload.
+          safestream detect "${args[@]}" --sarif > "$SARIF_FILE"
         fi
+        # detect never prints the matched value unless explicitly asked to, so
+        # the build log lists only file:line:col, type, and confidence.
+        safestream detect "${args[@]}" --fail-on-detect

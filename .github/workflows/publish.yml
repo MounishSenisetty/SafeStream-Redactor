@@ -52,6 +52,16 @@ jobs:
             test "$out" = "mail [REDACTED]"
             rm -rf "/tmp/venv-$$"
           done
+      # unfinished subsystems must never reach PyPI (see [tool.hatch.build])
+      - name: No unfinished packages in the artifacts
+        run: |
+          set -euo pipefail
+          if unzip -l dist/*.whl | grep -q memstream; then
+            echo "::error::memstream/ leaked into the wheel"; exit 1
+          fi
+          if tar -tzf dist/*.tar.gz | grep -q memstream; then
+            echo "::error::memstream/ leaked into the sdist"; exit 1
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: dist

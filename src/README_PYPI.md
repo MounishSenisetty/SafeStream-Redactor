@@ -109,17 +109,18 @@ contact [REDACTED], ssn: [REDACTED]
 ### `detect`
 
 ```bash
-safestream detect app.log                     # human-readable list
+safestream detect app.log                     # human-readable list (no secret text)
 safestream detect app.log --json              # one JSON object per detection
 safestream detect src/*.py --sarif > out.sarif  # SARIF 2.1.0
-safestream detect build.log --fail-on-detect  # exit status 1 if anything is found
+safestream detect . --fail-on-detect          # exit status 1 if anything is found
+safestream detect app.log --show-text         # also print the matched text (local only)
 ```
 
 ```text
 $ safestream detect app.log
-        email  conf=1.00  'bob@corp.io'
-          ssn  conf=1.00  '123-45-6789'
--- 2 detection(s)
+app.log:3:7: email  conf=0.95
+app.log:9:12: ssn  conf=1.00
+-- 2 detection(s) (matched text hidden; --show-text reveals it)
 ```
 
 ### `init-config`
@@ -190,11 +191,19 @@ client over stdio. Register it in your client's configuration as:
 | `--encoding ENC` | Input/output encoding (default `utf-8`) |
 | `--workers N` | Parallel workers (directories, or one large file) |
 | `--memory-limit SIZE` | Stay within a memory budget, e.g. `256MiB` |
+| `--enable-plugins` | Load third-party detector plugins (off by default) |
 | `--allow-network` | Turn off the network guard (see below) |
 | `--offline-hard MODE` | Linux only: kernel-enforced offline mode (`seccomp`, `netns`, `auto`) |
 
 Redaction options (`redact` only): `--mode {replace,mask,pseudonymize}`, `--replace TEXT`,
-`--replace-type TYPE=TEXT`, `--keep-last N`, `--mask-char C`, `--hmac-key KEY`.
+`--replace-type TYPE=TEXT`, `--keep-last N`, `--mask-char C`, `--hmac-key KEY`. Mask mode
+never leaves more than half of a value visible, so a short value is never shown in full.
+
+Detection options (`detect` only): `--json`, `--sarif`, `--fail-on-detect`, and
+`--show-text` / `--reveal-matches` (also print the matched text, which is hidden by default
+so detect output is safe to log; for local triage only). `detect` accepts
+files and directories; directories are walked recursively, skipping symlinks, `.git/`, and
+binary files.
 
 While `redact` or `detect` runs, an in-process guard blocks outbound (non-loopback) network
 connections by default. On Linux, `--offline-hard` adds a kernel-enforced block on top.
@@ -259,8 +268,9 @@ with open("app.log", newline="") as source:
 
 ### Adding a detector from another package
 
-A package can add a detection tier by declaring an entry point; it is picked up
-automatically once installed (`Redactor(load_plugins=False)` turns this off):
+A package can add a detection tier by declaring an entry point. Plugins are **opt-in**:
+enable them with `Redactor(load_plugins=True)`, `--enable-plugins`, or
+`[plugins] enabled = true` (a warning names any installed plugin that was not loaded):
 
 ```toml
 [project.entry-points."safestream_redactor.detectors"]

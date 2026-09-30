@@ -19,6 +19,10 @@ Design choices that keep the local-first guarantees intact:
   text.
 * Request bodies larger than ``max_body_bytes`` are rejected with ``413`` before
   being read into memory.
+* Every rejected request closes the connection: its unread body would otherwise
+  stay on the keep-alive socket and be parsed as the *next* request (an HTTP
+  desync). Chunked bodies are refused with ``411`` for the same reason, and each
+  socket has a read timeout so a stalled client cannot pin a worker thread.
 """
 
 from __future__ import annotations
@@ -37,6 +41,10 @@ if TYPE_CHECKING:
 # file path. Cap the body so a single request can't exhaust memory; large
 # inputs should use the streaming CLI/library API instead.
 DEFAULT_MAX_BODY_BYTES = 8 * 1024 * 1024  # 8 MiB
+# Seconds a connection may sit idle mid-request before it is dropped. Without
+# it, a client that sends headers and then trickles (or never sends) the body
+# holds a server thread forever — a trivial slow-loris exhaustion.
+DEFAULT_TIMEOUT_SECONDS = 30.0
 
 
 def dispatch(
@@ -106,15 +114,32 @@ def dispatch(
 
 
 def make_handler(
-    redactor: Redactor, max_body_bytes: int = DEFAULT_MAX_BODY_BYTES
+    redactor: Redactor,
+    max_body_bytes: int = DEFAULT_MAX_BODY_BYTES,
+    timeout: float | None = DEFAULT_TIMEOUT_SECONDS,
 ) -> type[BaseHTTPRequestHandler]:
     """Build a request-handler class bound to ``redactor``."""
+
+    socket_timeout = timeout
 
     class _Handler(BaseHTTPRequestHandler):
         server_version = f"SafeStreamRedactor/{__version__}"
         protocol_version = "HTTP/1.1"
+        # applied to the connection socket by StreamRequestHandler.setup()
+        timeout = socket_timeout
+
+        def _reject(self, status: int, message: str) -> None:
+            # The body (if any) was not read; closing is the only way to keep it
+            # from being parsed as another request on this connection.
+            self.close_connection = True
+            self._send(status, {"error": message})
 
         def _handle(self, method: str) -> None:
+            if self.headers.get("Transfer-Encoding"):
+                # Only Content-Length framing is supported. Ignoring the header
+                # would read a chunked body as empty and leave it on the socket.
+                self._reject(411, "chunked request bodies are not supported; send Content-Length")
+                return
             raw = self.headers.get("Content-Length")
             try:
                 # Validate up front. A negative Content-Length is truthy and
@@ -125,14 +150,14 @@ def make_handler(
                 # a bounded 400 instead.
                 length = int(raw) if raw is not None else 0
             except (TypeError, ValueError):
-                self._send(400, {"error": "invalid Content-Length header"})
+                self._reject(400, "invalid Content-Length header")
                 return
             if length < 0:
-                self._send(400, {"error": "invalid Content-Length header"})
+                self._reject(400, "invalid Content-Length header")
                 return
             if length > max_body_bytes:
                 # refuse before reading the oversized body into memory
-                self._send(413, {"error": f"request body exceeds {max_body_bytes} bytes"})
+                self._reject(413, f"request body exceeds {max_body_bytes} bytes")
                 return
             body = self.rfile.read(length) if length else b""
             status, payload = dispatch(
@@ -167,6 +192,7 @@ def serve(
     port: int = 8000,
     *,
     max_body_bytes: int = DEFAULT_MAX_BODY_BYTES,
+    timeout: float | None = DEFAULT_TIMEOUT_SECONDS,
 ) -> ThreadingHTTPServer:
     """Start a blocking REST server. Returns only when interrupted.
 
@@ -177,7 +203,7 @@ def serve(
         from safestream_redactor.redactor import Redactor
 
         redactor = Redactor()
-    httpd = ThreadingHTTPServer((host, port), make_handler(redactor, max_body_bytes))
+    httpd = ThreadingHTTPServer((host, port), make_handler(redactor, max_body_bytes, timeout))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:  # pragma: no cover - interactive Ctrl-C only

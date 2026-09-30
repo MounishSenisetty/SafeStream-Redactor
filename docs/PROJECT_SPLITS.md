@@ -171,7 +171,7 @@ that leak is designed out and proven absent.
 | `scheduler.py` | Redacts whole directory trees in parallel, capping workers by both CPU count and available RAM |
 | `memory_budget.py` | Admission control for `--memory-limit`: plans worker counts, refuses configurations that cannot fit (exit code 3), and enforces the limit in the kernel with `RLIMIT_AS` |
 | `detectors/_lookaround_free.py` + `native/src/lib.rs` | The optional Rust core: pattern re-expressions the native engine can run, and the compiled scanner itself, which releases the GIL and is byte-identical to Python |
-| `memstream/` | In progress: the event codec of a planned crash-safe event log (its write-ahead log is not written yet, and nothing in the redaction path uses it) |
+| `memstream/` | In progress: the event codec of a planned crash-safe event log (its write-ahead log is not written yet, and nothing in the redaction path uses it). Excluded from the published wheel and sdist. |
 
 Performance assets: `benchmarks/parallel_speedup.py`, `scale_memory.py`,
 `zero_copy_read.py`, `native_backend.py`, `re2_backend.py`, and the
@@ -289,7 +289,8 @@ Guides: `docs/rest-api.md`, `docs/MCP.md`, `docs/CI_CD.md`, `docs/RELEASING.md`,
 The REST and MCP servers run detection over the whole request body (capped at 8 MiB
 and 4 MiB) instead of streaming it, the REST server does not limit concurrent
 connections, and neither server nor the Python library installs the network guard.
-Third-party detector plugins load by default. The in-process network guard is a safety
+Third-party detector plugins load only when enabled (`load_plugins=True`,
+`--enable-plugins`, or `[plugins] enabled = true`). The in-process network guard is a safety
 net, not a security boundary; the kernel-enforced modes are Linux only.
 
 ### Start reading
@@ -303,5 +304,5 @@ net, not a security boundary; the kernel-enforced modes are Linux only.
 | | A: Detection | B: Engine | C: Delivery |
 |---|---|---|---|
 | Most mature | Structured PII and credentials | Streaming, parallelism, memory bounds | CLI, packaging, CI/CD |
-| Next improvement | Broader free-text name/address recall without losing precision | Extend the Rust core beyond the deterministic tier; finish or retire `memstream` | Stream REST/MCP requests, limit server concurrency, make plugin loading opt-in |
+| Next improvement | Broader free-text name/address recall without losing precision | Extend the Rust core beyond the deterministic tier; finish or retire `memstream` | Stream REST/MCP requests, limit server concurrency |
 | Key document | `docs/DETECTORS.md` | `docs/FORMAL_MODEL.md` | `docs/RELEASING.md` |

@@ -11,7 +11,7 @@ from http.server import ThreadingHTTPServer
 import pytest
 
 from safestream_redactor import __version__
-from safestream_redactor.api import dispatch, make_handler, serve
+from safestream_redactor.api import DEFAULT_TIMEOUT_SECONDS, dispatch, make_handler, serve
 from safestream_redactor.redactor import Redactor
 
 SAMPLE = "email me at jane@example.com or call, key=AKIAIOSFODNN7EXAMPLE"
@@ -267,3 +267,65 @@ def test_dispatch_still_enforces_max_body(redactor: Redactor) -> None:
     payload = json.dumps({"text": "x" * 100}).encode()
     status, _ = dispatch(redactor, "POST", "/redact", payload, max_body_bytes=10)
     assert status == 413
+
+
+# --------------------------------------------------------------------------
+# connection hygiene: rejected bodies, chunked framing, idle timeouts
+# --------------------------------------------------------------------------
+
+
+def _raw_exchange(base_url: str, payload: bytes) -> bytes:
+    """Send raw bytes on one keep-alive connection; return everything received."""
+    parsed = urlparse(base_url)
+    assert parsed.hostname is not None and parsed.port is not None
+    data = b""
+    with _socket.create_connection((parsed.hostname, parsed.port), timeout=5) as sock:
+        sock.settimeout(2)
+        sock.sendall(payload)
+        try:
+            while chunk := sock.recv(65536):
+                data += chunk
+        except TimeoutError:  # server kept the connection open: that's the bug
+            pass
+    return data
+
+
+@pytest.fixture()
+def tiny_limit_server(redactor: Redactor):
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(redactor, max_body_bytes=10))
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    host, port = httpd.server_address
+    try:
+        yield f"http://{host}:{port}"
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)
+
+
+def test_rejected_body_is_not_parsed_as_a_second_request(tiny_limit_server: str) -> None:
+    # The 413 path used to leave the unread body on the keep-alive socket, where
+    # it was parsed and executed as the next request (an HTTP desync).
+    smuggled = b"GET /version HTTP/1.1\r\nHost: x\r\n\r\n"
+    request = (
+        b"POST /redact HTTP/1.1\r\nHost: x\r\nContent-Length: %d\r\n\r\n" % len(smuggled) + smuggled
+    )
+    reply = _raw_exchange(tiny_limit_server, request)
+    assert reply.count(b"HTTP/1.1 ") == 1
+    assert reply.startswith(b"HTTP/1.1 413")
+
+
+def test_chunked_body_rejected_with_411(live_server: str) -> None:
+    request = (
+        b"POST /redact HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b'b\r\n{"text":""}\r\n0\r\n\r\n'
+    )
+    reply = _raw_exchange(live_server, request)
+    assert reply.startswith(b"HTTP/1.1 411")
+    assert reply.count(b"HTTP/1.1 ") == 1
+
+
+def test_handler_has_an_idle_timeout(redactor: Redactor) -> None:
+    assert make_handler(redactor).timeout == DEFAULT_TIMEOUT_SECONDS
+    assert make_handler(redactor, timeout=None).timeout is None
