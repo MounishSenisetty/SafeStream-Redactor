@@ -113,6 +113,7 @@ safestream detect app.log                     # human-readable list
 safestream detect app.log --json              # one JSON object per detection
 safestream detect src/*.py --sarif > out.sarif  # SARIF 2.1.0
 safestream detect build.log --fail-on-detect  # exit status 1 if anything is found
+safestream detect . --hide-text --fail-on-detect  # CI-safe: file:line:col, no secret text
 ```
 
 ```text
@@ -194,7 +195,13 @@ client over stdio. Register it in your client's configuration as:
 | `--offline-hard MODE` | Linux only: kernel-enforced offline mode (`seccomp`, `netns`, `auto`) |
 
 Redaction options (`redact` only): `--mode {replace,mask,pseudonymize}`, `--replace TEXT`,
-`--replace-type TYPE=TEXT`, `--keep-last N`, `--mask-char C`, `--hmac-key KEY`.
+`--replace-type TYPE=TEXT`, `--keep-last N`, `--mask-char C`, `--hmac-key KEY`. Mask mode
+never leaves more than half of a value visible, so a short value is never shown in full.
+
+Detection options (`detect` only): `--json`, `--sarif`, `--fail-on-detect`, and
+`--hide-text` (omit the matched text; use it wherever output is logged). `detect` accepts
+files and directories; directories are walked recursively, skipping symlinks, `.git/`, and
+binary files.
 
 While `redact` or `detect` runs, an in-process guard blocks outbound (non-loopback) network
 connections by default. On Linux, `--offline-hard` adds a kernel-enforced block on top.

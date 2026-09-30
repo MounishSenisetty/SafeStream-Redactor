@@ -20,6 +20,13 @@ dependency** is required to run it.
   (unlike the streaming file path), so bodies larger than the limit (8 MiB by
   default) are rejected with `413`. For large inputs, use the streaming CLI or
   `Redactor.redact_file`.
+- **Connection hygiene.** Any rejected request closes its connection, so an
+  unread body can never be parsed as a follow-up request on a keep-alive socket.
+  Chunked bodies (`Transfer-Encoding`) are refused with `411`; send
+  `Content-Length`. Each connection has a 30-second idle timeout
+  (`serve(..., timeout=...)`), so a stalled client cannot hold a server thread.
+- **Loopback by default.** `safestream serve --host` with a non-loopback address
+  prints a warning: the API has no authentication of its own.
 
 ## Start the server
 
@@ -58,6 +65,7 @@ and `source` — no matched text.
 | Status | Meaning |
 |---|---|
 | `400` | body is not valid JSON, or has no string `text` field |
+| `411` | chunked request body; send `Content-Length` instead |
 | `413` | request body exceeds the configured limit |
 | `404` | no route for that method/path |
 

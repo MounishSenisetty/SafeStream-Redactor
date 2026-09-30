@@ -62,7 +62,20 @@ onnx = ["onnxruntime>=1.16", "numpy>=1.21"]
 # Bounded to the lockstep minor series: a newer native minor may carry a different
 # pattern spec (the runtime spec-guard would then silently fall back to Python).
 native = ["safestream-redactor-native>=0.4.0,<0.5"]
-dev = ["pytest>=7.0", "pytest-cov>=4.1", "hypothesis>=6.90", "ruff>=0.4", "mypy>=1.8"]
+# ruff is pinned to a minor series: its formatter output changes between minors,
+# and an unpinned CI once failed `ruff format --check` on code that was clean
+# locally. Bump it together with the ruff rev in .pre-commit-config.yaml.
+# pyyaml lets tests/test_ci_integrations.py validate the pre-commit hook and the
+# GitHub Action; without it that module is skipped, silently.
+dev = [
+  "pytest>=7.0",
+  "pytest-cov>=4.1",
+  "hypothesis>=6.90",
+  "ruff>=0.15.8,<0.16",
+  "mypy>=1.8",
+  "pyyaml>=6.0",
+  "pre-commit>=3.5",
+]
 # google-re2 is used only by benchmarks/re2_backend.py (the evaluated-and-not-
 # adopted compiled-regex backend); it is never imported by the shipped package.
 bench = ["presidio-analyzer>=2.2", "google-re2>=1.1"]

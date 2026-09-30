@@ -1,5 +1,6 @@
 # SafeStream-Redactor
 
+[![CI](https://github.com/MounishSenisetty/SafeStream-Redactor/actions/workflows/ci.yml/badge.svg)](https://github.com/MounishSenisetty/SafeStream-Redactor/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/safestream-redactor.svg)](https://pypi.org/project/safestream-redactor/)
 [![Python](https://img.shields.io/pypi/pyversions/safestream-redactor.svg)](https://pypi.org/project/safestream-redactor/)
 [![License](https://img.shields.io/pypi/l/safestream-redactor.svg)](https://pypi.org/project/safestream-redactor/)
@@ -10,6 +11,13 @@ multi-tier detection (regex + validators + entropy + optional NER + contextual h
 fully customizable redaction.
 
 Redact a 100 GB log file with the same memory footprint as a 1 KB one.
+
+```console
+$ pip install safestream-redactor
+$ printf 'user=bob@corp.example ssn: 123-45-6789 key=AKIAIOSFODNN7EXAMPLE\n' | safestream redact - -o -
+user=[REDACTED] ssn: [REDACTED] key=[REDACTED]
+$ safestream detect . --hide-text --fail-on-detect      # CI gate: file:line:col, never the secret
+```
 
 Unlike general PII engines (Presidio, scrubadub) it also detects **credentials and
 secrets** — AWS keys, GitHub/Slack/Stripe/Google/SendGrid/Twilio/npm tokens, JWTs,
@@ -109,9 +117,11 @@ safestream redact huge.log -o huge_redacted.log --workers 8
 # just list what would be redacted
 safestream detect input.txt --json
 
-# CI / pre-commit secret gate: non-zero exit if anything is found (many files ok)
+# CI / pre-commit secret gate: non-zero exit if anything is found. Directories are
+# walked (skipping symlinks, .git/, binaries); --hide-text keeps the secret itself
+# out of build logs and reports each hit as file:line:col
 safestream detect build.log --fail-on-detect
-safestream detect src/ tests/ --fail-on-detect
+safestream detect src/ tests/ --hide-text --fail-on-detect
 
 # SARIF report for GitHub code scanning (content-free: no secret text)
 safestream detect . --sarif > results.sarif
@@ -264,6 +274,12 @@ A fuller, ready-to-use policy — NER enabled, plus custom patterns for passport
 driver-licence / bank-account / routing / employee-ID / Slack-ID / DOB values — ships in
 [`examples/policy.toml`](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/examples/policy.toml). Generate a minimal starter with
 `safestream init-config -o policy.toml`.
+
+Policy files fail closed: an unknown section or key (`replacment`), or a value of the
+wrong type (`use_entropy = "no"`, `min_confidence = "0.5"`), is an error before any
+input is read, never a silent fallback to defaults. CLI flags layer on top of the file:
+scalar flags override it, `--custom-word`/`--custom-regex` add to it, and `--types`
+scopes every tier exactly as it does without `--config`.
 
 ## Architecture
 
