@@ -40,6 +40,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Parallel processing** — process directory trees or split large files across workers.
 - **Offline network guard** — prevents non-loopback network access by default during CLI redaction.
 - **Explicit memory budget** — `--memory-limit 32MB` admits the run under a stated budget (sizes workers, refuses configs that can't fit) *and*, on Linux/POSIX, backs it with a hard kernel `RLIMIT_AS` cap so an over-allocating run **fails closed** (exit 3) at the kernel instead of swelling past the limit; on platforms without `RLIMIT_AS` it falls back to admission control only ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)).
+- **Web playground** — `safestream ui` opens a local Streamlit page to try detection and redaction interactively: highlighted findings, side-by-side redaction, file upload; loopback-only with telemetry off ([Web Interface](#web-interface)).
 - **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
 - **Extensible plugin system** — add custom detection tiers through Python entry points, loaded only when you opt in (`--enable-plugins`); each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).
@@ -52,6 +53,9 @@ Three ways — pip, from source, or Docker:
 ```bash
 # 1. pip (constant-memory core, zero third-party runtime deps)
 pip install safestream-redactor
+
+# optional local web playground (Streamlit) — `safestream ui`:
+pip install 'safestream-redactor[ui]'
 
 # optional spaCy-based PERSON/ORG/LOC detection:
 pip install 'safestream-redactor[ner]'
@@ -286,6 +290,52 @@ input is read, never a silent fallback to defaults. CLI flags layer on top of th
 scalar flags override it, `--custom-word`/`--custom-regex` add to it, and `--types`
 scopes every tier exactly as it does without `--config`.
 
+## Web Interface
+
+A local playground for trying the engine without writing code: paste text or upload a
+file, then tune detection in the sidebar and watch the results update.
+
+```bash
+pip install 'safestream-redactor[ui]'      # or, from a clone: pip install -e '.[ui]'
+safestream ui                               # opens http://127.0.0.1:8501
+safestream ui --port 9000 --headless        # another port, no browser tab
+python -m safestream_redactor.ui            # same as `safestream ui`
+```
+
+![Detect mode: findings highlighted by severity, with counts and line:column locations](docs/images/web-ui-detect.png)
+
+- **Detect mode** highlights each finding, coloured by severity (hover for type,
+  confidence, and `line:col`). A findings table lists type, severity, confidence,
+  `line:col`, character span, and detector. Matched values stay hidden unless you
+  toggle *Reveal matched values*, the same default as `safestream detect`.
+- **Redact mode** shows the original and the sanitized text side by side. It supports
+  **Replace** (`[REDACTED]` or your own token), **Mask** (never more than half a value
+  visible), and **Hash** (keyed HMAC pseudonyms, stable for equal values). You can copy
+  the output from its code block or download it as `<name>.redacted.<ext>`.
+- **The sidebar** sets the minimum confidence, which entity types run, high-entropy
+  secret detection, the dependency-free name heuristics, spaCy NER (when the `[ner]`
+  extra is installed), custom words and regexes (one per line), and the streaming chunk
+  size and overlap.
+- **Inputs:** a paste box (with a sample log) and uploads of `.txt`, `.log`, `.json`,
+  and `.csv` up to 5 MiB. The page holds its input in memory to highlight it, so large
+  files belong on the streaming CLI. Binary files are refused, and bytes that are not
+  valid UTF-8 are reported rather than silently skipped.
+- **Errors:** invalid settings, such as a malformed regex or an overlap below the safe
+  minimum, appear as alerts that quote the engine's own validation message, never as a
+  traceback.
+
+![Redact mode: original and redacted text side by side](docs/images/web-ui-redact.png)
+
+**Local-only by construction.** Streamlit's own defaults would listen on every network
+interface, collect usage statistics from your browser, and show a button that publishes
+the app to Streamlit Community Cloud. `safestream ui` turns all three off, caps uploads
+at the server, and installs the offline network guard in the page's process. The page
+then checks its running configuration. It shows the green *Local-only processing*
+banner only if every guarantee holds, and otherwise lists what is missing (for example,
+after a plain `streamlit run`). The UI adds no detection logic of its own: findings come
+from the same streaming engine the CLI uses, so results match `safestream detect` and
+`safestream redact`.
+
 ## Architecture
 
 ```
@@ -501,6 +551,7 @@ pytest --cov=safestream_redactor         # with the 95% coverage gate
 SAFESTREAM_MEMTEST_MB=100 pytest -m memory -o addopts=''   # constant-memory proof
 ruff check . && ruff format --check .       # lint + format
 mypy                                        # strict type check
+pip install -e '.[ui]' && pytest tests/test_ui_app.py   # web UI page tests (Streamlit)
 ```
 
 See [CONTRIBUTING.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/CONTRIBUTING.md). Good first issues live in

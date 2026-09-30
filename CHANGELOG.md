@@ -86,6 +86,29 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- **Local web playground** (`safestream ui`, `python -m safestream_redactor.ui`; the
+  new `[ui]` extra installs Streamlit, and the base install gains no dependency).
+  - *Detect mode:* severity-coloured highlights and a findings table (type,
+    severity, confidence, `line:col`, span, detector). Matched values are hidden
+    unless revealed.
+  - *Redact mode:* original and sanitized text side by side, with replace, mask,
+    or keyed hash, plus copy and download.
+  - *Sidebar:* confidence, entity types, entropy, name heuristics, spaCy NER,
+    custom words and regexes, and chunk size and overlap.
+  - *Inputs:* paste text, or upload `.txt`/`.log`/`.json`/`.csv` up to 5 MiB.
+    Binary files are refused; undecodable bytes are reported.
+  - *Errors:* invalid settings (bad regex, unsafe overlap) appear as alerts
+    quoting the engine's own validation.
+  - *Local-only:* the launcher binds 127.0.0.1, disables Streamlit's browser
+    telemetry and "Deploy" button, and caps uploads at the server. The page arms
+    the offline network guard and verifies all of this before showing its
+    local-only banner.
+  - *Structure:* all logic lives in `ui/core.py` (no Streamlit import, tested in
+    the base suite). A new `ui` CI job runs the real page headlessly, type-checks
+    it against Streamlit, and fails if the served page is reachable from a
+    non-loopback address.
+- `safestream_redactor.locate.LineTracker`: streaming `line:col` tracking shared by
+  `detect`, SARIF, and the web UI.
 - `detect` prints each finding as `file:line:col`, and JSON records carry `line`
   and `column`.
 - **The CLI shows library warnings on stderr** as `safestream: warning: …`. The

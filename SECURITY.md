@@ -58,6 +58,12 @@ Being explicit about limits is part of the security posture:
   entry-point loader then executes their code. Enable plugins only when you trust
   every installed package that provides one. While plugins are disabled, discovery
   reads entry-point metadata only (to warn about skipped plugins), never plugin code.
+- **The web playground (`safestream ui`) is local-only by configuration.** The
+  launcher binds Streamlit to 127.0.0.1, turns off its browser usage statistics and
+  its "Deploy" button, caps uploads at 5 MiB, and the page installs the offline network
+  guard. Starting the page any other way (plain `streamlit run`) keeps Streamlit's
+  defaults: all interfaces and telemetry on. The page then shows a warning instead of
+  its local-only banner.
 - **`detect` hides matched text by default.** Findings are reported by type,
   location, and confidence so the output is safe for CI logs; `--show-text` reveals
   the values for local triage only.

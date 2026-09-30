@@ -194,11 +194,11 @@ def test_resolve_overlaps_tiebreak_is_deterministic():
 def test_line_tracker_matches_naive_positions(text, cuts, picks):
     # For any text, any segmentation, and any sorted offsets, the streaming
     # (line, column) must equal the one computed over the whole text at once.
-    from safestream_redactor.cli import _LineTracker
+    from safestream_redactor.locate import LineTracker
 
     bounds = sorted({0, len(text), *(c for c in cuts if c <= len(text))})
     offsets = sorted({p for p in picks if p < len(text)})
-    tracker = _LineTracker()
+    tracker = LineTracker()
     got = []
     for seg_start, seg_end in itertools.pairwise(bounds):
         segment = text[seg_start:seg_end]
