@@ -52,9 +52,15 @@ Being explicit about limits is part of the security posture:
 - **Run reports are content-free by design.** They contain entity-type names, counts,
   and sizes only. If you build tooling on top of the detection API, take care not to
   log `Detection.text` yourself.
-- **Plugins run with full process privileges.** Only install detector plugins you
-  trust; the entry-point loader executes their code. Plugin loading can be disabled
-  entirely with `Redactor(load_plugins=False)`.
+- **Plugins run with full process privileges, so loading them is opt-in.** Installing
+  a package that registers a detector does nothing until you enable plugins with
+  `Redactor(load_plugins=True)`, `--enable-plugins`, or `[plugins] enabled = true`; the
+  entry-point loader then executes their code. Enable plugins only when you trust
+  every installed package that provides one. While plugins are disabled, discovery
+  reads entry-point metadata only (to warn about skipped plugins), never plugin code.
+- **`detect` hides matched text by default.** Findings are reported by type,
+  location, and confidence so the output is safe for CI logs; `--show-text` reveals
+  the values for local triage only.
 - **Pseudonymization is reversible, not anonymization.** `pseudonymize` mode emits a
   deterministic keyed token (HMAC-SHA256 of the value under your `hmac_key`). This
   preserves referential integrity — the same value always yields the same token — but

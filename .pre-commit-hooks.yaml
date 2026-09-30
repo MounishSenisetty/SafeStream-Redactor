@@ -9,13 +9,13 @@
 #         - id: safestream-detect
 #
 # The hook blocks a commit whose staged files contain detectable secrets or
-# PII. It runs entirely locally (the offline guard stays on) and, via
-# --hide-text, never prints the matched secret — only its type, file:line:col
-# location, and confidence.
+# PII. It runs entirely locally (the offline guard stays on) and never prints
+# the matched secret (detect hides it by default) — only its type,
+# file:line:col location, and confidence.
 - id: safestream-detect
   name: SafeStream secret/PII scan
   description: Block commits that introduce detectable secrets or PII.
-  entry: safestream detect --hide-text --fail-on-detect
+  entry: safestream detect --fail-on-detect
   language: python
   # Scan text-like files by default; consumers can override `files`/`exclude`.
   types: [text]

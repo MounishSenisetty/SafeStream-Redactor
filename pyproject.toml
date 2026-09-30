@@ -99,6 +99,10 @@ path = "src/safestream_redactor/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/safestream_redactor"]
+# memstream/ is an unfinished subsystem (a planned crash-safe event log) that the
+# redaction path never imports. It stays in the tree for its author but is not
+# shipped: a published package should contain only supported, finished code.
+exclude = ["src/safestream_redactor/memstream"]
 
 # The sdist carries only what pip needs to build and install the package: the
 # source (with its PyPI README) and the license; pyproject.toml, PKG-INFO and
@@ -106,6 +110,7 @@ packages = ["src/safestream_redactor"]
 # always added. Tests, benchmarks, docs, datasets and CI files stay in the repo.
 [tool.hatch.build.targets.sdist]
 include = ["/src", "/LICENSE"]
+exclude = ["/src/safestream_redactor/memstream"]
 
 [tool.pytest.ini_options]
 addopts = "-m 'not memory'"

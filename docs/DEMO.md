@@ -74,7 +74,7 @@ python -m spacy download en_core_web_sm
 
 ```bash
 safestream --version
-safestream detect sample.txt --json          # list detections, redact nothing
+safestream detect sample.txt --json          # list detections (no secret text), redact nothing
 safestream redact sample.txt -o out.txt      # redact everything detectable
 safestream init-config -o policy.toml        # write a documented starter policy
 ```
@@ -216,7 +216,7 @@ sample above. They work identically from the CLI, the library, the API, or Docke
 ### Detect everything (redacts nothing)
 
 ```bash
-safestream detect sample.txt --json
+safestream detect sample.txt --json --show-text   # --show-text: include matched text (local only)
 ```
 ```json
 {"type": "email", "start": 23, "end": 48, "text": "maria.garcia@corpmail.com", "confidence": 0.95, "source": "deterministic"}

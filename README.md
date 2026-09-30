@@ -16,7 +16,7 @@ Redact a 100 GB log file with the same memory footprint as a 1 KB one.
 $ pip install safestream-redactor
 $ printf 'user=bob@corp.example ssn: 123-45-6789 key=AKIAIOSFODNN7EXAMPLE\n' | safestream redact - -o -
 user=[REDACTED] ssn: [REDACTED] key=[REDACTED]
-$ safestream detect . --hide-text --fail-on-detect      # CI gate: file:line:col, never the secret
+$ safestream detect . --fail-on-detect      # CI gate: file:line:col, never the secret itself
 ```
 
 Unlike general PII engines (Presidio, scrubadub) it also detects **credentials and
@@ -42,7 +42,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Explicit memory budget** — `--memory-limit 32MB` admits the run under a stated budget (sizes workers, refuses configs that can't fit) *and*, on Linux/POSIX, backs it with a hard kernel `RLIMIT_AS` cap so an over-allocating run **fails closed** (exit 3) at the kernel instead of swelling past the limit; on platforms without `RLIMIT_AS` it falls back to admission control only ([docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md)).
 - **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
-- **Extensible plugin system** — add custom detection tiers through Python entry points; each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).
+- **Extensible plugin system** — add custom detection tiers through Python entry points, loaded only when you opt in (`--enable-plugins`); each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).
 - **Configurable policies** — define detection and redaction behavior using TOML.
 
 ## Install
@@ -114,14 +114,15 @@ safestream redact ./logs -o ./logs_redacted --workers 8
 # single-core pass (a seam cross-check guarantees no lost/duplicated text)
 safestream redact huge.log -o huge_redacted.log --workers 8
 
-# just list what would be redacted
-safestream detect input.txt --json
+# list what would be redacted: type, file:line:col, confidence. The matched text
+# is hidden by default so detect output is safe to log; reveal it for local triage
+safestream detect input.txt
+safestream detect input.txt --json --show-text
 
 # CI / pre-commit secret gate: non-zero exit if anything is found. Directories are
-# walked (skipping symlinks, .git/, binaries); --hide-text keeps the secret itself
-# out of build logs and reports each hit as file:line:col
+# walked (skipping symlinks, .git/, binaries)
 safestream detect build.log --fail-on-detect
-safestream detect src/ tests/ --hide-text --fail-on-detect
+safestream detect src/ tests/ --fail-on-detect
 
 # SARIF report for GitHub code scanning (content-free: no secret text)
 safestream detect . --sarif > results.sarif
@@ -237,7 +238,11 @@ Endpoints: `GET /health`, `GET /version`, `GET /detectors`, `POST /redact`,
 ### Extending with plugins
 
 Any installed package can add a detection tier by advertising an entry point — no fork
-required. SafeStream discovers and loads them automatically.
+required. Loading is **opt-in**: plugin code runs with full privileges inside a tool that
+handles your secrets, so installing a package (perhaps as a transitive dependency) must
+not be enough to run it. Enable plugins with `Redactor(load_plugins=True)`,
+`safestream ... --enable-plugins`, or `[plugins] enabled = true` in a policy file. If
+plugins are installed but not enabled, a one-time warning names them.
 
 ```toml
 # in your plugin package's pyproject.toml
@@ -246,7 +251,7 @@ my_detector = "my_pkg.detectors:MyDetector"   # a Detector instance or zero-arg 
 ```
 
 A detector is anything with a `name` and `detect(text) -> list[Detection]` (the
-`Detector` protocol). Disable plugin loading with `Redactor(load_plugins=False)`.
+`Detector` protocol).
 
 ### Policy files (TOML)
 
@@ -309,7 +314,7 @@ scopes every tier exactly as it does without `--config`.
   Parallel: one big file split into character-aligned ranges, output byte-identical
     to the sequential pass, seam cross-check falls back on disagreement (parallel.py).
   Offline guard: any non-loopback connection raises NetworkAccessError (netguard.py).
-  Plugins: third-party tiers load from the 'safestream_redactor.detectors' entry point.
+  Plugins: opt-in third-party tiers from the 'safestream_redactor.detectors' entry point.
 ```
 
 The same system as a layered diagram (rendered on GitHub; shown as diagram source on PyPI):

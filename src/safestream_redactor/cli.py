@@ -6,14 +6,15 @@ Examples::
     safestream redact big.log -o clean.log --custom-word "ProjectX" --custom-word "Jane Doe"
     safestream redact secrets.env -o - --mode mask --keep-last 4
     cat input.txt | safestream redact - -o -
-    safestream detect input.txt --json
-    safestream detect . --hide-text --fail-on-detect
+    safestream detect . --fail-on-detect            # CI gate: file:line:col, never the secret
+    safestream detect input.txt --json --show-text  # local triage: include matched text
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import sys
 import time
@@ -119,6 +120,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="text encoding of the input/output (default: utf-8)",
     )
     common.add_argument(
+        "--enable-plugins",
+        action="store_true",
+        help="load third-party detector plugins (entry-point group "
+        "'safestream_redactor.detectors'); off by default because plugin code runs "
+        "with full privileges. Also settable as [plugins] enabled = true",
+    )
+    common.add_argument(
         "--allow-network",
         dest="offline_guard",
         action="store_false",
@@ -189,10 +197,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     detect.add_argument("--json", action="store_true", help="one JSON object per detection")
     detect.add_argument(
-        "--hide-text",
+        "--show-text",
+        "--reveal-matches",
+        dest="show_text",
         action="store_true",
-        help="never print the matched text, only its type, location, and confidence "
-        "(use in CI and hooks so a found secret is not copied into build logs)",
+        help="also print the matched text (hidden by default so a found secret is never "
+        "copied into logs). For local triage only; never use it in CI or hooks",
     )
     detect.add_argument(
         "--sarif",
@@ -220,6 +230,9 @@ def _build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--port", type=int, default=8000, help="bind port (default: 8000)")
     serve.add_argument("--config", help="TOML policy file used for every request")
     serve.add_argument(
+        "--enable-plugins", action="store_true", help="load third-party detector plugins"
+    )
+    serve.add_argument(
         "--max-body",
         type=int,
         default=None,
@@ -232,6 +245,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="run a local Model Context Protocol server (stdio) exposing scan/redact tools",
     )
     mcp.add_argument("--config", help="TOML policy file used for every tool call")
+    mcp.add_argument(
+        "--enable-plugins", action="store_true", help="load third-party detector plugins"
+    )
     return parser
 
 
@@ -275,6 +291,9 @@ mask_char = "*"
 [streaming]
 chunk_size = 65536
 overlap = 8192
+
+[plugins]
+enabled = false                             # load third-party detector plugins (trusted only)
 """
 
 
@@ -373,7 +392,26 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         kwargs["overlap"] = args.overlap
     if args.allow_unsafe_overlap:
         kwargs["allow_unsafe_overlap"] = True
+    if args.enable_plugins:
+        kwargs["load_plugins"] = True
     return Redactor(policy=RedactionPolicy(**policy_kwargs), **kwargs)
+
+
+def _server_redactor(args: argparse.Namespace) -> Redactor:
+    """The redactor behind ``serve``/``mcp-serve``: the policy file plus ``--enable-plugins``."""
+    if not args.config:
+        return Redactor(load_plugins=args.enable_plugins)
+    from safestream_redactor.config import (
+        load_config,
+        policy_from_config,
+        redactor_kwargs_from_config,
+    )
+
+    data = load_config(args.config)
+    kwargs = redactor_kwargs_from_config(data, base_dir=os.path.dirname(args.config))
+    if args.enable_plugins:
+        kwargs["load_plugins"] = True
+    return Redactor(policy=policy_from_config(data), **kwargs)
 
 
 def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
@@ -664,7 +702,9 @@ def _cmd_detect(args: argparse.Namespace) -> int:
     # validate the single-stream footprint; fail closed if it can't fit
     _plan_budget(args, redactor)
     sarif = getattr(args, "sarif", False)
-    show_text = not getattr(args, "hide_text", False)
+    # Matched text is hidden unless explicitly requested: detect output ends up
+    # in CI logs, hook output, and terminals that get screen-shared or recorded.
+    show_text = getattr(args, "show_text", False)
     findings = []
     if sarif:
         from safestream_redactor.sarif import Finding
@@ -728,7 +768,8 @@ def _cmd_detect(args: argparse.Namespace) -> int:
 
         print(json.dumps(build_sarif(findings, version=__version__), indent=2))
     elif not args.json:
-        print(f"-- {count} detection(s)", file=sys.stderr)
+        hint = " (matched text hidden; --show-text reveals it)" if count and not show_text else ""
+        print(f"-- {count} detection(s){hint}", file=sys.stderr)
     if args.fail_on_detect and count:
         return 1
     return 0
@@ -748,12 +789,7 @@ def _is_loopback(host: str) -> bool:
 def _cmd_serve(args: argparse.Namespace) -> int:
     from safestream_redactor.api import DEFAULT_MAX_BODY_BYTES, serve
 
-    if args.config:
-        from safestream_redactor.config import redactor_from_config
-
-        redactor = redactor_from_config(args.config)
-    else:
-        redactor = Redactor()
+    redactor = _server_redactor(args)
     max_body = args.max_body if args.max_body is not None else DEFAULT_MAX_BODY_BYTES
     if not _is_loopback(args.host):
         print(
@@ -775,12 +811,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 def _cmd_mcp_serve(args: argparse.Namespace) -> int:
     from safestream_redactor.mcp_server import serve_stdio
 
-    if args.config:
-        from safestream_redactor.config import redactor_from_config
-
-        redactor = redactor_from_config(args.config)
-    else:
-        redactor = Redactor()
+    redactor = _server_redactor(args)
     # The MCP server is local stdio only; the offline guard stays on so a
     # misbehaving policy/plugin still cannot reach the network mid-session.
     from safestream_redactor import netguard
@@ -823,8 +854,33 @@ def _apply_offline_hard(mode: str | None) -> None:
         )
 
 
+class _StderrWarnings(logging.Handler):
+    """Print library warnings to the *current* ``sys.stderr``.
+
+    The package installs a ``NullHandler`` (library etiquette), so without this
+    the CLI swallowed every warning the library raises: an unsafe overlap being
+    accepted, a span longer than the overlap, a plugin that failed to load or was
+    skipped. Those are coverage risks the person running the command must see.
+    Resolving ``sys.stderr`` at emit time (rather than binding a stream once)
+    keeps it correct when stderr is swapped, e.g. by test capture.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        print(f"safestream: {record.levelname.lower()}: {record.getMessage()}", file=sys.stderr)
+
+
+_STDERR_WARNINGS = _StderrWarnings(logging.WARNING)
+
+
+def _surface_library_warnings() -> None:
+    logger = logging.getLogger("safestream_redactor")
+    if _STDERR_WARNINGS not in logger.handlers:
+        logger.addHandler(_STDERR_WARNINGS)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    _surface_library_warnings()
     if args.command == "init-config":
         return _cmd_init_config(args)
     if args.command == "serve":

@@ -60,6 +60,6 @@ runs:
           # The SARIF report is content-free (no secret text) and safe to upload.
           safestream detect "${args[@]}" --sarif > "$SARIF_FILE"
         fi
-        # --hide-text keeps the matched value out of the build log; findings
-        # are listed as file:line:col with their type and confidence.
-        safestream detect "${args[@]}" --hide-text --fail-on-detect
+        # detect never prints the matched value unless explicitly asked to, so
+        # the build log lists only file:line:col, type, and confidence.
+        safestream detect "${args[@]}" --fail-on-detect

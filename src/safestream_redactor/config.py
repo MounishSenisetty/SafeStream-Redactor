@@ -24,6 +24,9 @@ Example policy file::
     [streaming]
     chunk_size = 65536
     overlap = 8192
+
+    [plugins]
+    enabled = false             # third-party detector plugins are opt-in
 """
 
 from __future__ import annotations
@@ -90,6 +93,7 @@ _SCHEMA: dict[str, dict[str, str]] = {
     "custom": {"words": _STR_LIST, "patterns": _STR_LIST},
     "streaming": {"chunk_size": _INT, "overlap": _INT, "allow_unsafe_overlap": _BOOL},
     "calibration": {"model": _STR},
+    "plugins": {"enabled": _BOOL},
 }
 
 
@@ -192,6 +196,8 @@ def redactor_kwargs_from_config(
     if "patterns" in custom:
         kwargs["custom_patterns"] = custom["patterns"]
     kwargs.update(data.get("streaming", {}))
+    if "enabled" in data.get("plugins", {}):
+        kwargs["load_plugins"] = data["plugins"]["enabled"]
     model_path = data.get("calibration", {}).get("model")
     if model_path:
         from safestream_redactor.calibration import Calibrator

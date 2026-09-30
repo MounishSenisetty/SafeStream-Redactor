@@ -9,9 +9,16 @@ zero-argument class/factory that returns one::
     [project.entry-points."safestream_redactor.detectors"]
     my_detector = "my_pkg.detectors:MyDetector"
 
-:class:`~safestream_redactor.redactor.Redactor` loads these automatically
-(``load_plugins=True`` by default), so installing the plugin is all a user
-needs to do.
+Loading is **opt-in**: a plugin's code runs with full process privileges
+inside a tool that handles secrets, so merely *installing* a package (perhaps
+as a transitive dependency) must not inject code into every redaction run.
+Enable it with ``Redactor(load_plugins=True)``, the CLI's ``--enable-plugins``,
+or ``[plugins] enabled = true`` in a policy file.
+
+When plugins are installed but loading is off, a one-time warning names them:
+the redactor is then running with fewer tiers than the user may expect, and
+reduced coverage must never be silent. Discovery for that warning reads only
+entry-point *metadata*; no plugin code is imported.
 """
 
 from __future__ import annotations
@@ -24,6 +31,25 @@ from safestream_redactor.detectors.base import Detector
 PLUGIN_GROUP = "safestream_redactor.detectors"
 
 logger = logging.getLogger(__name__)
+
+_unloaded_checked = False
+
+
+def warn_if_plugins_skipped(group: str = PLUGIN_GROUP) -> None:
+    """Warn (once per process) if detector plugins are installed but not loaded."""
+    global _unloaded_checked
+    if _unloaded_checked:
+        return
+    _unloaded_checked = True
+    names = sorted(getattr(ep, "name", repr(ep)) for ep in entry_points(group=group))
+    if names:
+        logger.warning(
+            "%d detector plugin(s) installed but not loaded (%s): plugin loading is "
+            "opt-in. Enable it with --enable-plugins, [plugins] enabled = true, or "
+            "Redactor(load_plugins=True) if you trust them.",
+            len(names),
+            ", ".join(names),
+        )
 
 
 def load_plugins(group: str = PLUGIN_GROUP) -> list[Detector]:

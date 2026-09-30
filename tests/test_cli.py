@@ -61,7 +61,14 @@ def test_detect_json(sample, capsys):
     out = run(capsys, "detect", sample, "--json")
     records = [json.loads(line) for line in out.splitlines()]
     assert {r["type"] for r in records} == {"email", "ssn"}
-    assert all({"start", "end", "text", "confidence"} <= r.keys() for r in records)
+    assert all({"start", "end", "line", "column", "confidence"} <= r.keys() for r in records)
+    assert all("text" not in r for r in records)  # hidden by default
+
+
+@pytest.mark.parametrize("flag", ["--show-text", "--reveal-matches"])
+def test_detect_json_reveals_text_only_on_request(sample, capsys, flag):
+    out = run(capsys, "detect", sample, "--json", flag)
+    assert {json.loads(line)["text"] for line in out.splitlines()} == {"bob@x.io", "123-45-6789"}
 
 
 def test_fail_on_detect_gates_ci(sample, tmp_path, capsys):
@@ -175,17 +182,26 @@ def test_constructor_use_entropy_false_disables_both_tiers():
 AWS = "AKIAIOSFODNN7EXAMPLE"
 
 
-def test_hide_text_keeps_secrets_out_of_output(tmp_path, capsys):
-    # The pre-commit hook and GitHub Action promise never to print the secret;
-    # plain `detect` output (what CI logs capture) used to include it verbatim.
+def test_detect_hides_matched_text_by_default(tmp_path, capsys):
+    # detect output lands in CI logs and hook output; it used to print the
+    # secret verbatim, including from the bundled pre-commit hook and Action
     src = tmp_path / "leak.env"
     src.write_text(f"key = {AWS}\nmail bob@x.io\n")
     for extra in ([], ["--json"]):
-        assert main(["detect", str(src), "--hide-text", "--fail-on-detect", *extra]) == 1
+        assert main(["detect", str(src), "--fail-on-detect", *extra]) == 1
         captured = capsys.readouterr()
         assert AWS not in captured.out + captured.err
         assert "bob@x.io" not in captured.out + captured.err
         assert "aws_key" in captured.out
+    main(["detect", str(src)])
+    assert "--show-text reveals it" in capsys.readouterr().err
+
+
+def test_show_text_reveals_matches_for_local_triage(tmp_path, capsys):
+    src = tmp_path / "leak.env"
+    src.write_text(f"key = {AWS}\n")
+    out = run(capsys, "detect", src, "--show-text")
+    assert f"{src}:1:7: aws_key  conf=" in out and repr(AWS) in out
 
 
 def test_detect_reports_line_and_column(tmp_path, capsys):

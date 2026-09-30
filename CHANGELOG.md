@@ -6,13 +6,42 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Breaking changes
+
+- **`detect` hides matched text by default.** Findings print as
+  `file:line:col: type  conf=…`. JSON records carry `line`/`column` and **no
+  `text` field**. Pass `--show-text` (alias `--reveal-matches`) to include the
+  matched value for local triage.
+  *Why:* `detect` output goes to CI logs, hook output, and shared terminals. The
+  bundled pre-commit hook and GitHub Action both promised never to print a
+  secret, yet they ran plain `detect`, which wrote the value verbatim into every
+  log.
+  *Migrate:* scripts that read `text` from `detect --json` must add
+  `--show-text`. Anything that only checks the exit code or counts is unaffected.
+- **Detector plugins are opt-in.** `Redactor(load_plugins=...)` now defaults to
+  `False`. Enable plugins with `load_plugins=True`, `--enable-plugins` (on
+  `redact`, `detect`, `serve`, and `mcp-serve`), or `[plugins] enabled = true`
+  in a policy file.
+  *Why:* plugin code runs with full privileges inside a tool that handles
+  secrets, so installing a package (possibly as a transitive dependency) must
+  not be enough to run it.
+  *Migrate:* if you rely on a plugin, enable it explicitly. Nothing fails
+  silently: when plugins are installed but not enabled, a one-time warning
+  names them. Discovery reads entry-point metadata only; no plugin code is
+  imported.
+- **`memstream` is no longer distributed.** The unfinished event-log subsystem
+  (`safestream_redactor.memstream`) was never used by the redaction path. It is
+  now excluded from the wheel and sdist, and the publish workflow fails if it
+  ever reappears. It remains in the source tree as work in progress.
+- **Stricter inputs** (see *Fixed*): `chunk_size <= 0`, a negative `overlap`,
+  `min_confidence` outside `[0, 1]`, an empty `mask_char`, and ill-typed policy
+  values now raise instead of misbehaving. `--chunk-size 0` is an error, where it
+  used to mean "use the default".
+
 ### Security
 
-- **`detect --hide-text`**, now used by the bundled pre-commit hook and GitHub
-  Action. Both promised never to print a matched secret, but ran plain `detect`,
-  which wrote the value verbatim into commit output and CI logs. With the flag,
-  findings show type, `file:line:col` and confidence only (the JSON `text` field
-  is dropped).
+- **`detect` never prints a matched secret unless asked** (see *Breaking
+  changes*). The pre-commit hook and GitHub Action rely on this default.
 - **Mask mode never reveals more than half a value.** `mask_keep_last` is now
   capped at half the entity's length. Before, a value no longer than
   `mask_keep_last` came out *completely unmasked* (a name `Bob` stayed `Bob`), and
@@ -59,6 +88,10 @@ Notable changes to this project. The format follows
 
 - `detect` prints each finding as `file:line:col`, and JSON records carry `line`
   and `column`.
+- **The CLI shows library warnings on stderr** as `safestream: warning: …`. The
+  package logs through a `NullHandler`, so the CLI used to swallow them: an
+  accepted unsafe overlap, a span longer than the overlap, and plugins that
+  failed to load or were skipped.
 - Config keys `use_gazetteer`, `use_ensemble`, `semantic_policy`, and `backend`,
   so every tier the library offers can be selected from a policy file.
 - `RedactionPolicy` accepts a `str` `hmac_key` (UTF-8 encoded) and rejects an

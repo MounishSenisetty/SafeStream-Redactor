@@ -47,10 +47,14 @@ def test_detect_multiple_files_gate(tmp_path) -> None:
     assert main(["detect", str(clean), str(dirty), "--fail-on-detect"]) == 1
 
 
-def test_pre_commit_hook_never_prints_matched_text() -> None:
+def test_integrations_never_reveal_matched_text() -> None:
+    # detect hides matched text by default; nothing shipped may opt back in
     hooks = yaml.safe_load((ROOT / ".pre-commit-hooks.yaml").read_text())
     hook = next(h for h in hooks if h["id"] == "safestream-detect")
-    assert "--hide-text" in hook["entry"]
+    action = (ROOT / "action.yml").read_text()
+    for flag in ("--show-text", "--reveal-matches"):
+        assert flag not in hook["entry"]
+        assert flag not in action
 
 
 def test_action_never_interpolates_inputs_into_scripts() -> None:

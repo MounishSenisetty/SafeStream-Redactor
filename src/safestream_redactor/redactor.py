@@ -83,7 +83,10 @@ class Redactor:
         Any additional objects implementing the :class:`Detector` protocol.
     load_plugins:
         Discover and load third-party detectors registered under the
-        ``safestream_redactor.detectors`` entry-point group (on by default).
+        ``safestream_redactor.detectors`` entry-point group. **Off by default**:
+        plugin code runs with full process privileges, so it must be trusted
+        explicitly. When it is off and plugins are installed, a one-time warning
+        names them so the reduced coverage is never silent.
     allow_unsafe_overlap:
         Off by default (fail-closed). When ``overlap`` is below the safe minimum
         the active detectors require (:attr:`min_safe_overlap`), construction
@@ -119,7 +122,7 @@ class Redactor:
         use_entropy: bool = True,
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
-        load_plugins: bool = True,
+        load_plugins: bool = False,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
         allow_unsafe_overlap: bool = False,
@@ -194,11 +197,15 @@ class Redactor:
             self._detectors.append(EntropyDetector())
             self._detectors.append(CompoundSecretDetector())
         self._detectors.extend(extra_detectors)
-        # third-party detectors registered via entry points
+        # third-party detectors registered via entry points (opt-in)
         if load_plugins:
             from safestream_redactor.detectors.registry import load_plugins as _load_plugins
 
             self._detectors.extend(_load_plugins())
+        else:
+            from safestream_redactor.detectors.registry import warn_if_plugins_skipped
+
+            warn_if_plugins_skipped()
         # contextual tier also contributes trigger-gated detections of its own
         if resolved_types is None or EntityType.SSN in resolved_types:
             self._detectors.append(self._scorer)

@@ -1,8 +1,10 @@
-"""SafeStream memory subsystem: a streaming, crash-safe, OS-adjacent memory core
-with a novel episodic-synthesis layer.
+"""SafeStream memory subsystem (UNFINISHED, NOT DISTRIBUTED).
 
-This package is intentionally self-contained and stdlib-only. See
-``docs/MEMSTREAM.md`` for the architecture and the extension API.
+The event model and codec of a planned streaming, crash-safe event log. Its
+write-ahead log is not written yet and nothing in the redaction path imports
+this package, so it is excluded from the published wheel and sdist (see
+``[tool.hatch.build]`` in ``pyproject.toml``). It exists only in a source
+checkout; do not depend on it.
 """
 
 from __future__ import annotations

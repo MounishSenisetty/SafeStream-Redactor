@@ -42,7 +42,7 @@ request; they must pass before a PR can merge. The ruff version is pinned in bot
   quantifier (the kernel-hardening tests reject ReDoS-prone patterns), and add at least
   one positive and one negative test.
 - **Never log or print matched text** from library code, reports, SARIF, REST `/scan`, or
-  MCP tools. Only `detect` without `--hide-text` shows it, because the user asked to see it.
+  MCP tools. Only `detect --show-text` shows it, because the user explicitly asked to see it.
 - **Type hints everywhere**; the package ships a `py.typed` marker and CI runs `mypy --strict`.
 - **No new required dependencies.** The core must stay stdlib-only. Optional integrations
   belong in an extra (like `ner` or `onnx`).
