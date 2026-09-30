@@ -245,3 +245,110 @@ def test_core_module_does_not_import_streamlit():
 
 def test_redactor_is_a_plain_core_redactor():
     assert isinstance(build_redactor(Settings()), Redactor)
+
+
+# -- large files -----------------------------------------------------------
+
+from safestream_redactor.ui import core  # noqa: E402
+
+
+def _big_text(lines: int = 3000) -> str:
+    return "".join(
+        f"line {i} user{i}@corp.example card 4111 1111 1111 1111 key {AWS}\n"
+        if i % 3 == 0
+        else f"line {i} nothing to see\n"
+        for i in range(lines)
+    )
+
+
+def test_spool_upload_copies_in_blocks(tmp_path):
+    import io
+
+    data = _big_text().encode()
+    dest = tmp_path / "spooled"
+    assert core.spool_upload(io.BytesIO(data), str(dest), chunk_size=4096) == len(data)
+    assert dest.read_bytes() == data
+
+
+def test_spool_upload_refuses_binary(tmp_path):
+    import io
+
+    with pytest.raises(InputError, match="binary"):
+        core.spool_upload(io.BytesIO(b"\x00\x01ELF" + b"x" * 100), str(tmp_path / "x"))
+
+
+@pytest.mark.parametrize("workers", [1, 3])
+def test_redact_large_matches_the_core_redactor(tmp_path, workers):
+    text = _big_text()
+    src = tmp_path / "in.log"
+    src.write_text(text, encoding="utf-8", newline="")
+    r = build_redactor(Settings(chunk_size=4096))
+    result = core.redact_large(r, str(src), str(tmp_path / "out.log"), workers=workers)
+    assert (tmp_path / "out.log").read_bytes().decode("utf-8") == r.redact(text)
+    assert result.stats.counts == {"aws_key": 1000, "credit_card": 1000, "email": 1000}
+    assert result.input_bytes == src.stat().st_size
+    assert result.output_bytes == (tmp_path / "out.log").stat().st_size
+    assert result.workers == workers and result.seconds >= 0
+
+
+def test_read_head_matches_redaction_decoding(tmp_path):
+    src = tmp_path / "in.log"
+    src.write_bytes(b"a\r\nb \xff c\n" + b"x" * 100)
+    head = core.read_head(str(src), n_chars=10)
+    assert head == "a\r\nb � c\nx"  # CRLF kept, bad byte replaced, 10 chars
+
+
+def test_workdirs_are_private_and_cleaned(tmp_path):
+    import os
+    import stat
+
+    path = core.new_workdir()
+    try:
+        assert stat.S_IMODE(os.stat(path).st_mode) == 0o700 or os.name == "nt"
+        assert path in core._WORKDIRS
+    finally:
+        core.discard_workdir(path)
+    assert not os.path.exists(path) and path not in core._WORKDIRS
+    core.discard_workdir(None)  # no-op
+
+
+def test_save_destination_never_overwrites(tmp_path):
+    first = core.save_destination(str(tmp_path), "app.log")
+    assert first == tmp_path / "app.redacted.log"
+    first.write_text("x")
+    second = core.save_destination(str(tmp_path), "app.log")
+    assert second == tmp_path / "app.redacted-1.log"
+    second.write_text("x")
+    assert core.save_destination(str(tmp_path), "app.log").name == "app.redacted-2.log"
+    # a name that already contains ".redacted" keeps its stem intact
+    (tmp_path / "x.redacted.redacted.log").write_text("x")
+    assert core.save_destination(str(tmp_path), "x.redacted.log").name == (
+        "x.redacted.redacted-1.log"
+    )
+    # untrusted upload names cannot escape the folder
+    assert core.save_destination(str(tmp_path), "../../etc/passwd").parent == tmp_path
+
+
+def test_save_destination_requires_an_existing_folder(tmp_path):
+    with pytest.raises(InputError, match="not an existing folder"):
+        core.save_destination(str(tmp_path / "missing"), "a.log")
+
+
+def test_save_output_moves_the_file(tmp_path):
+    out = tmp_path / "work" / "output"
+    out.parent.mkdir()
+    out.write_text("redacted")
+    from safestream_redactor.report import RedactionStats
+
+    result = core.LargeResult(RedactionStats(), str(out), 8, 8, 0.1, 1)
+    dest = core.save_output(result, tmp_path / "final.redacted.log")
+    assert dest.read_text() == "redacted" and not out.exists()
+
+
+def test_counts_severity_and_estimate():
+    assert core.counts_severity({"email": 3, "aws_key": 1}) == "critical"
+    assert core.counts_severity({"ipv4": 2}) == "low"
+    assert core.counts_severity({"aws_key": 0}) is None
+    assert core.counts_severity({}) is None
+    assert core.estimate_seconds(2_400_000, 2) == pytest.approx(1.0)
+    assert core.default_workers() >= 1

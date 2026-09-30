@@ -9,8 +9,9 @@ none of which are Streamlit's defaults:
   local network;
 * ``--browser.gatherUsageStats false`` — Streamlit otherwise sends usage
   statistics from the browser;
-* ``--server.maxUploadSize`` — Streamlit otherwise buffers uploads of up to
-  200 MB in memory before the page can refuse them.
+* ``--server.maxUploadSize`` — an explicit cap (default 2048 MB, set with
+  ``--max-upload-mb``). Streamlit keeps an upload in memory while it is
+  selected, so this bounds the page's memory; the redaction itself streams.
 * ``--client.toolbarMode minimal`` — hides the toolbar's "Deploy" button, which
   would publish the page to Streamlit Community Cloud.
 * ``--server.headless true`` — always. Outside headless mode Streamlit's first
@@ -22,6 +23,7 @@ none of which are Streamlit's defaults:
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 import threading
@@ -30,23 +32,22 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-from safestream_redactor.ui.core import MAX_INPUT_BYTES
+from safestream_redactor.ui.core import DEFAULT_MAX_UPLOAD_MB
 
 APP_PATH = Path(__file__).with_name("app.py")
 INSTALL_HINT = (
     "The web UI needs the optional 'ui' extra (Streamlit), which is not installed.\n"
     "Install it with:  pip install 'safestream-redactor[ui]'"
 )
-# Streamlit's upload cap is in whole megabytes; round the playground's cap up so
-# a file the page accepts is never refused by the server first.
-MAX_UPLOAD_MB = -(-MAX_INPUT_BYTES // (1024 * 1024))
 
 
 def streamlit_available() -> bool:
     return importlib.util.find_spec("streamlit") is not None
 
 
-def build_command(host: str = "127.0.0.1", port: int = 8501) -> list[str]:
+def build_command(
+    host: str = "127.0.0.1", port: int = 8501, *, max_upload_mb: int = DEFAULT_MAX_UPLOAD_MB
+) -> list[str]:
     """The ``streamlit run`` invocation for the playground."""
     return [
         sys.executable,
@@ -61,7 +62,7 @@ def build_command(host: str = "127.0.0.1", port: int = 8501) -> list[str]:
         "--server.headless",
         "true",
         "--server.maxUploadSize",
-        str(MAX_UPLOAD_MB),
+        str(max_upload_mb),
         "--browser.gatherUsageStats",
         "false",
         # hides Streamlit's "Deploy" button, which offers to publish the page to
@@ -97,14 +98,25 @@ def _open_when_ready(url: str, server: subprocess.Popen[bytes], timeout: float =
             time.sleep(0.25)
 
 
-def launch(host: str = "127.0.0.1", port: int = 8501, *, open_browser: bool = True) -> int:
+def launch(
+    host: str = "127.0.0.1",
+    port: int = 8501,
+    *,
+    open_browser: bool = True,
+    max_upload_mb: int = DEFAULT_MAX_UPLOAD_MB,
+) -> int:
     """Run the playground until interrupted. Returns the process exit status."""
     if not streamlit_available():
         print(f"safestream: error: {INSTALL_HINT}", file=sys.stderr)
         return 1
+    if max_upload_mb < 1:
+        print("safestream: error: --max-upload-mb must be at least 1", file=sys.stderr)
+        return 2
     url = browse_url(host, port)
     print(f"-- SafeStream web UI on {url} (Ctrl-C to stop)", file=sys.stderr)
-    server = subprocess.Popen(build_command(host, port))
+    # large-file outputs are offered for saving next to where the user started us
+    env = {**os.environ, "SAFESTREAM_UI_OUTPUT_DIR": os.getcwd()}
+    server = subprocess.Popen(build_command(host, port, max_upload_mb=max_upload_mb), env=env)
     if open_browser:
         threading.Thread(target=_open_when_ready, args=(url, server), daemon=True).start()
     try:

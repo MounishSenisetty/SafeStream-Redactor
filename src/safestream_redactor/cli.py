@@ -263,6 +263,14 @@ def _build_parser() -> argparse.ArgumentParser:
     ui.add_argument(
         "--headless", action="store_true", help="do not open a browser window automatically"
     )
+    ui.add_argument(
+        "--max-upload-mb",
+        type=int,
+        default=2048,
+        metavar="MB",
+        help="largest accepted upload (default: 2048). Streamlit holds an upload in memory "
+        "while it is selected; files over 5 MiB are then redacted by the streaming engine",
+    )
     return parser
 
 
@@ -817,7 +825,9 @@ def _cmd_ui(args: argparse.Namespace) -> int:
             "anything pasted into it) beyond this machine; prefer 127.0.0.1",
             file=sys.stderr,
         )
-    return launch(args.host, args.port, open_browser=not args.headless)
+    return launch(
+        args.host, args.port, open_browser=not args.headless, max_upload_mb=args.max_upload_mb
+    )
 
 
 def _apply_offline_hard(mode: str | None) -> None:

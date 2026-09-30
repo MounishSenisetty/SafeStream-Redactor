@@ -8,13 +8,17 @@ Start it with ``safestream ui``, which applies the local-only Streamlit settings
 from __future__ import annotations
 
 import importlib.util
+import os
 import secrets
+from pathlib import Path
+from typing import Any
 
 import streamlit as st
 
 from safestream_redactor import __version__, netguard
 from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from safestream_redactor.ui.core import (
+    DOWNLOAD_LIMIT_BYTES,
     MAX_INPUT_BYTES,
     PATTERN_TYPES,
     PREVIEW_CHARS,
@@ -28,14 +32,24 @@ from safestream_redactor.ui.core import (
     SettingsError,
     build_redactor,
     check_text_size,
+    counts_severity,
     decode_upload,
+    default_workers,
+    discard_workdir,
     download_name,
+    estimate_seconds,
     finding_rows,
     highlight_html,
+    new_workdir,
     parse_rules,
     privacy_status,
+    read_head,
+    redact_large,
     redact_text,
+    save_destination,
+    save_output,
     scan,
+    spool_upload,
     summarize,
     worst_severity,
 )
@@ -189,9 +203,10 @@ def _privacy_banner() -> None:
     )
     if status.local_only:
         st.success(
-            "**Local-only processing.** Text and files are processed in memory on this "
-            "machine. The page is served on loopback only, Streamlit telemetry is off, and "
-            "the offline guard blocks outbound network connections.",
+            "**Local-only processing.** Text and files are processed on this machine: in "
+            "memory, or for large uploads in a private temporary folder that is deleted when "
+            "the server stops. The page is served on loopback only, Streamlit telemetry is "
+            "off, and the offline guard blocks outbound network connections.",
             icon="🔒",
         )
     else:
@@ -202,8 +217,12 @@ def _privacy_banner() -> None:
         )
 
 
-def _read_input() -> tuple[str, str | None]:
-    """The text to scan and, for an upload, its file name."""
+def _read_input() -> tuple[str, str | None, Any]:
+    """The text to analyse in the page, the upload's name, and a large upload.
+
+    An upload bigger than :data:`MAX_INPUT_BYTES` is returned as the third item
+    (with empty text) for the large-file path instead of being decoded here.
+    """
     paste_tab, upload_tab = st.tabs(["Paste text", "Upload file"])
     with paste_tab:
         st.button("Load sample log", on_click=_load_sample)
@@ -214,18 +233,18 @@ def _read_input() -> tuple[str, str | None]:
             placeholder="Paste logs, config, or any text…",
         )
     with upload_tab:
+        limit_mb = int(st.get_option("server.maxUploadSize"))
         upload = st.file_uploader(
-            f"A text file up to {MAX_INPUT_BYTES // _MIB} MiB",
+            f"A text file up to {_size_label(limit_mb * _MIB)}",
             type=list(UPLOAD_TYPES),
             key="upload",
+            help=f"Files up to {MAX_INPUT_BYTES // _MIB} MiB are analysed in the page. Larger "
+            "files are redacted by the streaming engine and previewed. Streamlit keeps an "
+            "upload in memory while it is selected.",
         )
     if upload is not None:
-        if upload.size > MAX_INPUT_BYTES:  # refuse before copying the bytes again
-            raise InputError(
-                f"{upload.name} is {upload.size / _MIB:.1f} MiB, above the "
-                f"{MAX_INPUT_BYTES // _MIB} MiB playground limit. Use the streaming CLI: "
-                "safestream redact BIG.log -o CLEAN.log"
-            )
+        if upload.size > MAX_INPUT_BYTES:
+            return "", upload.name, upload
         decoded = decode_upload(upload.getvalue(), MAX_INPUT_BYTES)
         st.caption(f"Scanning **{upload.name}**. Remove it to scan pasted text instead.")
         if decoded.replaced_bytes:
@@ -233,9 +252,9 @@ def _read_input() -> tuple[str, str | None]:
                 f"{decoded.replaced_bytes} byte(s) were not valid UTF-8 and could not be "
                 "scanned. Convert the file to UTF-8 for full coverage."
             )
-        return decoded.text, upload.name
+        return decoded.text, upload.name, None
     check_text_size(pasted, MAX_INPUT_BYTES)
-    return pasted, None
+    return pasted, None, None
 
 
 def _legend() -> None:
@@ -250,8 +269,8 @@ def _view(text: str, findings: list[Finding], *, redacted: bool = False) -> None
     st.html(_STYLES + highlight_html(text, findings, redacted=redacted))
 
 
-def _findings_table(findings: list[Finding]) -> None:
-    with st.expander(f"Findings ({len(findings)})", expanded=True):
+def _findings_table(findings: list[Finding], title: str = "Findings") -> None:
+    with st.expander(f"{title} ({len(findings)})", expanded=True):
         if not findings:
             st.write("Nothing detected with the current settings.")
             return
@@ -274,6 +293,161 @@ def _metrics(text: str, findings: list[Finding]) -> None:
         st.caption(" · ".join(f"{name}: {n}" for name, n in counts.items()))
 
 
+def _size_label(n_bytes: float) -> str:
+    return f"{n_bytes / 1024**3:.1f} GiB" if n_bytes >= 1024**3 else f"{n_bytes / _MIB:,.1f} MiB"
+
+
+def _duration(seconds: float) -> str:
+    if seconds < 90:
+        return f"{max(1, round(seconds))} s"
+    return f"{seconds / 60:.0f} min"
+
+
+def _default_save_dir() -> str:
+    # `safestream ui` passes the directory it was started from
+    configured = os.environ.get("SAFESTREAM_UI_OUTPUT_DIR")
+    if configured:
+        return configured
+    downloads = Path.home() / "Downloads"
+    return str(downloads if downloads.is_dir() else Path.cwd())
+
+
+def _forget_large_file() -> None:
+    state = st.session_state.pop("large", None)
+    if state:
+        discard_workdir(state["workdir"])
+
+
+def _process_large(upload: Any, settings: Settings, redactor: Any) -> dict[str, Any] | None:
+    """Spool and redact a large upload once per (file, settings); cached in the session."""
+    key = (upload.file_id, settings)
+    state: dict[str, Any] | None = st.session_state.get("large")
+    if state is not None and state["key"] == key:
+        return state
+    workers = default_workers()
+    eta = _duration(estimate_seconds(upload.size, workers))
+    # a large run takes minutes: start it on request, never on an incidental rerun
+    if not st.button(f"Process {upload.name}", type="primary", key="process_large"):
+        st.caption(f"Takes about {eta} on this machine ({workers} worker(s)).")
+        return None
+    _forget_large_file()
+    workdir = new_workdir()
+    source, output = os.path.join(workdir, "input"), os.path.join(workdir, "output")
+    try:
+        with st.status(f"Processing {upload.name}…", expanded=True) as status:
+            st.write("Copying the upload to a private temporary folder…")
+            upload.seek(0)
+            spool_upload(upload, source)
+            head = read_head(source)
+            st.write(f"Redacting with {workers} worker(s), about {eta}…")
+            result = redact_large(redactor, source, output, workers=workers)
+            os.remove(source)
+            status.update(
+                label=f"Processed {upload.name} in {_duration(result.seconds)}",
+                state="complete",
+                expanded=False,
+            )
+    except BaseException:
+        discard_workdir(workdir)
+        raise
+    state = {"key": key, "result": result, "head": head, "workdir": workdir, "saved": None}
+    st.session_state["large"] = state
+    return state
+
+
+def _large_file(upload: Any, mode: str, settings: Settings, redactor: Any) -> None:
+    st.info(
+        f"**{upload.name}** is {_size_label(upload.size)}, more than the "
+        f"{MAX_INPUT_BYTES // _MIB} MiB analysed in the page. It is redacted by the "
+        "streaming engine on every core (constant memory, output identical to the CLI). "
+        f"Counts cover the whole file; highlights cover its first {PREVIEW_CHARS:,} "
+        "characters.",
+        icon="📦",
+    )
+    try:
+        state = _process_large(upload, settings, redactor)
+    except InputError as exc:
+        st.error(str(exc), icon="🚫")
+        return
+    if state is None:
+        return
+    result, head = state["result"], state["head"]
+    counts = dict(sorted(result.stats.counts.items(), key=lambda kv: (-kv[1], kv[0])))
+    a, b, c, d = st.columns(4)
+    a.metric("Findings", f"{result.stats.total:,}")
+    b.metric("Entity types", len(counts))
+    c.metric("Highest severity", counts_severity(counts) or "none")
+    d.metric("Size", _size_label(result.input_bytes))
+    if counts:
+        st.caption(" · ".join(f"{name}: {n:,}" for name, n in counts.items()))
+    rate = result.input_bytes / _MIB / max(result.seconds, 1e-9)
+    st.caption(
+        f"Processed in {_duration(result.seconds)} ({rate:.1f} MiB/s on "
+        f"{result.workers} worker(s))."
+    )
+    if result.stats.decode_replacements:
+        st.warning(
+            f"{result.stats.decode_replacements:,} byte(s) were not valid UTF-8 and could "
+            "not be scanned. Convert the file to UTF-8 for full coverage."
+        )
+
+    head_findings = scan(redactor, head)
+    if mode == "Detect":
+        st.subheader("Annotated preview")
+        _legend()
+        _view(head, head_findings)
+        _findings_table(head_findings, title="Findings in the preview")
+        return
+    left, right = st.columns(2)
+    with left:
+        st.subheader("Original (preview)")
+        _view(head, head_findings)
+    with right:
+        st.subheader("Redacted (preview)")
+        _view(head, head_findings, redacted=True)
+    _large_output(upload.name, state)
+    _findings_table(head_findings, title="Findings in the preview")
+
+
+def _large_output(name: str, state: dict[str, Any]) -> None:
+    st.subheader("Redacted file")
+    if state["saved"]:
+        st.success(f"Saved to `{state['saved']}`", icon="✅")
+        return
+    result = state["result"]
+    output = Path(result.output_path)
+    if result.output_bytes <= DOWNLOAD_LIMIT_BYTES:
+        st.download_button(
+            f"Download ({_size_label(result.output_bytes)})",
+            output.read_bytes,  # read only when clicked, never on a rerun
+            file_name=download_name(name),
+            mime="text/plain",
+            on_click="ignore",
+            type="primary",
+        )
+    local = privacy_status(
+        st.get_option("server.address"), False, netguard.is_installed()
+    ).local_only
+    if not local:
+        # writing to this machine's disk is for its own user only
+        st.caption("Saving to a folder is available only when the page is served on loopback.")
+        return
+    if result.output_bytes > DOWNLOAD_LIMIT_BYTES:
+        st.caption(
+            f"The output is {_size_label(result.output_bytes)}, too large for a browser "
+            "download from this page. Save it to a folder on this machine instead."
+        )
+    folder = st.text_input("Save to folder", value=_default_save_dir(), key="save_dir")
+    if st.button("Save redacted file", key="save_large"):
+        try:
+            destination = save_output(result, save_destination(folder, name))
+        except InputError as exc:
+            st.error(str(exc), icon="🚫")
+            return
+        state["saved"] = str(destination)
+        st.rerun()
+
+
 def main() -> None:
     st.set_page_config(page_title="SafeStream Redactor", page_icon="🛡️", layout="wide")
     # Any outbound connection from this process now fails closed (idempotent).
@@ -285,9 +459,19 @@ def main() -> None:
     _privacy_banner()
 
     try:
-        text, name = _read_input()
+        text, name, large = _read_input()
     except InputError as exc:
         st.error(str(exc), icon="🚫")
+        return
+    if large is None:
+        _forget_large_file()  # its upload was removed: drop the scratch output
+    else:
+        try:
+            redactor = build_redactor(settings)
+        except SettingsError as exc:
+            st.error(f"**Invalid settings.** {exc}", icon="⚠️")
+            return
+        _large_file(large, mode, settings, redactor)
         return
     if not text:
         st.info("Paste text or upload a file to begin, or load the sample log.")

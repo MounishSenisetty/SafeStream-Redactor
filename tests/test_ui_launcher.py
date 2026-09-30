@@ -19,10 +19,12 @@ class _FakeServer:
     """Stands in for the Streamlit child process."""
 
     started: ClassVar[list[list[str]]] = []
+    envs: ClassVar[list[dict[str, str] | None]] = []
 
-    def __init__(self, cmd: list[str], returncode: int = 0) -> None:
+    def __init__(self, cmd: list[str], env: dict[str, str] | None = None) -> None:
         _FakeServer.started.append(cmd)
-        self.returncode = returncode
+        _FakeServer.envs.append(env)
+        self.returncode = 0
 
     def poll(self) -> int | None:
         return self.returncode
@@ -34,6 +36,7 @@ class _FakeServer:
 @pytest.fixture
 def fake_streamlit(monkeypatch):
     _FakeServer.started = []
+    _FakeServer.envs = []
     opened: list[str] = []
     monkeypatch.setattr(launcher, "streamlit_available", lambda: True)
     monkeypatch.setattr(launcher.subprocess, "Popen", _FakeServer)
@@ -58,9 +61,8 @@ def test_command_enforces_local_only_settings():
     assert _flag(cmd, "--client.toolbarMode") == "minimal"  # no "Deploy" button
     # always headless: otherwise Streamlit's first run blocks on an "Email:" prompt
     assert _flag(cmd, "--server.headless") == "true"
-    # the server refuses anything the page would refuse, before buffering it
-    assert int(_flag(cmd, "--server.maxUploadSize")) * 1024 * 1024 >= launcher.MAX_INPUT_BYTES
-    assert int(_flag(cmd, "--server.maxUploadSize")) == 5
+    # an explicit upload cap (Streamlit holds uploads in memory while selected)
+    assert int(_flag(cmd, "--server.maxUploadSize")) == launcher.DEFAULT_MAX_UPLOAD_MB == 2048
 
 
 def test_cli_passes_options_through_and_opens_browser(fake_streamlit, capsys):
@@ -98,7 +100,11 @@ def test_browse_url(host, url):
 
 
 def test_child_exit_status_is_returned(monkeypatch, fake_streamlit):
-    monkeypatch.setattr(launcher.subprocess, "Popen", lambda cmd: _FakeServer(cmd, 3))
+    class _Failing(_FakeServer):
+        def wait(self) -> int:
+            return 3
+
+    monkeypatch.setattr(launcher.subprocess, "Popen", _Failing)
     assert launcher.launch() == 3
 
 
@@ -169,3 +175,22 @@ def test_python_dash_m_entry_point(monkeypatch):
 def test_streamlit_available_reflects_the_environment(monkeypatch):
     monkeypatch.setattr(launcher.importlib.util, "find_spec", lambda name: None)
     assert launcher.streamlit_available() is False
+
+
+def test_upload_cap_is_configurable(fake_streamlit):
+    assert main(["ui", "--max-upload-mb", "4096"]) == 0
+    (cmd,) = _FakeServer.started
+    assert _flag(cmd, "--server.maxUploadSize") == "4096"
+
+
+def test_upload_cap_must_be_positive(fake_streamlit, capsys):
+    assert main(["ui", "--max-upload-mb", "0"]) == 2
+    assert _FakeServer.started == []
+    assert "--max-upload-mb" in capsys.readouterr().err
+
+
+def test_large_outputs_are_saved_next_to_the_launch_dir(fake_streamlit, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert main(["ui"]) == 0
+    (env,) = _FakeServer.envs
+    assert env is not None and env["SAFESTREAM_UI_OUTPUT_DIR"] == str(tmp_path)

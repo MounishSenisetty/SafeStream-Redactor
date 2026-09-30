@@ -14,24 +14,41 @@ the page shows is exactly what ``safestream redact`` would write.
 
 from __future__ import annotations
 
+import atexit
 import html
 import ipaddress
 import os
+import shutil
+import tempfile
+import time
 from collections import Counter
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import BinaryIO
 
 from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from safestream_redactor.entities import Detection, EntityType
 from safestream_redactor.locate import LineTracker
 from safestream_redactor.policy import RedactionMode, RedactionPolicy
 from safestream_redactor.redactor import Redactor
+from safestream_redactor.report import RedactionStats
 from safestream_redactor.severity import CRITICAL, HIGH, LOW, MEDIUM, severity_for
 
-# The playground holds the whole input in memory (to highlight and diff it), so
-# it is capped. Large files belong on the streaming CLI, which has no such cap.
-MAX_INPUT_BYTES = 5 * 1024 * 1024
+_MIB = 1024 * 1024
+# Pasted text, and uploads up to this size, are analysed in the page: held in
+# memory, fully highlighted, and diffed. Larger uploads take the large-file path
+# (spooled to disk, redacted by the streaming engine on every core, previewed).
+MAX_INPUT_BYTES = 5 * _MIB
+# Upload cap (Streamlit's --server.maxUploadSize). Streamlit keeps an upload in
+# RAM while it is selected, so this also bounds the page's memory use.
+DEFAULT_MAX_UPLOAD_MB = 2048
+# Large-file outputs up to this size are also offered as a browser download
+# (which Streamlit serves from memory); every size can be saved to a folder.
+DOWNLOAD_LIMIT_BYTES = 200 * _MIB
+# Single-core throughput measured on mixed logs; only used for a rough estimate.
+_BYTES_PER_SECOND_PER_CORE = 1.2e6
 # The annotated views render at most this many characters; findings, counts, and
 # the redacted output always cover the whole input.
 PREVIEW_CHARS = 200_000
@@ -201,8 +218,9 @@ def decode_upload(data: bytes, max_bytes: int = MAX_INPUT_BYTES) -> DecodedInput
 
 def _too_large(max_bytes: int) -> str:
     return (
-        f"Input is larger than the playground's {max_bytes // (1024 * 1024)} MiB limit. "
-        "Use the streaming CLI for large files: safestream redact BIG.log -o CLEAN.log"
+        f"Input is larger than the {max_bytes // _MIB} MiB limit for text analysed in the "
+        "page. Upload it as a file instead (large files are streamed), or use the CLI: "
+        "safestream redact BIG.log -o CLEAN.log"
     )
 
 
@@ -372,3 +390,131 @@ SAMPLE_TEXT = """\
 2026-09-30T10:14:07Z ERROR webhook https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
 2026-09-30T10:14:09Z INFO  db url postgres://app:s3cr3t-Pa55w0rd@db.internal:5432/prod
 """
+
+
+# -- large files ------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class LargeResult:
+    """Outcome of redacting an upload too big to analyse in the page."""
+
+    stats: RedactionStats
+    output_path: str
+    input_bytes: int
+    output_bytes: int
+    seconds: float
+    workers: int
+
+
+# Scratch directories created for large files, removed when the server exits.
+_WORKDIRS: set[str] = set()
+
+
+def _cleanup_workdirs() -> None:
+    for path in list(_WORKDIRS):
+        discard_workdir(path)
+
+
+atexit.register(_cleanup_workdirs)
+
+
+def new_workdir() -> str:
+    """A private (0700) scratch directory for one large-file run."""
+    path = tempfile.mkdtemp(prefix="safestream-ui-")
+    _WORKDIRS.add(path)
+    return path
+
+
+def discard_workdir(path: str | None) -> None:
+    if path:
+        shutil.rmtree(path, ignore_errors=True)
+        _WORKDIRS.discard(path)
+
+
+def spool_upload(src: BinaryIO, dest: str, *, chunk_size: int = 1 << 20) -> int:
+    """Copy an upload to ``dest`` in fixed-size blocks; refuse binary content.
+
+    Reading block by block never materialises a second full copy of the file:
+    Streamlit already holds the upload in memory, and this adds one block.
+    """
+    total = 0
+    with open(dest, "wb") as out:
+        while block := src.read(chunk_size):
+            if total == 0 and b"\0" in block[:_BINARY_SNIFF]:
+                raise InputError(
+                    "This looks like a binary file. Upload text (.txt, .log, .json, .csv)."
+                )
+            out.write(block)
+            total += len(block)
+    return total
+
+
+def read_head(path: str, n_chars: int = PREVIEW_CHARS) -> str:
+    """The first ``n_chars`` of a file, decoded exactly as the redaction reads it."""
+    with open(path, encoding="utf-8", errors="replace", newline="") as f:
+        return f.read(n_chars)
+
+
+def default_workers() -> int:
+    return os.cpu_count() or 1
+
+
+def estimate_seconds(size_bytes: int, workers: int) -> float:
+    """A rough duration for the progress message (throughput varies with content)."""
+    return size_bytes / (_BYTES_PER_SECOND_PER_CORE * max(1, workers))
+
+
+def redact_large(
+    redactor: Redactor, in_path: str, out_path: str, *, workers: int | None = None
+) -> LargeResult:
+    """Redact a file on disk with the streaming engine, in parallel when possible.
+
+    This is the CLI's own path: memory stays constant however big the file is,
+    the output is byte-identical to a single-core run, and each worker process
+    runs under the offline network guard.
+    """
+    from safestream_redactor.parallel import redact_file_parallel
+
+    n = workers or default_workers()
+    started = time.monotonic()
+    if n > 1:
+        outcome = redact_file_parallel(redactor, in_path, out_path, workers=n, offline_guard=True)
+        stats = outcome.stats
+    else:
+        stats = redactor.redact_file(in_path, out_path)
+    return LargeResult(
+        stats=stats,
+        output_path=out_path,
+        input_bytes=os.path.getsize(in_path),
+        output_bytes=os.path.getsize(out_path),
+        seconds=time.monotonic() - started,
+        workers=n,
+    )
+
+
+def counts_severity(counts: dict[str, int]) -> str | None:
+    """Highest severity among per-type counts (the large-file summary)."""
+    order = {CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3}
+    levels = (severity_for(EntityType(name)) for name, n in counts.items() if n)
+    return min(levels, key=order.__getitem__, default=None)
+
+
+def save_destination(folder: str, uploaded: str | None) -> Path:
+    """A path in ``folder`` for the redacted copy that never overwrites a file."""
+    directory = Path(folder).expanduser()
+    if not directory.is_dir():
+        raise InputError(f"{directory} is not an existing folder.")
+    target = directory / download_name(uploaded)
+    stem, suffix = target.name.rsplit(".redacted", 1)
+    n = 1
+    while target.exists():
+        target = directory / f"{stem}.redacted-{n}{suffix}"
+        n += 1
+    return target
+
+
+def save_output(result: LargeResult, destination: Path) -> Path:
+    """Move a large-file output to ``destination`` (copying across filesystems)."""
+    shutil.move(result.output_path, destination)
+    return destination

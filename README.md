@@ -299,6 +299,7 @@ file, then tune detection in the sidebar and watch the results update.
 pip install 'safestream-redactor[ui]'      # or, from a clone: pip install -e '.[ui]'
 safestream ui                               # opens http://127.0.0.1:8501
 safestream ui --port 9000 --headless        # another port, no browser tab
+safestream ui --max-upload-mb 4096          # accept uploads up to 4 GB (default 2 GB)
 python -m safestream_redactor.ui            # same as `safestream ui`
 ```
 
@@ -317,9 +318,22 @@ python -m safestream_redactor.ui            # same as `safestream ui`
   extra is installed), custom words and regexes (one per line), and the streaming chunk
   size and overlap.
 - **Inputs:** a paste box (with a sample log) and uploads of `.txt`, `.log`, `.json`,
-  and `.csv` up to 5 MiB. The page holds its input in memory to highlight it, so large
-  files belong on the streaming CLI. Binary files are refused, and bytes that are not
-  valid UTF-8 are reported rather than silently skipped.
+  and `.csv`, up to 2 GB by default (`--max-upload-mb`). Binary files are refused, and
+  bytes that are not valid UTF-8 are reported rather than silently skipped.
+- **Large files:** pasted text and uploads up to 5 MiB are analysed entirely in the
+  page. A bigger upload goes to a large-file path, which starts only when you click
+  *Process*:
+  - the file is copied to a private temporary folder and redacted by the same parallel
+    streaming engine as the CLI, on every core, with output byte-identical to it;
+  - the counts cover the whole file, and highlights cover its first 200,000 characters;
+  - Redact mode saves the redacted file to a folder you choose (by default, where you
+    ran `safestream ui`), and offers a browser download for outputs up to 200 MiB.
+
+  Measured on a 1 GB log with 4 cores: about 4 minutes, and each redaction worker uses
+  22 MiB of private memory. Streamlit itself keeps an upload in memory while it is
+  selected, about twice the file size (≈2 GB of RAM for a 1 GB upload). For files near
+  your free RAM, use the CLI, which never holds the file in memory:
+  `safestream redact big.log -o clean.log --workers 4`.
 - **Errors:** invalid settings, such as a malformed regex or an overlap below the safe
   minimum, appear as alerts that quote the engine's own validation message, never as a
   traceback.

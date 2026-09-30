@@ -95,8 +95,14 @@ Notable changes to this project. The format follows
     or keyed hash, plus copy and download.
   - *Sidebar:* confidence, entity types, entropy, name heuristics, spaCy NER,
     custom words and regexes, and chunk size and overlap.
-  - *Inputs:* paste text, or upload `.txt`/`.log`/`.json`/`.csv` up to 5 MiB.
-    Binary files are refused; undecodable bytes are reported.
+  - *Inputs:* paste text, or upload `.txt`/`.log`/`.json`/`.csv` up to 2 GB
+    (`--max-upload-mb`). Binary files are refused; undecodable bytes are reported.
+  - *Large files:* uploads over 5 MiB are spooled to a private temp folder and
+    redacted by the parallel streaming engine, on request. The page shows full
+    counts and highlights for the first 200,000 characters. The output can be
+    saved to a folder (loopback only), or downloaded when it is ≤ 200 MiB.
+    A 1 GB upload took about 4 minutes on 4 cores, with 22 MiB of private memory
+    per worker; Streamlit itself holds about 2× the upload in RAM.
   - *Errors:* invalid settings (bad regex, unsafe overlap) appear as alerts
     quoting the engine's own validation.
   - *Local-only:* the launcher binds 127.0.0.1, disables Streamlit's browser
