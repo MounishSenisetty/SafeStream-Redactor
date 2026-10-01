@@ -447,6 +447,87 @@ why the gain shrinks as density rises. Peak RSS is 42.5 MB (pure Python: 22 MB).
   `re.finditer`, so an *unbroken* run of digits and spaces longer than the overlap
   could be segmented differently mid-run. Real text breaks such runs.
 
+## 0.5 (cont.) — every default tier is native
+
+Earlier sections declined to port the entropy tier because its threshold is a
+floating-point comparison that cannot be guaranteed bit-identical. It is now ported
+**exactly**, by handling the float the same way the Unicode classes were handled:
+decide natively only where both engines must agree, and hand the rest to Python.
+
+* **Entropy and compound secrets** (`native/src/secrets.rs`). Candidate runs, the
+  letters-only / hex / length / class-diversity / distinct-ratio gates are integer
+  and ASCII logic, identical by construction (the distinct ratio is an
+  integer-over-integer IEEE division in both). Shannon entropy is computed from a
+  stack histogram. For these tokens (at most 66 distinct ASCII characters, at most
+  `MAX_SPAN` long) any faithful `log2` and either summation — CPython 3.12+ uses
+  Neumaier-compensated `sum()`, 3.10/3.11 a naive one — land within ~1e-13 of the
+  true value. So a token whose native entropy is more than **1e-9** from its
+  threshold gets the same verdict in Python, and one more than 1e-6 hundredths from a
+  rounding boundary gets the same `meta["entropy"]` string. Tokens inside either band
+  come back *undecided* and Python classifies and formats them itself. They are
+  rare but real: 16 distinct characters used equally is exactly 4.0 bits, the
+  base64 threshold (`test_entropy_on_the_threshold_is_decided_in_python`).
+* **Contextual tier** (`native/src/context.rs`). Bare-SSN detection is a digit-run
+  scan. `adjust` returns only the boost/suppress *decisions*; the confidence
+  arithmetic stays in Python, so the floats are Python's own. Trigger words are
+  matched against `str.lower()` of the window. All triggers are ASCII, and on every
+  supported CPython exactly two non-ASCII characters lower-case to ASCII (pinned by a
+  test): the Kelvin sign (to `k`, mapped natively) and `İ` (to `i` + combining dot,
+  sent to Python). Native `adjust` is used only for detections from built-in tiers,
+  whose `text` is exactly the span, since a plugin's detection might not be.
+* **Pickling.** A native-backed detector held the extension module and could not be
+  pickled, so `--workers N` with the native backend failed wherever the parallel
+  engine pickles (the `spawn`/`forkserver` start methods: macOS, Windows, Python 3.14
+  on Linux). Detectors now pickle their backend name and reload the module.
+
+The full-pipeline differential test (`test_full_pipeline_matches_python_fuzzed`)
+compares every detection's span, text, type, exact confidence, source and `meta`
+against `backend="python"` on the whole default pipeline. Two planted bugs (drop the
+Kelvin mapping; hex minimum 32 → 31) both fail it.
+
+Per stage, 4 MB on 64 KiB windows (native backend):
+
+| Density | Before (det + labeled native) | Now (all tiers native) |
+| --- | --- | --- |
+| none | 13.1 MB/s (contextual 43 %, entropy 31 %) | 44.2 MB/s |
+| medium | 12.0 MB/s | 28.2 MB/s |
+| high | 6.5 MB/s (adjust 18 %) | 12.6 MB/s |
+
+What remains at high density is per-detection Python work: building `Detection`
+objects, `resolve_overlaps`, and the policy's replacement.
+
+Criterion (4 MiB, `cargo bench --no-default-features`): `scan/entropy` ~530 MiB/s at
+0 % PII and ~400 MiB/s at 50 %; `scan/compound` ~960 / ~870 MiB/s (the Python tiers:
+~45-53 MB/s).
+
+### 200 MB, one and four workers
+
+`benchmarks/baseline.py --sizes 200 --densities low high --workers 1 4 --backends
+python native` (real `redact_file`: read, decode, every tier, arbitration, policy,
+write; 4 vCPU). Detection counts are identical in every Python/native pair (18 579
+at low density, 1 367 479 at high):
+
+| Density | Workers | Python | Native | Speedup |
+| --- | --- | --- | --- | --- |
+| low (1 %) | 1 | 1.31 MB/s | 34.5 MB/s | 26x |
+| low (1 %) | 4 | 5.17 MB/s | 120.7 MB/s | 23x |
+| high (50 %) | 1 | 1.12 MB/s | 10.4 MB/s | 9.3x |
+| high (50 %) | 4 | 2.14 MB/s | 36.5 MB/s | 17x |
+
+Memory stays flat over 200 MB: 42.8 MB RSS for the parent and 36-38 MB per worker
+with the native core (Python: 23-25 MB and 18-20 MB).
+
+### E.164 country codes
+
+`phone_ok` (Python and native alike) now requires an assigned E.164 country code
+for a `+` number: the 215 codes in libphonenumber's metadata, a prefix code. A
+separated 1–3 digit group (`+44 20 …`) must be a code exactly; an unbroken run
+(`+14155552671`) must begin with one; no code starts with 0. The native table is a
+1000-bit set built at compile time (one shift and mask per lookup). On RedactionBench
+it removes the only `+` false positive (a `+0000` timezone offset in a `date` line)
+and loses no gold phone; the synthetic generators, which drew invented codes like
+`+13` and `+25`, now draw real ones.
+
 ## Status
 
 - Step 2 (`detectors/_lookaround_free.py` + `tests/test_lookaround_free.py`):

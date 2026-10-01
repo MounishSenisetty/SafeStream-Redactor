@@ -71,6 +71,10 @@ Notable changes to this project. The format follows
 
 ### Fixed
 
+- **`--workers N` with the native backend failed on spawn/forkserver platforms**
+  (macOS, Windows, Python 3.14 on Linux): native-backed detectors held the
+  unpicklable extension module. They now pickle their backend name and reload it.
+
 - **The GitHub Action failed on its default input.** `paths: "."` always exited 1
   with `Is a directory`. `detect` now accepts directories and walks them
   recursively, skipping symlinks, `.git`/`.hg`/`.svn`, and binary files. A file
@@ -96,6 +100,30 @@ Notable changes to this project. The format follows
   atomically. All four writers share one atomic-replace helper.
 
 ### Added
+
+- **`safestream fanotify`: Linux file-system DLP daemon.** Watches directory trees
+  and, per `--mode`, logs files that contain detections (`audit`), rewrites them in
+  place with every detection redacted after the writer closes them (`redact`), or
+  denies every `read()` of them (`block`, `FAN_ACCESS_PERM`; verdicts cached per file
+  version; unscannable files denied unless `--fail-open`). Logs are JSON lines with
+  paths, types and counts, never matched text. Without `CAP_SYS_ADMIN`, `audit` and
+  `redact` fall back to inotify and `block` refuses to start. `fanotify` cannot see a
+  write's data before it lands, so `block` stops secrets being read back out rather
+  than stopping the write (`docs/FANOTIFY.md`).
+- **`--backend {python,native,auto}`** on `redact`, `detect`, `serve`, `mcp-serve`
+  and `fanotify`: choose the detection engine without a policy file.
+- **The native core runs every default tier**: entropy, compound secrets and the
+  contextual tier are ported, exactly (floating-point entropy verdicts within 1e-9
+  of a threshold are decided in Python; see `docs/NATIVE_CORE.md`). Measured on a
+  200 MB file: 34.5 / 10.4 MB/s on one worker and 120.7 / 36.5 MB/s on four, at 1 % /
+  50 % PII density (pure Python: 1.3 / 1.1 and 5.2 / 2.1 MB/s); detection counts
+  identical.
+- **E.164 country codes**: an international (`+`) phone number must start with an
+  assigned country calling code (215 codes, libphonenumber metadata), in both
+  backends.
+- **`benchmarks/presidio_compare.py`**: SafeStream vs Microsoft Presidio on the
+  adversarial log corpus and RedactionBench (entity recall, character precision /
+  recall, throughput, load time, peak RSS), each tool in its own process.
 
 - **The native core covers the whole deterministic tier and the labeled-identifier
   tier.** `credit_card` and both `phone` patterns run as hand-written linear-time

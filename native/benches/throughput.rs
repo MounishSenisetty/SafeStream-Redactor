@@ -10,6 +10,7 @@
 //!   64 KiB chunks, each rescanned with an 8 KiB overlap (the default
 //!   `chunk_size`/`overlap`), so the cost of the overlap re-scan is included.
 //! * `scan/labeled` — the label-anchored identifier rules.
+//! * `scan/entropy`, `scan/compound` — the statistical tiers.
 //! * `scan/regex_only`, `scan/digits_only` — the two halves of `scan/whole`: the
 //!   regex patterns, and the credit_card/phone linear scanners.
 //! * `floor/count_lines` — a byte-counting pass over the same text: the
@@ -19,7 +20,10 @@
 //! `benchmarks/baseline.py`, which time the same patterns from Python.
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use safestream_native::{bench_hooks, corpus::log_corpus, scan, scan_labeled, warm_up};
+use safestream_native::secrets::{CompoundParams, EntropyParams};
+use safestream_native::{
+    bench_hooks, corpus::log_corpus, scan, scan_compound, scan_entropy, scan_labeled, warm_up,
+};
 
 const SIZE: usize = 4 << 20;
 const CHUNK: usize = 64 << 10;
@@ -64,6 +68,23 @@ fn bench(c: &mut Criterion) {
         let mut labeled = Vec::new();
         group.bench_with_input(BenchmarkId::new("labeled", name), &text, |b, t| {
             b.iter(|| scan_labeled(black_box(t), &mut labeled).map(|_| labeled.len()))
+        });
+        let mut secrets = Vec::new();
+        let ep = EntropyParams {
+            min_length: 24,
+            base64_entropy: 4.0,
+            hex_entropy: 3.0,
+        };
+        group.bench_with_input(BenchmarkId::new("entropy", name), &text, |b, t| {
+            b.iter(|| scan_entropy(black_box(t), ep, &mut secrets).map(|_| secrets.len()))
+        });
+        let cp = CompoundParams {
+            min_length: 20,
+            entropy_floor: 3.5,
+            distinct_ratio: 0.45,
+        };
+        group.bench_with_input(BenchmarkId::new("compound", name), &text, |b, t| {
+            b.iter(|| scan_compound(black_box(t), cp, &mut secrets).map(|_| secrets.len()))
         });
         group.bench_with_input(BenchmarkId::new("regex_only", name), &text, |b, t| {
             b.iter(|| bench_hooks::regex_only(black_box(t), &mut out).map(|_| out.len()))
