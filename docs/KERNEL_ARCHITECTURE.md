@@ -278,12 +278,15 @@ second engine with different semantics.
 
 ### 7.2 Making the native core linkable
 
-`native/Cargo.toml` becomes `crate-type = ["cdylib", "rlib"]`, and PyO3 moves
-behind a default-on `python` feature. The detection functions become plain Rust
-(`pub fn detect(text: &str) -> Vec<RawDetection>`) with a thin `#[pyfunction]`
-wrapper. The Python wheel and its spec guard stay byte-for-byte the same. The
-daemon depends on the crate with `default-features = false`. The existing
-`tests/test_native_backend.py` differential gate keeps covering both.
+**Implemented** (see `NATIVE_CORE.md`, "The crate as a Rust library").
+`native/Cargo.toml` is `crate-type = ["cdylib", "rlib"]`, and PyO3 sits behind an
+opt-in `python` feature that maturin enables. The default build is the plain Rust
+library, so a Rust consumer needs no feature flags. The detection functions are
+plain Rust (`pub fn detect(text: &str) -> Vec<Detection>` in byte offsets,
+`detect_char_offsets` in Python's character offsets) with a thin `#[pyfunction]`
+wrapper in `src/python.rs`. The Python wheel's API and its spec guard are
+unchanged. The `tests/test_native_backend.py` differential gate covers the core
+through the wheel, and `cargo test` covers it without Python.
 
 ### 7.3 Parity: a Python worker pool behind the Rust daemon
 

@@ -10,11 +10,16 @@ Build + run:
         pip install --force-reinstall --no-deps native/dist/*.whl
     python benchmarks/native_backend.py
 
-Current slice: the 12 lookaround-free credential patterns plus SSN (the first
-digit-gated PII pattern — the real bottleneck class: no distinctive literal, so
-Python can't prefilter-skip it on any digit-bearing line). SSN uses a
-lookaround-free candidate + Unicode-aware boundary check + string-comparison
-validator, byte-identical to Python including Unicode-digit SSNs.
+Native coverage: the 12 lookaround-free credential patterns, the digit-gated PII
+patterns (ssn/ipv4/ipv6 as lookaround-free candidates + Python-exact boundary
+checks and validators), and credit_card + both phone patterns as hand-rolled
+linear scanners. The digit-gated patterns are the bottleneck class: no distinctive
+literal, so Python can't prefilter-skip them on any digit-bearing line.
+
+Two tables: the covered patterns alone (native core vs the same Python patterns),
+then the whole deterministic tier as users run it (``backend="python"`` vs
+``backend="native"``, where the label-gated credential patterns still run in
+Python).
 """
 
 from __future__ import annotations
@@ -41,6 +46,9 @@ _CREDS = [
     "npm npm_abcdefghijklmnopqrstuvwxyz0123456789 published",
     "ssn 123-45-6789 on file",  # digit-gated PII: the real bottleneck class
     "client 10.20.30.40 connected",  # ipv4: digit-gated + validator
+    "card 4111 1111 1111 1111 charged",  # credit_card: scanner + Luhn
+    "call +1 (415) 555-2671 today",  # structured phone: scanner + phone_ok
+    "or 555 123 4567 after six",  # bare phone
 ]
 # Distractor carries digits, so the SSN pattern (digit-gated, no literal prefilter)
 # cannot be prefilter-skipped in Python and must run its regex on every line.
@@ -73,17 +81,35 @@ def main() -> None:
     types = [EntityType.from_name(n) for n in covered]
     pydet = DeterministicDetector(types=types, prefilter=True)
 
-    print(f"native slice: {len(covered)} patterns (12 credential + ssn/ipv4/ipv6)")
+    corpora = [
+        (label, _corpus(5, frac))
+        for label, frac in [("none (0% PII)", 0.0), ("sparse (1%)", 0.01), ("dense (50%)", 0.5)]
+    ]
+
+    print(f"covered patterns only: {len(list(sn.patterns()))} patterns, {len(covered)} types")
     print(f"{'corpus':<22} {'matches':>9} {'python':>12} {'native':>12} {'speedup':>8}")
     print("-" * 66)
-    for label, frac in [("none (0% PII)", 0.0), ("sparse (1%)", 0.01), ("dense (50%)", 0.5)]:
-        text = _corpus(5, frac)
+    for label, text in corpora:
         mb = len(text) / 1e6
         py = sorted((d.start, d.end, d.entity_type.value) for d in pydet.detect(text))
         nat = sorted((s, e, ty) for s, e, ty, _ in sn.detect(text))
         assert py == nat, f"native diverged from python on {label} ({len(py)} vs {len(nat)})"
         tp = _best(pydet.detect, text)
         tn = _best(sn.detect, text)
+        print(f"{label:<22} {len(py):>9} {mb / tp:>9.1f}MB/s {mb / tn:>9.1f}MB/s {tp / tn:>7.1f}x")
+
+    full_py = DeterministicDetector(backend="python")
+    full_nat = DeterministicDetector(backend="native")
+    print("\nwhole deterministic tier: backend='python' vs backend='native'")
+    print(f"{'corpus':<22} {'matches':>9} {'python':>12} {'native':>12} {'speedup':>8}")
+    print("-" * 66)
+    for label, text in corpora:
+        mb = len(text) / 1e6
+        py = sorted((d.start, d.end, d.entity_type.value) for d in full_py.detect(text))
+        nat = sorted((d.start, d.end, d.entity_type.value) for d in full_nat.detect(text))
+        assert py == nat, f"native backend diverged from python on {label}"
+        tp = _best(full_py.detect, text)
+        tn = _best(full_nat.detect, text)
         print(f"{label:<22} {len(py):>9} {mb / tp:>9.1f}MB/s {mb / tn:>9.1f}MB/s {tp / tn:>7.1f}x")
 
     # Unicode byte-identity sanity (offsets must be character indices)
