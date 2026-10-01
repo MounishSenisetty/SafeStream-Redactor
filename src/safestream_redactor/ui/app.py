@@ -116,11 +116,11 @@ def _sidebar() -> tuple[str, Settings]:
             style = cast(
                 RedactStyle,
                 st.radio(
-                "Redaction style",
-                list(RedactStyle),
-                format_func=_STYLE_LABELS.__getitem__,
-                key="style",
-                horizontal=True,
+                    "Redaction style",
+                    list(RedactStyle),
+                    format_func=_STYLE_LABELS.__getitem__,
+                    key="style",
+                    horizontal=True,
                 ),
             )
             if style is RedactStyle.REPLACE:
