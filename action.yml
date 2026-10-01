@@ -42,6 +42,8 @@ runs:
         else
           python -m pip install safestream-redactor
         fi
+        # the spaCy PERSON/ORG/LOC tier is on by default; its model is not on PyPI
+        python -m spacy download en_core_web_sm
 
     - name: Scan for secrets and PII
       shell: bash

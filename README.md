@@ -7,7 +7,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 Streaming PII & credential redaction for massive text files — constant **O(1) memory**,
-multi-tier detection (regex + validators + entropy + optional NER + contextual heuristics),
+multi-tier detection (regex + validators + entropy + spaCy NER + contextual heuristics),
 fully customizable redaction.
 
 Redact a 100 GB log file with the same memory footprint as a 1 KB one.
@@ -33,7 +33,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 ## Features
 
 - **Constant-memory streaming** — process very large files without loading the entire file into memory.
-- **Multi-tier detection** — deterministic patterns, entropy analysis, optional NER, and contextual scoring.
+- **Multi-tier detection** — deterministic patterns, entropy analysis, spaCy NER (on by default), and contextual scoring.
 - **PII detection** — emails, phone numbers, credit cards, SSNs, IPv4/IPv6, and optional names/organizations/locations.
 - **Credential detection** — API keys, cloud credentials, tokens, JWTs, private keys, high-entropy secrets, and symbol-containing (compound) passwords/blobs.
 - **Multiple redaction modes** — replace, mask, pseudonymize, and per-type replacements.
@@ -51,15 +51,14 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 Three ways — pip, from source, or Docker:
 
 ```bash
-# 1. pip (constant-memory core, zero third-party runtime deps)
+# 1. pip — spaCy is a required dependency and its PERSON/ORG/LOC tier is on by
+# default. The model is not on PyPI, so download it once after installing; until
+# you do, redact/detect refuse to run (fail closed) rather than skip names:
 pip install safestream-redactor
+python -m spacy download en_core_web_sm
 
 # optional local web playground (Streamlit) — `safestream ui`:
 pip install 'safestream-redactor[ui]'
-
-# optional spaCy-based PERSON/ORG/LOC detection:
-pip install 'safestream-redactor[ner]'
-python -m spacy download en_core_web_sm
 
 # optional native (Rust) detection core — a byte-identical accelerator for the
 # deterministic tier, selected with Redactor(backend="native"); the base install
@@ -313,9 +312,8 @@ python -m safestream_redactor.ui            # same as `safestream ui`
   visible), and **Hash** (keyed HMAC pseudonyms, stable for equal values). You can copy
   the output from its code block or download it as `<name>.redacted.<ext>`.
 - **The sidebar** sets the minimum confidence, which entity types run, high-entropy
-  secret detection, the dependency-free name heuristics, spaCy NER (when the `[ner]`
-  extra is installed), custom words and regexes (one per line), and the streaming chunk
-  size and overlap.
+  secret detection, the dependency-free name heuristics, spaCy NER (on by default),
+  custom words and regexes (one per line), and the streaming chunk size and overlap.
 - **Inputs:** a paste box (with a sample log) and uploads of `.txt`, `.log`, `.json`,
   and `.csv` up to 5 MiB. The page holds its input in memory to highlight it, so large
   files belong on the streaming CLI. Binary files are refused, and bytes that are not
@@ -349,7 +347,7 @@ from the same streaming engine the CLI uses, so results match `safestream detect
         │ Tier 2  statistical       │  Shannon-entropy scoring for bespoke,
         │                           │  undocumented high-entropy secrets
         ├───────────────────────────┤
-        │ Tier 3  NER (optional)    │  spaCy PERSON / ORG / LOC
+        │ Tier 3  NER (default on)  │  spaCy PERSON / ORG / LOC
         ├───────────────────────────┤
         │ Tier 4  contextual        │  trigger words boost/suppress
         │                           │  confidence ("ssn:", "example", ...)
@@ -385,7 +383,7 @@ flowchart TB
     subgraph Detection["Detection tiers"]
         Det["Deterministic + validators"]
         Ent["Entropy (secrets)"]
-        NER["NER (optional)"]
+        NER["spaCy NER (default on)"]
         Ctx["Contextual"]
         Arb["Arbitration<br/>score • filter • resolve"]
     end
@@ -444,8 +442,8 @@ identically to whole-text mode.
 > `benchmarks/evaluate.py` against an independent labeled corpus you control (see
 > [benchmarks/README.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/benchmarks/README.md) — the Presidio research dataset, CoNLL,
 > and the n2c2 de-identification set are the recommended targets). Expect recall on
-> free-form prose (names, addresses) to be substantially lower than on structured PII
-> unless the `[ner]` extra is enabled.
+> free-form prose (names, addresses) to be substantially lower than on structured PII:
+> the spaCy tier finds many names but not all of them (see *spaCy NER* below).
 
 **Format coverage & false-positive resistance (synthetic).** On the adversarial corpus
 (1 MB of noisy log/JSON/CSV/SQL dense with hard negatives — order numbers, ISO
@@ -461,8 +459,8 @@ with `benchmarks/generate_hard_dataset.py` then `benchmarks/run_benchmark.py`):
 figure — see the note above. The meaningful, non-circular result in this table is
 **precision under distractors**: SafeStream holds 0.999 while Presidio's phone
 recognizer emits thousands of false positives (P=0.649). Presidio was run via its
-pattern recognizers; its spaCy NER tier is a separate, model-dependent path that will
-out-recall SafeStream's regex core on prose unless you enable `[ner]`.
+pattern recognizers. The throughput figures are for the rule-based pipeline
+(`--no-ner`); with the default spaCy tier SafeStream runs at roughly 0.05 MB/s.
 
 **Throughput is a known limitation, not a strength.** ~3 MB/s single-core means a
 100 GB file takes hours; compiled scanners (gitleaks, ripgrep-class) are 100–1000×
@@ -523,10 +521,10 @@ redacted anyway, lower `min_confidence` (below).
    (`--min-confidence 0.35`, or in a policy file) recovers most values the test/sample
    suppression demotes, at some cost to precision. Do this per-run on data you know is
    noisy — not globally on trusted prose.
-2. **Enable NER for names.** Person / org / location names need the optional spaCy tier:
-   `pip install 'safestream-redactor[ner]'` then `python -m spacy download en_core_web_sm`,
-   and run with `--ner` (or `use_ner = true` in a policy). Without it, names are not
-   detected at all.
+2. **Keep spaCy NER on for names.** Person / org / location names come from the spaCy
+   tier, which is on by default (`python -m spacy download en_core_web_sm` once). With
+   `--no-ner` (or `use_ner = false`) names are not detected at all. A larger model such
+   as `en_core_web_trf` (`ner_model = "en_core_web_trf"`) finds more names, more slowly.
 3. **Add custom patterns for format-less identifiers.** Passport numbers, driver
    licences, bank/routing/account numbers, employee IDs, Slack user IDs, and dates of
    birth have no universal signature, so they need label-anchored regexes you supply. A
@@ -539,6 +537,34 @@ redacted anyway, lower `min_confidence` (below).
 
    It also enables NER and documents each lever inline. Custom patterns redact the whole
    match (including the label word) — the fail-safe outcome for DLP.
+
+## spaCy NER (on by default)
+
+spaCy is a required dependency, and its PERSON / ORG / LOC tier runs on every
+`redact`, `detect`, `serve`, `mcp-serve` and web UI run unless you turn it off
+explicitly (`--no-ner`, `use_ner = false`, `Redactor(use_ner=False)`).
+
+- **Fails closed.** If the model is missing, construction raises
+  `NERUnavailableError` (the CLI exits 1 and the servers refuse to start) instead of
+  quietly running without name coverage.
+- **Only adds redaction.** spaCy's span boundaries are approximate (it can tag
+  `kowalski,+53`, swallowing the head of a phone number). Rule-based matches are
+  therefore resolved first and kept whole, and spaCy spans only fill the gaps between
+  them: enabling the tier can never un-redact a character the rule-based tiers redact.
+- **It is not 100% recall.** spaCy is a statistical model. It misses some names
+  (lowercase names in CSV rows, unusual or non-English names, names without sentence
+  context) and it redacts many words that are not personal data (product names,
+  places, capitalised words, identifiers in source code). Credentials and secrets are
+  detected by the rule-based and entropy tiers, not by spaCy.
+- **Costs.** About 0.05 MB/s instead of ~3 MB/s, roughly 200 MB more memory for
+  the model, and more false positives. `--memory-limit` reserves 512 MB for the model,
+  so small budgets need `--no-ner`. The `detect --fail-on-detect` CI gate, the
+  pre-commit hook and the GitHub Action also report the names, organisations and
+  places spaCy finds in source code. Use `--no-ner` there if you only gate on secrets.
+- **Outside the streaming proof.** The byte-identity guarantees in
+  [docs/FORMAL_MODEL.md](docs/FORMAL_MODEL.md) cover the rule-based tiers. spaCy's
+  verdicts depend on how much of a sentence it sees, so its extra findings can differ
+  slightly between streaming, parallel and whole-text runs (§3.6).
 
 ## Development
 

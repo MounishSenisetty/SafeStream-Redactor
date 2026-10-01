@@ -87,7 +87,7 @@ class Settings:
     types: tuple[str, ...] | None = None
     use_entropy: bool = True
     use_names: bool = False
-    use_ner: bool = False
+    use_ner: bool = True
     custom_words: tuple[str, ...] = ()
     custom_patterns: tuple[str, ...] = ()
     style: RedactStyle = RedactStyle.REPLACE
@@ -173,10 +173,10 @@ def build_redactor(settings: Settings) -> Redactor:
     except ValueError as exc:
         raise SettingsError(str(exc)) from exc
     except (ImportError, OSError) as exc:
-        # spaCy (or its model) missing: the only optional dependency reachable here
+        # spaCy model missing: fail closed rather than silently skip name redaction
         raise SettingsError(
-            f"The NER tier is unavailable ({exc}). Install it with "
-            "pip install 'safestream-redactor[ner]' and download a model, or turn it off."
+            f"The spaCy NER tier is unavailable ({exc}). Download the model with "
+            "python -m spacy download en_core_web_sm, or turn the tier off."
         ) from exc
 
 

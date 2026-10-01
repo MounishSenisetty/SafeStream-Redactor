@@ -99,7 +99,8 @@ def test_unicode_multibyte_split_is_safe() -> None:
     # corrupt output or miss the secret. (The engine works on decoded text, so
     # chunk boundaries fall between code points, never inside one.)
     text = "café ☕ jane.doe@example.com µ end"
-    r = Redactor(overlap=128, allow_unsafe_overlap=True)
+    # spaCy tags the bare word "café" as an entity; this is a kernel test
+    r = Redactor(overlap=128, allow_unsafe_overlap=True, use_ner=False)
     whole = r.redact(text)
     for size in (1, 2, 5):
         streamed = "".join(r.redact_stream(fixed_chunks(text, size)))

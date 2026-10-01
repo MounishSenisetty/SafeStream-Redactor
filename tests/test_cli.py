@@ -121,7 +121,9 @@ def no_kernel_limit(monkeypatch):
 
 def test_memory_limit_generous_admits(sample, tmp_path, capsys, no_kernel_limit):
     out = tmp_path / "out.txt"
-    assert main(["redact", str(sample), "-o", str(out), "--memory-limit", "256MB"]) == 0
+    # --no-ner: the spaCy tier reserves 512 MB of the budget for its model
+    args = ["redact", str(sample), "-o", str(out), "--memory-limit", "256MB", "--no-ner"]
+    assert main(args) == 0
     assert "memory budget" in capsys.readouterr().err
     assert out.read_text() == "email [REDACTED] ssn: [REDACTED] codename ProjectX\n"
 
@@ -136,10 +138,8 @@ def test_memory_limit_caps_workers(sample, tmp_path, capsys, no_kernel_limit):
     out = tmp_path / "out.txt"
     # Ask for many workers under a tight budget; the run still succeeds because
     # the budget silently caps concurrency rather than exceeding the limit.
-    assert (
-        main(["redact", str(sample), "-o", str(out), "--memory-limit", "48MB", "--workers", "16"])
-        == 0
-    )
+    args = ["redact", str(sample), "-o", str(out), "--memory-limit", "48MB", "--workers", "16"]
+    assert main([*args, "--no-ner"]) == 0
     assert out.read_text() == "email [REDACTED] ssn: [REDACTED] codename ProjectX\n"
 
 

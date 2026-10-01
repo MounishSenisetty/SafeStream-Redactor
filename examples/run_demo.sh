@@ -30,6 +30,14 @@ else
     exit 1
 fi
 
+# The spaCy NER tier is on by default and fails closed without its model, so
+# check for it up front rather than failing at the first redaction.
+if ! python -c "import spacy; spacy.load('en_core_web_sm')" >/dev/null 2>&1; then
+    echo "error: the spaCy model is not installed. Run" >&2
+    echo "       'python -m spacy download en_core_web_sm' once, then re-run." >&2
+    exit 1
+fi
+
 # Repo root (this script lives in examples/), used to find examples/policy.toml.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -87,9 +95,9 @@ run "${SS[*]} redact \"\$SAMPLE\" -o - --custom-word ProjectFalcon --custom-rege
 "${SS[@]}" redact "$SAMPLE" -o - --custom-word ProjectFalcon --custom-regex 'EMP-[0-9]+'
 
 hr "7. TOML policy file (a policy drives detection + redaction from config)"
-# A self-contained, NER-free policy so this step runs on the core install.
-# The fuller examples/policy.toml additionally enables the spaCy NER tier
-# (needs the [ner] extra) and ships more custom patterns — see docs/DEMO.md.
+# A self-contained policy that turns the spaCy tier off (use_ner = false) to
+# show a pattern-only run. The fuller examples/policy.toml keeps it on and
+# ships more custom patterns — see docs/DEMO.md.
 DEMO_POLICY="$WORK/demo-policy.toml"
 cat > "$DEMO_POLICY" <<'EOF'
 [detection]

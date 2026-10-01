@@ -193,9 +193,9 @@ def test_private_key_begin_without_end_is_bounded_and_fast():
 
 
 def test_custom_words_and_patterns():
-    found = Redactor(custom_words=["ProjectX"], custom_patterns=[r"\bID-\d{4}\b"]).detect(
-        "projectx doc ID-1234"
-    )
+    found = Redactor(
+        custom_words=["ProjectX"], custom_patterns=[r"\bID-\d{4}\b"], use_ner=False
+    ).detect("projectx doc ID-1234")
     assert {d.text for d in found} == {"projectx", "ID-1234"}
     assert all(d.entity_type is EntityType.CUSTOM for d in found)
 

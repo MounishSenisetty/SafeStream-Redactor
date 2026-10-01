@@ -23,7 +23,8 @@ from safestream_redactor.entities import EntityType  # noqa: E402
 
 
 def _names(text: str, **kw: object) -> list[str]:
-    r = Redactor(use_gazetteer=True, **kw)  # type: ignore[arg-type]
+    # the gazetteer tier alone, without the spaCy tier that is on by default
+    r = Redactor(use_gazetteer=True, use_ner=False, **kw)  # type: ignore[arg-type]
     return [d.text for d in r.detect(text) if d.entity_type in (EntityType.PERSON, EntityType.ORG)]
 
 

@@ -88,6 +88,8 @@ jobs:
           name: wheels-ubuntu-latest-x86_64
           path: wheelhouse/
       - run: pip install -e .[dev] wheelhouse/*.whl
+      # the spaCy NER tier is on by default; its model is not on PyPI
+      - run: python -m spacy download en_core_web_sm
       - run: python -c "import safestream_native as n; print(n.__version__, len(n.patterns()))"
       - run: pytest -q tests/test_native_backend.py tests/test_lookaround_free.py
 

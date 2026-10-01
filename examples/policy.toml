@@ -30,15 +30,13 @@ min_confidence = 0.5
 # min_confidence = 0.35   # more aggressive: also catches many test/sample-marked values
 
 # Person / organisation / location names have no regex signature, so catching
-# them needs the optional spaCy NER tier. This policy enables it. You MUST
-# install the extra and a model first, or the run will error out on startup:
+# them needs the spaCy NER tier. It is on by default; this line just makes that
+# explicit. You MUST download the model first, or the run errors out on startup:
 #
-#     pip install 'safestream-redactor[ner]'
 #     python -m spacy download en_core_web_sm
 #
-# With the model present this redacts names like "John Michael Doe". If you have
-# not installed it yet, set `use_ner = false` (or drop this section) to run the
-# rest of the policy without names.
+# With the model present this redacts names like "John Michael Doe". Setting
+# `use_ner = false` runs the rest of the policy without any name redaction.
 use_ner = true
 # ner_model = "en_core_web_sm"
 

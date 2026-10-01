@@ -5,7 +5,7 @@ Example policy file::
     [detection]
     types = ["email", "ssn", "credit_card"]
     min_confidence = 0.5
-    use_ner = false
+    use_ner = true              # spaCy PERSON/ORG/LOC (the default)
 
     [redaction]
     mode = "replace"            # replace | mask | pseudonymize

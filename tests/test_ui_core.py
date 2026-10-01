@@ -61,10 +61,10 @@ def test_missing_ner_dependency_is_a_settings_error(monkeypatch):
     import safestream_redactor.detectors.ner as ner
 
     def _no_spacy(*args, **kwargs):
-        raise ImportError("No module named 'spacy'")
+        raise ner.NERUnavailableError("the spaCy model 'en_core_web_sm' is not installed")
 
     monkeypatch.setattr(ner.NERDetector, "__init__", _no_spacy)
-    with pytest.raises(SettingsError, match=r"\[ner\]"):
+    with pytest.raises(SettingsError, match=r"spacy download en_core_web_sm"):
         build_redactor(Settings(use_ner=True))
 
 
@@ -72,9 +72,10 @@ def test_type_selection_semantics():
     everything = build_redactor(Settings())
     assert {"entropy", "labeled_identifier", "contextual"} <= set(everything.detector_names)
     # deselecting every pattern type runs none of them (not "all of them")
-    nothing = build_redactor(Settings(types=(), use_entropy=True))
+    # (use_ner=False: the name tiers run whatever the type selection)
+    nothing = build_redactor(Settings(types=(), use_entropy=True, use_ner=False))
     assert scan(nothing, SAMPLE_TEXT) == []
-    only_email = build_redactor(Settings(types=("email",)))
+    only_email = build_redactor(Settings(types=("email",), use_ner=False))
     assert {f.entity_type for f in scan(only_email, SAMPLE_TEXT)} == {"email"}
 
 

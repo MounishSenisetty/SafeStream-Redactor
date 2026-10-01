@@ -41,7 +41,8 @@ def test_encoding_flag_is_honoured(tmp_path):
     src, dst = tmp_path / "in.txt", tmp_path / "out.txt"
     # latin-1 text with a byte (0xe9 = é) that is invalid UTF-8 on its own
     src.write_bytes("café bob@x.io".encode("latin-1"))
-    assert main(["redact", str(src), "-o", str(dst), "--encoding", "latin-1"]) == 0
+    # --no-ner: spaCy redacts the bare word "café", which this test needs intact
+    assert main(["redact", str(src), "-o", str(dst), "--encoding", "latin-1", "--no-ner"]) == 0
     out = dst.read_text(encoding="latin-1")
     assert out == "café [REDACTED]"
     assert "�" not in out

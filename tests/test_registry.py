@@ -99,7 +99,9 @@ def test_plugins_are_not_loaded_by_default(monkeypatch, caplog):
     monkeypatch.setattr(registry, "entry_points", lambda group: [_MustNotLoad()])
     monkeypatch.setattr(registry, "_unloaded_checked", False)
     with caplog.at_level("WARNING", logger="safestream_redactor"):
-        assert Redactor().redact("launch code TOPSECRET now") == "launch code TOPSECRET now"
+        # use_ner=False: spaCy would redact the bare word TOPSECRET by itself
+        out = Redactor(use_ner=False).redact("launch code TOPSECRET now")
+        assert out == "launch code TOPSECRET now"
         Redactor()  # warned once per process, not once per Redactor
     skipped = [r for r in caplog.records if "installed but not loaded" in r.getMessage()]
     assert len(skipped) == 1
@@ -129,7 +131,7 @@ def test_plugins_enabled_from_config_and_cli(monkeypatch, tmp_path, capsys):
     src.write_text("launch code TOPSECRET now")
     assert main(["redact", str(src), "-o", "-", "--enable-plugins"]) == 0
     assert capsys.readouterr().out == "launch code [REDACTED] now"
-    assert main(["redact", str(src), "-o", "-"]) == 0
+    assert main(["redact", str(src), "-o", "-", "--no-ner"]) == 0
     assert capsys.readouterr().out == "launch code TOPSECRET now"
 
 
@@ -167,5 +169,5 @@ def test_server_commands_accept_enable_plugins(monkeypatch):
 
 def test_plugins_can_be_disabled(monkeypatch):
     monkeypatch.setattr(registry, "entry_points", lambda group: [_FakeEntryPoint(_PluginDetector)])
-    out = Redactor(load_plugins=False).redact("launch code TOPSECRET now")
+    out = Redactor(load_plugins=False, use_ner=False).redact("launch code TOPSECRET now")
     assert out == "launch code TOPSECRET now"

@@ -89,9 +89,9 @@ def test_adjacent_text_is_preserved():
 )
 def test_mask_reveals_at_most_half(value, expected):
     policy = RedactionPolicy(mode="mask", mask_keep_last=4)
-    assert Redactor(custom_words=[value], policy=policy).redact(f"x {value} y") == (
-        f"x {expected} y"
-    )
+    # use_ner=False: spaCy tags "Alice y" as one name and would mask the "y" too
+    r = Redactor(custom_words=[value], policy=policy, use_ner=False)
+    assert r.redact(f"x {value} y") == (f"x {expected} y")
 
 
 def test_mask_single_char_is_fully_masked():

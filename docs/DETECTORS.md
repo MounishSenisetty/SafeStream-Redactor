@@ -11,7 +11,7 @@ tier; overlaps are resolved most-specific/highest-confidence wins.
 | 1. Deterministic | `detectors/deterministic.py` | Anchored regexes + validators (Luhn, `ipaddress`, SSN rules). Highest precision. |
 | 2. Statistical | `detectors/entropy.py` | High-entropy tokens with no published format (bespoke keys, session tokens). |
 | 2b. Compound secret | `detectors/entropy.py` (`CompoundSecretDetector`) | High-entropy runs carrying an *embedded strong special* (`! # $ % ^ & * ~`) the base64 entropy candidate splits on — symbol-containing passwords/blobs. Precision-gated (embedded special + class diversity + entropy floor); emits `secret`. |
-| 3. NER (optional) | `detectors/ner.py` | spaCy PERSON/ORG/LOC. Requires the `ner` extra + a model. |
+| 3. NER (on by default) | `detectors/ner.py` | spaCy PERSON/ORG/LOC. spaCy is a core dependency; the model is installed with `python -m spacy download en_core_web_sm`. A missing model fails closed (`NERUnavailableError`); `use_ner=False` / `--no-ner` turns the tier off. spaCy spans never displace a rule-based match: they only fill the text rule-based spans leave uncovered. |
 | 3b. ONNX NER (optional) | `detectors/onnx_ner.py` | Local ONNX token-classifier for PERSON/ORG/LOC, on-device, no data egress. Requires the `onnx` extra + a model. |
 | 4. Contextual | `detectors/contextual.py` | Nudges confidence from surrounding trigger words; promotes trigger-gated spans (bare SSN next to "ssn:"). |
 

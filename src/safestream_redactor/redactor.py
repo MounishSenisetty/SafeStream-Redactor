@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
+from bisect import bisect_right, insort
 from collections.abc import Iterable, Iterator
+from dataclasses import replace
 
 from safestream_redactor._atomic import atomic_output
 from safestream_redactor.calibration import Calibrator
@@ -48,6 +50,48 @@ def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence
         raise ValueError(f"min_confidence must be a number in [0, 1], got {min_confidence!r}")
 
 
+def _merge_statistical(text: str, kept: list[Detection], ner: list[Detection]) -> list[Detection]:
+    """Add spaCy detections to ``kept`` without letting them displace any of it.
+
+    spaCy's span boundaries are approximate: it can tag ``kowalski,+53`` as one
+    entity, swallowing the head of a phone number. Under plain overlap
+    resolution that span (confidence 0.7) beat the lower-confidence phone match,
+    so the rest of the number went out unredacted. Here the rule-based spans are
+    resolved first and kept whole, and each spaCy span (best first) contributes
+    only the parts of itself that nothing kept so far covers. The redacted
+    characters are therefore a superset of what the rule-based tiers alone
+    redact: turning the NER tier on can only add redaction, never remove it.
+    """
+    spans = sorted((d.start, d.end) for d in kept)
+    out = list(kept)
+    for det in sorted(ner, key=lambda d: (-d.confidence, d.start - d.end, d.start)):
+        pos = det.start
+        # every kept span that overlaps [det.start, det.end), in order
+        i = bisect_right(spans, (det.start,))
+        if i and spans[i - 1][1] > det.start:
+            i -= 1
+        pieces: list[tuple[int, int]] = []
+        while i < len(spans) and spans[i][0] < det.end:
+            if spans[i][0] > pos:
+                pieces.append((pos, spans[i][0]))
+            pos = max(pos, spans[i][1])
+            i += 1
+        if pos < det.end:
+            pieces.append((pos, det.end))
+        for start, end in pieces:
+            # a sliver of separators between two kept spans redacts nothing useful
+            if not any(c.isalnum() for c in text[start:end]):
+                continue
+            insort(spans, (start, end))
+            if (start, end) == (det.start, det.end):
+                out.append(det)
+            else:
+                meta = {**det.meta, "clipped": "true"}
+                out.append(replace(det, start=start, end=end, text=text[start:end], meta=meta))
+    out.sort(key=lambda d: d.start)
+    return out
+
+
 class Redactor:
     """Detects and redacts sensitive entities in strings, streams, and files.
 
@@ -63,7 +107,13 @@ class Redactor:
     custom_words / custom_patterns:
         Extra literal words/phrases and regexes to always redact.
     use_ner:
-        Enable the optional spaCy tier (requires the ``ner`` extra).
+        The spaCy PERSON/ORG/LOC tier, **on by default** (independent of
+        ``types``, like the other name tiers). spaCy is a required dependency;
+        the model named by ``ner_model`` is installed with
+        ``python -m spacy download en_core_web_sm``. If it cannot be loaded,
+        construction raises :class:`~safestream_redactor.detectors.ner.NERUnavailableError`
+        rather than running without name coverage. Pass ``False`` only to
+        knowingly give up name/organisation/location redaction.
     use_onnx:
         Enable the optional local ONNX NER tier (PERSON/ORG/LOC via an on-device
         ONNX model, no data egress; requires the ``onnx`` extra). Needs
@@ -109,7 +159,7 @@ class Redactor:
         min_confidence: float = 0.5,
         custom_words: Iterable[str] = (),
         custom_patterns: Iterable[str] = (),
-        use_ner: bool = False,
+        use_ner: bool = True,
         ner_model: str = "en_core_web_sm",
         use_gazetteer: bool = False,
         use_ensemble: bool = False,
@@ -283,7 +333,9 @@ class Redactor:
             for det in raw:
                 det.confidence = self.calibrator.predict_one(det)
         confident = [d for d in raw if d.confidence >= self.min_confidence]
-        return resolve_overlaps(confident)
+        kept = resolve_overlaps([d for d in confident if d.source != "ner"])
+        ner = [d for d in confident if d.source == "ner"]
+        return _merge_statistical(text, kept, ner) if ner else kept
 
     # ------------------------------------------------------------------
     # redaction

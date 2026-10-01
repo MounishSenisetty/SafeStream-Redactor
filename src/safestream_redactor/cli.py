@@ -63,7 +63,23 @@ def _build_parser() -> argparse.ArgumentParser:
         help="regex whose matches are always redacted (repeatable)",
     )
     common.add_argument("--min-confidence", type=float, default=None)
-    common.add_argument("--ner", action="store_true", help="enable the spaCy NER tier")
+    ner = common.add_mutually_exclusive_group()
+    ner.add_argument(
+        "--ner",
+        dest="ner",
+        action="store_const",
+        const=True,
+        default=None,
+        help="run the spaCy PERSON/ORG/LOC tier (on by default; overrides a config "
+        "that turns it off)",
+    )
+    ner.add_argument(
+        "--no-ner",
+        dest="ner",
+        action="store_const",
+        const=False,
+        help="turn the spaCy tier off: names, organisations and locations are then NOT redacted",
+    )
     common.add_argument(
         "--onnx",
         metavar="MODEL.onnx",
@@ -275,8 +291,8 @@ _STARTER_CONFIG = """\
 [detection]
 # types = ["email", "ssn", "credit_card"]   # omit for all types
 min_confidence = 0.5
-use_ner = false                             # requires the [ner] extra + a model
-# ner_model = "en_core_web_sm"
+use_ner = true                              # spaCy PERSON/ORG/LOC (false = names NOT redacted)
+# ner_model = "en_core_web_sm"              # install: python -m spacy download en_core_web_sm
 use_onnx = false                            # local ONNX NER tier ([onnx] extra, on-device)
 # onnx_model = "model.onnx"                 # required when use_onnx = true
 # onnx_vocab = "vocab.json"                 # required when use_onnx = true (token->id)
@@ -380,7 +396,7 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
 
     # detection / streaming flags: scalars override the config, custom words and
     # patterns add to it, and boolean switches only ever turn their tier on
-    # (--ner, --onnx) or off (--no-entropy) relative to the config
+    # (--ner, --onnx) or off (--no-ner, --no-entropy) relative to the config
     if args.types:
         kwargs["types"] = args.types.split(",")
     if args.min_confidence is not None:
@@ -389,8 +405,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         kwargs["custom_words"] = [*kwargs.get("custom_words", ()), *args.custom_word]
     if args.custom_regex:
         kwargs["custom_patterns"] = [*kwargs.get("custom_patterns", ()), *args.custom_regex]
-    if args.ner:
-        kwargs["use_ner"] = True
+    if args.ner is not None:
+        kwargs["use_ner"] = args.ner
     if args.onnx:
         kwargs.update(
             use_onnx=True,
@@ -446,7 +462,7 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
         format_size,
     )
 
-    _has_model = getattr(args, "ner", False) or getattr(args, "onnx", None)
+    _has_model = bool({"ner", "onnx"}.intersection(redactor.detector_names))
     budget = MemoryBudget(limit, model_budget="512MB" if _has_model else 0)
     requested = getattr(args, "workers", None)
     plan = budget.plan(
@@ -882,10 +898,15 @@ def main(argv: list[str] | None = None) -> int:
     _surface_library_warnings()
     if args.command == "init-config":
         return _cmd_init_config(args)
-    if args.command == "serve":
-        return _cmd_serve(args)
-    if args.command == "mcp-serve":
-        return _cmd_mcp_serve(args)
+    from safestream_redactor.detectors.ner import NERUnavailableError
+
+    if args.command in ("serve", "mcp-serve"):
+        try:
+            return _cmd_serve(args) if args.command == "serve" else _cmd_mcp_serve(args)
+        except NERUnavailableError as exc:
+            # never start a server that would silently skip name redaction
+            print(f"safestream: error: {exc}", file=sys.stderr)
+            return 1
     if args.command == "ui":
         return _cmd_ui(args)
     if getattr(args, "offline_guard", True):
@@ -914,7 +935,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 3
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, NERUnavailableError) as exc:
         print(f"safestream: error: {exc}", file=sys.stderr)
         return 1
 
