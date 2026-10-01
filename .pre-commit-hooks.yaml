@@ -17,6 +17,10 @@
   description: Block commits that introduce detectable secrets or PII.
   entry: safestream detect --fail-on-detect
   language: python
+  # The spaCy PERSON/ORG/LOC tier is on by default and its model is not on PyPI,
+  # so it is pinned here by URL and sha256 (pip verifies the #sha256 fragment).
+  additional_dependencies:
+    - "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85"
   # Scan text-like files by default; consumers can override `files`/`exclude`.
   types: [text]
   # pre-commit passes the staged files as positional INPUT arguments.

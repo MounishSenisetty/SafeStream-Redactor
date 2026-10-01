@@ -74,10 +74,15 @@ def score(predictions: list[dict], gold: list[dict]) -> dict[str, float]:
 
 
 def bench_safestream(text: str) -> tuple[list[dict], float]:
+    # The default pipeline, spaCy tier included: it must not displace any of the
+    # scored types. Its own PERSON/ORG/LOC findings are not scored (the corpus
+    # labels none), so only predictions of the scored types are counted.
     redactor = Redactor(types=TYPES)
     t0 = time.perf_counter()
     preds = [
-        {"start": d.start, "end": d.end, "type": d.entity_type.value} for d in redactor.detect(text)
+        {"start": d.start, "end": d.end, "type": d.entity_type.value}
+        for d in redactor.detect(text)
+        if d.entity_type.value in TYPES
     ]
     return preds, time.perf_counter() - t0
 

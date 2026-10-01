@@ -44,9 +44,14 @@ classifiers = [
 dependencies = [
   # tomllib is stdlib from 3.11; tomli is the identical backport for 3.10
   "tomli>=2.0; python_version < '3.11'",
+  # The spaCy PERSON/ORG/LOC tier is on by default (detectors/ner.py). Its
+  # model is not on PyPI: install it with `python -m spacy download en_core_web_sm`.
+  "spacy>=3.5",
 ]
 
 [project.optional-dependencies]
+# Kept so existing `pip install safestream-redactor[ner]` commands still work;
+# spaCy is now a core dependency.
 ner = ["spacy>=3.5"]
 # Local ONNX NER tier (detectors/onnx_ner.py): an on-device token-classification
 # model for PERSON/ORG/LOC, run via onnxruntime with no data egress. Optional and
@@ -174,8 +179,8 @@ strict = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-# spaCy has no type stubs and is an optional dependency; the NER tier is
-# imported lazily so the core install can skip it entirely. tomli is only
+# spaCy has no type stubs; the NER tier imports it lazily so commands that
+# never build a Redactor (init-config, ui) stay fast to start. tomli is only
 # installed on Python < 3.11 (stdlib tomllib elsewhere) and ships no stubs.
 # onnxruntime (the [onnx] extra) ships no stubs and is likewise lazily imported.
 # safestream_native (the [native] extra) is a stub-less compiled module that may

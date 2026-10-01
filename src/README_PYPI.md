@@ -11,13 +11,15 @@ Bytes outside a redacted span, line endings included, are left exactly as they w
 ## Requirements
 
 - Python 3.10 or newer, on Linux, macOS or Windows.
-- No third-party runtime dependencies (`tomli` only on Python 3.10). Optional extras are
-  listed below.
+- spaCy PERSON / ORG / LOC detection on by default. spaCy is a required dependency;
+  download its model once with `python -m spacy download en_core_web_sm` (until then
+  redaction refuses to run rather than skip names). Optional extras are listed below.
 
 ## Installation
 
 ```bash
 pip install safestream-redactor
+python -m spacy download en_core_web_sm
 ```
 
 Only need the command-line tool? Install it into an isolated environment with pipx:
@@ -37,7 +39,7 @@ python -m safestream_redactor --version
 
 | Extra | Install | Adds |
 |---|---|---|
-| `ner` | `pip install 'safestream-redactor[ner]'` then `python -m spacy download en_core_web_sm` | spaCy person / organisation / location detection (`--ner`) |
+| `ner` | `pip install 'safestream-redactor[ner]'` | No longer needed: spaCy is a core dependency. Kept so existing install commands work |
 | `onnx` | `pip install 'safestream-redactor[onnx]'` | On-device ONNX NER model (`--onnx MODEL.onnx --onnx-vocab VOCAB.json`); you supply the model |
 | `ui` | `pip install 'safestream-redactor[ui]'` | Local web playground (`safestream ui`, Streamlit) |
 
@@ -138,7 +140,7 @@ Flags given on the command line override the file. Unknown keys are rejected.
 [detection]
 # types = ["email", "ssn", "credit_card"]   # omit for all types
 min_confidence = 0.5
-use_ner = false
+use_ner = true
 use_entropy = true
 
 [redaction]
@@ -205,7 +207,8 @@ settings, or warns when they are missing.
 | `--min-confidence X` | Drop detections scoring below `X` (default 0.5) |
 | `--custom-word W`, `--custom-regex R` | Always redact these (repeatable) |
 | `--no-entropy` | Turn off generic high-entropy secret detection |
-| `--ner`, `--onnx MODEL.onnx` | Enable an NER tier (needs its extra) |
+| `--no-ner` | Turn off the spaCy tier (names, organisations and places are then not redacted) |
+| `--onnx MODEL.onnx` | Enable the ONNX NER tier (needs the `onnx` extra) |
 | `--encoding ENC` | Input/output encoding (default `utf-8`) |
 | `--workers N` | Parallel workers (directories, or one large file) |
 | `--memory-limit SIZE` | Stay within a memory budget, e.g. `256MiB` |
@@ -242,7 +245,7 @@ connections by default. On Linux, `--offline-hard` adds a kernel-enforced block 
 | Personal data | `email`, `phone`, `credit_card`, `ssn`, `ipv4`, `ipv6`, `dob`, `id_number` |
 | Credentials | `aws_key`, `aws_secret`, `github_token`, `api_key`, `jwt`, `private_key`, `slack_token`, `slack_webhook`, `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`, `openai_key`, `anthropic_key`, `url_credentials` |
 | Generic secrets | `secret` (high-entropy strings with no known format) |
-| Names (needs `ner` or `onnx`) | `person`, `org`, `loc` |
+| Names (spaCy, on by default; or `onnx`) | `person`, `org`, `loc` |
 | Your own | `custom` (from `--custom-word` / `--custom-regex`) |
 
 ## Python API
@@ -300,9 +303,10 @@ A detector is any object with a `name` attribute and a `detect(text) -> list[Det
 ## Limitations
 
 Structured data (e-mails, cards, SSNs, keys, tokens) is detected with high precision.
-Names and street addresses in free prose are only detected with the `ner` or `onnx` extra,
-and even then on a best-effort basis. Review redacted output before sharing it where a miss
-would be costly.
+Names are detected by the spaCy tier (on by default) on a best-effort basis: it misses some
+names and redacts many words that are not personal data, and it slows redaction to roughly
+0.05 MB/s. Street addresses in free prose are not reliably detected. Review redacted output
+before sharing it where a miss would be costly.
 
 ## Links
 

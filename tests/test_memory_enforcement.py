@@ -137,7 +137,9 @@ def test_cli_reports_kernel_enforcement(tmp_path, monkeypatch, capsys):
     src = tmp_path / "in.txt"
     src.write_text("email a@b.io\n" * 50)
     out = tmp_path / "out.txt"
-    rc = main(["redact", str(src), "-o", str(out), "--memory-limit", "128MB", "--allow-network"])
+    # --no-ner: a spaCy model cannot load under a 128 MB address-space cap
+    args = ["redact", str(src), "-o", str(out), "--memory-limit", "128MB", "--allow-network"]
+    rc = main([*args, "--no-ner"])
     assert rc == 0
     err = capsys.readouterr().err
     assert "enforced by kernel (RLIMIT_AS)" in err
@@ -151,7 +153,9 @@ def test_cli_warns_when_enforcement_unavailable(tmp_path, monkeypatch, capsys):
     src = tmp_path / "in.txt"
     src.write_text("email a@b.io\n" * 50)
     out = tmp_path / "out.txt"
-    rc = main(["redact", str(src), "-o", str(out), "--memory-limit", "128MB", "--allow-network"])
+    # --no-ner: a spaCy model cannot load under a 128 MB address-space cap
+    args = ["redact", str(src), "-o", str(out), "--memory-limit", "128MB", "--allow-network"]
+    rc = main([*args, "--no-ner"])
     assert rc == 0
     assert "kernel memory enforcement unavailable" in capsys.readouterr().err
 

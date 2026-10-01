@@ -206,6 +206,20 @@ stateful tier that could *not* bound its propagation this way — e.g. one whose
 state must span the whole document — would violate A2 and is explicitly **not**
 covered (§5).
 
+### 3.6 The spaCy NER tier (on by default) is outside the audited constants
+
+Since 0.5 the spaCy PERSON/ORG/LOC tier (`detectors/ner.py`) runs by default. It
+declares `max_span = left_context = right_context = 256`, so the default
+`Redactor()` derives `(L_max, C_left, C_right) = (8192, 256, 256)`, which still
+satisfies `w >= max(L_max, C_left, C_right)` at `w = 8192`. But spaCy is a
+statistical model whose verdict for a token can depend on its whole sentence, so
+256 is a heuristic, not a verified upper bound on its dependency (§3): the tier
+is **not** covered by Theorem 1, and its output near a chunk boundary can differ
+from a whole-document pass. Over-long entities are emitted as consecutive spans
+of at most 256 characters, so A1 still holds for it. The constants in §3.1–3.4
+(and the paper) are those of the rule-based pipeline, `Redactor(use_ner=False)`,
+which is what `tests/test_formal_constants.py` pins.
+
 ---
 
 ## 4. Theorems

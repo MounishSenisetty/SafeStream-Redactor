@@ -23,9 +23,12 @@ from safestream_redactor.engine import DEFAULT_OVERLAP, required_overlap
 from safestream_redactor.redactor import Redactor
 
 # The constants documented in docs/FORMAL_MODEL.md section 3 for the DEFAULT
-# pipeline. C_left is set by the label-anchored cascade's cue window (96), not by
-# the contextual scorer (48); C_right is that cascade's declared trailing reach
-# (8); L_max is the default overlap. Keep these three in sync with the doc.
+# rule-based pipeline. C_left is set by the label-anchored cascade's cue window
+# (96), not by the contextual scorer (48); C_right is that cascade's declared
+# trailing reach (8); L_max is the default overlap. Keep these three in sync with
+# the doc. The spaCy tier (on by default) is a statistical model outside Theorem 1
+# (FORMAL_MODEL.md section 3.6); it widens the declared context to 256 on each
+# side, which test_spacy_tier_context_fits_the_default_overlap checks separately.
 DOC_C_LEFT = 96
 DOC_C_RIGHT = 8
 DOC_L_MAX = 8 * 1024
@@ -41,7 +44,7 @@ def _constants(redactor: Redactor) -> tuple[int, int, int]:
 
 
 def test_default_pipeline_constants_match_the_documented_values() -> None:
-    l_max, c_left, c_right = _constants(Redactor())
+    l_max, c_left, c_right = _constants(Redactor(use_ner=False))
     assert (l_max, c_left, c_right) == (DOC_L_MAX, DOC_C_LEFT, DOC_C_RIGHT), (
         "audited locality constants drifted from docs/FORMAL_MODEL.md; update the "
         f"doc and paper: derived (L_max, C_left, C_right)=({l_max}, {c_left}, {c_right})"
@@ -53,6 +56,15 @@ def test_theorem1_premise_holds_at_default_overlap() -> None:
     l_max, c_left, c_right = _constants(Redactor())
     assert max(l_max, c_left, c_right) <= DEFAULT_OVERLAP
     assert Redactor().min_safe_overlap == DEFAULT_OVERLAP
+
+
+def test_spacy_tier_context_fits_the_default_overlap() -> None:
+    # the default pipeline includes the spaCy tier, whose declared 256-character
+    # context on each side must still fit inside the default overlap
+    r = Redactor()
+    assert "ner" in r.detector_names
+    assert _constants(r) == (DOC_L_MAX, 256, 256)
+    assert required_overlap(r._detectors) <= DEFAULT_OVERLAP
 
 
 def test_optional_semantic_tiers_stay_within_the_overlap() -> None:
@@ -74,7 +86,8 @@ def test_c_left_is_driven_by_the_labeled_identifier_cascade() -> None:
     assert LabeledIdentifierDetector().requirements.left_context == DOC_C_LEFT
     assert ContextualScorer().requirements.left_context == 48
 
-    without_cascade = Redactor(types=["email"])  # no SSN/PHONE/... -> no cascade
+    # no SSN/PHONE/... -> no cascade
+    without_cascade = Redactor(types=["email"], use_ner=False)
     assert "labeled_identifier" not in without_cascade.detector_names
     _, c_left, _ = _constants(without_cascade)
     assert c_left < DOC_C_LEFT

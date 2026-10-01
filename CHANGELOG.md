@@ -8,6 +8,21 @@ Notable changes to this project. The format follows
 
 ### Breaking changes
 
+- **spaCy NER is a required dependency and on by default.** `spacy>=3.5` moved from
+  the `[ner]` extra into the core dependencies, and `Redactor(use_ner=...)`, the
+  config key `use_ner`, and the web UI toggle now default to on. `--ner` is kept;
+  `--no-ner` is new and turns the tier off.
+  *Why:* names, organisations and places were not redacted unless a user knew to
+  enable the tier.
+  *Migrate:* run `python -m spacy download en_core_web_sm` once. Without the model,
+  `Redactor()` raises `NERUnavailableError`, the CLI exits 1, and `serve` /
+  `mcp-serve` refuse to start: none of them silently runs without name coverage.
+  Expect roughly 0.05 MB/s instead of ~3 MB/s, about 200 MB more memory, more
+  findings (spaCy also tags words that are not personal data), and a 512 MB model
+  reservation under `--memory-limit`. Pass `--no-ner` / `use_ner=False` to restore
+  the previous behaviour. The Docker image, the pre-commit hook and the GitHub
+  Action install the model.
+
 - **`detect` hides matched text by default.** Findings print as
   `file:line:col: type  conf=…`. JSON records carry `line`/`column` and **no
   `text` field**. Pass `--show-text` (alias `--reveal-matches`) to include the
@@ -59,6 +74,18 @@ Notable changes to this project. The format follows
   `${{ }}` interpolation into the script text (script injection).
 
 ### Fixed
+
+- **The spaCy tier could un-redact part of a phone number.** spaCy's span boundaries
+  are approximate (on CSV rows it tagged `kowalski,+53` as one entity). Overlap
+  resolution let that span beat the overlapping phone match, so the rest of the
+  number was written out in the clear: 39 leaks on the adversarial corpus. Now
+  rule-based matches are kept whole and spaCy spans only cover what they leave
+  uncovered, so enabling the tier never removes redaction.
+- **The spaCy tier crashed on texts over 1,000,000 characters** (`Redactor.redact`
+  / `detect` on a large in-memory string). Text is now fed to the model in
+  20,000-character pieces with 256 characters of context on each side.
+  Entities longer than 256 characters are reported as consecutive spans, so the
+  tier honours its declared `max_span`.
 
 - **The GitHub Action failed on its default input.** `paths: "."` always exited 1
   with `Is a directory`. `detect` now accepts directories and walks them

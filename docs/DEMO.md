@@ -59,14 +59,12 @@ NOTE: this is a test example value: 123-45-0000 should be suppressed by context.
 
 ## Method 1 — PyPI install
 
-Nothing to build; install the published wheel (zero third-party runtime deps —
-the core is standard-library only).
+Nothing to build; install the published wheel. spaCy is a required dependency
+and its PERSON / ORG / LOC tier is on by default; its model is not on PyPI, so
+download it once (redaction refuses to run without it):
 
 ```bash
 pip install safestream-redactor
-
-# optional: spaCy NER tier for free-form PERSON / ORG / LOC
-pip install 'safestream-redactor[ner]'
 python -m spacy download en_core_web_sm
 ```
 
@@ -269,15 +267,13 @@ safestream redact sample.txt -o - --config examples/policy.toml
 ```
 
 [`examples/policy.toml`](../examples/policy.toml) is a fuller, ready-to-use policy
-that additionally **enables the NER tier** (`use_ner = true`) and ships custom
-patterns (passport, driver's licence, bank account, employee ID, DOB). Because NER
-needs the optional `[ner]` extra, install it first — or set `use_ner = false` /
-use your own policy for a core-only run (that is what `run_demo.sh` does):
+that keeps **the NER tier on** (`use_ner = true`, the default) and ships custom
+patterns (passport, driver's licence, bank account, employee ID, DOB). Set
+`use_ner = false` for a pattern-only run (that is what `run_demo.sh` step 7 does):
 
 ```bash
-pip install 'safestream-redactor[ner]'
-python -m spacy download en_core_web_sm
-safestream redact sample.txt -o - --config examples/policy.toml --ner
+python -m spacy download en_core_web_sm   # once
+safestream redact sample.txt -o - --config examples/policy.toml
 ```
 
 Generate a minimal starter policy to customize:
@@ -333,8 +329,8 @@ default (belt-and-suspenders against exfiltration). Disable with `--allow-networ
 `email, phone, credit_card, ssn, ipv4, ipv6` · credentials/secrets:
 `aws_key, aws_secret, github_token, api_key, jwt, private_key, slack_token,
 slack_webhook, stripe_key, google_api_key, sendgrid_key, twilio_key, npm_token,
-openai_key, anthropic_key, url_credentials`, generic high-entropy `secret` · NER
-(needs `[ner]`): `person, org, loc` · and user-defined `custom`. Detection runs as
+openai_key, anthropic_key, url_credentials`, generic high-entropy `secret` · spaCy NER
+(on by default): `person, org, loc` · and user-defined `custom`. Detection runs as
 a multi-tier cascade: deterministic regex+validators → custom → optional NER →
 entropy → contextual scoring.
 
@@ -457,7 +453,8 @@ and [`research/results/`](../research/results):
 - **Adversarial corpus** (5.2 MB, 70,169 gold) → **P = 0.999** (45 FP), R = 1.000.
 - **Constant memory** → **~2.75 MB** peak at both 8 MB and 32 MB inputs (flat).
 
-Free-form names/addresses need the `[ner]` tier; without it they are not detected.
+Free-form names come from the spaCy tier (on by default, best effort); with `--no-ner`
+they are not detected. Street addresses in prose are not reliably detected.
 SafeStream is tuned to favour **precision** on structured PII and credentials —
 treat it as high-recall for credentials/structured PII and best-effort for free
 prose. See the accuracy note in the main [README](../README.md#detection-accuracy--limitations).

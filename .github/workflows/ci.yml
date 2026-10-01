@@ -49,6 +49,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -e .[dev]
+      # the spaCy NER tier is on by default; its model is not on PyPI
+      - run: python -m spacy download en_core_web_sm
       # Coverage gate runs on Linux, where every platform-specific subsystem
       # (RLIMIT_AS memory enforcement, seccomp/netns hard offline modes) actually
       # executes. macOS/Windows run the identical suite for portability but
@@ -70,7 +72,9 @@ jobs:
 
   quality:
     # detection-quality gate on the adversarial corpus: catches a pattern or
-    # scoring change that trades away precision/recall before it can merge
+    # scoring change that trades away precision/recall before it can merge. It
+    # runs the default pipeline, spaCy included, so it also catches a spaCy span
+    # displacing a rule-based match
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -79,6 +83,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e .
+      # the spaCy NER tier is on by default; its model is not on PyPI
+      - run: python -m spacy download en_core_web_sm
       - run: python benchmarks/generate_hard_dataset.py --size-mb 1
       - run: >
           python benchmarks/run_benchmark.py --data benchmarks/data_hard
@@ -101,6 +107,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e .[dev,ui]
+      # the spaCy NER tier is on by default; its model is not on PyPI
+      - run: python -m spacy download en_core_web_sm
       - run: mypy
       - run: pytest -q tests/test_ui_core.py tests/test_ui_launcher.py tests/test_ui_app.py
       - name: safestream ui boots on loopback only

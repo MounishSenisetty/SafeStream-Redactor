@@ -74,6 +74,10 @@ def run_both(tmp_path, text: str, workers: int, encoding: str = "utf-8", **redac
     seq_out = tmp_path / "seq.txt"
     par_out = tmp_path / "par.txt"
     overlap = redactor_kwargs.pop("overlap", DEFAULT_OVERLAP)
+    # Byte-identity (Theorem 2) is a property of the rule-based tiers. The spaCy
+    # tier is a statistical model whose verdict depends on how much sentence it
+    # sees, so it is outside the guarantee (docs/FORMAL_MODEL.md section 3.6).
+    redactor_kwargs.setdefault("use_ner", False)
     r = Redactor(
         chunk_size=1024,
         overlap=overlap,

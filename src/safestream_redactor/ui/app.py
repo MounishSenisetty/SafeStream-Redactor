@@ -7,7 +7,6 @@ Start it with ``safestream ui``, which applies the local-only Streamlit settings
 
 from __future__ import annotations
 
-import importlib.util
 import secrets
 
 import streamlit as st
@@ -125,13 +124,12 @@ def _sidebar() -> tuple[str, Settings]:
             key="use_names",
             help="Dependency-free PERSON/ORG detection from honorifics, cues, and gazetteers.",
         )
-        ner_installed = importlib.util.find_spec("spacy") is not None
         use_ner = st.toggle(
             "spaCy NER",
+            value=True,
             key="use_ner",
-            disabled=not ner_installed,
-            help="PERSON/ORG/LOC from a spaCy model"
-            + ("" if ner_installed else " (install the [ner] extra to enable)."),
+            help="PERSON/ORG/LOC from a spaCy model (on by default; turning it off "
+            "leaves names, organisations and locations unredacted).",
         )
 
         st.subheader("Custom rules")

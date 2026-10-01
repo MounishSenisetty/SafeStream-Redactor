@@ -11,8 +11,8 @@
 # mount at all:
 #         docker run --rm -i safestream-redactor redact - -o - < in.txt > out.txt
 #
-# The image installs only the constant-memory core (no third-party runtime
-# deps), so it stays small and runs fully offline.
+# The image installs the package with spaCy and its en_core_web_sm model baked
+# in (the PERSON/ORG/LOC tier is on by default), so it runs fully offline.
 
 # One base for both stages (the venv's interpreter symlinks must resolve in the
 # runtime stage). Pinned by multi-arch index digest for reproducible builds;
@@ -36,9 +36,13 @@ RUN python -m venv /opt/build \
 # Sources last: editing code does not invalidate the dependency layer above.
 COPY pyproject.toml LICENSE ./
 COPY src ./src
+# The spaCy model is not on PyPI; it is pinned by URL and sha256 (pip verifies
+# the #sha256 fragment). Installing it in the same command lets pip pick a spaCy
+# release the model supports (en_core_web_sm 3.8.0 needs spacy>=3.8,<3.9).
+ARG SPACY_MODEL=https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85
 RUN /opt/build/bin/pip wheel --no-build-isolation --no-deps -w /dist . \
  && python -m venv --without-pip /opt/venv \
- && /opt/build/bin/pip --python /opt/venv/bin/python install /dist/*.whl
+ && /opt/build/bin/pip --python /opt/venv/bin/python install /dist/*.whl "en_core_web_sm @ ${SPACY_MODEL}"
 
 FROM ${PYTHON_IMAGE} AS runtime
 
