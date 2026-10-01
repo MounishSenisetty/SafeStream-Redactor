@@ -68,6 +68,10 @@ Notable changes to this project. The format follows
   `\u0301bob@x.io` were **missed**, while `²bob@x.io` was redacted where Python
   leaves it. The core now uses tables generated from Python's `re` and checked
   against every codepoint, so it is byte-identical on these inputs too.
+- **`--workers` crashed with the native backend** on Python 3.14 (Linux) and on
+  macOS and Windows: worker processes there are not forked, so the redactor is
+  pickled, and the native-backed detectors held an unpicklable module. They now
+  pickle as their configuration and re-import the core in the worker.
 - **The native backend raised `UnicodeEncodeError` on a lone surrogate** (for
   example from a JSON `"\udcff"` escape over the REST API or MCP). Such text
   cannot be passed to Rust, so the detector now scans it with the pure-Python
@@ -109,6 +113,18 @@ Notable changes to this project. The format follows
   (13–55 MB/s against 6–10 MB/s), and whole-pipeline redaction is 1.6× faster than
   pure Python (it was 1.1–1.3×). Only the five label-gated credential patterns
   still run in Python.
+- **Native core: the entropy and compound-secret tiers run in Rust** with
+  `backend="native"`/`"auto"`. The entropy value is bit-identical to Python's,
+  including the summation `sum()` uses on this interpreter (naive before CPython
+  3.12, compensated from 3.12), checked on 3.11, 3.12 and 3.14 and over 4 million
+  random tokens. Standalone throughput: entropy tier 53 → 965 MB/s, compound tier
+  4.2 → 38 MB/s on text dense with password specials.
+- **The native scan allocates nothing per window** (proven by a counting-allocator
+  test). `luhn_ok`, `phone_ok` and the phone scanner's memo work on the stack, and
+  non-ASCII text is copied only when it contains a character whose Rust and Python
+  character classes differ. `detect_into` reuses a caller's buffer.
+- **`--backend {python,native,auto}`** on `redact` and `detect`, overriding the
+  policy file's `backend`.
 - **The native core is also a plain Rust library.** `native/` now builds as an
   `rlib` without PyO3 by default (`safestream_native::detect` returns byte
   offsets, `detect_char_offsets` returns Python's character offsets). The Python

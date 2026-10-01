@@ -227,6 +227,9 @@ unchanged (still flat across file size), the floor is just higher.
 
 ### Evaluation — should the entropy tier be ported next? (measured: no)
 
+*Superseded:* the port was later built, with the float-parity hazard resolved by
+reproducing the arithmetic exactly. See "Sub-step (e)" below.
+
 Profiled per tier on the same 10 MB corpora (standalone `detect()` throughput, and
 the end-to-end effect of turning the tier off), to decide where the next native
 port should go. Higher MB/s = faster:
@@ -393,6 +396,75 @@ PyO3 and no libpython), with `detect(text) -> Vec<Detection>` in byte offsets,
 the Rust unit tests without Python. The byte-identity gate against Python remains
 `tests/test_native_backend.py`.
 
+### Sub-step (e) — entropy tiers in Rust: built, **bit-identical**, shipped
+
+`native/src/entropy.rs` implements `EntropyDetector` and `CompoundSecretDetector`.
+Candidates come from a byte scanner equivalent to the two ASCII-class regexes
+(maximal runs split greedily into `MAX_SPAN` pieces; a remainder under 20 is not a
+match). The gates are pure functions of the token.
+
+The hazard that declined sub-step (b) was the entropy itself: a float sum compared
+against a threshold. It is reproduced operation for operation rather than within a
+tolerance:
+
+- terms in `collections.Counter` order (first occurrence of each character);
+- each term `(c / n) * log2(c / n)`: exact int-to-float division, then the
+  platform `log2`, which both CPython's `math.log2` and Rust's `f64::log2` call;
+- the summation `sum()` really performs. CPython 3.12 switched floats from naive
+  addition to Neumaier compensated summation, so the Python side probes it at
+  import (`sum([1.0, 1e100, 1.0, -1e100]) == 2.0`) and passes the mode in.
+
+The meta string (`f"{entropy:.2f}"`) is still formatted by Python from the
+returned float, so formatting cannot diverge.
+
+| Gate | Result |
+| --- | --- |
+| `tests/test_native_backend.py`: exact float bits on 3 500 random tokens and on tokens at the 4.0 and 3.0 thresholds; detector equivalence (spans, text, meta) on corpora, fragment and character fuzz, runs over `MAX_SPAN` | identical on Python 3.11 (naive), 3.12 and 3.14 (Neumaier) |
+| Ad-hoc: 4 000 000 random tokens, both summation modes | **0 bit differences** |
+
+Measured, standalone `detect()` (best of 3): `EntropyDetector` 52.9 → **965 MB/s
+(18×)** on the 20 MB baseline corpus; `CompoundSecretDetector` 4.2 → **38 MB/s
+(9×)** on text dense with password-style specials (its prefilter already makes it
+near-free on text without them).
+
+### Zero-allocation hot path
+
+Scanning a window now performs no heap allocation, proven by
+`native/tests/zero_alloc.rs`. A counting global allocator checks that a scan
+into a buffer with spare capacity allocates nothing, after a warm-up whose own
+allocations show the counter works. The test covers all regex-lane patterns, the
+scanners, and both entropy tiers, on ASCII and on non-ASCII text. The changes:
+
+- `luhn_ok` sums digits right to left in one pass; `phone_ok` checks the date and
+  SSN shapes against an 11-character stack buffer.
+- The structured-phone memo is a fixed stack array sized to the longest possible
+  match (36 characters × 4 bytes), invalidated per start with a generation stamp.
+- Byte-to-character offsets use a cursor that counts UTF-8 lead bytes between
+  consecutive offsets, instead of a sorted vector and a hash map.
+- The regex lane copies the text only if it contains a character whose Rust and
+  Python classes actually disagree. That set is computed once from `regex-syntax`
+  (the parser `regex` uses) and the Python tables, and a unit test checks it
+  codepoint by codepoint against the compiled `regex`. Accented Latin, CJK,
+  Cyrillic and Arabic-Indic digits are scanned in place.
+- `detect_into(text, &mut buf)` lets a Rust caller reuse one output buffer.
+
+### Where end-to-end time goes now
+
+Profile of `Redactor(backend="native").redact` on 20 MB of the baseline corpus
+(cProfile, so absolute times are inflated; the shares are the point):
+
+| Stage | Share |
+| --- | --- |
+| `LabeledIdentifierDetector` (Python) | 63 % |
+| the five keyword-triggered credential patterns (Python) | 18 % |
+| `ContextualScorer` (Python) | 10 % |
+| native deterministic core | 5 % |
+| native entropy tiers | < 1 % |
+
+The remaining Python tiers set the CLI throughput: on the 200 MB corpus,
+`--backend native` runs at 2.42 MB/s with 1 worker and 9.09 MB/s with 4 (Python:
+1.48 and 5.44), byte-identical output in all four runs.
+
 ## Status
 
 - Step 2 (`detectors/_lookaround_free.py` + `tests/test_lookaround_free.py`):
@@ -421,10 +493,10 @@ the Rust unit tests without Python. The byte-identity gate against Python remain
   `\b` and `\s` now follow Python's `re`, and are proven per codepoint.
 - Rust library: **done**. `native/` is an `rlib` by default, and the Python
   extension is the `python` feature.
-- Sub-step (b) — entropy-tier port **evaluated: declined** (see the evaluation
-  above). It is already the fastest tier (3–8× the deterministic tier); end-to-end
-  ceiling ≤1.27×, against a floating-point `log2` byte-identity hazard that cannot be
-  proven bit-identical the way the integer cases were. Left in Python.
+- Sub-step (b) — entropy-tier port **evaluated: declined** at the time, over the
+  floating-point byte-identity hazard. Superseded by sub-step (e).
+- Sub-step (e) — entropy tiers in Rust: **done**, bit-identical (see above).
+- Zero-allocation hot path: **done**, proven by `native/tests/zero_alloc.rs`.
 - Sub-step (c) — packaging: **done**. `pyproject.toml` gains a `[native]` extra
   (`pip install safestream-redactor[native]`) depending on the separately-published
   `safestream-redactor-native` wheel; `.github/workflows/native-wheels.yml` builds
@@ -436,9 +508,9 @@ the Rust unit tests without Python. The byte-identity gate against Python remain
   warning if a version-skewed wheel is ever paired — so a mismatched wheel degrades
   safely instead of diverging.
 - Remaining Python lanes: the five label-gated credential patterns (anthropic/openai
-  keys, URL credentials, AWS secret, api_key) and the entropy tier (declined in
-  sub-step (b)). The label-gated patterns now dominate the deterministic tier's
-  remaining cost on text that contains their anchor words.
+  keys, URL credentials, AWS secret, api_key), `LabeledIdentifierDetector`, and
+  `ContextualScorer`. Together they are about 90 % of end-to-end time with the
+  native backend (see "Where end-to-end time goes now").
 - Maintainer to-do before the first publish (one-time, external to the repo): create
   the `safestream-redactor-native` project on PyPI (and TestPyPI) and add a GitHub
   Trusted Publisher for workflow `native-wheels.yml` with environment `pypi-native`
