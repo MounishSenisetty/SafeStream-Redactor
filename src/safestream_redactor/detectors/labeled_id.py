@@ -30,9 +30,9 @@ accordingly.
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from safestream_redactor.detectors.base import StreamingRequirements
+from safestream_redactor.detectors.deterministic import NativeBacked
 from safestream_redactor.entities import Detection, EntityType
 
 # The longest value span this tier emits, and the largest gap between a cue and
@@ -129,7 +129,7 @@ _COMPILED: tuple[tuple[re.Pattern[str], EntityType, float], ...] = tuple(
 )
 
 
-class LabeledIdentifierDetector:
+class LabeledIdentifierDetector(NativeBacked):
     """Promotes label-anchored identifiers (``Student ID: 202184673``) to redactions."""
 
     name = "labeled_identifier"
@@ -141,9 +141,7 @@ class LabeledIdentifierDetector:
         # Same engine selection as the deterministic tier: the optional native
         # core runs these rules byte-identically (tests/test_native_backend.py)
         # and falls back to Python when it is absent or version-skewed.
-        from safestream_redactor.detectors.deterministic import _load_native
-
-        self._native: Any = _load_native(backend)
+        self._attach_native(backend)
 
     def detect(self, text: str) -> list[Detection]:
         if self._native is not None:  # pragma: no cover - requires native extension

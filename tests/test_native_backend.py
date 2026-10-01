@@ -424,7 +424,13 @@ _phone = st.builds(
     ),
     st.lists(st.text(alphabet="0123456789٣", min_size=1, max_size=5), min_size=3, max_size=6),
     st.lists(st.sampled_from([" ", ".", "-", " ", "", "  "]), min_size=6, max_size=6),
-    st.sampled_from(["", " ", "+1 ", "+44 ", "+1(415)", "(415) ", "(0)", "+", "(", "a", "."]),
+    st.sampled_from(
+        [
+            *["", " ", "+1 ", "+44 ", "+1(415)", "(415) ", "(0)", "+", "(", "a", "."],
+            # E.164: unassigned (+28, +99), leading zero (+020), 3-digit (+995)
+            *["+28 ", "+99 ", "+020 ", "+995 ", "+٤٤ ", "+1", "+28", "+0"],
+        ]
+    ),
     st.sampled_from(["", " ", ".", ".5", "-", "x", "_", ")", " ok"]),
 )
 digit_fuzzed = st.one_of(
@@ -602,3 +608,131 @@ def test_output_buffer_exhaustion_raises_memory_error_not_abort():
     )
     assert proc.returncode == 0, proc.stderr[-2000:]  # 134 would be a Rust abort
     assert proc.stdout.strip() in {"ok", "MemoryError"}
+
+
+# ---------------------------------------------------------------------------
+# Entropy, compound-secret and contextual tiers (native since 0.5). The whole
+# default pipeline -- every tier, contextual adjust, arbitration -- must match
+# backend="python" exactly, including confidences and meta.
+# ---------------------------------------------------------------------------
+
+
+def _pipeline_key(dets: list) -> list[tuple]:
+    return sorted(
+        (
+            d.start,
+            d.end,
+            d.text,
+            d.entity_type.value,
+            d.confidence,  # exact float: the adjust arithmetic stays in Python
+            d.source,
+            tuple(sorted(d.meta.items())),
+        )
+        for d in dets
+    )
+
+
+def _assert_pipeline_equiv(text: str) -> None:
+    from safestream_redactor import Redactor
+
+    native, python = Redactor(backend="native"), Redactor(backend="python")
+    assert _pipeline_key(native.detect(text)) == _pipeline_key(python.detect(text)), text
+    # and every tier really ran natively (no silent fallback at construction)
+    assert all(getattr(d, "_native", None) is not None for d in native._detectors[:1])
+
+
+_SECRET_PIECES = [
+    "zX9kQ2mVp7Lw3Rt8Yn4Bc6Df",  # base64-ish, high entropy
+    "ghij0123klmn4567ghij0123klmn4567",  # H == 4.0 exactly: undecided -> Python
+    "0123456789abcdef0123456789abcdef",  # hex, H == 4.0
+    "deadbeefdeadbeefdeadbeefdeadbeef",  # hex, low entropy
+    "abcdefghijklmnopqrstuvwxyz",  # letters only: never a secret
+    "devPass_pP0p18yO3n!vT8wZ",  # compound secret
+    "aaaaa!bbbbb#ccccc$ddddd",  # compound filler (distinct ratio)
+    "Ab1!" * 6,
+    "ssn",
+    "SSN:",
+    "social security",
+    "123456789",
+    "1234567890",
+    "key",
+    "token=",
+    "example",
+    "TEST",
+    "sample",
+    "KEY",  # Kelvin sign: lower-cases to 'k'
+    "FA\u212aE",  # ... so this is the suppress trigger "fake"
+    "fa\u212ae:",
+    "0123456789abcdef0123456789abcde",  # hex, 31: below the 32-char hex minimum
+    "0123456789abcdef0123456789abcdef0",  # hex, 33
+    "zX9kQ2mVp7Lw3Rt8Yn4Bc6D",  # 23: below min_length 24
+    "zX9kQ2mVp7Lw3Rt8Yn4Bc6Dfg",  # 25
+    "İ",  # dotted capital I: hands adjust back to Python
+    "card",
+    "4111 1111 1111 1111",
+    "call",
+    "+1 (415) 555-2671",
+    "a@b.io",
+    " ",
+    "\n",
+    "-",
+    "文",
+]
+secret_fuzzed = st.lists(st.sampled_from(_SECRET_PIECES), min_size=0, max_size=25).map(" ".join)
+secret_fuzzed_tight = st.lists(st.sampled_from(_SECRET_PIECES), min_size=0, max_size=25).map(
+    "".join
+)
+
+
+@settings(max_examples=800, derandomize=True, deadline=None)
+@given(text=st.one_of(secret_fuzzed, secret_fuzzed_tight))
+def test_full_pipeline_matches_python_fuzzed(text):
+    _assert_pipeline_equiv(text)
+
+
+def test_full_pipeline_matches_python_on_corpora():
+    import random
+
+    for text in [*CORPUS, *_DIGIT_CORPUS, *_LABELED_CORPUS, *_UNICODE_EDGES]:
+        _assert_pipeline_equiv(text)
+    rng = random.Random(5)
+    _assert_pipeline_equiv(" ".join(rng.choice(_SECRET_PIECES) for _ in range(5000)))
+
+
+def test_entropy_on_the_threshold_is_decided_in_python():
+    # H == 4.0 in real arithmetic: the native core must not decide it
+    [(_s, _e, entropy, decided)] = sn.scan_entropy_text(
+        "ghij0123klmn4567ghij0123klmn4567", 24, 4.0, 3.0
+    )
+    assert not decided and abs(entropy - 4.0) < 1e-12
+    [(_s, _e, entropy, decided)] = sn.scan_entropy_text("zX9kQ2mVp7Lw3Rt8Yn4Bc6Df", 24, 4.0, 3.0)
+    assert decided and entropy > 4.0
+
+
+def test_lowercase_to_ascii_set_is_what_the_native_core_assumes():
+    # native/src/context.rs maps only these two: Kelvin -> 'k' natively,
+    # 'İ' -> Python fallback. Any other non-ASCII char lowering to ASCII would
+    # break trigger matching, so pin the set on the running interpreter.
+    found = {
+        cp
+        for cp in range(0x80, 0x110000)
+        if not 0xD800 <= cp <= 0xDFFF and any(ord(ch) < 0x80 for ch in chr(cp).lower())
+    }
+    assert found == {0x130, 0x212A}
+
+
+def test_native_redactor_pickles_for_worker_processes():
+    import pickle
+
+    from safestream_redactor import Redactor
+
+    r = pickle.loads(pickle.dumps(Redactor(backend="native")))
+    assert all(d._native is not None for d in r._detectors if hasattr(d, "_native"))
+    text = "key AKIAIOSFODNN7EXAMPLE token zX9kQ2mVp7Lw3Rt8Yn4Bc6Df ssn 123456789"
+    assert r.redact(text) == Redactor(backend="python").redact(text)
+
+
+def test_e164_table_matches_python():
+    from safestream_redactor.detectors.deterministic import E164_COUNTRY_CODES
+
+    assert frozenset(sn.e164_country_codes()) == E164_COUNTRY_CODES

@@ -26,6 +26,7 @@
     deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)
 )]
 
+pub mod context;
 /// Synthetic corpora for the benchmarks and property tests (not a stable API).
 #[doc(hidden)]
 pub mod corpus;
@@ -34,6 +35,7 @@ pub mod error;
 mod labeled;
 mod offsets;
 pub mod patterns;
+pub mod secrets;
 pub mod unicode;
 mod unicode_tables;
 
@@ -42,7 +44,7 @@ mod python;
 
 pub use error::Error;
 pub use labeled::{rule_sources, LabeledMatch, RULES as LABELED_RULES};
-pub use offsets::OffsetMap;
+pub use offsets::{ByteMap, OffsetMap};
 pub use patterns::{Kind, PatternSpec, PATTERNS};
 
 /// One match from [`scan`]: byte offsets into the scanned text, and the index of
@@ -107,6 +109,61 @@ pub fn scan_labeled(text: &str, out: &mut Vec<LabeledMatch>) -> Result<Scan, Err
         return Ok(Scan::NeedsPython);
     }
     labeled::scan_labeled(text, out)?;
+    Ok(Scan::Exact)
+}
+
+/// The entropy tier (`EntropyDetector`): secret runs and runs whose verdict
+/// must be made in Python ([`secrets::Verdict::Undecided`]). Never needs the
+/// Python fallback for the whole text: its alphabet is ASCII.
+pub fn scan_entropy(
+    text: &str,
+    params: secrets::EntropyParams,
+    out: &mut Vec<secrets::SecretMatch>,
+) -> Result<(), Error> {
+    out.clear();
+    secrets::scan_entropy(text, params, out)
+}
+
+/// The compound-secret tier (`CompoundSecretDetector`).
+pub fn scan_compound(
+    text: &str,
+    params: secrets::CompoundParams,
+    out: &mut Vec<secrets::SecretMatch>,
+) -> Result<(), Error> {
+    out.clear();
+    secrets::scan_compound(text, params, out)
+}
+
+/// The contextual tier's own detections (trigger-gated bare SSNs), byte offsets.
+pub fn scan_bare_ssn(
+    text: &str,
+    window: usize,
+    scratch: &mut Vec<u8>,
+    out: &mut Vec<(usize, usize)>,
+) -> Result<Scan, Error> {
+    out.clear();
+    if unicode::has_ambiguous_digit(text) || context::needs_python_lower(text) {
+        return Ok(Scan::NeedsPython);
+    }
+    context::scan_bare_ssn(text, window, scratch, out)?;
+    Ok(Scan::Exact)
+}
+
+/// The contextual tier's `adjust` decisions for `spans` (byte offsets): one
+/// [`context::BOOSTED`] / [`context::SUPPRESSED`] bit set per span.
+pub fn adjust(
+    text: &str,
+    spans: &[context::Span],
+    window: usize,
+    suppress_window: usize,
+    scratch: &mut Vec<u8>,
+    out: &mut Vec<u8>,
+) -> Result<Scan, Error> {
+    out.clear();
+    if context::needs_python_lower(text) {
+        return Ok(Scan::NeedsPython);
+    }
+    context::adjust(text, spans, window, suppress_window, scratch, out)?;
     Ok(Scan::Exact)
 }
 

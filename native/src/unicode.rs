@@ -136,6 +136,15 @@ pub fn needs_python(text: &str) -> bool {
     false
 }
 
+/// True when `text` holds a digit-ambiguous code point (a `\d` that some
+/// supported CPython classifies differently): checks that consume only digits.
+pub fn has_ambiguous_digit(text: &str) -> bool {
+    !text.is_ascii()
+        && text
+            .chars()
+            .any(|c| !c.is_ascii() && in_table(DIGIT_AMBIGUOUS, c))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

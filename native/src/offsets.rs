@@ -73,6 +73,74 @@ impl OffsetMap {
     }
 }
 
+/// A reusable char-offset -> byte-offset table for one text (the inverse of
+/// [`OffsetMap`]), for spans that arrive from Python in character offsets.
+#[derive(Default)]
+pub struct ByteMap {
+    keys: Vec<usize>,
+    vals: Vec<usize>,
+    ascii: bool,
+}
+
+impl ByteMap {
+    pub fn new() -> ByteMap {
+        ByteMap::default()
+    }
+
+    /// Prepare to translate `offsets` (character offsets, clamped to the text).
+    pub fn build(&mut self, text: &str, offsets: impl Iterator<Item = usize>) -> Result<(), Error> {
+        self.keys.clear();
+        self.vals.clear();
+        self.ascii = text.is_ascii();
+        if self.ascii {
+            return Ok(());
+        }
+        for o in offsets {
+            if self.keys.len() == self.keys.capacity() {
+                self.keys
+                    .try_reserve(self.keys.len().max(16))
+                    .map_err(|_| Error::OutOfMemory)?;
+            }
+            self.keys.push(o);
+        }
+        self.keys.sort_unstable();
+        self.keys.dedup();
+        self.vals
+            .try_reserve(self.keys.len())
+            .map_err(|_| Error::OutOfMemory)?;
+        let mut chars = text
+            .char_indices()
+            .map(|(b, _)| b)
+            .chain([text.len()])
+            .enumerate();
+        let mut last = text.len();
+        for &k in &self.keys {
+            let byte = loop {
+                match chars.next() {
+                    Some((ci, b)) if ci == k => break b,
+                    Some(_) => continue,
+                    None => break last,
+                }
+            };
+            last = byte;
+            self.vals.push(byte);
+        }
+        Ok(())
+    }
+
+    /// The byte offset of character offset `c` (registered with `build`).
+    #[inline]
+    pub fn get(&self, text: &str, c: usize) -> usize {
+        if self.ascii {
+            return c.min(text.len());
+        }
+        match self.keys.binary_search(&c) {
+            Ok(i) => self.vals[i],
+            Err(_) => text.char_indices().nth(c).map_or(text.len(), |(b, _)| b),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,5 +158,11 @@ mod tests {
         for (ci, &b) in offs.iter().enumerate() {
             assert_eq!(map.get(text, b), ci);
         }
+        let mut back = ByteMap::new();
+        back.build(text, 0..offs.len() + 3).unwrap();
+        for (ci, &b) in offs.iter().enumerate() {
+            assert_eq!(back.get(text, ci), b);
+        }
+        assert_eq!(back.get(text, offs.len() + 2), text.len()); // clamped
     }
 }

@@ -18,6 +18,7 @@ import re
 from collections import Counter
 
 from safestream_redactor.detectors.base import StreamingRequirements
+from safestream_redactor.detectors.deterministic import NativeBacked
 from safestream_redactor.entities import Detection, EntityType
 
 # The longest span the entropy tier will emit. Bounding it keeps assumption A1
@@ -48,7 +49,7 @@ def shannon_entropy(text: str) -> float:
     return -sum((c / n) * math.log2(c / n) for c in counts.values())
 
 
-class EntropyDetector:
+class EntropyDetector(NativeBacked):
     """Flags high-entropy tokens as generic secrets.
 
     Named-credential patterns (tier 1) score higher, so when a token is both a
@@ -67,11 +68,16 @@ class EntropyDetector:
         base64_entropy: float = 4.0,
         hex_entropy: float = 3.0,
         confidence: float = 0.6,
+        backend: str = "python",
     ) -> None:
         self.min_length = min_length
         self.base64_entropy = base64_entropy
         self.hex_entropy = hex_entropy
         self.confidence = confidence
+        # optional native core: same candidates, same verdicts; tokens whose
+        # entropy is within 1e-9 of a threshold come back undecided and are
+        # classified here (native/src/secrets.rs explains the bound)
+        self._attach_native(backend)
 
     def _secret_entropy(self, token: str) -> float | None:
         """The token's Shannon entropy if it qualifies as a secret, else ``None``.
@@ -91,22 +97,36 @@ class EntropyDetector:
         return entropy if entropy >= self.base64_entropy else None
 
     def detect(self, text: str) -> list[Detection]:
+        if self._native is not None:  # pragma: no cover - requires native extension
+            return self._detect_native(text)
         found: list[Detection] = []
         for m in _CANDIDATE.finditer(text):
             token = m.group()
             entropy = self._secret_entropy(token)
             if entropy is not None:
-                found.append(
-                    Detection(
-                        start=m.start(),
-                        end=m.end(),
-                        text=token,
-                        entity_type=EntityType.SECRET,
-                        confidence=self.confidence,
-                        source=self.name,
-                        meta={"entropy": f"{entropy:.2f}"},
-                    )
-                )
+                found.append(self._detection(m.start(), m.end(), token, entropy))
+        return found
+
+    def _detection(self, start: int, end: int, token: str, entropy: float) -> Detection:
+        return Detection(
+            start=start,
+            end=end,
+            text=token,
+            entity_type=EntityType.SECRET,
+            confidence=self.confidence,
+            source=self.name,
+            meta={"entropy": f"{entropy:.2f}"},
+        )
+
+    def _detect_native(self, text: str) -> list[Detection]:  # pragma: no cover - native only
+        found: list[Detection] = []
+        for start, end, native_entropy, decided in self._native.scan_entropy_text(
+            text, self.min_length, self.base64_entropy, self.hex_entropy
+        ):
+            token = text[start:end]
+            entropy = native_entropy if decided else self._secret_entropy(token)
+            if entropy is not None:
+                found.append(self._detection(start, end, token, entropy))
         return found
 
 
@@ -139,7 +159,7 @@ _STRONG_SPECIALS = frozenset("!#$%^&*~")
 _COMPOUND_CANDIDATE = re.compile(rf"[A-Za-z0-9+/=_\-!#$%^&*~]{{20,{MAX_SPAN}}}")
 
 
-class CompoundSecretDetector:
+class CompoundSecretDetector(NativeBacked):
     """Flags symbol-containing high-entropy secrets the base entropy tier splits.
 
     A candidate is a whitespace-free run over the base64 alphabet extended with
@@ -162,11 +182,13 @@ class CompoundSecretDetector:
         entropy_floor: float = 3.5,
         distinct_ratio: float = 0.45,
         confidence: float = 0.6,
+        backend: str = "python",
     ) -> None:
         self.min_length = min_length
         self.entropy_floor = entropy_floor
         self.distinct_ratio = distinct_ratio
         self.confidence = confidence
+        self._attach_native(backend)
 
     def _is_compound_secret(self, token: str) -> bool:
         n = len(token)
@@ -208,19 +230,34 @@ class CompoundSecretDetector:
         # (a strong special is a necessary condition in ``_is_compound_secret``).
         if not any(s in text for s in _STRONG_SPECIALS):
             return []
+        if self._native is not None:  # pragma: no cover - requires native extension
+            return self._detect_native(text)
         found: list[Detection] = []
         for m in _COMPOUND_CANDIDATE.finditer(text):
             token = m.group()
             if self._is_compound_secret(token):
-                found.append(
-                    Detection(
-                        start=m.start(),
-                        end=m.end(),
-                        text=token,
-                        entity_type=EntityType.SECRET,
-                        confidence=self.confidence,
-                        source=self.name,
-                        meta={"entropy": f"{shannon_entropy(token):.2f}", "shape": "compound"},
-                    )
-                )
+                found.append(self._detection(m.start(), m.end(), token, shannon_entropy(token)))
+        return found
+
+    def _detection(self, start: int, end: int, token: str, entropy: float) -> Detection:
+        return Detection(
+            start=start,
+            end=end,
+            text=token,
+            entity_type=EntityType.SECRET,
+            confidence=self.confidence,
+            source=self.name,
+            meta={"entropy": f"{entropy:.2f}", "shape": "compound"},
+        )
+
+    def _detect_native(self, text: str) -> list[Detection]:  # pragma: no cover - native only
+        found: list[Detection] = []
+        for start, end, native_entropy, decided in self._native.scan_compound_text(
+            text, self.min_length, self.entropy_floor, self.distinct_ratio
+        ):
+            token = text[start:end]
+            if decided:
+                found.append(self._detection(start, end, token, native_entropy))
+            elif self._is_compound_secret(token):
+                found.append(self._detection(start, end, token, shannon_entropy(token)))
         return found

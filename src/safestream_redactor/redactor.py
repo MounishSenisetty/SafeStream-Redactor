@@ -139,7 +139,7 @@ class Redactor:
         self.calibrator = calibrator
         self.chunk_size = chunk_size
         self.overlap = overlap
-        self._scorer = ContextualScorer()
+        self._scorer = ContextualScorer(backend=backend)
 
         self._detectors: list[Detector] = [DeterministicDetector(resolved_types, backend=backend)]
         # Label-anchored identifier cascade: a high-precision contextual tier that
@@ -194,8 +194,8 @@ class Redactor:
                 EntropyDetector,
             )
 
-            self._detectors.append(EntropyDetector())
-            self._detectors.append(CompoundSecretDetector())
+            self._detectors.append(EntropyDetector(backend=backend))
+            self._detectors.append(CompoundSecretDetector(backend=backend))
         self._detectors.extend(extra_detectors)
         # third-party detectors registered via entry points (opt-in)
         if load_plugins:
