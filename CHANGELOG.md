@@ -60,6 +60,18 @@ Notable changes to this project. The format follows
 
 ### Fixed
 
+- **The native backend disagreed with Python next to some Unicode characters.**
+  With `backend="native"`/`"auto"`, the Rust core used the `regex` crate's own
+  `\w`/`\b`/`\s`, which differ from Python's `re`. Python counts `²` (and other
+  No numerics) as a word character, does not count combining marks or `‿`, and
+  counts `\x1c`–`\x1f` as whitespace. As a result, `‿AKIAIOSFODNN7EXAMPLE` and
+  `\u0301bob@x.io` were **missed**, while `²bob@x.io` was redacted where Python
+  leaves it. The core now uses tables generated from Python's `re` and checked
+  against every codepoint, so it is byte-identical on these inputs too.
+- **The native backend raised `UnicodeEncodeError` on a lone surrogate** (for
+  example from a JSON `"\udcff"` escape over the REST API or MCP). Such text
+  cannot be passed to Rust, so the detector now scans it with the pure-Python
+  tier.
 - `--chunk-size` was labelled `BYTES` in `--help`, but it counts **characters**:
   input is decoded before it is chunked. It now reads `CHARS`.
 
@@ -89,6 +101,19 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- **Native core: `credit_card` and both `phone` patterns run in Rust.** They are
+  hand-written linear scanners that reproduce Python's backtracking match for
+  match, with the Luhn and `phone_ok` validators. They are byte-identical to the
+  Python tier on the differential tests, a 2-million-case fuzz, and 10 MB corpora.
+  With `backend="native"`, the deterministic tier is 2.3–5.4× faster than before
+  (13–55 MB/s against 6–10 MB/s), and whole-pipeline redaction is 1.6× faster than
+  pure Python (it was 1.1–1.3×). Only the five label-gated credential patterns
+  still run in Python.
+- **The native core is also a plain Rust library.** `native/` now builds as an
+  `rlib` without PyO3 by default (`safestream_native::detect` returns byte
+  offsets, `detect_char_offsets` returns Python's character offsets). The Python
+  extension is the `python` feature, which maturin enables, so the published
+  wheel is unchanged.
 - **Local web playground** (`safestream ui`, `python -m safestream_redactor.ui`; the
   new `[ui]` extra installs Streamlit, and the base install gains no dependency).
   - *Detect mode:* severity-coloured highlights and a findings table (type,
