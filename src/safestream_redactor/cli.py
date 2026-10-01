@@ -96,7 +96,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=True,
         help="disable the high-entropy secret detector (on by default)",
     )
-    common.add_argument("--chunk-size", type=int, default=None, metavar="BYTES")
+    common.add_argument(
+        "--chunk-size",
+        type=int,
+        default=None,
+        metavar="CHARS",
+        help="characters read per chunk (default: 65536); text is decoded before chunking",
+    )
     common.add_argument("--overlap", type=int, default=None, metavar="CHARS")
     common.add_argument(
         "--allow-unsafe-overlap",

@@ -195,7 +195,9 @@ previewed, and the redacted file can be saved to a folder. Streamlit holds an up
 memory (about twice its size) while it is selected. **Detect**
 highlights findings by severity, with a table of types, confidence and `line:col`
 locations. **Redact** shows the original and sanitized text side by side (replace, mask,
-or keyed hash) and lets you download the result. The page listens on 127.0.0.1 only, with
+or keyed hash) and lets you download the result. **Inspect** replays the streaming
+engine one sliding window at a time. It shows the context, emitted, and carried bands,
+and how an entity that a chunk boundary would cut is kept whole. The page listens on 127.0.0.1 only, with
 Streamlit usage statistics off and the offline network guard on. A banner confirms these
 settings, or warns when they are missing.
 

@@ -7,11 +7,13 @@ Start it with ``safestream ui``, which applies the local-only Streamlit settings
 
 from __future__ import annotations
 
+import dataclasses
 import importlib.util
 import os
 import secrets
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import streamlit as st
 
@@ -20,6 +22,9 @@ from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from safestream_redactor.ui.core import (
     DOWNLOAD_LIMIT_BYTES,
     MAX_INPUT_BYTES,
+    PACING_DEFAULT_MS,
+    PACING_MAX_MS,
+    PACING_MIN_MS,
     PATTERN_TYPES,
     PREVIEW_CHARS,
     SAMPLE_TEXT,
@@ -39,9 +44,12 @@ from safestream_redactor.ui.core import (
     download_name,
     estimate_seconds,
     finding_rows,
+    flatten_findings,
     highlight_html,
+    inspector_chunk_sizes,
     new_workdir,
     parse_rules,
+    pass_html,
     privacy_status,
     read_head,
     redact_large,
@@ -51,6 +59,8 @@ from safestream_redactor.ui.core import (
     scan,
     spool_upload,
     summarize,
+    trace_chunks,
+    trace_rows,
     worst_severity,
 )
 
@@ -64,6 +74,18 @@ _STYLES = """
 .ss-legend span { display: inline-block; margin-right: 0.9rem; font-size: 0.8rem; }
 .ss-legend i { display: inline-block; width: 0.8rem; height: 0.8rem;
   border-radius: 0.2rem; margin-right: 0.3rem; vertical-align: -0.1rem; }
+.ss-prefix, .ss-carry { opacity: 0.55; }
+.ss-carry { text-decoration: underline dotted rgba(128, 128, 128, 0.7); }
+.ss-cut, .ss-planned { display: inline-block; width: 0; height: 1.15em; margin: 0 1px;
+  vertical-align: -0.2em; }
+.ss-cut { border-left: 3px solid rgb(22, 163, 74); }
+.ss-planned { border-left: 3px dashed rgb(220, 38, 38); }
+.ss-seg-title { font-size: 0.8rem; opacity: 0.75; margin: 0.6rem 0 0.2rem; }
+.ss-pass p { margin: 0.4rem 0; }
+.ss-panes { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0.5rem 0; }
+.ss-note { padding: 0.5rem 0.8rem; margin: 0.4rem 0; border-radius: 0.5rem;
+  background: rgba(37, 99, 235, 0.12); }
+.ss-warn { background: rgba(234, 88, 12, 0.15); }
 </style>
 """
 _STYLE_LABELS = {
@@ -83,13 +105,14 @@ def _sidebar() -> tuple[str, Settings]:
         st.header("Settings")
         mode = st.radio(
             "Mode",
-            ["Detect", "Redact"],
+            ["Detect", "Redact", "Inspect"],
             key="mode",
             horizontal=True,
-            help="Detect highlights findings; Redact shows the sanitized output.",
+            help="Detect highlights findings; Redact shows the sanitized output; Inspect "
+            "replays the streaming engine one sliding window at a time.",
         )
         style, replacement, keep_last, hash_key = RedactStyle.REPLACE, "[REDACTED]", 4, ""
-        if mode == "Redact":
+        if mode in ("Redact", "Inspect"):
             style = st.radio(
                 "Redaction style",
                 list(RedactStyle),
@@ -391,6 +414,10 @@ def _large_file(upload: Any, mode: str, settings: Settings, redactor: Any) -> No
             "not be scanned. Convert the file to UTF-8 for full coverage."
         )
 
+    if mode == "Inspect":
+        st.caption(f"Inspecting the first {len(head):,} characters of {upload.name}.")
+        _inspector(head, settings, f"large:{upload.file_id}")
+        return
     head_findings = scan(redactor, head)
     if mode == "Detect":
         st.subheader("Annotated preview")
@@ -449,6 +476,119 @@ def _large_output(name: str, state: dict[str, Any]) -> None:
         st.rerun()
 
 
+def _pause() -> None:
+    st.session_state["inspect_playing"] = False
+
+
+def _toggle_play() -> None:
+    playing = not st.session_state.get("inspect_playing", False)
+    st.session_state["inspect_playing"] = playing
+    if playing and st.session_state.get("inspect_index", 0) >= st.session_state["inspect_last"]:
+        st.session_state["inspect_index"] = 0  # replay from the start
+
+
+def _step(delta: int) -> None:
+    _pause()
+    i = st.session_state.get("inspect_index", 0) + delta
+    st.session_state["inspect_index"] = min(max(i, 0), st.session_state["inspect_last"])
+
+
+def _inspector(text: str, settings: Settings, source: str) -> None:
+    """Replay the streaming engine over ``text`` one detection pass at a time."""
+    sizes = inspector_chunk_sizes(build_redactor(settings))
+    chunk = st.radio(
+        "Chunk size",
+        sizes,
+        format_func=lambda n: f"{n:,} chars ({n // sizes[0]}x overlap)",
+        key="inspect_chunk",
+        horizontal=True,
+        help="The engine emits at least one overlap's worth of text per pass, so smaller "
+        "chunks behave exactly like the first option.",
+    )
+    redactor = build_redactor(dataclasses.replace(settings, chunk_size=int(chunk)))
+    key = (source, hash(text), len(text), settings, chunk)
+    state: dict[str, Any] | None = st.session_state.get("inspect")
+    if state is None or state["key"] != key:
+        chunks = []
+        expected = max(1, -(-len(text) // max(int(chunk), redactor.overlap)))
+        bar = st.progress(0.0, text="Replaying the streaming engine…")
+        for c in trace_chunks(redactor, text):
+            chunks.append(c)
+            if c.index % 16 == 0:
+                bar.progress(min(1.0, (c.index + 1) / expected), text="Replaying…")
+        bar.empty()
+        state = {"key": key, "chunks": chunks, "flat": flatten_findings(chunks)}
+        st.session_state["inspect"] = state
+        st.session_state["inspect_index"] = 0
+        st.session_state["inspect_playing"] = False
+    chunks, flat = state["chunks"], state["flat"]
+    st.session_state["inspect_last"] = len(chunks) - 1
+
+    a, b, c_, d = st.columns(4)
+    a.metric("Passes", len(chunks))
+    b.metric("Findings", sum(len(c.findings) for c in chunks))
+    c_.metric("Boundary retreats", sum(1 for c in chunks if c.retreated_by))
+    d.metric("Entities held whole", sum(len(c.straddlers) for c in chunks))
+
+    # The stylesheet goes in once, outside the fragment: re-inserting a <style>
+    # element on every step makes the browser recalculate styles for the whole page.
+    st.html(_STYLES)
+    playing = bool(st.session_state.get("inspect_playing"))
+    controls = st.columns([1, 1, 1, 4])
+    controls[0].button("Pause" if playing else "Play", on_click=_toggle_play, type="primary")
+    controls[1].button("Step back", on_click=_step, args=(-1,), key="inspect_back")
+    controls[2].button("Step", on_click=_step, args=(1,), key="inspect_step")
+    delay = controls[3].slider(
+        "Delay between steps (ms)",
+        PACING_MIN_MS,
+        PACING_MAX_MS,
+        PACING_DEFAULT_MS,
+        step=50,
+        key="inspect_delay",
+    )
+
+    def live() -> None:
+        last = len(chunks) - 1
+        if st.session_state.get("inspect_playing"):
+            nxt = st.session_state.get("inspect_index", 0) + 1
+            if nxt > last:
+                _pause()
+                st.rerun()  # full rerun: drops the timer and relabels the button
+            st.session_state["inspect_index"] = nxt
+        elif playing:
+            st.rerun()  # paused since this fragment was armed: drop the timer
+        i = int(st.session_state.get("inspect_index", 0))
+        running = bool(st.session_state.get("inspect_playing"))
+        if running:
+            # No widgets while playing: a busy browser sends a widget's previous value
+            # back with the next timer rerun, which reads as a user edit (and would
+            # pause playback). A progress bar is display-only.
+            st.progress((i + 1) / len(chunks), text=f"Pass {i + 1} of {len(chunks)}")
+        elif last > 0:
+            st.slider("Pass", 0, last, key="inspect_index", on_change=_pause)
+        _render_pass(text, chunks, flat, i, archive=not running)
+
+    # Only this fragment redraws on each step, not the page. Streamlit annotates
+    # st.fragment's result as a union, which strict mypy treats as untyped.
+    fragment = cast(
+        "Callable[[Callable[[], None]], Callable[[], None]]",
+        st.fragment(run_every=delay / 1000 if playing else None),
+    )
+    fragment(live)()
+
+
+def _render_pass(
+    text: str, chunks: list[Any], flat: list[Finding], i: int, *, archive: bool
+) -> None:
+    st.html(pass_html(text, chunks, flat, i))
+    if not archive:
+        # the table grid is costly to redraw on every step: shown when paused
+        st.caption("The table of all passes appears when playback is paused.")
+        return
+    with st.expander(f"All passes ({i + 1} of {len(chunks)} replayed)"):
+        st.dataframe(trace_rows(chunks[: i + 1]), hide_index=True)
+
+
 def main() -> None:
     st.set_page_config(page_title="SafeStream Redactor", page_icon="🛡️", layout="wide")
     # Any outbound connection from this process now fails closed (idempotent).
@@ -483,6 +623,9 @@ def main() -> None:
         st.error(f"**Invalid settings.** {exc}", icon="⚠️")
         return
 
+    if mode == "Inspect":
+        _inspector(text, settings, f"text:{name}")
+        return
     findings = scan(redactor, text)
     _metrics(text, findings)
     if len(text) > PREVIEW_CHARS:

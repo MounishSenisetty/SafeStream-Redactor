@@ -215,3 +215,104 @@ def test_large_output_is_not_saved_to_disk_when_not_local(app, large_upload) -> 
     # Streamlit defaults (all interfaces): a remote visitor must not write files here
     assert not [t for t in app.text_input if t.key == "save_dir"]
     assert any("only when the page is served on loopback" in c.value for c in app.caption)
+
+
+# -- Inspect mode -------------------------------------------------------------
+
+
+def _inspect(app: AppTest, text: str) -> AppTest:
+    app.text_area(key="text").set_value(text).run()
+    app.radio(key="mode").set_value("Inspect").run()
+    _no_errors(app)
+    return app
+
+
+def _pass_block(app: AppTest) -> str:
+    return next(h.proto.body for h in app.get("html") if 'class="ss-pass"' in h.proto.body)
+
+
+def _pass_header(app: AppTest) -> str:
+    import re
+
+    return re.sub(r"<[^>]+>", "", _pass_block(app).split("</p>", 1)[0])
+
+
+def test_inspect_steps_through_the_engine_passes(app: AppTest) -> None:
+    from safestream_redactor.ui.core import (
+        INSPECTOR_RETAINED,
+        Settings,
+        build_redactor,
+        trace_chunks,
+    )
+
+    text = SAMPLE_TEXT * 400  # ~187k chars: 23 passes at the 8,192 floor
+    _inspect(app, text)
+    expected = list(trace_chunks(build_redactor(Settings(chunk_size=8192)), text))
+    metrics = {m.label: m.value for m in app.metric}
+    assert metrics["Passes"] == str(len(expected))
+    assert metrics["Boundary retreats"] == str(sum(1 for c in expected if c.retreated_by))
+    assert _pass_header(app).startswith(f"Pass 1 of {len(expected)}")
+
+    app.button(key="inspect_step").click().run()
+    assert _pass_header(app).startswith("Pass 2 of")
+    assert "scanned 0-24,576" in _pass_header(app)  # 8,192 context + emit + carry
+    app.button(key="inspect_back").click().run()
+    assert _pass_header(app).startswith("Pass 1 of")
+    app.button(key="inspect_back").click().run()  # clamped at the first pass
+    assert _pass_header(app).startswith("Pass 1 of")
+
+    app.slider(key="inspect_index").set_value(len(expected) - 1).run()
+    _no_errors(app)
+    assert _pass_header(app).startswith(f"Pass {len(expected)} of")
+    # the retained history is capped; the archive table holds every replayed pass
+    assert _pass_block(app).count('class="ss-seg-title"') == INSPECTOR_RETAINED
+    assert len(app.dataframe[0].value) == len(expected)
+
+
+def test_inspect_explains_boundary_retreats(app: AppTest) -> None:
+    from safestream_redactor.ui.core import Settings, build_redactor, trace_chunks
+
+    text = SAMPLE_TEXT * 400
+    chunks = list(trace_chunks(build_redactor(Settings(chunk_size=8192)), text))
+    retreat = next(c for c in chunks if c.retreated_by)
+    _inspect(app, text)
+    app.slider(key="inspect_index").set_value(retreat.index).run()
+    block = _pass_block(app)
+    assert "moved back" in block
+    assert 'class="ss-planned"' in block and 'class="ss-cut"' in block
+    app.button(key="inspect_step").click().run()
+    assert "emitted whole here" in _pass_block(app)
+
+
+def test_inspect_play_and_pause(app: AppTest) -> None:
+    _inspect(app, SAMPLE_TEXT * 400)
+    play = next(b for b in app.button if b.label == "Play")
+    play.click().run()
+    assert app.session_state["inspect_playing"] is True
+    assert _pass_header(app).startswith("Pass 2 of")  # first step taken at once
+    next(b for b in app.button if b.label == "Pause").click().run()
+    assert app.session_state["inspect_playing"] is False
+    assert any(b.label == "Play" for b in app.button)
+
+
+def test_inspect_pacing_and_chunk_choices_come_from_the_approved_numbers(app: AppTest) -> None:
+    from safestream_redactor.ui.core import Settings, build_redactor, trace_chunks
+
+    text = SAMPLE_TEXT * 400
+    _inspect(app, text)
+    delay = app.slider(key="inspect_delay")
+    assert (delay.min, delay.max, delay.value) == (50, 2000, 500)
+    chunk = app.radio(key="inspect_chunk")
+    assert list(chunk.options) == ["8,192 chars (1x overlap)", "16,384 chars (2x overlap)"]
+    chunk.set_value(16384).run()
+    _no_errors(app)
+    doubled = list(trace_chunks(build_redactor(Settings(chunk_size=16384)), text))
+    assert {m.label: m.value for m in app.metric}["Passes"] == str(len(doubled))
+    assert len(doubled) < 23  # twice the chunk: about half the passes
+
+
+def test_inspect_redacts_with_the_chosen_style(app: AppTest) -> None:
+    _inspect(app, f"key {AWS}")
+    redacted_pane = _pass_block(app).split("<strong>Redacted segment</strong>")[1]
+    redacted_pane = redacted_pane.split("<strong>Last ")[0]
+    assert "[REDACTED]" in redacted_pane and AWS not in redacted_pane

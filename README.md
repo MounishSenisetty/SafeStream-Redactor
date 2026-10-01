@@ -313,6 +313,22 @@ python -m safestream_redactor.ui            # same as `safestream ui`
   **Replace** (`[REDACTED]` or your own token), **Mask** (never more than half a value
   visible), and **Hash** (keyed HMAC pseudonyms, stable for equal values). You can copy
   the output from its code block or download it as `<name>.redacted.<ext>`.
+- **Inspect mode** replays the streaming engine one detection pass at a time, so you
+  can watch how a file is processed in constant memory:
+  - **Left pane:** the window the pass scanned, in three bands: dim read-only context
+    (8,192 chars), the emitted segment, and the dotted tail carried to the next pass.
+  - **Right pane:** what that pass writes to the output.
+  - **Boundaries:** when an entity would be cut by a boundary, a red dashed line marks
+    the planned cut and a green line the actual one, and the next pass reports the
+    entity it emitted whole.
+  - **Controls:** Play/Pause, Step, Step back, a seek bar, and a delay slider
+    (50–2,000 ms, default 500).
+  - **History:** the last 5 segments stay in full text, and every pass is listed in a
+    table when paused.
+  - **Chunk size:** 1× or 2× the overlap. The engine never emits less than the overlap
+    per pass, so smaller chunks change nothing.
+
+  For large uploads, Inspect covers the first 200,000 characters.
 - **The sidebar** sets the minimum confidence, which entity types run, high-entropy
   secret detection, the dependency-free name heuristics, spaCy NER (when the `[ner]`
   extra is installed), custom words and regexes (one per line), and the streaming chunk

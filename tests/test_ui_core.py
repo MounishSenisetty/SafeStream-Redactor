@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 
 from safestream_redactor import Redactor
@@ -352,3 +354,118 @@ def test_counts_severity_and_estimate():
     assert core.counts_severity({}) is None
     assert core.estimate_seconds(2_400_000, 2) == pytest.approx(1.0)
     assert core.default_workers() >= 1
+
+
+# -- chunk inspector telemetry ---------------------------------------------------
+
+
+def _tiny_redactor(**kw) -> Redactor:
+    # an overlap far below the safe minimum makes boundaries easy to hit on purpose
+    options = {"types": ["email"], **kw}
+    return Redactor(
+        overlap=64, chunk_size=64, allow_unsafe_overlap=True, use_entropy=False, **options
+    )
+
+
+def test_trace_tiles_the_input_and_matches_redaction():
+    text = SAMPLE_TEXT * 200
+    r = build_redactor(Settings(chunk_size=8192))
+    chunks = list(core.trace_chunks(r, text))
+    assert [c.index for c in chunks] == list(range(len(chunks)))
+    assert chunks[0].emit_start == 0 and chunks[-1].emit_end == len(text)
+    assert all(a.emit_end == b.emit_start for a, b in itertools.pairwise(chunks))
+    assert redact_text(text, core.flatten_findings(chunks)) == r.redact(text)
+    assert chunks[-1].final and not any(c.final for c in chunks[:-1])
+    # steady-state geometry: 8,192 context | 8,192 emitted | 8,192 carried
+    mid = chunks[1]
+    assert (mid.window_start, mid.emit_start, mid.emit_end, mid.window_end) == (
+        0,
+        8192,
+        16384,
+        24576,
+    )
+    assert mid.carried == 8192
+    lines = text[: mid.emit_start].count("\n") + 1
+    assert mid.line_start == lines
+
+
+def test_trace_reports_a_retreat_and_the_entity_it_kept_whole():
+    text = "w " * 29 + "bob@corp.io" + " y" * 100
+    chunks = list(core.trace_chunks(_tiny_redactor(), text))
+    first, second = chunks[0], chunks[1]
+    assert first.retreated_by == 6 and first.emit_end == 58 and first.planned_end == 64
+    assert first.straddlers == ()
+    assert second.straddlers == (0,)
+    held = second.findings[0]
+    assert (held.start, held.end, held.text) == (58, 69, "bob@corp.io")
+
+
+def test_trace_reports_deferred_passes():
+    r = _tiny_redactor(custom_patterns=[r"Z{100}"], types=[])
+    chunks = list(core.trace_chunks(r, "Z" * 100 + " tail" * 40))
+    assert chunks[0].deferred_passes == 1  # the first pass was pinned by the match
+    assert chunks[0].straddlers == (0,) and chunks[0].findings[0].end == 100
+
+
+def test_window_findings_matches_a_linear_scan():
+    text = SAMPLE_TEXT * 60
+    chunks = list(core.trace_chunks(build_redactor(Settings(chunk_size=8192)), text))
+    flat = core.flatten_findings(chunks)
+    for start, end in [(0, 100), (500, 9000), (8192, 24576), (len(text) - 50, len(text))]:
+        naive = [f for f in flat if f.end > start and f.start < end]
+        assert core.window_findings(flat, start, end) == naive
+
+
+def test_window_html_shows_bands_and_the_planned_cut():
+    text = "w " * 29 + "bob@corp.io" + " <b>y</b>" * 30
+    chunks = list(core.trace_chunks(_tiny_redactor(), text))
+    flat = core.flatten_findings(chunks)
+    first = chunks[0]
+    out = core.window_html(text, first, core.window_findings(flat, 0, first.window_end))
+    assert 'class="ss-band ss-emit"' in out and 'class="ss-band ss-carry"' in out
+    assert 'class="ss-cut"' in out and 'class="ss-planned"' in out
+    assert 'class="ss-band ss-prefix"' not in out  # nothing emitted before pass 1
+    # the planned cut splits the held email into two marks around the marker
+    assert ">bob@co</mark>" in out and ">rp.io</mark>" in out
+    second = chunks[1]
+    out2 = core.window_html(text, second, core.window_findings(flat, 0, second.window_end))
+    assert 'class="ss-band ss-prefix"' in out2 and 'class="ss-planned"' not in out2
+    assert "<b>" not in out2 and "&lt;b&gt;" in out2  # untrusted text is escaped
+
+
+def test_segment_html_rebases_findings():
+    text = "w " * 29 + "bob@corp.io" + " y" * 100
+    second = list(core.trace_chunks(_tiny_redactor(), text))[1]
+    assert core.segment_html(text, second, redacted=True).startswith('<pre class="ss-view"><mark')
+    assert ">[REDACTED]</mark>" in core.segment_html(text, second, redacted=True)
+    assert ">bob@corp.io</mark>" in core.segment_html(text, second, redacted=False)
+
+
+def test_trace_rows_hold_offsets_not_text():
+    text = "w " * 29 + "bob@corp.io" + " y" * 100
+    rows = core.trace_rows(core.trace_chunks(_tiny_redactor(), text))
+    assert rows[0]["Retreat"] == 6 and rows[1]["Held whole"] == 1
+    assert rows[0]["Emitted"] == "0-58" and rows[1]["Findings"] == 1
+    assert "bob@corp.io" not in str(rows)
+
+
+def test_inspector_numbers():
+    r = build_redactor(Settings())
+    assert core.inspector_chunk_sizes(r) == (8192, 16384)
+    assert core.inspector_chunk_sizes(build_redactor(Settings(overlap=12000))) == (12000, 24000)
+    assert (core.PACING_MIN_MS, core.PACING_DEFAULT_MS, core.PACING_MAX_MS) == (50, 500, 2000)
+    assert core.INSPECTOR_RETAINED == 5
+
+
+def test_pass_html_is_one_escaped_block_with_notices():
+    text = "w " * 29 + "bob@corp.io" + " <script>x</script>" * 20
+    chunks = list(core.trace_chunks(_tiny_redactor(), text))
+    flat = core.flatten_findings(chunks)
+    first = core.pass_html(text, chunks, flat, 0)
+    assert first.startswith('<div class="ss-pass">') and first.endswith("</div>")
+    assert "moved back 6 chars" in first and "emitted whole here" not in first
+    second = core.pass_html(text, chunks, flat, 1)
+    assert "emitted whole here: email" in second
+    assert "<script>" not in second and "&lt;script&gt;" in second
+    last = core.pass_html(text, chunks, flat, len(chunks) - 1, retained=3)
+    assert last.count('class="ss-seg-title"') == min(3, len(chunks))
