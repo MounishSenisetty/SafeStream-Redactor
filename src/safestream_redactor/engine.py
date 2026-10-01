@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 
 from safestream_redactor.detectors.base import requirements_of
 from safestream_redactor.entities import Detection
@@ -41,6 +42,30 @@ DEFAULT_OVERLAP = 8 * 1024
 
 DetectFn = Callable[[str], list[Detection]]
 ApplyFn = Callable[[str, list[Detection]], str]
+
+
+@dataclass(frozen=True, slots=True)
+class WindowTrace:
+    """What one detection pass of :func:`stream_windows` scanned and decided.
+
+    Reported to an ``on_window`` observer so tools (the web UI's chunk
+    inspector) can show the sliding window exactly as the engine ran it, rather
+    than re-deriving the geometry and risking drift. Lengths are in characters.
+    The pass scanned ``prefix_len + buffer_len`` characters; it emitted the
+    first ``emit_len`` characters of the buffer and carried the rest forward.
+    """
+
+    pass_index: int
+    prefix_len: int  # read-only left context re-scanned (<= overlap)
+    buffer_len: int  # new text in this pass's buffer
+    planned_emit: int  # len(buffer) - overlap, before any boundary retreat
+    emit_len: int  # after _retreat_boundary; 0 = a detection pinned the buffer
+    detections: int  # kept in the window (after dropping those in the prefix)
+    dropped_in_prefix: int  # detections starting in the read-only prefix
+    final: bool  # the tail flush at end of input
+
+
+WindowObserver = Callable[[WindowTrace], None]
 
 
 def required_overlap(detectors: Iterable[object]) -> int:
@@ -78,6 +103,7 @@ def stream_windows(
     *,
     initial_context: str = "",
     min_emit: int | None = None,
+    on_window: WindowObserver | None = None,
 ) -> Iterator[tuple[str, list[Detection]]]:
     """Yield ``(segment, detections)`` pairs covering the input exactly once.
 
@@ -96,11 +122,16 @@ def stream_windows(
     and is never below it. :class:`~safestream_redactor.redactor.Redactor`
     passes its ``chunk_size`` so any chunking of the input costs the same as
     reading a file in ``chunk_size`` blocks.
+
+    ``on_window``, if given, receives a :class:`WindowTrace` for every
+    detection pass (including passes that emit nothing because a detection
+    pins the buffer), before that pass's segment is yielded. It only observes:
+    output is identical with or without it.
     """
     if overlap < 0:
         raise ValueError("overlap must be >= 0")
 
-    def window_detect(prefix: str, buffer: str) -> list[Detection]:
+    def window_detect(prefix: str, buffer: str) -> tuple[list[Detection], int]:
         # ``prefix`` is already-emitted text kept only so detectors (notably
         # the contextual scorer, which looks backward) see the same left
         # context they would in whole-text mode; its detections are dropped.
@@ -112,7 +143,21 @@ def stream_windows(
             det.end -= shift
             if det.start >= 0:
                 kept.append(det)
-        return kept
+        return kept, len(detections) - len(kept)
+
+    passes = 0
+
+    def observe(
+        prefix: str, buffer: str, planned: int, emitted: int, kept: int, dropped: int, final: bool
+    ) -> None:
+        nonlocal passes
+        if on_window is not None:
+            on_window(
+                WindowTrace(
+                    passes, len(prefix), len(buffer), planned, emitted, kept, dropped, final
+                )
+            )
+        passes += 1
 
     prefix = initial_context[-overlap:] if overlap else ""
     buffer = ""
@@ -135,10 +180,11 @@ def stream_windows(
         if buffered < need:
             continue
         buffer = "".join(pieces)
-        emit_upto = len(buffer) - overlap
-        detections = window_detect(prefix, buffer)
+        planned = emit_upto = len(buffer) - overlap
+        detections, dropped = window_detect(prefix, buffer)
         warned_overlong = _warn_if_overlong(detections, overlap, warned_overlong)
         emit_upto = _retreat_boundary(detections, emit_upto)
+        observe(prefix, buffer, planned, max(emit_upto, 0), len(detections), dropped, False)
         if emit_upto <= 0:
             # a detection pins the whole buffer; wait for another ``min_emit``
             # characters rather than rescanning on every small chunk
@@ -151,8 +197,9 @@ def stream_windows(
         pieces, buffered, need = [buffer], len(buffer), overlap + min_emit
     buffer = "".join(pieces)
     if buffer:
-        detections = window_detect(prefix, buffer)
+        detections, dropped = window_detect(prefix, buffer)
         _warn_if_overlong(detections, overlap, warned_overlong)
+        observe(prefix, buffer, len(buffer), len(buffer), len(detections), dropped, True)
         yield buffer, detections
 
 

@@ -15,6 +15,7 @@ from safestream_redactor.detectors.deterministic import DeterministicDetector
 from safestream_redactor.engine import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_OVERLAP,
+    WindowObserver,
     read_chunks,
     stream_transform,
     stream_windows,
@@ -293,13 +294,19 @@ class Redactor:
         """Redact a string held fully in memory."""
         return self.policy.apply(text, self.detect(text))
 
-    def detect_stream(self, chunks: Iterable[str]) -> Iterator[tuple[str, list[Detection]]]:
+    def detect_stream(
+        self, chunks: Iterable[str], *, on_window: WindowObserver | None = None
+    ) -> Iterator[tuple[str, list[Detection]]]:
         """Stream detection without redacting.
 
         Yields ``(segment, detections)`` pairs; segments concatenate to the
         full input, and each detection's offsets are relative to its segment.
+        ``on_window`` observes every detection pass (see
+        :class:`~safestream_redactor.engine.WindowTrace`).
         """
-        return stream_windows(chunks, self.detect, self.overlap, min_emit=self.chunk_size)
+        return stream_windows(
+            chunks, self.detect, self.overlap, min_emit=self.chunk_size, on_window=on_window
+        )
 
     def redact_stream(
         self, chunks: Iterable[str], stats: RedactionStats | None = None
