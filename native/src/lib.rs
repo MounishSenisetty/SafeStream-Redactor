@@ -26,6 +26,7 @@
 //! `DeterministicDetector` (`tests/test_native_backend.py`); pure Python stays the
 //! default and the oracle.
 
+mod entropy;
 mod structured;
 mod unicode;
 mod unicode_tables;
@@ -38,6 +39,10 @@ use regex::Regex;
 use std::borrow::Cow;
 use std::sync::OnceLock;
 
+pub use entropy::{
+    compound_secrets, entropy_secrets, shannon_entropy, CompoundParams, EntropyParams, Summation,
+    COMPOUND_CANDIDATE_SRC, ENTROPY_CANDIDATE_SRC, MAX_SPAN as ENTROPY_MAX_SPAN,
+};
 pub use unicode::{digit_value, is_digit, is_space, is_word};
 pub use unicode_tables::UNICODE_VERSION;
 
@@ -224,6 +229,17 @@ pub fn patterns() -> impl Iterator<Item = PatternInfo> {
 /// caller arbitrates, as the Python pipeline does.
 pub fn detect(text: &str) -> Vec<Detection> {
     let mut out = Vec::new();
+    detect_into(text, &mut out);
+    out
+}
+
+/// [`detect`] into a caller-owned buffer (cleared first), so a caller scanning
+/// window after window reuses one allocation. On text without characters whose
+/// Rust and Python classes disagree (all ASCII and most other text), a scan
+/// with enough capacity in `out` performs no heap allocation at all
+/// (`tests/zero_alloc.rs`).
+pub fn detect_into(text: &str, out: &mut Vec<Detection>) {
+    out.clear();
     // The regex lane reads the shadow (Python character classes); every
     // validator and boundary check reads the original text.
     let shadow: Cow<'_, str> = unicode::shadow(text);
@@ -282,7 +298,6 @@ pub fn detect(text: &str) -> Vec<Detection> {
             }),
         }
     }
-    out
 }
 
 /// [`detect`] with **character** offsets — the Python `Detection` convention.
@@ -293,36 +308,50 @@ pub fn detect_char_offsets(text: &str) -> Vec<Detection> {
 }
 
 /// Rewrite byte offsets as character offsets in place.
-///
-/// ASCII fast path: when the text is all ASCII, byte offset == char offset and no
-/// work is needed. Otherwise translate only the offsets actually used (two per
-/// detection) in a single left-to-right pass over the text's char boundaries —
-/// O(n + detections), with no per-character allocation.
 fn to_char_offsets(text: &str, dets: &mut [Detection]) {
-    if dets.is_empty() || text.is_ascii() {
-        return;
+    if text.is_ascii() {
+        return; // byte offset == char offset
     }
-    let mut needed: Vec<usize> = dets.iter().flat_map(|d| [d.start, d.end]).collect();
-    needed.sort_unstable();
-    needed.dedup();
-    let mut map = std::collections::HashMap::with_capacity(needed.len());
-    let mut ni = 0usize;
-    let mut ci = 0usize;
-    for (bi, _) in text.char_indices() {
-        if ni < needed.len() && needed[ni] == bi {
-            map.insert(bi, ci);
-            ni += 1;
-        }
-        ci += 1;
-    }
-    // any remaining needed offsets are end-of-text (== text.len())
-    while ni < needed.len() {
-        map.insert(needed[ni], ci);
-        ni += 1;
-    }
+    let mut cursor = CharCursor::new(text);
     for d in dets {
-        d.start = map[&d.start];
-        d.end = map[&d.end];
+        d.start = cursor.char_index(d.start);
+        d.end = cursor.char_index(d.end);
+    }
+}
+
+/// Converts byte offsets to character offsets without allocating: it keeps the
+/// last (byte, char) position and counts UTF-8 lead bytes between it and the
+/// next offset, in either direction. Detections arrive sorted within each
+/// pattern, so the cursor mostly moves forward.
+pub(crate) struct CharCursor<'a> {
+    bytes: &'a [u8],
+    byte: usize,
+    ch: usize,
+}
+
+impl<'a> CharCursor<'a> {
+    pub(crate) fn new(text: &'a str) -> Self {
+        CharCursor {
+            bytes: text.as_bytes(),
+            byte: 0,
+            ch: 0,
+        }
+    }
+
+    fn lead_bytes(bytes: &[u8]) -> usize {
+        // every byte except UTF-8 continuation bytes (0b10xx_xxxx) starts a char
+        bytes.iter().filter(|&&b| (b as i8) >= -0x40).count()
+    }
+
+    /// Character index of byte offset `b` (which must be a char boundary).
+    pub(crate) fn char_index(&mut self, b: usize) -> usize {
+        if b >= self.byte {
+            self.ch += Self::lead_bytes(&self.bytes[self.byte..b]);
+        } else {
+            self.ch -= Self::lead_bytes(&self.bytes[b..self.byte]);
+        }
+        self.byte = b;
+        self.ch
     }
 }
 
@@ -333,6 +362,16 @@ mod tests {
     #[test]
     fn every_regex_lane_pattern_compiles() {
         assert_eq!(engine().len(), PATTERNS.len());
+    }
+
+    #[test]
+    fn char_cursor_moves_both_ways() {
+        let t = "a文b😀c";
+        let mut c = CharCursor::new(t);
+        let expect = |b: usize| t[..b].chars().count();
+        for b in [0, 1, 4, 5, 9, 10, 4, 0, 10, 1] {
+            assert_eq!(c.char_index(b), expect(b), "byte {b}");
+        }
     }
 
     #[test]

@@ -319,3 +319,37 @@ def test_flags_merge_over_config_into_one_construction(tmp_path, monkeypatch):
 def test_malformed_flags_exit_with_a_message(sample, argv, message):
     with pytest.raises(SystemExit, match=message):
         main(["redact", str(sample), "-o", "-", *argv])
+
+
+def test_backend_flag_overrides_config(tmp_path, monkeypatch):
+    """--backend reaches the Redactor and, like every scalar flag, beats the config."""
+    from safestream_redactor import cli
+
+    seen: list[str | None] = []
+    real = cli.Redactor
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs.get("backend"))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(cli, "Redactor", spy)
+    cfg = tmp_path / "policy.toml"
+    cfg.write_text('[detection]\nbackend = "python"\n', encoding="utf-8")
+    base = ["redact", "in.txt", "-o", "out.txt", "--config", str(cfg)]
+    cli._build_redactor(cli._build_parser().parse_args([*base, "--backend", "auto"]))
+    cli._build_redactor(cli._build_parser().parse_args(base))
+    assert seen == ["auto", "python"]
+
+
+def test_backend_flag_end_to_end(sample, capsys):
+    # "auto" uses the native core when installed and Python otherwise; the output
+    # is byte-identical either way
+    assert run(capsys, "redact", sample, "-o", "-", "--backend", "auto") == run(
+        capsys, "redact", sample, "-o", "-"
+    )
+
+
+def test_backend_flag_rejects_unknown_engine(sample):
+    with pytest.raises(SystemExit) as exc:
+        main(["redact", str(sample), "-o", "-", "--backend", "gpu"])
+    assert exc.value.code == 2

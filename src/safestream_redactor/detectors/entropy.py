@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import math
 import re
+import warnings
 from collections import Counter
+from typing import Any
 
 from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
@@ -39,6 +41,75 @@ _HEX = re.compile(r"\A[0-9a-fA-F]+\Z")
 _ALPHA_ONLY = re.compile(r"\A[A-Za-z]+\Z")
 
 
+# How this interpreter's ``sum()`` adds floats: CPython 3.12 switched from naive
+# left-to-right addition to Neumaier compensated summation. The native core
+# reproduces whichever one runs here, so it is probed, not inferred from a version.
+_NEUMAIER_SUM = sum([1.0, 1e100, 1.0, -1e100]) == 2.0
+
+
+def _load_native_entropy(backend: str) -> Any:
+    """The native core if it implements these tiers to this module's spec, else None.
+
+    ``backend`` follows ``DeterministicDetector``: ``"python"`` never loads it,
+    ``"native"``/``"auto"`` do, falling back to Python when it is absent or does
+    not match (``"native"`` warns). The spec check compares the candidate regexes
+    and ``MAX_SPAN`` the scanners reproduce; the byte-identity of everything
+    else is gated by ``tests/test_native_backend.py``.
+    """
+    from safestream_redactor.detectors.deterministic import _load_native
+
+    mod = _load_native(backend)
+    if mod is None:
+        return None
+    try:  # pragma: no cover - requires native extension
+        matches = (
+            MAX_SPAN == mod.ENTROPY_MAX_SPAN
+            and _CANDIDATE.pattern == mod.ENTROPY_CANDIDATE_SRC
+            and _COMPOUND_CANDIDATE.pattern == mod.COMPOUND_CANDIDATE_SRC
+        )
+    except AttributeError:  # pragma: no cover - an older wheel without these tiers
+        matches = False
+    if not matches:  # pragma: no cover - requires a mismatched native extension
+        if backend == "native":
+            warnings.warn(
+                "the installed safestream_native extension does not implement this "
+                "version's entropy tiers; running them in pure Python.",
+                RuntimeWarning,
+                stacklevel=4,
+            )
+        return None
+    return mod  # pragma: no cover - requires native extension
+
+
+def _native_ok(min_length: object) -> bool:
+    """The native scanners take an integer length; anything else runs in Python."""
+    return isinstance(min_length, int) and not isinstance(min_length, bool) and min_length >= 0
+
+
+class _NativeBacked:
+    """Pickle support for a detector holding the native extension module.
+
+    The module cannot be pickled (worker processes started with spawn/forkserver
+    need to), so it is dropped from the state and re-imported on arrival, with
+    "native" relaxed to "auto": the parent already warned if it is missing, and
+    output is byte-identical either way.
+    """
+
+    _backend: str
+    _native: Any
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = dict(self.__dict__)
+        state["_native"] = None
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+        backend = "auto" if self._backend == "native" else self._backend
+        min_length = getattr(self, "min_length", None)
+        self._native = _load_native_entropy(backend) if _native_ok(min_length) else None
+
+
 def shannon_entropy(text: str) -> float:
     """Shannon entropy in bits per character (0 for uniform, up to log2(alphabet))."""
     if not text:
@@ -48,7 +119,7 @@ def shannon_entropy(text: str) -> float:
     return -sum((c / n) * math.log2(c / n) for c in counts.values())
 
 
-class EntropyDetector:
+class EntropyDetector(_NativeBacked):
     """Flags high-entropy tokens as generic secrets.
 
     Named-credential patterns (tier 1) score higher, so when a token is both a
@@ -67,11 +138,15 @@ class EntropyDetector:
         base64_entropy: float = 4.0,
         hex_entropy: float = 3.0,
         confidence: float = 0.6,
+        *,
+        backend: str = "python",
     ) -> None:
         self.min_length = min_length
         self.base64_entropy = base64_entropy
         self.hex_entropy = hex_entropy
         self.confidence = confidence
+        self._backend = backend
+        self._native = _load_native_entropy(backend) if _native_ok(min_length) else None
 
     def _secret_entropy(self, token: str) -> float | None:
         """The token's Shannon entropy if it qualifies as a secret, else ``None``.
@@ -91,6 +166,27 @@ class EntropyDetector:
         return entropy if entropy >= self.base64_entropy else None
 
     def detect(self, text: str) -> list[Detection]:
+        if self._native is not None:  # pragma: no cover - requires native extension
+            try:
+                hits = self._native.entropy_secrets(
+                    text, self.min_length, self.base64_entropy, self.hex_entropy, _NEUMAIER_SUM
+                )
+            except UnicodeEncodeError:
+                # a lone surrogate cannot cross into Rust; scan it in Python
+                pass
+            else:
+                return [
+                    Detection(
+                        start=s,
+                        end=e,
+                        text=text[s:e],
+                        entity_type=EntityType.SECRET,
+                        confidence=self.confidence,
+                        source=self.name,
+                        meta={"entropy": f"{entropy:.2f}"},
+                    )
+                    for s, e, entropy in hits
+                ]
         found: list[Detection] = []
         for m in _CANDIDATE.finditer(text):
             token = m.group()
@@ -139,7 +235,7 @@ _STRONG_SPECIALS = frozenset("!#$%^&*~")
 _COMPOUND_CANDIDATE = re.compile(rf"[A-Za-z0-9+/=_\-!#$%^&*~]{{20,{MAX_SPAN}}}")
 
 
-class CompoundSecretDetector:
+class CompoundSecretDetector(_NativeBacked):
     """Flags symbol-containing high-entropy secrets the base entropy tier splits.
 
     A candidate is a whitespace-free run over the base64 alphabet extended with
@@ -162,11 +258,15 @@ class CompoundSecretDetector:
         entropy_floor: float = 3.5,
         distinct_ratio: float = 0.45,
         confidence: float = 0.6,
+        *,
+        backend: str = "python",
     ) -> None:
         self.min_length = min_length
         self.entropy_floor = entropy_floor
         self.distinct_ratio = distinct_ratio
         self.confidence = confidence
+        self._backend = backend
+        self._native = _load_native_entropy(backend) if _native_ok(min_length) else None
 
     def _is_compound_secret(self, token: str) -> bool:
         n = len(token)
@@ -208,6 +308,26 @@ class CompoundSecretDetector:
         # (a strong special is a necessary condition in ``_is_compound_secret``).
         if not any(s in text for s in _STRONG_SPECIALS):
             return []
+        if self._native is not None:  # pragma: no cover - requires native extension
+            try:
+                hits = self._native.compound_secrets(
+                    text, self.min_length, self.entropy_floor, self.distinct_ratio, _NEUMAIER_SUM
+                )
+            except UnicodeEncodeError:
+                pass  # a lone surrogate cannot cross into Rust; scan it in Python
+            else:
+                return [
+                    Detection(
+                        start=s,
+                        end=e,
+                        text=text[s:e],
+                        entity_type=EntityType.SECRET,
+                        confidence=self.confidence,
+                        source=self.name,
+                        meta={"entropy": f"{entropy:.2f}", "shape": "compound"},
+                    )
+                    for s, e, entropy in hits
+                ]
         found: list[Detection] = []
         for m in _COMPOUND_CANDIDATE.finditer(text):
             token = m.group()

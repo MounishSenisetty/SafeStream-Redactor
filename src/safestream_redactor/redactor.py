@@ -96,11 +96,12 @@ class Redactor:
         regime (e.g. a boundary test on entities known to be short); the guard
         then only logs a warning, restoring the pre-fail-closed behaviour.
     backend:
-        Detection engine for the deterministic tier. ``"python"`` (default) runs
-        everything in pure Python. ``"native"``/``"auto"`` route the patterns the
-        optional compiled core covers through it and the rest through Python, with
-        byte-identical output; both fall back to pure Python when the
-        ``safestream_native`` extension is not installed (``"native"`` warns).
+        Detection engine for the deterministic and entropy tiers. ``"python"``
+        (default) runs everything in pure Python. ``"native"``/``"auto"`` route the
+        patterns the optional compiled core covers, and both entropy tiers,
+        through it and the rest through Python, with byte-identical output; both
+        fall back to pure Python when the ``safestream_native`` extension is not
+        installed (``"native"`` warns).
     """
 
     def __init__(
@@ -195,8 +196,11 @@ class Redactor:
                 EntropyDetector,
             )
 
-            self._detectors.append(EntropyDetector())
-            self._detectors.append(CompoundSecretDetector())
+            # "native" already warned above if the extension is missing; the
+            # entropy tiers then fall back to Python silently.
+            entropy_backend = "auto" if backend == "native" else backend
+            self._detectors.append(EntropyDetector(backend=entropy_backend))
+            self._detectors.append(CompoundSecretDetector(backend=entropy_backend))
         self._detectors.extend(extra_detectors)
         # third-party detectors registered via entry points (opt-in)
         if load_plugins:

@@ -366,3 +366,191 @@ def test_auto_backend_uses_native_silently(recwarn):
     det = DeterministicDetector(backend="auto")
     assert det._native is not None
     assert not recwarn.list
+
+
+# ---------------------------------------------------------------------------
+# Entropy tiers: EntropyDetector / CompoundSecretDetector (backend="native") must
+# be byte-identical to Python, including the entropy value itself. The Shannon
+# entropy is a float sum compared against a threshold, so it is held to EXACT
+# bit equality, not a tolerance: the native core reproduces the term order
+# (Counter insertion order), the per-term arithmetic, and the summation this
+# interpreter's sum() uses (naive before CPython 3.12, Neumaier from 3.12).
+# ---------------------------------------------------------------------------
+
+import math  # noqa: E402
+import struct  # noqa: E402
+
+from safestream_redactor.detectors.entropy import (  # noqa: E402
+    _CANDIDATE,
+    _COMPOUND_CANDIDATE,
+    _NEUMAIER_SUM,
+    MAX_SPAN,
+    CompoundSecretDetector,
+    EntropyDetector,
+    shannon_entropy,
+)
+
+
+def _bits(x: float) -> bytes:
+    return struct.pack("<d", x)
+
+
+def test_entropy_spec_constants():
+    assert sn.ENTROPY_MAX_SPAN == MAX_SPAN
+    assert _CANDIDATE.pattern == sn.ENTROPY_CANDIDATE_SRC
+    assert _COMPOUND_CANDIDATE.pattern == sn.COMPOUND_CANDIDATE_SRC
+
+
+def test_summation_probe_matches_this_interpreter():
+    """The probe the native core relies on agrees with sum()'s actual behaviour."""
+    import sys
+
+    assert (sys.version_info >= (3, 12)) == _NEUMAIER_SUM
+
+
+_TOKEN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=_-!#$%^&*~"
+
+
+@settings(max_examples=3000, derandomize=True, deadline=None)
+@given(token=st.text(alphabet=_TOKEN_ALPHABET, min_size=0, max_size=200))
+def test_shannon_entropy_is_bit_identical(token):
+    assert _bits(sn.shannon_entropy(token, _NEUMAIER_SUM)) == _bits(shannon_entropy(token))
+
+
+@settings(max_examples=500, derandomize=True, deadline=None)
+@given(text=st.text(max_size=60))
+def test_shannon_entropy_is_bit_identical_on_any_text(text):
+    if any(0xD800 <= ord(c) <= 0xDFFF for c in text):
+        return  # lone surrogates cannot cross into Rust (they fall back to Python)
+    assert _bits(sn.shannon_entropy(text, _NEUMAIER_SUM)) == _bits(shannon_entropy(text))
+
+
+def test_shannon_entropy_at_exact_thresholds():
+    """Tokens whose entropy is exactly a threshold must compare the same way.
+
+    16 distinct characters, twice each, has entropy exactly 4.0 (the base64
+    floor); 8 distinct hex digits, four times each, is exactly 3.0 (the hex floor).
+    Both contain a digit, so the letters-only rule does not reject them first.
+    """
+    at_base64_floor = "ABCDEFGHIJKLMN0p" * 2
+    at_hex_floor = "0123456a" * 4
+    assert shannon_entropy(at_base64_floor) == 4.0
+    assert shannon_entropy(at_hex_floor) == 3.0
+    for token in (at_base64_floor, at_hex_floor):
+        assert _bits(sn.shannon_entropy(token, _NEUMAIER_SUM)) == _bits(shannon_entropy(token))
+    py = [d.text for d in EntropyDetector().detect(f"a {at_base64_floor} b {at_hex_floor} c")]
+    nat = EntropyDetector(backend="native").detect(f"a {at_base64_floor} b {at_hex_floor} c")
+    assert [d.text for d in nat] == py == [at_base64_floor, at_hex_floor]
+
+
+def _entropy_key(dets: list) -> list[tuple]:
+    return sorted(
+        (d.start, d.end, d.text, d.entity_type.value, d.confidence, d.source, d.meta) for d in dets
+    )
+
+
+def _assert_entropy_equiv(text: str) -> None:
+    for cls in (EntropyDetector, CompoundSecretDetector):
+        nat = cls(backend="native")
+        assert nat._native is not None, "native entropy tier not loaded"
+        assert _entropy_key(nat.detect(text)) == _entropy_key(cls().detect(text)), (
+            f"{cls.__name__} diverged: {text!r}"
+        )
+
+
+_ENTROPY_CORPUS = [
+    "",
+    "token AbCdEfGh1234567890IjKlMnOpQrStUvWx in a log line",
+    "k=AbCdEfGh1234567890IjKlMnOpQr plain=abcdefghijklmnopqrstuvwxyzab",
+    "hex 0123456789abcdef0123456789abcdef and short 0123456789abcdef01",
+    "pw devPass_pP0p18yO3n!vT8wZ and filler aaaaaaaaaa!aaaaaaaaaa",
+    "url https://example.com/path?x=1&y=2 email bob@corp.io",
+    "文字 AbCdEfGh1234567890IjKlMnOpQrStUvWx 文字 Zx9!Qw8#Er7$Ty6%Ui5^",
+    "²AbCdEfGh1234567890IjKlMnOpQrStUvWx́ naïve P@ss!w0rd#Long$Secret%99",
+    # runs longer than MAX_SPAN are split into capped spans
+    "x " + "Ab1+/" * (MAX_SPAN // 5 + 30) + " y",
+    "Ab1!Cd2#" * (MAX_SPAN // 8 + 7),
+]
+
+
+def test_entropy_tiers_equivalence_on_corpus():
+    for text in _ENTROPY_CORPUS:
+        _assert_entropy_equiv(text)
+    _assert_entropy_equiv("\n".join(_ENTROPY_CORPUS))
+
+
+_ENTROPY_FRAGMENTS = [
+    "AbCdEfGh1234567890IjKlMnOpQr",
+    "0123456789abcdef0123456789abcdef",
+    "devPass_pP0p18yO3n!vT8wZ",
+    "Zx9!Qw8#Er7$Ty6%Ui5^",
+    "aaaaaaaaaaaaaaaaaaaaaaaa",
+    "+/=_-",
+    "!#$%^&*~",
+    "abc",
+    "XYZ",
+    "123",
+    " ",
+    "\n",
+    ".",
+    "@",
+    "文",
+    "é",
+    "²",
+]
+
+
+@settings(max_examples=1500, derandomize=True, deadline=None)
+@given(text=st.lists(st.sampled_from(_ENTROPY_FRAGMENTS), max_size=25).map("".join))
+def test_entropy_tiers_equivalence_fuzzed(text):
+    _assert_entropy_equiv(text)
+
+
+@settings(max_examples=1000, derandomize=True, deadline=None)
+@given(text=st.text(alphabet=_TOKEN_ALPHABET + " .@文é", max_size=120))
+def test_entropy_tiers_equivalence_char_fuzz(text):
+    _assert_entropy_equiv(text)
+
+
+def test_redactor_native_equals_python_with_entropy():
+    """End to end: the whole pipeline's output is identical across backends."""
+    from safestream_redactor import Redactor
+
+    text = "\n".join(CORPUS + _ENTROPY_CORPUS[:-2])
+    assert Redactor(backend="native").redact(text) == Redactor(backend="python").redact(text)
+
+
+def test_entropy_lone_surrogate_falls_back():
+    text = "AbCdEfGh1234567890IjKlMnOpQrStUvWx \udcff devPass_pP0p18yO3n!vT8wZ"
+    _assert_entropy_equiv(text)
+    assert not math.isnan(len(EntropyDetector(backend="native").detect(text)))
+
+
+def _redact_in_worker(args):
+    redactor, text = args
+    return redactor.redact(text)
+
+
+def test_native_redactor_runs_in_spawned_worker():
+    """backend="native" with --workers on spawn/forkserver platforms.
+
+    This crashed before ("cannot pickle 'module' object") whenever workers were
+    not forked: Python 3.14 on Linux, macOS, Windows. The worker must also come
+    up with the native core loaded, not silently on Python.
+    """
+    import multiprocessing as mp
+    import pickle
+    from concurrent.futures import ProcessPoolExecutor
+
+    from safestream_redactor import Redactor
+
+    redactor = Redactor(backend="native")
+    clone = pickle.loads(pickle.dumps(redactor))
+    assert [type(d).__name__ for d in clone._detectors if getattr(d, "_native", None)] == [
+        "DeterministicDetector",
+        "EntropyDetector",
+        "CompoundSecretDetector",
+    ]
+    text = "\n".join(CORPUS)
+    with ProcessPoolExecutor(max_workers=1, mp_context=mp.get_context("spawn")) as pool:
+        assert pool.submit(_redact_in_worker, (redactor, text)).result() == Redactor().redact(text)

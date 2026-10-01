@@ -538,3 +538,25 @@ def test_plan_ranges_coarsens_when_ranges_too_small(tmp_path, monkeypatch):
 
     assert points[0] == 0 and points[-1] == 40_000
     assert all(b - a >= 4 * 4096 for a, b in pairwise(points))
+
+
+def test_redactor_survives_pickling_for_spawned_workers():
+    """Workers started with spawn/forkserver receive the redactor pickled.
+
+    Python 3.14 defaults to forkserver on Linux, and macOS/Windows use spawn, so
+    every detector must pickle. The native-backed detectors drop the extension
+    module from their state and re-import it on arrival; this holds for every
+    backend value, with or without the extension installed.
+    """
+    import pickle
+
+    text = (
+        "mail bob@x.io card 4111 1111 1111 1111 "
+        "key AbCdEfGh1234567890IjKlMnOpQr pw a1!B2#c3$D4%e5^F6&g7"
+    )
+    expected = Redactor().redact(text)
+    for backend in ("python", "auto"):
+        clone = pickle.loads(pickle.dumps(Redactor(backend=backend)))
+        assert clone.redact(text) == expected
+        # a second round trip keeps the configuration
+        assert pickle.loads(pickle.dumps(clone)).redact(text) == expected

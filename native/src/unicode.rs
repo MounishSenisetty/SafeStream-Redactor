@@ -15,7 +15,9 @@
 //! re-checked codepoint by codepoint by `tests/test_native_backend.py`.
 
 use crate::unicode_tables::{PY_SPACE, PY_WORD};
+use regex_syntax::hir::{Class, ClassUnicode, ClassUnicodeRange, HirKind};
 use std::borrow::Cow;
+use std::sync::OnceLock;
 
 // --- Unicode decimal-digit value (Python int() parity) -----------------------
 //
@@ -114,7 +116,7 @@ pub(crate) fn char_after(text: &str, i: usize) -> Option<char> {
 // The regex lane's patterns use ASCII literals and ASCII classes plus `\b`, `\w`,
 // `\d` and `\s`. To make Rust's `regex` give Python's answers for the last four,
 // it scans a *shadow* of the input in which every character whose Rust and Python
-// classes might differ is replaced by a representative with:
+// classes differ is replaced by a representative with:
 //
 // * the same UTF-8 length (so every byte offset is unchanged), and
 // * the same Python (`\w`, `\d`, `\s`) membership, chosen so that Rust's `\w`,
@@ -126,6 +128,12 @@ pub(crate) fn char_after(text: &str, i: usize) -> Option<char> {
 // `\x0b`, the one ASCII character with the same membership in every class the
 // patterns use. Validators and boundary checks always read the ORIGINAL text,
 // so digit values and validator inputs are untouched.
+//
+// Characters on which Rust and Python already agree (all of CJK, accented
+// Latin, Cyrillic, ...) need no replacement, so the text is copied only when it
+// actually contains a disagreeing character; otherwise the regex scans it in
+// place. The disagreeing set is computed once, from Rust's own class ranges
+// (`regex-syntax`, the parser `regex` uses) and the Python tables.
 
 // Representatives by (class, UTF-8 length). A Rust unit test pins Rust's own
 // classification of every one of them.
@@ -148,21 +156,67 @@ fn representative(c: char) -> char {
     }
 }
 
-/// The text the regex lane scans: the input itself when it is plain ASCII
-/// (no copy), otherwise a same-length shadow with Python-faithful classes.
-pub(crate) fn shadow(text: &str) -> Cow<'_, str> {
-    let needs = text
-        .bytes()
-        .any(|b| b >= 0x80 || (0x1c..=0x1f).contains(&b));
-    if !needs {
-        return Cow::Borrowed(text);
+fn rust_class(pattern: &str) -> ClassUnicode {
+    let hir = regex_syntax::Parser::new()
+        .parse(pattern)
+        .expect("class parses");
+    match hir.kind() {
+        HirKind::Class(Class::Unicode(cls)) => cls.clone(),
+        other => panic!("{pattern} is not a Unicode class: {other:?}"),
     }
+}
+
+fn python_class(ranges: impl Iterator<Item = (u32, u32)>) -> ClassUnicode {
+    let ch = |cp| char::from_u32(cp).expect("table holds scalar values");
+    ClassUnicode::new(ranges.map(|(lo, hi)| ClassUnicodeRange::new(ch(lo), ch(hi))))
+}
+
+/// Codepoints whose Rust `regex` membership in `\w`, `\d` or `\s` differs from
+/// Python `re`'s, as sorted inclusive ranges. Computed once.
+fn disagreeing() -> &'static [(u32, u32)] {
+    static SET: OnceLock<Vec<(u32, u32)>> = OnceLock::new();
+    SET.get_or_init(|| {
+        let digits = DIGIT_BLOCK_ZEROS.iter().map(|&z| (z, z + 9));
+        let pairs = [
+            (rust_class(r"\w"), python_class(PY_WORD.iter().copied())),
+            (rust_class(r"\d"), python_class(digits)),
+            (rust_class(r"\s"), python_class(PY_SPACE.iter().copied())),
+        ];
+        let mut all = ClassUnicode::empty();
+        for (mut rust, python) in pairs {
+            rust.symmetric_difference(&python);
+            all.union(&rust);
+        }
+        all.iter()
+            .map(|r| (r.start() as u32, r.end() as u32))
+            .collect()
+    })
+}
+
+/// True when Rust's and Python's classes disagree on `c`.
+#[inline]
+fn disagrees(c: char) -> bool {
+    if c.is_ascii() {
+        return matches!(c, '\x1c'..='\x1f');
+    }
+    in_ranges(disagreeing(), c)
+}
+
+/// The text the regex lane scans: the input itself unless it contains a
+/// character whose Rust and Python classes disagree (no copy in the common
+/// case), otherwise a same-length shadow with those characters replaced.
+pub(crate) fn shadow(text: &str) -> Cow<'_, str> {
+    let first = text.char_indices().find(|&(_, c)| disagrees(c));
+    let Some((at, _)) = first else {
+        return Cow::Borrowed(text);
+    };
     let mut out = String::with_capacity(text.len());
-    for c in text.chars() {
+    out.push_str(&text[..at]);
+    for c in text[at..].chars() {
         out.push(match c {
             '\x1c'..='\x1f' => '\x0b',
-            c if c.is_ascii() => c,
-            c => representative(c),
+            c if disagrees(c) => representative(c),
+            c => c,
         });
     }
     debug_assert_eq!(out.len(), text.len());
@@ -224,6 +278,29 @@ mod tests {
             assert_eq!(a.len_utf8(), b.len_utf8());
         }
         assert!(matches!(shadow("plain ascii"), Cow::Borrowed(_)));
+        // agreeing non-ASCII text is scanned in place, not copied
+        assert!(matches!(shadow("naïve 文字 Привет ٩٩"), Cow::Borrowed(_)));
+        assert!(matches!(shadow("x²"), Cow::Owned(_)));
+    }
+
+    /// The disagreeing set must contain exactly the characters where Rust's
+    /// classes differ from the Python tables, checked codepoint by codepoint
+    /// against the compiled `regex` (not just regex-syntax).
+    #[test]
+    fn disagreeing_set_matches_the_regex_crate() {
+        let w = Regex::new(r"\A\w\z").unwrap();
+        let d = Regex::new(r"\A\d\z").unwrap();
+        let s = Regex::new(r"\A\s\z").unwrap();
+        let mut buf = [0u8; 4];
+        for cp in 0..=0x10FFFFu32 {
+            let Some(c) = char::from_u32(cp) else {
+                continue;
+            };
+            let t = c.encode_utf8(&mut buf);
+            let rust = (w.is_match(t), d.is_match(t), s.is_match(t));
+            let python = (is_word(c), is_digit(c), is_space(c));
+            assert_eq!(disagrees(c), rust != python, "U+{cp:04X}");
+        }
     }
 
     #[test]

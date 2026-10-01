@@ -465,6 +465,7 @@ class DeterministicDetector:
         backend: str = "python",
     ) -> None:
         wanted = set(types) if types is not None else None
+        self._init_args = (None if wanted is None else sorted(wanted), prefilter, backend)
         self._patterns = [p for p in _PATTERNS if wanted is None or p.entity_type in wanted]
         self._prefilter = prefilter
         self._native: Any = _load_native(backend)
@@ -484,6 +485,21 @@ class DeterministicDetector:
         else:
             self._native_names = frozenset()
             self._py_patterns = self._patterns
+
+    # Pickling (worker processes started with spawn/forkserver, e.g. Python 3.14
+    # on Linux, macOS, Windows) cannot carry the extension module, so the
+    # detector travels as its constructor arguments and is rebuilt on arrival.
+    # A worker re-imports the native core with "auto": the parent already warned
+    # if it is missing, and output is byte-identical either way.
+    def __getstate__(self) -> tuple[list[EntityType] | None, bool, str]:
+        return self._init_args
+
+    def __setstate__(self, state: tuple[list[EntityType] | None, bool, str]) -> None:
+        types, prefilter, backend = state
+        self.__init__(  # type: ignore[misc]
+            types, prefilter=prefilter, backend="auto" if backend == "native" else backend
+        )
+        self._init_args = state
 
     def detect(self, text: str) -> list[Detection]:
         if self._native is None:

@@ -63,6 +63,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help="regex whose matches are always redacted (repeatable)",
     )
     common.add_argument("--min-confidence", type=float, default=None)
+    common.add_argument(
+        "--backend",
+        choices=["python", "native", "auto"],
+        default=None,
+        help="detection engine: 'python' (default), 'native' (the optional Rust core, "
+        "[native] extra; warns and falls back to Python when it is not installed), or "
+        "'auto' (native when installed). Output is byte-identical either way.",
+    )
     common.add_argument("--ner", action="store_true", help="enable the spaCy NER tier")
     common.add_argument(
         "--onnx",
@@ -399,6 +407,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         kwargs["types"] = args.types.split(",")
     if args.min_confidence is not None:
         kwargs["min_confidence"] = args.min_confidence
+    if args.backend is not None:
+        kwargs["backend"] = args.backend
     if args.custom_word:
         kwargs["custom_words"] = [*kwargs.get("custom_words", ()), *args.custom_word]
     if args.custom_regex:

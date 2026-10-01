@@ -32,6 +32,9 @@ python = ["dep:pyo3"]
 # matrix small). extension-module: link against the host interpreter at import.
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"], optional = true }
 regex = "1"
+# The parser `regex` itself uses: reads its Unicode \w/\d/\s ranges so the core
+# can find where they differ from Python's (src/unicode.rs). Same 0.8 line as regex.
+regex-syntax = "0.8"
 
 [profile.release]
 opt-level = 3

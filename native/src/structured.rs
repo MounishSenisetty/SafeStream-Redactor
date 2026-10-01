@@ -17,7 +17,6 @@
 //! neighbours.
 
 use crate::unicode::{char_after, char_before, digit_value, is_digit, is_space, is_word};
-use std::collections::HashMap;
 
 /// UTF-8 length of the character whose first byte is `b`.
 #[inline]
@@ -139,28 +138,23 @@ fn credit_card_at(text: &str, p: usize) -> Option<usize> {
 
 /// Python `luhn_ok`: 13-19 digits (Unicode digits by value) passing Luhn.
 pub(crate) fn luhn_ok(m: &str) -> bool {
-    let digits: Vec<u32> = m.chars().filter_map(digit_value).collect();
-    if !(13..=19).contains(&digits.len()) {
-        return false;
-    }
-    let total: u32 = digits
-        .iter()
-        .rev()
-        .enumerate()
-        .map(|(i, &d)| {
-            if i % 2 == 1 {
-                let d2 = d * 2;
-                if d2 > 9 {
-                    d2 - 9
-                } else {
-                    d2
-                }
+    // Walk the digits right to left, counting and summing in one pass.
+    let mut count = 0usize;
+    let mut total = 0u32;
+    for d in m.chars().rev().filter_map(digit_value) {
+        total += if count % 2 == 1 {
+            let d2 = d * 2;
+            if d2 > 9 {
+                d2 - 9
             } else {
-                d
+                d2
             }
-        })
-        .sum();
-    total.is_multiple_of(10)
+        } else {
+            d
+        };
+        count += 1;
+    }
+    (13..=19).contains(&count) && total.is_multiple_of(10)
 }
 
 /// Raw `finditer` matches of the credit_card pattern (before `luhn_ok`).
@@ -207,11 +201,66 @@ pub(crate) const PHONE_STRUCTURED_SRC: &str = concat!(
     r"\d{2,4}(?:[ .-]?\d{2,4}){1,4}(?![\w-])(?!\.\d)"
 );
 
-type Memo = HashMap<(usize, u8), Option<usize>>;
+/// Bytes a structured-phone match can extend past its start: 36 characters
+/// (prefix `+ddd (dddd) ` is 12, body `dddd` + 4 x ` dddd` is 24), each at
+/// most 4 bytes in UTF-8. Every state the search visits lies inside that span.
+const MEMO_SPAN: usize = 36 * 4 + 1;
+
+/// Fixed-size memo for one start position, on the stack. Entries are valid only
+/// for the current `stamp`, so moving to the next start is O(1) (no clearing).
+/// Each slot holds `(stamp, end - base + 1)`, with 0 meaning "no match".
+struct Memo {
+    base: usize,
+    stamp: u32,
+    slots: [[(u32, u32); 5]; MEMO_SPAN],
+}
+
+impl Memo {
+    fn new() -> Self {
+        Memo {
+            base: 0,
+            stamp: 0,
+            slots: [[(0, 0); 5]; MEMO_SPAN],
+        }
+    }
+
+    fn reset(&mut self, base: usize) {
+        if self.stamp == u32::MAX {
+            self.slots = [[(0, 0); 5]; MEMO_SPAN];
+            self.stamp = 0;
+        }
+        self.stamp += 1;
+        self.base = base;
+    }
+
+    fn slot(&self, pos: usize, count: u8) -> Option<(u32, u32)> {
+        let row = self.slots.get(pos.checked_sub(self.base)?)?;
+        row.get(count as usize).copied()
+    }
+
+    fn get(&self, pos: usize, count: u8) -> Option<Option<usize>> {
+        let (stamp, v) = self.slot(pos, count)?;
+        (stamp == self.stamp).then(|| v.checked_sub(1).map(|r| self.base + r as usize))
+    }
+
+    fn put(&mut self, pos: usize, count: u8, found: Option<usize>) {
+        let (base, stamp) = (self.base, self.stamp);
+        let Some(off) = pos.checked_sub(base) else {
+            return;
+        };
+        if let Some(slot) = self
+            .slots
+            .get_mut(off)
+            .and_then(|r| r.get_mut(count as usize))
+        {
+            *slot = (stamp, found.map_or(0, |e| (e - base + 1) as u32));
+        }
+    }
+}
 
 /// `(?:[ .-]?\d{2,4}){count..=4}` (needing at least one group) then the tail.
 fn structured_groups(text: &str, pos: usize, count: u8, memo: &mut Memo) -> Option<usize> {
-    if let Some(&known) = memo.get(&(pos, count)) {
+    if let Some(known) = memo.get(pos, count) {
         return known;
     }
     let mut found = None;
@@ -228,7 +277,7 @@ fn structured_groups(text: &str, pos: usize, count: u8, memo: &mut Memo) -> Opti
     if found.is_none() && count >= 1 && phone_tail_ok(text, pos) {
         found = Some(pos);
     }
-    memo.insert((pos, count), found);
+    memo.put(pos, count, found);
     found
 }
 
@@ -262,7 +311,7 @@ fn phone_structured_at(text: &str, p: usize, memo: &mut Memo) -> Option<usize> {
     if char_before(text, p).is_some_and(|c| c == '.' || c == '-' || is_word(c)) {
         return None;
     }
-    memo.clear();
+    memo.reset(p);
     if first == '(' {
         // second alternative: \(\d{1,4}\)[ .-]?  (the first needs a '+')
         return paren_then_body(text, p, memo);
@@ -336,6 +385,21 @@ pub(crate) fn phone_bare(text: &str, emit: impl FnMut(usize, usize)) {
 
 // --- phone_ok ----------------------------------------------------------------
 
+/// The first 11 characters of `s` on the stack, and how many there are
+/// (12 meaning "more than 11": too long for either shape).
+fn shape_chars(s: &str) -> ([char; 11], usize) {
+    let mut buf = ['\0'; 11];
+    let mut len = 0;
+    for c in s.chars() {
+        if len == 11 {
+            return (buf, 12);
+        }
+        buf[len] = c;
+        len += 1;
+    }
+    (buf, len)
+}
+
 /// `\A(?:19|20)\d{2}-\d{2}-\d{2}\Z`
 fn date_shape(cs: &[char]) -> bool {
     cs.len() == 10
@@ -358,8 +422,8 @@ fn ssn_shape(cs: &[char]) -> bool {
 /// Python `phone_ok`: not an ISO date or SSN shape (after `str.strip()`), and
 /// 7-15 decimal digits.
 pub(crate) fn phone_ok(m: &str) -> bool {
-    let stripped: Vec<char> = m.trim_matches(|c: char| is_space(c)).chars().collect();
-    if date_shape(&stripped) || ssn_shape(&stripped) {
+    let (buf, len) = shape_chars(m.trim_matches(|c: char| is_space(c)));
+    if len <= 11 && (date_shape(&buf[..len]) || ssn_shape(&buf[..len])) {
         return false;
     }
     let digits = m.chars().filter(|&c| is_digit(c)).count();
