@@ -98,7 +98,9 @@ class EntropyDetector(NativeBacked):
 
     def detect(self, text: str) -> list[Detection]:
         if self._native is not None:  # pragma: no cover - requires native extension
-            return self._detect_native(text)
+            native = self._detect_native(text)
+            if native is not None:
+                return native
         found: list[Detection] = []
         for m in _CANDIDATE.finditer(text):
             token = m.group()
@@ -118,11 +120,18 @@ class EntropyDetector(NativeBacked):
             meta={"entropy": f"{entropy:.2f}"},
         )
 
-    def _detect_native(self, text: str) -> list[Detection]:  # pragma: no cover - native only
+    def _detect_native(self, text: str) -> list[Detection] | None:  # pragma: no cover
+        runs = self._native_call(
+            self._native.scan_entropy_text,
+            text,
+            self.min_length,
+            self.base64_entropy,
+            self.hex_entropy,
+        )
+        if runs is None:
+            return None  # a lone surrogate: the caller scans in Python
         found: list[Detection] = []
-        for start, end, native_entropy, decided in self._native.scan_entropy_text(
-            text, self.min_length, self.base64_entropy, self.hex_entropy
-        ):
+        for start, end, native_entropy, decided in runs:
             token = text[start:end]
             entropy = native_entropy if decided else self._secret_entropy(token)
             if entropy is not None:
@@ -231,7 +240,9 @@ class CompoundSecretDetector(NativeBacked):
         if not any(s in text for s in _STRONG_SPECIALS):
             return []
         if self._native is not None:  # pragma: no cover - requires native extension
-            return self._detect_native(text)
+            native = self._detect_native(text)
+            if native is not None:
+                return native
         found: list[Detection] = []
         for m in _COMPOUND_CANDIDATE.finditer(text):
             token = m.group()
@@ -250,11 +261,18 @@ class CompoundSecretDetector(NativeBacked):
             meta={"entropy": f"{entropy:.2f}", "shape": "compound"},
         )
 
-    def _detect_native(self, text: str) -> list[Detection]:  # pragma: no cover - native only
+    def _detect_native(self, text: str) -> list[Detection] | None:  # pragma: no cover
+        runs = self._native_call(
+            self._native.scan_compound_text,
+            text,
+            self.min_length,
+            self.entropy_floor,
+            self.distinct_ratio,
+        )
+        if runs is None:
+            return None  # a lone surrogate: the caller scans in Python
         found: list[Detection] = []
-        for start, end, native_entropy, decided in self._native.scan_compound_text(
-            text, self.min_length, self.entropy_floor, self.distinct_ratio
-        ):
+        for start, end, native_entropy, decided in runs:
             token = text[start:end]
             if decided:
                 found.append(self._detection(start, end, token, native_entropy))

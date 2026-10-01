@@ -15,6 +15,10 @@ Current slice: the 12 lookaround-free credential patterns, SSN/IPv4/IPv6
 two phone patterns (hand-written linear scanners). The digit-gated patterns are
 the real bottleneck class: no distinctive literal, so Python must run them on
 every digit-bearing line.
+
+Two tables: the covered patterns alone (native core vs the same Python patterns),
+then the whole deterministic tier as users run it (``backend="python"`` vs
+``backend="native"``).
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ _CREDS = [
     "client 10.20.30.40 connected",  # ipv4: digit-gated + validator
     "card 4111 1111 1111 1111 charged",  # credit_card: linear scanner + Luhn
     "call +1 (415) 555-0123 back",  # structured phone
+    "or 555 123 4567 after six",  # bare phone
 ]
 # Distractor carries digits, so the SSN pattern (digit-gated, no literal prefilter)
 # cannot be prefilter-skipped in Python and must run its regex on every line.
@@ -79,16 +84,33 @@ def main() -> None:
         f"native slice: {len(sn.patterns())} patterns "
         "(17 credential + ssn/ipv4/ipv6 + credit_card + 2 phone)"
     )
+    corpora = [
+        (label, _corpus(5, frac))
+        for label, frac in [("none (0% PII)", 0.0), ("sparse (1%)", 0.01), ("dense (50%)", 0.5)]
+    ]
     print(f"{'corpus':<22} {'matches':>9} {'python':>12} {'native':>12} {'speedup':>8}")
     print("-" * 66)
-    for label, frac in [("none (0% PII)", 0.0), ("sparse (1%)", 0.01), ("dense (50%)", 0.5)]:
-        text = _corpus(5, frac)
+    for label, text in corpora:
         mb = len(text) / 1e6
         py = sorted((d.start, d.end, d.entity_type.value) for d in pydet.detect(text))
         nat = sorted((s, e, ty) for s, e, ty, _ in sn.scan_text(text))
         assert py == nat, f"native diverged from python on {label} ({len(py)} vs {len(nat)})"
         tp = _best(pydet.detect, text)
         tn = _best(sn.scan_text, text)
+        print(f"{label:<22} {len(py):>9} {mb / tp:>9.1f}MB/s {mb / tn:>9.1f}MB/s {tp / tn:>7.1f}x")
+
+    full_py = DeterministicDetector(backend="python")
+    full_nat = DeterministicDetector(backend="native")
+    print("\nwhole deterministic tier: backend='python' vs backend='native'")
+    print(f"{'corpus':<22} {'matches':>9} {'python':>12} {'native':>12} {'speedup':>8}")
+    print("-" * 66)
+    for label, text in corpora:
+        mb = len(text) / 1e6
+        py = sorted((d.start, d.end, d.entity_type.value) for d in full_py.detect(text))
+        nat = sorted((d.start, d.end, d.entity_type.value) for d in full_nat.detect(text))
+        assert py == nat, f"native backend diverged from python on {label}"
+        tp = _best(full_py.detect, text)
+        tn = _best(full_nat.detect, text)
         print(f"{label:<22} {len(py):>9} {mb / tp:>9.1f}MB/s {mb / tn:>9.1f}MB/s {tp / tn:>7.1f}x")
 
     # Unicode byte-identity sanity (offsets must be character indices)

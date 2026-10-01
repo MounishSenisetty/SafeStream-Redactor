@@ -190,10 +190,15 @@ pip install 'safestream-redactor[ui]'
 safestream ui                          # http://127.0.0.1:8501
 ```
 
-Paste text or upload a `.txt`, `.log`, `.json` or `.csv` file of up to 5 MiB. **Detect**
+Paste text or upload a `.txt`, `.log`, `.json` or `.csv` file, up to 2 GB by default
+(`--max-upload-mb`). Uploads over 5 MiB are redacted by the parallel streaming engine and
+previewed, and the redacted file can be saved to a folder. Streamlit holds an upload in
+memory (about twice its size) while it is selected. **Detect**
 highlights findings by severity, with a table of types, confidence and `line:col`
 locations. **Redact** shows the original and sanitized text side by side (replace, mask,
-or keyed hash) and lets you download the result. The page listens on 127.0.0.1 only, with
+or keyed hash) and lets you download the result. **Inspect** replays the streaming
+engine one sliding window at a time. It shows the context, emitted, and carried bands,
+and how an entity that a chunk boundary would cut is kept whole. The page listens on 127.0.0.1 only, with
 Streamlit usage statistics off and the offline network guard on. A banner confirms these
 settings, or warns when they are missing.
 

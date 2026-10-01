@@ -74,7 +74,12 @@ Notable changes to this project. The format follows
 - **`--workers N` with the native backend failed on spawn/forkserver platforms**
   (macOS, Windows, Python 3.14 on Linux): native-backed detectors held the
   unpicklable extension module. They now pickle their backend name and reload it.
-
+- **The native backend raised `UnicodeEncodeError` on a lone surrogate** (for
+  example from a JSON `"\udcff"` escape over the REST API or MCP). Such text
+  cannot be passed to Rust, so every native-backed tier now scans it with the
+  pure-Python tier.
+- `--chunk-size` was labelled `BYTES` in `--help`, but it counts **characters**:
+  input is decoded before it is chunked. It now reads `CHARS`.
 - **The GitHub Action failed on its default input.** `paths: "."` always exited 1
   with `Is a directory`. `detect` now accepts directories and walks them
   recursively, skipping symlinks, `.git`/`.hg`/`.svn`, and binary files. A file
@@ -141,6 +146,11 @@ Notable changes to this project. The format follows
   3) instead of aborting the interpreter, and the memory budget reserves 32 MiB per
   worker for the native core's compiled automata and caches.
 
+- **The native core is also a plain Rust library.** `cargo build
+  --no-default-features` builds `native/` as an `rlib` with no PyO3 in the
+  dependency graph (`safestream_native::scan` and the other scanners return byte
+  offsets). The Python extension is the default `python` feature, which maturin
+  enables, so the published wheel is unchanged.
 - **Local web playground** (`safestream ui`, `python -m safestream_redactor.ui`; the
   new `[ui]` extra installs Streamlit, and the base install gains no dependency).
   - *Detect mode:* severity-coloured highlights and a findings table (type,
@@ -150,8 +160,14 @@ Notable changes to this project. The format follows
     or keyed hash, plus copy and download.
   - *Sidebar:* confidence, entity types, entropy, name heuristics, spaCy NER,
     custom words and regexes, and chunk size and overlap.
-  - *Inputs:* paste text, or upload `.txt`/`.log`/`.json`/`.csv` up to 5 MiB.
-    Binary files are refused; undecodable bytes are reported.
+  - *Inputs:* paste text, or upload `.txt`/`.log`/`.json`/`.csv` up to 2 GB
+    (`--max-upload-mb`). Binary files are refused; undecodable bytes are reported.
+  - *Large files:* uploads over 5 MiB are spooled to a private temp folder and
+    redacted by the parallel streaming engine, on request. The page shows full
+    counts and highlights for the first 200,000 characters. The output can be
+    saved to a folder (loopback only), or downloaded when it is ≤ 200 MiB.
+    A 1 GB upload took about 4 minutes on 4 cores, with 22 MiB of private memory
+    per worker; Streamlit itself holds about 2× the upload in RAM.
   - *Errors:* invalid settings (bad regex, unsafe overlap) appear as alerts
     quoting the engine's own validation.
   - *Local-only:* the launcher binds 127.0.0.1, disables Streamlit's browser
@@ -162,6 +178,23 @@ Notable changes to this project. The format follows
     the base suite). A new `ui` CI job runs the real page headlessly, type-checks
     it against Streamlit, and fails if the served page is reachable from a
     non-loopback address.
+- **Inspect mode in the web UI:** a step-through replay of the streaming engine.
+  - Each pass shows the window it scanned (read-only context | emitted segment |
+    carried tail), the redacted segment, and boundary retreats (planned vs actual
+    cut), and the next pass names the entity it kept whole.
+  - Controls are Play/Pause, Step, and seek, with a 50–2,000 ms delay (default
+    500). The last 5 segments stay in full text, and a table lists every pass.
+  - Chunk choices are 1× and 2× the effective overlap, derived from the redactor
+    because smaller chunks emit the same 8,192 characters per pass.
+  - Each step is rendered as one HTML block, and nothing interactive is drawn
+    while playing. Profiling showed per-element churn dominated the cost of a
+    step, and a busy browser's stale widget values otherwise read as user edits
+    that paused playback.
+- **`stream_windows(on_window=...)` / `Redactor.detect_stream(on_window=...)`:** an
+  observer that receives a `WindowTrace` for every detection pass. It reports
+  prefix and buffer sizes, the planned and actual emit (showing boundary
+  retreats), and pinned passes. It never changes output: a property test checks
+  this, and nothing extra runs unless an observer is passed.
 - `safestream_redactor.locate.LineTracker`: streaming `line:col` tracking shared by
   `detect`, SARIF, and the web UI.
 - `detect` prints each finding as `file:line:col`, and JSON records carry `line`

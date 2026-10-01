@@ -12,6 +12,7 @@ and it does not ship.
 from __future__ import annotations
 
 import sys
+from collections import Counter
 
 import pytest
 from hypothesis import given, settings
@@ -86,10 +87,21 @@ def test_pattern_sources_match_python():
     expected |= {(p.entity_type.value, p.candidate.pattern, p.confidence) for p in LF_PATTERNS}
     for name, conf, src in sn.patterns():
         assert (name, src, conf) in expected, f"native pattern {name} drifted from the Python spec"
+    # A covered type is routed to native wholesale, so native must implement every
+    # Python pattern of that type (phone has two), each exactly once.
+    python_counts = Counter(p.entity_type.value for p in _PATTERNS)
+    native_counts = Counter(name for name, _conf, _src in sn.patterns())
+    assert {n: python_counts[n] for n in native_counts} == dict(native_counts)
 
 
 CORPUS = [
     "",
+    # Python \\w / \\s differ from Rust's: No numerics (²), combining marks,
+    # connector punctuation (‿), and \\x1c-\\x1f as whitespace
+    "²bob@x.io bob@x.io² x\u0301bob@x.io \u0301bob@x.io",
+    "²2001:db8::1 \u0301::1 ‿AKIAIOSFODNN7EXAMPLE ²AKIAIOSFODNN7EXAMPLE",
+    "-----BEGIN RSA PRIVATE KEY-----\x1cMIIEowIBAAKCAQEA\x1f-----END RSA PRIVATE KEY-----",
+    "+1 (415) 555-2671²  +1 (415) 555-2671\u0301 ²555 123 4567 ‿555 123 4567",
     "mail jane.doe+x@corp.example.co and bob@x.io",
     "key AKIAIOSFODNN7EXAMPLE and ASIAABCDEFGHIJKLMNOP",
     "tok ghp_abcdefghijklmnopqrstuvwxyz0123456789 github_pat_11ABCDEFG0123456789abcdefghij",
@@ -260,6 +272,31 @@ wired_fuzzed = st.lists(st.sampled_from(_WIRED_FRAGMENTS), min_size=0, max_size=
 @given(text=wired_fuzzed)
 def test_backend_equivalence_fuzzed(text):
     _assert_backend_equiv(text)
+
+
+def test_lone_surrogate_falls_back_to_python():
+    """Text with a lone surrogate has no UTF-8 form and cannot reach the Rust core.
+
+    It arrives legitimately (a JSON "\\udcff" escape over the REST API or MCP), so
+    the hybrid detector must scan it with the pure-Python oracle instead of
+    raising UnicodeEncodeError.
+    """
+    text = "bob@x.io \udcff 4111 1111 1111 1111 +1 (415) 555-2671"
+    _assert_backend_equiv(text)
+    assert DeterministicDetector(backend="native").detect(text)
+
+
+def test_lone_surrogate_falls_back_to_python_in_every_tier():
+    """The same holds for every native-backed tier of the default pipeline."""
+    from safestream_redactor import Redactor
+
+    text = (
+        "ssn: 123456789 \udcff Student ID: 202184673 key zX9kQ2mVp7Lw3Rt8Yn4Bc6Df "
+        "devPass_pP0p18yO3n!vT8wZ example 4111 1111 1111 1111"
+    )
+    native, python = Redactor(backend="native"), Redactor(backend="python")
+    assert native.redact(text) == python.redact(text)
+    assert native.redact(text) != text
 
 
 def test_auto_backend_uses_native_silently(recwarn):

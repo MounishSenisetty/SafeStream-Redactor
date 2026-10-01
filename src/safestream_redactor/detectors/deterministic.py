@@ -10,6 +10,7 @@ from __future__ import annotations
 import ipaddress
 import re
 import warnings
+from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
@@ -683,16 +684,25 @@ def _native_matches_spec(mod: Any) -> bool:
         # and could diverge on such text), for every tier the core implements
         if not all(callable(getattr(mod, f, None)) for f in _NATIVE_API):
             return False
+        native = [(name, src) for name, _conf, src in mod.patterns()]
         native_boost, native_suppress = mod.context_triggers()
-        return (
-            all((name, src) in expected for name, _conf, src in mod.patterns())
-            and [tuple(r) for r in mod.labeled_rules()] == labeled
+        if not (
+            [tuple(r) for r in mod.labeled_rules()] == labeled
             and {t: tuple(w) for t, w in native_boost if t} == boost
             and tuple(native_suppress) == _SUPPRESS_TRIGGERS
             and frozenset(mod.e164_country_codes()) == E164_COUNTRY_CODES
-        )
+        ):
+            return False
     except Exception:
         return False
+    if not all(pair in expected for pair in native):
+        return False
+    # A covered type is routed to native wholesale, so native must implement
+    # every Python pattern of that type (phone has two); otherwise the hybrid
+    # would silently drop the missing one.
+    python_counts = Counter(p.entity_type.value for p in _PATTERNS)
+    native_counts = Counter(name for name, _src in native)
+    return all(python_counts[name] == n for name, n in native_counts.items())
 
 
 # the native functions this package calls; a wheel missing any is rejected
@@ -723,6 +733,20 @@ class NativeBacked:
     def _attach_native(self, backend: str) -> None:
         self._backend = backend
         self._native = _load_native(backend)
+
+    @staticmethod
+    def _native_call(fn: Callable[..., Any], *args: Any) -> Any:
+        """``fn(*args)``, or ``None`` when the text cannot cross into Rust.
+
+        A lone surrogate (e.g. decoded from a JSON ``"\\udcff"`` escape over the REST
+        API or MCP) has no UTF-8 form, so the binding raises ``UnicodeEncodeError``
+        before the core runs. ``None`` is the same signal the core uses for text it
+        cannot decide, and every caller then scans the text with the Python tier.
+        """
+        try:
+            return fn(*args)
+        except UnicodeEncodeError:
+            return None
 
     def __getstate__(self) -> dict[str, Any]:
         state = dict(self.__dict__)
@@ -801,10 +825,11 @@ class DeterministicDetector(NativeBacked):
         (converted in the core), so ``text[s:e]`` is exact even on non-ASCII input;
         all native-covered patterns are group-0, so the whole span is the detection.
         """
-        native = self._native.scan_text(text)
+        native = self._native_call(self._native.scan_text, text)
         if native is None:
             # a character the two engines classify differently sits where it
-            # could change a match: this text is scanned by the Python oracle
+            # could change a match, or a lone surrogate that cannot cross into
+            # Rust: this text is scanned by the Python oracle
             return self._detect_python(text, self._patterns)
         names = self._native_names
         found = [

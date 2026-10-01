@@ -7,15 +7,24 @@ Start it with ``safestream ui``, which applies the local-only Streamlit settings
 
 from __future__ import annotations
 
+import dataclasses
 import importlib.util
+import os
 import secrets
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, cast
 
 import streamlit as st
 
 from safestream_redactor import __version__, netguard
 from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from safestream_redactor.ui.core import (
+    DOWNLOAD_LIMIT_BYTES,
     MAX_INPUT_BYTES,
+    PACING_DEFAULT_MS,
+    PACING_MAX_MS,
+    PACING_MIN_MS,
     PATTERN_TYPES,
     PREVIEW_CHARS,
     SAMPLE_TEXT,
@@ -28,15 +37,30 @@ from safestream_redactor.ui.core import (
     SettingsError,
     build_redactor,
     check_text_size,
+    counts_severity,
     decode_upload,
+    default_workers,
+    discard_workdir,
     download_name,
+    estimate_seconds,
     finding_rows,
+    flatten_findings,
     highlight_html,
+    inspector_chunk_sizes,
+    new_workdir,
     parse_rules,
+    pass_html,
     privacy_status,
+    read_head,
+    redact_large,
     redact_text,
+    save_destination,
+    save_output,
     scan,
+    spool_upload,
     summarize,
+    trace_chunks,
+    trace_rows,
     worst_severity,
 )
 
@@ -50,6 +74,18 @@ _STYLES = """
 .ss-legend span { display: inline-block; margin-right: 0.9rem; font-size: 0.8rem; }
 .ss-legend i { display: inline-block; width: 0.8rem; height: 0.8rem;
   border-radius: 0.2rem; margin-right: 0.3rem; vertical-align: -0.1rem; }
+.ss-prefix, .ss-carry { opacity: 0.55; }
+.ss-carry { text-decoration: underline dotted rgba(128, 128, 128, 0.7); }
+.ss-cut, .ss-planned { display: inline-block; width: 0; height: 1.15em; margin: 0 1px;
+  vertical-align: -0.2em; }
+.ss-cut { border-left: 3px solid rgb(22, 163, 74); }
+.ss-planned { border-left: 3px dashed rgb(220, 38, 38); }
+.ss-seg-title { font-size: 0.8rem; opacity: 0.75; margin: 0.6rem 0 0.2rem; }
+.ss-pass p { margin: 0.4rem 0; }
+.ss-panes { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0.5rem 0; }
+.ss-note { padding: 0.5rem 0.8rem; margin: 0.4rem 0; border-radius: 0.5rem;
+  background: rgba(37, 99, 235, 0.12); }
+.ss-warn { background: rgba(234, 88, 12, 0.15); }
 </style>
 """
 _STYLE_LABELS = {
@@ -69,19 +105,23 @@ def _sidebar() -> tuple[str, Settings]:
         st.header("Settings")
         mode = st.radio(
             "Mode",
-            ["Detect", "Redact"],
+            ["Detect", "Redact", "Inspect"],
             key="mode",
             horizontal=True,
-            help="Detect highlights findings; Redact shows the sanitized output.",
+            help="Detect highlights findings; Redact shows the sanitized output; Inspect "
+            "replays the streaming engine one sliding window at a time.",
         )
         style, replacement, keep_last, hash_key = RedactStyle.REPLACE, "[REDACTED]", 4, ""
-        if mode == "Redact":
-            style = st.radio(
-                "Redaction style",
-                list(RedactStyle),
-                format_func=_STYLE_LABELS.__getitem__,
-                key="style",
-                horizontal=True,
+        if mode in ("Redact", "Inspect"):
+            style = cast(
+                RedactStyle,
+                st.radio(
+                    "Redaction style",
+                    list(RedactStyle),
+                    format_func=_STYLE_LABELS.__getitem__,
+                    key="style",
+                    horizontal=True,
+                ),
             )
             if style is RedactStyle.REPLACE:
                 replacement = st.text_input("Replacement", "[REDACTED]", key="replacement")
@@ -189,9 +229,10 @@ def _privacy_banner() -> None:
     )
     if status.local_only:
         st.success(
-            "**Local-only processing.** Text and files are processed in memory on this "
-            "machine. The page is served on loopback only, Streamlit telemetry is off, and "
-            "the offline guard blocks outbound network connections.",
+            "**Local-only processing.** Text and files are processed on this machine: in "
+            "memory, or for large uploads in a private temporary folder that is deleted when "
+            "the server stops. The page is served on loopback only, Streamlit telemetry is "
+            "off, and the offline guard blocks outbound network connections.",
             icon="🔒",
         )
     else:
@@ -202,8 +243,12 @@ def _privacy_banner() -> None:
         )
 
 
-def _read_input() -> tuple[str, str | None]:
-    """The text to scan and, for an upload, its file name."""
+def _read_input() -> tuple[str, str | None, Any]:
+    """The text to analyse in the page, the upload's name, and a large upload.
+
+    An upload bigger than :data:`MAX_INPUT_BYTES` is returned as the third item
+    (with empty text) for the large-file path instead of being decoded here.
+    """
     paste_tab, upload_tab = st.tabs(["Paste text", "Upload file"])
     with paste_tab:
         st.button("Load sample log", on_click=_load_sample)
@@ -214,18 +259,18 @@ def _read_input() -> tuple[str, str | None]:
             placeholder="Paste logs, config, or any text…",
         )
     with upload_tab:
+        limit_mb = int(st.get_option("server.maxUploadSize"))
         upload = st.file_uploader(
-            f"A text file up to {MAX_INPUT_BYTES // _MIB} MiB",
+            f"A text file up to {_size_label(limit_mb * _MIB)}",
             type=list(UPLOAD_TYPES),
             key="upload",
+            help=f"Files up to {MAX_INPUT_BYTES // _MIB} MiB are analysed in the page. Larger "
+            "files are redacted by the streaming engine and previewed. Streamlit keeps an "
+            "upload in memory while it is selected.",
         )
     if upload is not None:
-        if upload.size > MAX_INPUT_BYTES:  # refuse before copying the bytes again
-            raise InputError(
-                f"{upload.name} is {upload.size / _MIB:.1f} MiB, above the "
-                f"{MAX_INPUT_BYTES // _MIB} MiB playground limit. Use the streaming CLI: "
-                "safestream redact BIG.log -o CLEAN.log"
-            )
+        if upload.size > MAX_INPUT_BYTES:
+            return "", upload.name, upload
         decoded = decode_upload(upload.getvalue(), MAX_INPUT_BYTES)
         st.caption(f"Scanning **{upload.name}**. Remove it to scan pasted text instead.")
         if decoded.replaced_bytes:
@@ -233,9 +278,9 @@ def _read_input() -> tuple[str, str | None]:
                 f"{decoded.replaced_bytes} byte(s) were not valid UTF-8 and could not be "
                 "scanned. Convert the file to UTF-8 for full coverage."
             )
-        return decoded.text, upload.name
+        return decoded.text, upload.name, None
     check_text_size(pasted, MAX_INPUT_BYTES)
-    return pasted, None
+    return pasted, None, None
 
 
 def _legend() -> None:
@@ -250,8 +295,8 @@ def _view(text: str, findings: list[Finding], *, redacted: bool = False) -> None
     st.html(_STYLES + highlight_html(text, findings, redacted=redacted))
 
 
-def _findings_table(findings: list[Finding]) -> None:
-    with st.expander(f"Findings ({len(findings)})", expanded=True):
+def _findings_table(findings: list[Finding], title: str = "Findings") -> None:
+    with st.expander(f"{title} ({len(findings)})", expanded=True):
         if not findings:
             st.write("Nothing detected with the current settings.")
             return
@@ -274,6 +319,279 @@ def _metrics(text: str, findings: list[Finding]) -> None:
         st.caption(" · ".join(f"{name}: {n}" for name, n in counts.items()))
 
 
+def _size_label(n_bytes: float) -> str:
+    return f"{n_bytes / 1024**3:.1f} GiB" if n_bytes >= 1024**3 else f"{n_bytes / _MIB:,.1f} MiB"
+
+
+def _duration(seconds: float) -> str:
+    if seconds < 90:
+        return f"{max(1, round(seconds))} s"
+    return f"{seconds / 60:.0f} min"
+
+
+def _default_save_dir() -> str:
+    # `safestream ui` passes the directory it was started from
+    configured = os.environ.get("SAFESTREAM_UI_OUTPUT_DIR")
+    if configured:
+        return configured
+    downloads = Path.home() / "Downloads"
+    return str(downloads if downloads.is_dir() else Path.cwd())
+
+
+def _forget_large_file() -> None:
+    state = st.session_state.pop("large", None)
+    if state:
+        discard_workdir(state["workdir"])
+
+
+def _process_large(upload: Any, settings: Settings, redactor: Any) -> dict[str, Any] | None:
+    """Spool and redact a large upload once per (file, settings); cached in the session."""
+    key = (upload.file_id, settings)
+    state: dict[str, Any] | None = st.session_state.get("large")
+    if state is not None and state["key"] == key:
+        return state
+    workers = default_workers()
+    eta = _duration(estimate_seconds(upload.size, workers))
+    # a large run takes minutes: start it on request, never on an incidental rerun
+    if not st.button(f"Process {upload.name}", type="primary", key="process_large"):
+        st.caption(f"Takes about {eta} on this machine ({workers} worker(s)).")
+        return None
+    _forget_large_file()
+    workdir = new_workdir()
+    source, output = os.path.join(workdir, "input"), os.path.join(workdir, "output")
+    try:
+        with st.status(f"Processing {upload.name}…", expanded=True) as status:
+            st.write("Copying the upload to a private temporary folder…")
+            upload.seek(0)
+            spool_upload(upload, source)
+            head = read_head(source)
+            st.write(f"Redacting with {workers} worker(s), about {eta}…")
+            result = redact_large(redactor, source, output, workers=workers)
+            os.remove(source)
+            status.update(
+                label=f"Processed {upload.name} in {_duration(result.seconds)}",
+                state="complete",
+                expanded=False,
+            )
+    except BaseException:
+        discard_workdir(workdir)
+        raise
+    state = {"key": key, "result": result, "head": head, "workdir": workdir, "saved": None}
+    st.session_state["large"] = state
+    return state
+
+
+def _large_file(upload: Any, mode: str, settings: Settings, redactor: Any) -> None:
+    st.info(
+        f"**{upload.name}** is {_size_label(upload.size)}, more than the "
+        f"{MAX_INPUT_BYTES // _MIB} MiB analysed in the page. It is redacted by the "
+        "streaming engine on every core (constant memory, output identical to the CLI). "
+        f"Counts cover the whole file; highlights cover its first {PREVIEW_CHARS:,} "
+        "characters.",
+        icon="📦",
+    )
+    try:
+        state = _process_large(upload, settings, redactor)
+    except InputError as exc:
+        st.error(str(exc), icon="🚫")
+        return
+    if state is None:
+        return
+    result, head = state["result"], state["head"]
+    counts = dict(sorted(result.stats.counts.items(), key=lambda kv: (-kv[1], kv[0])))
+    a, b, c, d = st.columns(4)
+    a.metric("Findings", f"{result.stats.total:,}")
+    b.metric("Entity types", len(counts))
+    c.metric("Highest severity", counts_severity(counts) or "none")
+    d.metric("Size", _size_label(result.input_bytes))
+    if counts:
+        st.caption(" · ".join(f"{name}: {n:,}" for name, n in counts.items()))
+    rate = result.input_bytes / _MIB / max(result.seconds, 1e-9)
+    st.caption(
+        f"Processed in {_duration(result.seconds)} ({rate:.1f} MiB/s on "
+        f"{result.workers} worker(s))."
+    )
+    if result.stats.decode_replacements:
+        st.warning(
+            f"{result.stats.decode_replacements:,} byte(s) were not valid UTF-8 and could "
+            "not be scanned. Convert the file to UTF-8 for full coverage."
+        )
+
+    if mode == "Inspect":
+        st.caption(f"Inspecting the first {len(head):,} characters of {upload.name}.")
+        _inspector(head, settings, f"large:{upload.file_id}")
+        return
+    head_findings = scan(redactor, head)
+    if mode == "Detect":
+        st.subheader("Annotated preview")
+        _legend()
+        _view(head, head_findings)
+        _findings_table(head_findings, title="Findings in the preview")
+        return
+    left, right = st.columns(2)
+    with left:
+        st.subheader("Original (preview)")
+        _view(head, head_findings)
+    with right:
+        st.subheader("Redacted (preview)")
+        _view(head, head_findings, redacted=True)
+    _large_output(upload.name, state)
+    _findings_table(head_findings, title="Findings in the preview")
+
+
+def _large_output(name: str, state: dict[str, Any]) -> None:
+    st.subheader("Redacted file")
+    if state["saved"]:
+        st.success(f"Saved to `{state['saved']}`", icon="✅")
+        return
+    result = state["result"]
+    output = Path(result.output_path)
+    if result.output_bytes <= DOWNLOAD_LIMIT_BYTES:
+        st.download_button(
+            f"Download ({_size_label(result.output_bytes)})",
+            output.read_bytes,  # read only when clicked, never on a rerun
+            file_name=download_name(name),
+            mime="text/plain",
+            on_click="ignore",
+            type="primary",
+        )
+    local = privacy_status(
+        st.get_option("server.address"), False, netguard.is_installed()
+    ).local_only
+    if not local:
+        # writing to this machine's disk is for its own user only
+        st.caption("Saving to a folder is available only when the page is served on loopback.")
+        return
+    if result.output_bytes > DOWNLOAD_LIMIT_BYTES:
+        st.caption(
+            f"The output is {_size_label(result.output_bytes)}, too large for a browser "
+            "download from this page. Save it to a folder on this machine instead."
+        )
+    folder = st.text_input("Save to folder", value=_default_save_dir(), key="save_dir")
+    if st.button("Save redacted file", key="save_large"):
+        try:
+            destination = save_output(result, save_destination(folder, name))
+        except InputError as exc:
+            st.error(str(exc), icon="🚫")
+            return
+        state["saved"] = str(destination)
+        discard_workdir(state["workdir"])  # the output moved out; nothing left in it
+        st.rerun()
+
+
+def _pause() -> None:
+    st.session_state["inspect_playing"] = False
+
+
+def _toggle_play() -> None:
+    playing = not st.session_state.get("inspect_playing", False)
+    st.session_state["inspect_playing"] = playing
+    if playing and st.session_state.get("inspect_index", 0) >= st.session_state["inspect_last"]:
+        st.session_state["inspect_index"] = 0  # replay from the start
+
+
+def _step(delta: int) -> None:
+    _pause()
+    i = st.session_state.get("inspect_index", 0) + delta
+    st.session_state["inspect_index"] = min(max(i, 0), st.session_state["inspect_last"])
+
+
+def _inspector(text: str, settings: Settings, source: str) -> None:
+    """Replay the streaming engine over ``text`` one detection pass at a time."""
+    sizes = inspector_chunk_sizes(build_redactor(settings))
+    chunk = st.radio(
+        "Chunk size",
+        sizes,
+        format_func=lambda n: f"{n:,} chars ({n // sizes[0]}x overlap)",
+        key="inspect_chunk",
+        horizontal=True,
+        help="The engine emits at least one overlap's worth of text per pass, so smaller "
+        "chunks behave exactly like the first option.",
+    )
+    redactor = build_redactor(dataclasses.replace(settings, chunk_size=int(chunk)))
+    key = (source, hash(text), len(text), settings, chunk)
+    state: dict[str, Any] | None = st.session_state.get("inspect")
+    if state is None or state["key"] != key:
+        chunks = []
+        expected = max(1, -(-len(text) // max(int(chunk), redactor.overlap)))
+        bar = st.progress(0.0, text="Replaying the streaming engine…")
+        for c in trace_chunks(redactor, text):
+            chunks.append(c)
+            if c.index % 16 == 0:
+                bar.progress(min(1.0, (c.index + 1) / expected), text="Replaying…")
+        bar.empty()
+        state = {"key": key, "chunks": chunks, "flat": flatten_findings(chunks)}
+        st.session_state["inspect"] = state
+        st.session_state["inspect_index"] = 0
+        st.session_state["inspect_playing"] = False
+    chunks, flat = state["chunks"], state["flat"]
+    st.session_state["inspect_last"] = len(chunks) - 1
+
+    a, b, c_, d = st.columns(4)
+    a.metric("Passes", len(chunks))
+    b.metric("Findings", sum(len(c.findings) for c in chunks))
+    c_.metric("Boundary retreats", sum(1 for c in chunks if c.retreated_by))
+    d.metric("Entities held whole", sum(len(c.straddlers) for c in chunks))
+
+    # The stylesheet goes in once, outside the fragment: re-inserting a <style>
+    # element on every step makes the browser recalculate styles for the whole page.
+    st.html(_STYLES)
+    playing = bool(st.session_state.get("inspect_playing"))
+    controls = st.columns([1, 1, 1, 4])
+    controls[0].button("Pause" if playing else "Play", on_click=_toggle_play, type="primary")
+    controls[1].button("Step back", on_click=_step, args=(-1,), key="inspect_back")
+    controls[2].button("Step", on_click=_step, args=(1,), key="inspect_step")
+    delay = controls[3].slider(
+        "Delay between steps (ms)",
+        PACING_MIN_MS,
+        PACING_MAX_MS,
+        PACING_DEFAULT_MS,
+        step=50,
+        key="inspect_delay",
+    )
+
+    def live() -> None:
+        last = len(chunks) - 1
+        if st.session_state.get("inspect_playing"):
+            nxt = st.session_state.get("inspect_index", 0) + 1
+            if nxt > last:
+                _pause()
+                st.rerun()  # full rerun: drops the timer and relabels the button
+            st.session_state["inspect_index"] = nxt
+        elif playing:
+            st.rerun()  # paused since this fragment was armed: drop the timer
+        i = int(st.session_state.get("inspect_index", 0))
+        running = bool(st.session_state.get("inspect_playing"))
+        if running:
+            # No widgets while playing: a busy browser sends a widget's previous value
+            # back with the next timer rerun, which reads as a user edit (and would
+            # pause playback). A progress bar is display-only.
+            st.progress((i + 1) / len(chunks), text=f"Pass {i + 1} of {len(chunks)}")
+        elif last > 0:
+            st.slider("Pass", 0, last, key="inspect_index", on_change=_pause)
+        _render_pass(text, chunks, flat, i, archive=not running)
+
+    # Only this fragment redraws on each step, not the page. Streamlit annotates
+    # st.fragment's result as a union, which strict mypy treats as untyped.
+    fragment = cast(
+        "Callable[[Callable[[], None]], Callable[[], None]]",
+        st.fragment(run_every=delay / 1000 if playing else None),
+    )
+    fragment(live)()
+
+
+def _render_pass(
+    text: str, chunks: list[Any], flat: list[Finding], i: int, *, archive: bool
+) -> None:
+    st.html(pass_html(text, chunks, flat, i))
+    if not archive:
+        # the table grid is costly to redraw on every step: shown when paused
+        st.caption("The table of all passes appears when playback is paused.")
+        return
+    with st.expander(f"All passes ({i + 1} of {len(chunks)} replayed)"):
+        st.dataframe(trace_rows(chunks[: i + 1]), hide_index=True)
+
+
 def main() -> None:
     st.set_page_config(page_title="SafeStream Redactor", page_icon="🛡️", layout="wide")
     # Any outbound connection from this process now fails closed (idempotent).
@@ -285,9 +603,19 @@ def main() -> None:
     _privacy_banner()
 
     try:
-        text, name = _read_input()
+        text, name, large = _read_input()
     except InputError as exc:
         st.error(str(exc), icon="🚫")
+        return
+    if large is None:
+        _forget_large_file()  # its upload was removed: drop the scratch output
+    else:
+        try:
+            redactor = build_redactor(settings)
+        except SettingsError as exc:
+            st.error(f"**Invalid settings.** {exc}", icon="⚠️")
+            return
+        _large_file(large, mode, settings, redactor)
         return
     if not text:
         st.info("Paste text or upload a file to begin, or load the sample log.")
@@ -298,6 +626,9 @@ def main() -> None:
         st.error(f"**Invalid settings.** {exc}", icon="⚠️")
         return
 
+    if mode == "Inspect":
+        _inspector(text, settings, f"text:{name}")
+        return
     findings = scan(redactor, text)
     _metrics(text, findings)
     if len(text) > PREVIEW_CHARS:

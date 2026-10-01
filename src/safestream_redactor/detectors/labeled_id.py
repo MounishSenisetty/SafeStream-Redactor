@@ -145,7 +145,7 @@ class LabeledIdentifierDetector(NativeBacked):
 
     def detect(self, text: str) -> list[Detection]:
         if self._native is not None:  # pragma: no cover - requires native extension
-            spans = self._native.scan_labeled_text(text)
+            spans = self._native_call(self._native.scan_labeled_text, text)
             if spans is not None:
                 return [
                     det

@@ -101,7 +101,8 @@ class ContextualScorer(NativeBacked):
     def adjust(self, text: str, detections: list[Detection]) -> list[Detection]:
         flags = None
         if self._native is not None and detections:  # pragma: no cover - native only
-            flags = self._native.adjust_text(
+            flags = self._native_call(
+                self._native.adjust_text,
                 text,
                 [(d.start, d.end, self._codes.get(d.entity_type, 0)) for d in detections],
                 self.window,
@@ -117,7 +118,7 @@ class ContextualScorer(NativeBacked):
     def detect(self, text: str) -> list[Detection]:
         """Trigger-gated detections that tier 1 deliberately skips."""
         if self._native is not None:  # pragma: no cover - requires native extension
-            spans = self._native.scan_bare_ssn_text(text, self.window)
+            spans = self._native_call(self._native.scan_bare_ssn_text, text, self.window)
             if spans is not None:
                 return [self._bare_ssn(text, s, e) for s, e in spans]
         found: list[Detection] = []
