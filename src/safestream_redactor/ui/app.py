@@ -113,12 +113,15 @@ def _sidebar() -> tuple[str, Settings]:
         )
         style, replacement, keep_last, hash_key = RedactStyle.REPLACE, "[REDACTED]", 4, ""
         if mode in ("Redact", "Inspect"):
-            style = st.radio(
+            style = cast(
+                RedactStyle,
+                st.radio(
                 "Redaction style",
                 list(RedactStyle),
                 format_func=_STYLE_LABELS.__getitem__,
                 key="style",
                 horizontal=True,
+                ),
             )
             if style is RedactStyle.REPLACE:
                 replacement = st.text_input("Replacement", "[REDACTED]", key="replacement")
