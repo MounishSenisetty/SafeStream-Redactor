@@ -60,8 +60,11 @@ Being explicit about limits is part of the security posture:
   reads entry-point metadata only (to warn about skipped plugins), never plugin code.
 - **The web playground (`safestream ui`) is local-only by configuration.** The
   launcher binds Streamlit to 127.0.0.1, turns off its browser usage statistics and
-  its "Deploy" button, caps uploads at 5 MiB, and the page installs the offline network
-  guard. Starting the page any other way (plain `streamlit run`) keeps Streamlit's
+  its "Deploy" button, caps uploads (2 GB by default), and the page installs the offline
+  network guard. Large uploads are spooled to a private (`0700`) temporary folder that
+  is deleted after processing or when the server stops. Saving a redacted file to a
+  folder is offered only while the page is served on loopback, so a remote visitor can
+  never write files on the host. Starting the page any other way (plain `streamlit run`) keeps Streamlit's
   defaults: all interfaces and telemetry on. The page then shows a warning instead of
   its local-only banner.
 - **`detect` hides matched text by default.** Findings are reported by type,
