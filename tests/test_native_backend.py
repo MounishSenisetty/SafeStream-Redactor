@@ -11,6 +11,8 @@ and it does not ship.
 
 from __future__ import annotations
 
+import sys
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -33,12 +35,19 @@ def _python(text: str) -> list[tuple]:
     )
 
 
-def _native(text: str) -> list[tuple]:
-    return sorted((s, e, text[s:e], ty, round(c, 6)) for s, e, ty, c in sn.detect(text))
+def _native(text: str) -> list[tuple] | None:
+    found = sn.scan_text(text)
+    if found is None:  # handed back to Python: equivalent by construction
+        return None
+    return sorted((s, e, text[s:e], ty, round(c, 6)) for s, e, ty, c in found)
 
 
 def _assert_equiv(text: str) -> None:
-    assert _native(text) == _python(text), f"native diverged: {text!r}"
+    native = _native(text)
+    if native is None:
+        assert sn.needs_python(text)
+        return
+    assert native == _python(text), f"native diverged: {text!r}"
 
 
 def test_unicode_digit_value_matches_python_int():
@@ -73,10 +82,10 @@ def test_pattern_sources_match_python():
     from safestream_redactor.detectors._lookaround_free import LF_PATTERNS
     from safestream_redactor.detectors.deterministic import _PATTERNS
 
-    expected = {p.entity_type.value: p.regex.pattern for p in _PATTERNS}
-    expected.update({p.entity_type.value: p.candidate.pattern for p in LF_PATTERNS})
-    for name, _conf, src in sn.patterns():
-        assert src == expected[name], f"native pattern {name} drifted from the Python spec"
+    expected = {(p.entity_type.value, p.regex.pattern, p.confidence) for p in _PATTERNS}
+    expected |= {(p.entity_type.value, p.candidate.pattern, p.confidence) for p in LF_PATTERNS}
+    for name, conf, src in sn.patterns():
+        assert (name, src, conf) in expected, f"native pattern {name} drifted from the Python spec"
 
 
 CORPUS = [
@@ -166,12 +175,10 @@ def test_equivalence_fuzzed(text):
 # ---------------------------------------------------------------------------
 # Wired detector: DeterministicDetector(backend="native") must be byte-identical
 # to backend="python". This is the stronger, end-user-facing gate: it runs the
-# FULL pattern set (native-covered types through the Rust core, the remaining 8
-# -- credit_card, two phone patterns, the label-gated credential patterns --
-# through Python) and asserts the combined output matches pure Python exactly,
-# including source
-# and confidence. The detect-loop tests above cover only the native-covered
-# subset in isolation.
+# FULL pattern set (all through the Rust core, or all through Python when the
+# core hands ambiguous text back) and asserts the output matches pure Python
+# exactly, including source and confidence. The detect-loop tests above compare
+# the raw native scan in isolation.
 # ---------------------------------------------------------------------------
 
 
@@ -198,8 +205,12 @@ def test_native_backend_is_active():
     """
     det = DeterministicDetector(backend="native")
     assert det._native is not None
-    assert det._native_names  # native handles some types
-    assert det._py_patterns  # Python still handles the uncovered remainder
+    # every deterministic type now runs natively; Python is only the fallback
+    # for text the two engines could classify differently
+    from safestream_redactor.detectors.deterministic import _PATTERNS
+
+    assert det._native_names == {p.entity_type.value for p in _PATTERNS}
+    assert det._py_patterns == []
 
 
 def test_native_backend_skew_falls_back(monkeypatch):
@@ -226,15 +237,20 @@ def test_backend_equivalence_on_corpus():
     _assert_backend_equiv("\n".join(CORPUS))
 
 
-# credit_card / phone exercise the Python-only lane alongside the native lane
+# credit_card / phone and the label-gated credentials (native since 0.5)
 _WIRED_FRAGMENTS = [
     *_FRAGMENTS,
-    "4111 1111 1111 1111",  # Luhn-valid card (Python lane)
-    "+1 (415) 555-2671",  # structured phone (Python lane)
+    "4111 1111 1111 1111",  # Luhn-valid card
+    "+1 (415) 555-2671",  # structured phone
     "555 123 4567",  # bare phone
-    "aws_secret_access_key = " + "A" * 40,  # label-gated AWS secret (Python lane)
-    "sk-ant-" + "x" * 30,  # anthropic key (Python lane)
-    "password: hunter2hunter2",  # api_key label (Python lane)
+    "aws_secret_access_key = " + "A" * 40,  # label-gated AWS secret
+    "sk-ant-" + "x" * 30,  # anthropic key
+    "password: hunter2hunter2",  # api_key label
+    'Secret_Key="P@ssw0rd-123!xyz"',
+    "mysql://root:s3cr3t-pa55@10.0.0.5/db",
+    "sk-proj-" + "Z" * 25 + "-",  # trailing '-': the word-char end backtracks
+    "sk-" + "Q" * 31,  # one short of the legacy 32
+    "aws secret access key = " + "x/Y+" * 10,
 ]
 
 wired_fuzzed = st.lists(st.sampled_from(_WIRED_FRAGMENTS), min_size=0, max_size=30).map("".join)
@@ -251,3 +267,338 @@ def test_auto_backend_uses_native_silently(recwarn):
     det = DeterministicDetector(backend="auto")
     assert det._native is not None
     assert not recwarn.list
+
+
+# ---------------------------------------------------------------------------
+# Unicode class parity. Rust's regex and CPython's re define \w, \d, \s and
+# case-insensitive matching differently on some code points (combining marks,
+# ZWJ/ZWNJ, connector punctuation, No numerics, digits added in later Unicode
+# versions, dotted/dotless i). The native core lists those code points
+# (native/src/unicode_tables.rs) and hands any text where one could change a match
+# back to Python. These tests prove the list is complete for this interpreter and
+# that the hand-back closes the leaks it was built for.
+# ---------------------------------------------------------------------------
+
+
+def test_unambiguous_code_points_classify_exactly_like_cpython():
+    r"""On EVERY code point the table does not flag, native \w and \d == CPython's."""
+    import re
+
+    upper, lower = re.compile("[A-Z]", re.IGNORECASE), re.compile("[a-z]", re.IGNORECASE)
+    # long s (U+017F) ~ s and the Kelvin sign ~ k, in both engines
+    folds_rust = {"\u017f", "\u212a"}
+    mismatches = []
+    for cp in range(0x110000):
+        c = chr(cp)
+        if 0xD800 <= cp <= 0xDFFF:
+            continue  # surrogates cannot occur in a Python str passed to Rust
+        word, digit, amb_word, amb_digit, amb_space, amb_fold = sn.classify(c)
+        if not amb_word and word != (c.isalnum() or c == "_"):
+            mismatches.append(("word", hex(cp)))
+        if not amb_digit and digit != c.isdecimal():
+            mismatches.append(("digit", hex(cp)))
+        if not amb_space and cp >= 0x80 and c.isspace() != bool(re.fullmatch(r"\s", c)):
+            mismatches.append(("space", hex(cp)))
+        if cp >= 0x80 and not amb_fold:
+            folds = bool(upper.fullmatch(c) or lower.fullmatch(c))
+            if folds != (c in folds_rust):
+                mismatches.append(("fold", hex(cp)))
+    assert not mismatches, mismatches[:10]
+
+
+# Each of these leaked under the previous native core: Rust treated the trailing
+# combining mark / joiner / connector as a word character, so \b failed and the
+# secret was not detected at all, while Python redacted it (or the reverse).
+_UNICODE_EDGES = [
+    "mail a@b.io\u200d end",
+    "key AKIAIOSFODNN7EXAMPLE\u0301 x",
+    "x 2001:db8::1\u0301 y",
+    "tok npm_abcdefghijklmnopqrstuvwxyz0123456789\u203f",
+    "a@b.io\u00b2",
+    "\u093ea@b.io",
+    "AKIAIOSFODNN7EXAMPLE\u200c",
+    "fe80::1\u200d",
+    "4111 1111 1111 1111\u0301",
+    "\u0301+1 (415) 555-2671",
+    "SİN 123-45-6789",  # dotted capital I folds to i in Python only
+    "ssn 123-45-6789\x1f",
+    "aws_secret_access_key = " + "A" * 40 + "\u212a",  # Kelvin sign folds to k: blocks
+    "aws_secret_access_key = " + "A" * 40 + "\u017f",  # long s folds to s: blocks
+    "AWS SECRET KEY: '" + "B" * 40 + "'",
+    "postgres://admin:hunter2@db.internal:5432/app and https://u:p\u0301@h",
+    "api_key = 'abcdefghijklmnop'\u200d token: \u0130abcdefghijklmnopq",
+    "sk-ant-" + "a" * 30 + "\u0301 sk-proj-" + "b" * 30 + " sk-" + "c" * 40,
+    "-----BEGIN RSA PRIVATE KEY-----\x1cMIIEowIBAAKCAQEA\x1f-----END RSA PRIVATE KEY-----",
+]
+
+
+@pytest.mark.parametrize("text", _UNICODE_EDGES)
+def test_word_class_edges_match_python(text):
+    _assert_backend_equiv(text)
+
+
+def test_marks_away_from_patterns_keep_the_native_path():
+    # Devanagari/Thai text is full of combining marks; they only force the
+    # Python fallback when they touch something a pattern consumes
+    assert not sn.needs_python("नमस्ते दुनिया ภาษาไทย")
+    assert sn.scan_text("नमस्ते key AKIAIOSFODNN7EXAMPLE") is not None
+
+
+# ---------------------------------------------------------------------------
+# credit_card / phone: hand-written linear scanners that must pick exactly the
+# match CPython's backtracking picks (greedy-longest, shorter on lookahead failure)
+# ---------------------------------------------------------------------------
+
+_DIGIT_CORPUS = [
+    "card 4111 1111 1111 1111 charged",
+    "4111-1111-1111-1111 and 4111111111111111 and 4111 1111 1111 1112",
+    "4111 1111 1111 1111 1111 2222",  # longer than 19 digits: shorter match backtracked
+    "4111 1111 1111 1111-",  # trailing '-' forbids the greedy end
+    "41111111111111111111111",  # over-long run
+    "-4111111111111111 x4111111111111111",
+    "١١١١ ١١١١ ١١١١ ١١١١",  # Unicode digits
+    "call +1 (415) 555-2671 now",
+    "+44 20 7946 0958. +91-98765-43210 +1.415.555.2671",
+    "(020) 7946 0958 and (415)555-2671x",
+    "tel 415 555 2671 and 415.555.2671.5 and 2024-01-15 and 123-45-6789",
+    "1999-12-31 2010-01-01 12 34 56 78 90 12 34",
+    "a+1 415 555 2671 _(415) 555 2671 .415 555 2671",
+    "+1234 (1234) 1234 1234 1234 1234",
+    "+٩٩ ٩٩٩ ٩٩٩ ٩٩٩٩",
+]
+
+
+def test_digit_scanners_on_corpus():
+    for text in _DIGIT_CORPUS:
+        _assert_equiv(text)
+        _assert_backend_equiv(text)
+
+
+_DIGIT_PIECES = ["1", "4", "9", "0", "٣", " ", "-", ".", "(", ")", "+", "x", "_", "\n", "4111"]
+_soup = st.lists(st.sampled_from(_DIGIT_PIECES), min_size=0, max_size=60).map("".join)
+
+
+# Card/phone-shaped runs: digit groups of 1-5 (ASCII or Arabic-Indic) joined by
+# the separators the regexes accept or reject, behind the prefixes they care
+# about ('+', '(…)', a word char, '-') and in front of the lookahead breakers.
+_group = st.text(alphabet="0123456789٣", min_size=1, max_size=5)
+_number = st.builds(
+    lambda groups, seps, prefix, suffix: (
+        prefix + "".join(g + s for g, s in zip(groups, seps, strict=False)) + suffix
+    ),
+    st.lists(_group, min_size=1, max_size=9),
+    st.lists(st.sampled_from(["", " ", "-", ".", "  ", "--", " -", "x"]), min_size=9, max_size=9),
+    st.sampled_from(["", " ", "+", "+1 ", "+44-", "(", "(415) ", "(1) ", "-", "a", "_", "."]),
+    st.sampled_from(["", " ", ")", "-", ".", ".5", "x", "_", " ok"]),
+)
+
+
+def _luhn_complete(digits: str) -> str:
+    """Append the check digit that makes ``digits`` pass Luhn."""
+    total = 0
+    for i, c in enumerate(reversed(digits)):
+        d = int(c)
+        if i % 2 == 0:
+            d = d * 2 - 9 if d > 4 else d * 2
+        total += d
+    return digits + str(-total % 10)
+
+
+def _grouped(digits: str, seps: list[str]) -> str:
+    return "".join(c + seps[i % len(seps)] for i, c in enumerate(digits))[: -len(seps[-1]) or None]
+
+
+# Luhn-valid 12-21 digit numbers, separated per digit by '', ' ' or '-'
+_card = st.builds(
+    lambda body, seps, prefix, suffix: prefix + _grouped(_luhn_complete(body), seps) + suffix,
+    st.text(alphabet="0123456789", min_size=11, max_size=20),
+    st.lists(st.sampled_from(["", "", "", " ", "-"]), min_size=1, max_size=20),
+    st.sampled_from(["", " ", "-", "x", "1"]),
+    st.sampled_from(["", " ", "-", "1", " 4", "-4", "x"]),
+)
+# 3-6 groups of 1-5 digits with single separators: the bare and structured
+# phone shapes plus their near misses (a 1- or 5-digit group, a missing sep)
+_phone = st.builds(
+    lambda groups, seps, prefix, suffix: (
+        prefix + "".join(g + sp for g, sp in zip(groups, seps, strict=False))[: -1 or None] + suffix
+    ),
+    st.lists(st.text(alphabet="0123456789٣", min_size=1, max_size=5), min_size=3, max_size=6),
+    st.lists(st.sampled_from([" ", ".", "-", " ", "", "  "]), min_size=6, max_size=6),
+    st.sampled_from(["", " ", "+1 ", "+44 ", "+1(415)", "(415) ", "(0)", "+", "(", "a", "."]),
+    st.sampled_from(["", " ", ".", ".5", "-", "x", "_", ")", " ok"]),
+)
+digit_fuzzed = st.one_of(
+    _soup,
+    _card,
+    _phone,
+    st.lists(st.one_of(_number, _card, _phone, _soup), min_size=1, max_size=4).map(" ".join),
+)
+
+
+@settings(max_examples=3000, derandomize=True, deadline=None)
+@given(text=digit_fuzzed)
+def test_digit_scanners_fuzzed(text):
+    """Dense digit/separator soup: every greedy and lookahead corner of the three regexes."""
+    _assert_equiv(text)
+
+
+# ---------------------------------------------------------------------------
+# labeled identifiers (detectors/labeled_id.py)
+# ---------------------------------------------------------------------------
+
+
+def _labeled_key(dets: list) -> list[tuple]:
+    return sorted(
+        (d.start, d.end, d.text, d.entity_type.value, d.confidence, d.meta["cue"]) for d in dets
+    )
+
+
+def _assert_labeled_equiv(text: str) -> None:
+    from safestream_redactor.detectors.labeled_id import LabeledIdentifierDetector
+
+    native = LabeledIdentifierDetector(backend="native")
+    assert native._native is not None
+    python = LabeledIdentifierDetector(backend="python")
+    assert _labeled_key(native.detect(text)) == _labeled_key(python.detect(text)), text
+
+
+_LABELED_CORPUS = [
+    "Student ID: 202184673 enrolled",
+    "SSN 000-12-3456 and social security number #123456789",
+    "DOB: 03/08/1996, born on 1990-01-02",
+    "phone: +1 (415) 555-2671; Tel 0044 20 7946 0958",
+    "card number 4111 1111 1111 1111 exp",
+    "IBAN GB82WEST12345698765432 account 12-3456-7890",
+    "Patient MRN-0042117 badge B12345",
+    "ACCOUNT   :   1234567890   and acct no. 9876543210",
+    "card " + " " * 120 + "4111111111111111",  # beyond the cue window
+    "ſsn 123-45-6789 and KELVIN \u212aard 4111111111111111",
+]
+
+
+def test_labeled_rules_match_python():
+    for text in _LABELED_CORPUS:
+        _assert_labeled_equiv(text)
+    _assert_labeled_equiv("\n".join(_LABELED_CORPUS))
+
+
+_LABEL_PIECES = [
+    "ssn",
+    "SSN",
+    "dob",
+    "phone",
+    "tel",
+    "card",
+    "account",
+    "IBAN",
+    "student",
+    "id",
+    "no",
+    "number",
+    "#",
+    ":",
+    "=",
+    "-",
+    ".",
+    " ",
+    "  ",
+    "\n",
+    "/",
+    "(",
+    ")",
+    "+",
+    "4111",
+    "1234567",
+    "12",
+    "03/08/1996",
+    "GB82",
+    "WEST",
+    "x",
+    "é",
+    "\u0301",
+    "İ",
+]
+label_fuzzed = st.lists(st.sampled_from(_LABEL_PIECES), min_size=0, max_size=25).map(" ".join)
+
+
+@settings(max_examples=1500, derandomize=True, deadline=None)
+@given(text=label_fuzzed)
+def test_labeled_rules_fuzzed(text):
+    _assert_labeled_equiv(text)
+
+
+def test_labeled_rule_sources_match_python():
+    from safestream_redactor.detectors.labeled_id import _COMPILED
+
+    assert [tuple(r) for r in sn.labeled_rules()] == [
+        (rx.pattern, etype.value, conf) for rx, etype, conf in _COMPILED
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Streaming: arbitrary chunk cuts through every native-covered entity type must
+# give the same redaction as one whole-text pass of the pure-Python pipeline.
+# ---------------------------------------------------------------------------
+
+_STREAM_PIECES = [
+    *_WIRED_FRAGMENTS,
+    "Student ID: 202184673",
+    "card 4111-1111-1111-1111",
+    "\u0301",
+    "\u200d",
+    "文字",
+]
+stream_text = st.lists(st.sampled_from(_STREAM_PIECES), min_size=1, max_size=40).map(" ".join)
+
+
+@settings(max_examples=300, derandomize=True, deadline=None)
+@given(text=stream_text, cuts=st.lists(st.integers(min_value=1, max_value=97), max_size=40))
+def test_native_streaming_matches_python_whole_text(text, cuts):
+    from safestream_redactor import Redactor
+
+    native = Redactor(backend="native", chunk_size=64, overlap=8192)
+    python = Redactor(backend="python")
+    chunks, pos = [], 0
+    for n in cuts:
+        if pos >= len(text):
+            break
+        chunks.append(text[pos : pos + n])
+        pos += n
+    chunks.append(text[pos:])
+    assert "".join(native.redact_stream(iter(chunks))) == python.redact(text)
+
+
+# ---------------------------------------------------------------------------
+# Memory limits: the core grows its output buffers with try_reserve, so under an
+# RLIMIT_AS cap (--memory-limit) a scan that cannot allocate raises MemoryError
+# (exit 3 in the CLI) instead of aborting the interpreter. (Allocations inside
+# the regex crate's lazy-DFA cache cannot fail gracefully; the memory budget
+# reserves NATIVE_PER_WORKER for them so a budgeted run keeps that headroom.)
+# ---------------------------------------------------------------------------
+
+_OOM_PROBE = """
+import resource, sys
+import safestream_native as sn
+text = "123-45-6789 " * 400_000  # ~400K matches: the output buffers dominate
+sn.scan_text("warm " + text[:120_000])  # let the regex caches reach working size
+with open("/proc/self/statm") as f:
+    used = int(f.read().split()[0]) * resource.getpagesize()
+limit = used + 30 * 1024 * 1024
+resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+try:
+    sn.scan_text(text)
+    print("ok")
+except MemoryError:
+    print("MemoryError")
+"""
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="RLIMIT_AS + /proc are Linux")
+def test_output_buffer_exhaustion_raises_memory_error_not_abort():
+    import subprocess
+
+    proc = subprocess.run(
+        [sys.executable, "-c", _OOM_PROBE], capture_output=True, text=True, timeout=120
+    )
+    assert proc.returncode == 0, proc.stderr[-2000:]  # 134 would be a Rust abort
+    assert proc.stdout.strip() in {"ok", "MemoryError"}

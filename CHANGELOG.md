@@ -40,6 +40,17 @@ Notable changes to this project. The format follows
 
 ### Security
 
+- **The native backend missed secrets next to some Unicode characters.** With
+  `backend="native"`, an AWS key followed by a combining accent or a zero-width
+  non-joiner, an email followed by a zero-width joiner, or an IPv6 address next to a
+  combining mark was not detected at all, while the Python tier redacted it. Rust's
+  `regex` counts combining marks, joiners and connector punctuation as word
+  characters (`\b`, `\w`) and CPython does not. The native core now carries a
+  generated table of every code point the two engines classify differently on any
+  supported CPython (3.10–3.14), and hands text where one could change a match back
+  to the Python tier. A test verifies the remaining code points classify identically
+  on the running interpreter, all 1.1M of them.
+
 - **`detect` never prints a matched secret unless asked** (see *Breaking
   changes*). The pre-commit hook and GitHub Action rely on this default.
 - **Mask mode never reveals more than half a value.** `mask_keep_last` is now
@@ -86,6 +97,22 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- **The native core covers the whole deterministic tier and the labeled-identifier
+  tier.** `credit_card` and both `phone` patterns run as hand-written linear-time
+  scanners that reproduce CPython's backtracking choice exactly (no regex
+  backtracking, so no catastrophic-backtracking surface); the label-gated
+  credentials (`aws_secret`, `api_key`, `url_credentials`, `anthropic_key`,
+  `openai_key`) and the six labeled-identifier rules run on the Rust regex engine.
+  Output stays byte-identical to `backend="python"` (differential + Hypothesis
+  gates, mutation-checked). Measured end-to-end `redact_file`, 10 MB:
+  13.6 / 11.7 / 9.5 / 5.3 MB/s at 0 / 1 / 10 / 50 % PII density, up from
+  1.9 / 1.8 / 1.6 / 1.4 MB/s for the previous native core and 1.6 / 1.5 / 1.4 / 1.2
+  MB/s for pure Python (`docs/NATIVE_CORE.md`).
+- **Native memory limits.** The core grows its output buffers with `try_reserve`,
+  so under `--memory-limit` a scan that cannot allocate raises `MemoryError` (exit
+  3) instead of aborting the interpreter, and the memory budget reserves 32 MiB per
+  worker for the native core's compiled automata and caches.
+
 - **Local web playground** (`safestream ui`, `python -m safestream_redactor.ui`; the
   new `[ui]` extra installs Streamlit, and the base install gains no dependency).
   - *Detect mode:* severity-coloured highlights and a findings table (type,
@@ -121,6 +148,18 @@ Notable changes to this project. The format follows
   empty `mask_char`.
 
 ### Developer experience
+
+- **The native crate builds as plain Rust.** `cargo build --no-default-features`
+  drops PyO3 entirely (the bindings are the default `python` feature), so the
+  scanners can be used and tested as a Rust library. New: Criterion throughput
+  benchmarks (`cargo bench --no-default-features`), proptest property tests
+  (arbitrary Unicode never panics; any chunking finds exactly the whole-text
+  matches), a `rust` CI job (fmt, clippy for both builds, tests, bench build), and
+  the native byte-identity job now runs on every CPython from 3.10 to 3.14.
+  Production code may not `unwrap`, `expect` or `panic` (clippy-enforced).
+- The extension's `detect()` is replaced by `scan_text()` / `scan_labeled_text()`,
+  which return `None` for text the Python tier must handle. The runtime spec guard
+  requires them, so an older wheel falls back to pure Python instead of diverging.
 
 - `.pre-commit-config.yaml` (ruff pinned to the CI series, strict mypy, TOML/YAML
   checks), `.editorconfig`, and a pull-request template.

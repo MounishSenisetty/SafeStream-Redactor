@@ -380,7 +380,7 @@ def _load_native(backend: str) -> ModuleType | None:
         raise ValueError(f"backend must be 'python', 'native', or 'auto', got {backend!r}")
     try:
         import safestream_native
-    except ImportError:
+    except Exception:  # ImportError, or a RuntimeError from a pattern that failed to compile
         if backend == "native":
             warnings.warn(
                 "backend='native' requested but the safestream_native extension is not "
@@ -418,11 +418,20 @@ def _native_matches_spec(mod: Any) -> bool:
     the caller can fall back to the pure-Python oracle instead of diverging.
     """
     from safestream_redactor.detectors._lookaround_free import LF_PATTERNS
+    from safestream_redactor.detectors.labeled_id import _COMPILED as LABELED
 
     expected = {(p.entity_type.value, p.regex.pattern) for p in _PATTERNS}
     expected |= {(p.entity_type.value, p.candidate.pattern) for p in LF_PATTERNS}
+    labeled = [(rx.pattern, etype.value, conf) for rx, etype, conf in LABELED]
     try:
-        return all((name, src) in expected for name, _conf, src in mod.patterns())
+        # scan_text / scan_labeled_text: the API that hands ambiguous text back
+        # to Python (older wheels lack it and could diverge on such text)
+        return (
+            callable(getattr(mod, "scan_text", None))
+            and callable(getattr(mod, "scan_labeled_text", None))
+            and all((name, src) in expected for name, _conf, src in mod.patterns())
+            and [tuple(r) for r in mod.labeled_rules()] == labeled
+        )
     except Exception:
         return False
 
@@ -485,12 +494,20 @@ class DeterministicDetector:
         """Native core for the covered types, Python for the rest.
 
         Reached only with the optional extension built; byte-identical to the pure
-        Python path (``tests/test_native_backend.py`` enforces this). The native
-        core scans every type it implements, so ``_native_names`` filters its output
+        Python path (``tests/test_native_backend.py`` enforces this). When the text
+        holds a character Rust and CPython classify differently, in a place where it
+        could change a match, the core returns ``None`` and the whole text goes
+        through Python. The native core scans every type it implements, so
+        ``_native_names`` filters its output
         to the types requested at construction. Spans come back as character offsets
         (converted in the core), so ``text[s:e]`` is exact even on non-ASCII input;
         all native-covered patterns are group-0, so the whole span is the detection.
         """
+        native = self._native.scan_text(text)
+        if native is None:
+            # a character the two engines classify differently sits where it
+            # could change a match: this text is scanned by the Python oracle
+            return self._detect_python(text, self._patterns)
         names = self._native_names
         found = [
             Detection(
@@ -501,7 +518,7 @@ class DeterministicDetector:
                 confidence=conf,
                 source=self.name,
             )
-            for s, e, ty, conf in self._native.detect(text)
+            for s, e, ty, conf in native
             if ty in names
         ]
         found.extend(self._detect_python(text, self._py_patterns))

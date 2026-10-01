@@ -440,6 +440,8 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
     if not limit:
         return None
     from safestream_redactor.memory_budget import (
+        NATIVE_PER_WORKER,
+        PER_WORKER_FIXED,
         MemoryBudget,
         enforce_address_space_limit,
         estimate_interpreter_baseline,
@@ -447,7 +449,13 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
     )
 
     _has_model = getattr(args, "ner", False) or getattr(args, "onnx", None)
-    budget = MemoryBudget(limit, model_budget="512MB" if _has_model else 0)
+    # the native core (backend = "native" | "auto") carries its own fixed cost
+    _native = any(getattr(d, "_native", None) is not None for d in redactor._detectors)
+    budget = MemoryBudget(
+        limit,
+        model_budget="512MB" if _has_model else 0,
+        per_worker_fixed=PER_WORKER_FIXED + (NATIVE_PER_WORKER if _native else 0),
+    )
     requested = getattr(args, "workers", None)
     plan = budget.plan(
         redactor.chunk_size,

@@ -74,15 +74,22 @@ jobs:
   # The native wheel is only publishable if it is byte-identical to the pure-Python
   # oracle. The differential tests skip when the extension is absent, so the
   # import is asserted first: a broken install must fail here, not skip green.
+  # Every supported CPython: each ships its own Unicode version, and the core's
+  # Rust-vs-CPython character-class tables are verified against the running one
+  # (test_unambiguous_code_points_classify_exactly_like_cpython).
   byte-identity:
-    name: byte-identity (built wheel vs Python oracle)
+    name: byte-identity (built wheel vs Python ${{ matrix.python-version }} oracle)
     needs: wheels
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - uses: actions/download-artifact@v8
         with:
           name: wheels-ubuntu-latest-x86_64
@@ -90,6 +97,25 @@ jobs:
       - run: pip install -e .[dev] wheelhouse/*.whl
       - run: python -c "import safestream_native as n; print(n.__version__, len(n.patterns()))"
       - run: pytest -q tests/test_native_backend.py tests/test_lookaround_free.py
+
+  # The pure-Rust core on its own: formatting, clippy for both builds (the PyO3
+  # extension and `--no-default-features`, which must not pull in pyo3), the unit
+  # and property tests, and a compile check of the Criterion benchmarks.
+  rust:
+    name: rust (fmt, clippy, tests, bench build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: native
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup component add rustfmt clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --release --all-targets --no-default-features -- -D warnings
+      - run: cargo clippy --release -- -D warnings
+      - run: "! cargo tree --no-default-features -e normal | grep -q pyo3"
+      - run: cargo test --release --no-default-features
+      - run: cargo bench --no-default-features --no-run
 
   sdist:
     name: sdist
@@ -110,7 +136,7 @@ jobs:
   # Manual dry run: gh workflow run native-wheels.yml -f publish_testpypi=true
   publish-testpypi:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_testpypi
-    needs: [wheels, byte-identity, sdist]
+    needs: [wheels, byte-identity, rust, sdist]
     runs-on: ubuntu-latest
     environment: testpypi-native
     permissions:
@@ -127,7 +153,7 @@ jobs:
 
   publish-pypi:
     if: startsWith(github.ref, 'refs/tags/native-v')
-    needs: [wheels, byte-identity, sdist]
+    needs: [wheels, byte-identity, rust, sdist]
     runs-on: ubuntu-latest
     environment: pypi-native
     permissions:

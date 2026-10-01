@@ -305,11 +305,25 @@ def test_native_spec_guard_accepts_matching_and_rejects_skew():
     one with a drifted source, an unknown type, or a broken patterns() fails.
     """
 
+    from safestream_redactor.detectors.labeled_id import _COMPILED
+
     class _Good:
         # every _PATTERNS source is, by construction, in the guard's expected set
         @staticmethod
         def patterns():
             return [(p.entity_type.value, p.confidence, p.regex.pattern) for p in _PATTERNS]
+
+        @staticmethod
+        def labeled_rules():
+            return [(rx.pattern, etype.value, conf) for rx, etype, conf in _COMPILED]
+
+        scan_text = scan_labeled_text = staticmethod(lambda text: None)
+
+    class _OldApi:
+        # a pre-0.5 wheel: matching sources, but no scan_text that can hand
+        # ambiguous text back to Python, so it could diverge on such text
+        patterns = _Good.patterns
+        labeled_rules = _Good.labeled_rules
 
     class _Drifted:
         @staticmethod
@@ -327,6 +341,7 @@ def test_native_spec_guard_accepts_matching_and_rejects_skew():
             raise RuntimeError("boom")
 
     assert _native_matches_spec(_Good)
+    assert not _native_matches_spec(_OldApi)
     assert not _native_matches_spec(_Drifted)
     assert not _native_matches_spec(_UnknownType)
     assert not _native_matches_spec(_Broken)

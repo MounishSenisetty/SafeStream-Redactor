@@ -10,11 +10,11 @@ Build + run:
         pip install --force-reinstall --no-deps native/dist/*.whl
     python benchmarks/native_backend.py
 
-Current slice: the 12 lookaround-free credential patterns plus SSN (the first
-digit-gated PII pattern — the real bottleneck class: no distinctive literal, so
-Python can't prefilter-skip it on any digit-bearing line). SSN uses a
-lookaround-free candidate + Unicode-aware boundary check + string-comparison
-validator, byte-identical to Python including Unicode-digit SSNs.
+Current slice: the 12 lookaround-free credential patterns, SSN/IPv4/IPv6
+(lookaround-free candidate + boundary check + validator), and credit_card and the
+two phone patterns (hand-written linear scanners). The digit-gated patterns are
+the real bottleneck class: no distinctive literal, so Python must run them on
+every digit-bearing line.
 """
 
 from __future__ import annotations
@@ -41,6 +41,8 @@ _CREDS = [
     "npm npm_abcdefghijklmnopqrstuvwxyz0123456789 published",
     "ssn 123-45-6789 on file",  # digit-gated PII: the real bottleneck class
     "client 10.20.30.40 connected",  # ipv4: digit-gated + validator
+    "card 4111 1111 1111 1111 charged",  # credit_card: linear scanner + Luhn
+    "call +1 (415) 555-0123 back",  # structured phone
 ]
 # Distractor carries digits, so the SSN pattern (digit-gated, no literal prefilter)
 # cannot be prefilter-skipped in Python and must run its regex on every line.
@@ -73,22 +75,25 @@ def main() -> None:
     types = [EntityType.from_name(n) for n in covered]
     pydet = DeterministicDetector(types=types, prefilter=True)
 
-    print(f"native slice: {len(covered)} patterns (12 credential + ssn/ipv4/ipv6)")
+    print(
+        f"native slice: {len(sn.patterns())} patterns "
+        "(17 credential + ssn/ipv4/ipv6 + credit_card + 2 phone)"
+    )
     print(f"{'corpus':<22} {'matches':>9} {'python':>12} {'native':>12} {'speedup':>8}")
     print("-" * 66)
     for label, frac in [("none (0% PII)", 0.0), ("sparse (1%)", 0.01), ("dense (50%)", 0.5)]:
         text = _corpus(5, frac)
         mb = len(text) / 1e6
         py = sorted((d.start, d.end, d.entity_type.value) for d in pydet.detect(text))
-        nat = sorted((s, e, ty) for s, e, ty, _ in sn.detect(text))
+        nat = sorted((s, e, ty) for s, e, ty, _ in sn.scan_text(text))
         assert py == nat, f"native diverged from python on {label} ({len(py)} vs {len(nat)})"
         tp = _best(pydet.detect, text)
-        tn = _best(sn.detect, text)
+        tn = _best(sn.scan_text, text)
         print(f"{label:<22} {len(py):>9} {mb / tp:>9.1f}MB/s {mb / tn:>9.1f}MB/s {tp / tn:>7.1f}x")
 
     # Unicode byte-identity sanity (offsets must be character indices)
     u = "文字 a@b.io 文 key AKIAIOSFODNN7EXAMPLE"
-    assert sorted((s, e, ty) for s, e, ty, _ in sn.detect(u)) == sorted(
+    assert sorted((s, e, ty) for s, e, ty, _ in sn.scan_text(u)) == sorted(
         (d.start, d.end, d.entity_type.value) for d in pydet.detect(u)
     ), "native diverged on Unicode"
     print("\nbyte-identical to Python (incl. Unicode char offsets): OK")

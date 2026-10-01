@@ -157,7 +157,7 @@ class Redactor:
             EntityType.ID_NUMBER,
         }
         if resolved_types is None or _labeled_types.intersection(resolved_types):
-            self._detectors.append(LabeledIdentifierDetector())
+            self._detectors.append(LabeledIdentifierDetector(backend=backend))
         custom_words = list(custom_words)
         custom_patterns = list(custom_patterns)
         if custom_words or custom_patterns:
