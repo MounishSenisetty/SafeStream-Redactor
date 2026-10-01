@@ -17,6 +17,8 @@ import json
 import random
 from pathlib import Path
 
+from safestream_redactor.detectors.deterministic import E164_COUNTRY_CODES
+
 FIRST = ["James", "Maria", "Wei", "Aisha", "Carlos", "Yuki", "Priya", "Liam", "Fatima", "Igor"]
 LAST = ["Smith", "Garcia", "Chen", "Okafor", "Patel", "Kowalski", "Tanaka", "Brown", "Ali", "Novak"]
 DOMAINS = ["corpmail.com", "workplace.io", "bizmail.net", "companyhq.org"]
@@ -25,6 +27,9 @@ FILLER = (
     "and respond by end of week. The deployment pipeline completed successfully. "
     "Meeting notes have been distributed to all stakeholders for further review. "
 )
+
+
+_CC = sorted(c for c in E164_COUNTRY_CODES if c <= 99)
 
 
 def luhn_complete(prefix15: str) -> str:
@@ -48,8 +53,9 @@ def make_entity(rng: random.Random) -> tuple[str, str]:
             f"{rng.randint(1, 99)}@{rng.choice(DOMAINS)}"
         )
     if kind == "phone":
+        # a real 1-2 digit country code: phone_ok checks E.164 country codes
         return kind, (
-            f"+{rng.randint(1, 99)} {rng.randint(200, 999)} "
+            f"+{rng.choice(_CC)} {rng.randint(200, 999)} "
             f"{rng.randint(100, 999)} {rng.randint(1000, 9999)}"
         )
     if kind == "credit_card":

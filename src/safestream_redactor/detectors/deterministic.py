@@ -60,12 +60,265 @@ _DATE_SHAPE = re.compile(r"\A(?:19|20)\d{2}-\d{2}-\d{2}\Z")  # ISO date
 _SSN_SHAPE = re.compile(r"\A\d{3}-\d{2}-\d{4}\Z")  # SSN grouping
 
 
+# Country calling codes assigned in the E.164 numbering plan (ITU-T), taken from
+# libphonenumber's metadata (``phonenumbers`` 9.0.40,
+# ``COUNTRY_CODE_TO_REGION_CODE``). The set is a prefix code (no code is a prefix
+# of another), so the leading digits of an international number name at most one
+# country. The native core carries the same table (``native/src/digits.rs``); a
+# test keeps the two equal.
+E164_COUNTRY_CODES: frozenset[int] = frozenset(
+    (
+        1,
+        7,
+        20,
+        27,
+        30,
+        31,
+        32,
+        33,
+        34,
+        36,
+        39,
+        40,
+        41,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        81,
+        82,
+        84,
+        86,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        98,
+        211,
+        212,
+        213,
+        216,
+        218,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        290,
+        291,
+        297,
+        298,
+        299,
+        350,
+        351,
+        352,
+        353,
+        354,
+        355,
+        356,
+        357,
+        358,
+        359,
+        370,
+        371,
+        372,
+        373,
+        374,
+        375,
+        376,
+        377,
+        378,
+        380,
+        381,
+        382,
+        383,
+        385,
+        386,
+        387,
+        389,
+        420,
+        421,
+        423,
+        500,
+        501,
+        502,
+        503,
+        504,
+        505,
+        506,
+        507,
+        508,
+        509,
+        590,
+        591,
+        592,
+        593,
+        594,
+        595,
+        596,
+        597,
+        598,
+        599,
+        670,
+        672,
+        673,
+        674,
+        675,
+        676,
+        677,
+        678,
+        679,
+        680,
+        681,
+        682,
+        683,
+        685,
+        686,
+        687,
+        688,
+        689,
+        690,
+        691,
+        692,
+        800,
+        808,
+        850,
+        852,
+        853,
+        855,
+        856,
+        870,
+        878,
+        880,
+        881,
+        882,
+        883,
+        886,
+        888,
+        960,
+        961,
+        962,
+        963,
+        964,
+        965,
+        966,
+        967,
+        968,
+        970,
+        971,
+        972,
+        973,
+        974,
+        975,
+        976,
+        977,
+        979,
+        992,
+        993,
+        994,
+        995,
+        996,
+        998,
+    )
+)
+
+
+def e164_country_code_ok(number: str) -> bool:
+    """``number`` (starting with ``+``) begins with an assigned country code.
+
+    The digits right after the ``+`` are the writer's country-code group when a
+    separator or ``(`` ends them within three digits (``+44 20 …``, ``+1-415``,
+    ``+44(0)20``): that group must be an assigned code exactly, so ``+99 555 …``
+    is rejected even though ``995`` (Georgia) begins its digits. An unbroken run
+    (``+14155552671``) is read as E.164 itself defines it: by the unique assigned
+    prefix of its leading digits. Digit values are compared, so ``+٤٤`` is ``+44``.
+    """
+    run = ""
+    for c in number[1:]:
+        if not c.isdecimal():
+            break
+        run += c
+    if not run or int(run[0]) == 0:
+        return False  # no country code starts with 0 (and "020" is not 20)
+    if len(run) <= 3:
+        return int(run) in E164_COUNTRY_CODES
+    return any(int(run[:n]) in E164_COUNTRY_CODES for n in (1, 2, 3))
+
+
 def phone_ok(match_text: str) -> bool:
     stripped = match_text.strip()
     if _DATE_SHAPE.match(stripped) or _SSN_SHAPE.match(stripped):
         return False
     digits = re.sub(r"\D", "", match_text)
-    return 7 <= len(digits) <= 15
+    if not 7 <= len(digits) <= 15:
+        return False
+    # an international number must start with an assigned country code
+    # (``+28 …``, ``+99 …`` are unassigned, never a real number)
+    return not stripped.startswith("+") or e164_country_code_ok(stripped)
 
 
 def ipv4_ok(match_text: str) -> bool:
@@ -381,7 +634,7 @@ def _load_native(backend: str) -> ModuleType | None:
         raise ValueError(f"backend must be 'python', 'native', or 'auto', got {backend!r}")
     try:
         import safestream_native
-    except ImportError:
+    except Exception:  # ImportError, or a RuntimeError from a pattern that failed to compile
         if backend == "native":
             warnings.warn(
                 "backend='native' requested but the safestream_native extension is not "
@@ -419,11 +672,27 @@ def _native_matches_spec(mod: Any) -> bool:
     the caller can fall back to the pure-Python oracle instead of diverging.
     """
     from safestream_redactor.detectors._lookaround_free import LF_PATTERNS
+    from safestream_redactor.detectors.contextual import _BOOST_TRIGGERS, _SUPPRESS_TRIGGERS
+    from safestream_redactor.detectors.labeled_id import _COMPILED as LABELED
 
     expected = {(p.entity_type.value, p.regex.pattern) for p in _PATTERNS}
     expected |= {(p.entity_type.value, p.candidate.pattern) for p in LF_PATTERNS}
+    labeled = [(rx.pattern, etype.value, conf) for rx, etype, conf in LABELED]
+    boost = {t.value: tuple(words) for t, words in _BOOST_TRIGGERS.items()}
     try:
+        # the API that hands ambiguous text back to Python (older wheels lack it
+        # and could diverge on such text), for every tier the core implements
+        if not all(callable(getattr(mod, f, None)) for f in _NATIVE_API):
+            return False
         native = [(name, src) for name, _conf, src in mod.patterns()]
+        native_boost, native_suppress = mod.context_triggers()
+        if not (
+            [tuple(r) for r in mod.labeled_rules()] == labeled
+            and {t: tuple(w) for t, w in native_boost if t} == boost
+            and tuple(native_suppress) == _SUPPRESS_TRIGGERS
+            and frozenset(mod.e164_country_codes()) == E164_COUNTRY_CODES
+        ):
+            return False
     except Exception:
         return False
     if not all(pair in expected for pair in native):
@@ -436,7 +705,60 @@ def _native_matches_spec(mod: Any) -> bool:
     return all(python_counts[name] == n for name, n in native_counts.items())
 
 
-class DeterministicDetector:
+# the native functions this package calls; a wheel missing any is rejected
+_NATIVE_API = (
+    "scan_text",
+    "scan_labeled_text",
+    "scan_entropy_text",
+    "scan_compound_text",
+    "scan_bare_ssn_text",
+    "adjust_text",
+    "context_triggers",
+    "e164_country_codes",
+)
+
+
+class NativeBacked:
+    """A detector that may run on the optional native core.
+
+    Holds the loaded extension module, which cannot be pickled, so it pickles as
+    the backend name and reloads the module on unpickle. The parallel engine ships
+    detectors to worker processes this way under the ``spawn``/``forkserver``
+    start methods (macOS, Windows, Python 3.14 on Linux).
+    """
+
+    _backend: str = "python"
+    _native: Any = None
+
+    def _attach_native(self, backend: str) -> None:
+        self._backend = backend
+        self._native = _load_native(backend)
+
+    @staticmethod
+    def _native_call(fn: Callable[..., Any], *args: Any) -> Any:
+        """``fn(*args)``, or ``None`` when the text cannot cross into Rust.
+
+        A lone surrogate (e.g. decoded from a JSON ``"\\udcff"`` escape over the REST
+        API or MCP) has no UTF-8 form, so the binding raises ``UnicodeEncodeError``
+        before the core runs. ``None`` is the same signal the core uses for text it
+        cannot decide, and every caller then scans the text with the Python tier.
+        """
+        try:
+            return fn(*args)
+        except UnicodeEncodeError:
+            return None
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = dict(self.__dict__)
+        state["_native"] = None
+        return state
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+        self._native = _load_native(self._backend)
+
+
+class DeterministicDetector(NativeBacked):
     """Runs the built-in regex+validator patterns, optionally a subset of types.
 
     Patterns are prefiltered per call: a regex only runs when the text contains
@@ -467,7 +789,7 @@ class DeterministicDetector:
         wanted = set(types) if types is not None else None
         self._patterns = [p for p in _PATTERNS if wanted is None or p.entity_type in wanted]
         self._prefilter = prefilter
-        self._native: Any = _load_native(backend)
+        self._attach_native(backend)
         # Split the (already type-filtered) pattern set into the types the native
         # core covers and the remainder Python still handles. When native is off,
         # everything runs in Python. The native branch is exercised only when the
@@ -494,17 +816,20 @@ class DeterministicDetector:
         """Native core for the covered types, Python for the rest.
 
         Reached only with the optional extension built; byte-identical to the pure
-        Python path (``tests/test_native_backend.py`` enforces this). The native
-        core scans every type it implements, so ``_native_names`` filters its output
+        Python path (``tests/test_native_backend.py`` enforces this). When the text
+        holds a character Rust and CPython classify differently, in a place where it
+        could change a match, the core returns ``None`` and the whole text goes
+        through Python. The native core scans every type it implements, so
+        ``_native_names`` filters its output
         to the types requested at construction. Spans come back as character offsets
         (converted in the core), so ``text[s:e]`` is exact even on non-ASCII input;
         all native-covered patterns are group-0, so the whole span is the detection.
         """
-        try:
-            hits = self._native.detect(text)
-        except UnicodeEncodeError:
-            # A lone surrogate (e.g. decoded from a JSON "\udcff" escape) has no
-            # UTF-8 form, so the text cannot cross into Rust; run the oracle.
+        native = self._native_call(self._native.scan_text, text)
+        if native is None:
+            # a character the two engines classify differently sits where it
+            # could change a match, or a lone surrogate that cannot cross into
+            # Rust: this text is scanned by the Python oracle
             return self._detect_python(text, self._patterns)
         names = self._native_names
         found = [
@@ -516,7 +841,7 @@ class DeterministicDetector:
                 confidence=conf,
                 source=self.name,
             )
-            for s, e, ty, conf in hits
+            for s, e, ty, conf in native
             if ty in names
         ]
         found.extend(self._detect_python(text, self._py_patterns))

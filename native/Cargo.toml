@@ -6,25 +6,25 @@ name = "safestream_native"
 # Python if a skewed wheel is ever paired, so this is coordination, not a hard gate.
 version = "0.4.0"
 edition = "2021"
+rust-version = "1.80"
 description = "Native (Rust) detection core for SafeStream-Redactor — optional, byte-identical fast lane"
 license = "MIT"
 repository = "https://github.com/MounishSenisetty/SafeStream-Redactor"
 homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
-# not published to crates.io; the Python extension ships as a PyPI wheel via
-# maturin, and Rust consumers depend on this crate by path or git
+# not published to crates.io; distributed only as a PyPI wheel via maturin
 publish = false
 
 [lib]
 name = "safestream_native"
-# rlib: the pure-Rust library (no Python) that Rust consumers link statically.
-# cdylib: the Python extension module maturin builds with `--features python`.
+# cdylib: the Python extension module (maturin). rlib: the same scanners as a
+# plain Rust library, used by the tests and benchmarks and by any Rust consumer.
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# The default build is the plain Rust library: no PyO3, no libpython.
-default = []
-# The `safestream_native` Python extension (src/python.rs). maturin enables this
-# via [tool.maturin] in pyproject.toml.
+# The PyO3 bindings. `--no-default-features` builds the pure-Rust core with no
+# Python dependency at all: no pyo3 in the dependency graph, no GIL handling, no
+# Python objects, so a Rust consumer pays nothing for the bindings.
+default = ["python"]
 python = ["dep:pyo3"]
 
 [dependencies]
@@ -32,8 +32,24 @@ python = ["dep:pyo3"]
 # matrix small). extension-module: link against the host interpreter at import.
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"], optional = true }
 regex = "1"
+# The same crate `regex` uses for its Unicode classes; `is_word_character` is the
+# exact `\w` the compiled patterns use, so code-level boundary checks agree with them.
+regex-syntax = "0.8"
+
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
+proptest = { version = "1", default-features = false, features = ["std"] }
+
+[[bench]]
+name = "throughput"
+harness = false
 
 [profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.bench]
 opt-level = 3
 lto = true
 codegen-units = 1

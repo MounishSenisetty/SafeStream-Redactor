@@ -305,11 +305,43 @@ def test_native_spec_guard_accepts_matching_and_rejects_skew():
     one with a drifted source, an unknown type, or a broken patterns() fails.
     """
 
+    from safestream_redactor.detectors.labeled_id import _COMPILED
+
     class _Good:
         # every _PATTERNS source is, by construction, in the guard's expected set
         @staticmethod
         def patterns():
             return [(p.entity_type.value, p.confidence, p.regex.pattern) for p in _PATTERNS]
+
+        @staticmethod
+        def labeled_rules():
+            return [(rx.pattern, etype.value, conf) for rx, etype, conf in _COMPILED]
+
+        @staticmethod
+        def context_triggers():
+            from safestream_redactor.detectors.contextual import (
+                _BOOST_TRIGGERS,
+                _SUPPRESS_TRIGGERS,
+            )
+
+            boost = [("", [])] + [(t.value, list(w)) for t, w in _BOOST_TRIGGERS.items()]
+            return boost, list(_SUPPRESS_TRIGGERS)
+
+        @staticmethod
+        def e164_country_codes():
+            from safestream_redactor.detectors.deterministic import E164_COUNTRY_CODES
+
+            return sorted(E164_COUNTRY_CODES)
+
+        scan_text = scan_labeled_text = staticmethod(lambda text: None)
+        scan_entropy_text = scan_compound_text = staticmethod(lambda *a: [])
+        scan_bare_ssn_text = adjust_text = staticmethod(lambda *a: None)
+
+    class _OldApi:
+        # a pre-0.5 wheel: matching sources, but no scan_text that can hand
+        # ambiguous text back to Python, so it could diverge on such text
+        patterns = _Good.patterns
+        labeled_rules = _Good.labeled_rules
 
     class _Drifted:
         @staticmethod
@@ -327,6 +359,7 @@ def test_native_spec_guard_accepts_matching_and_rejects_skew():
             raise RuntimeError("boom")
 
     assert _native_matches_spec(_Good)
+    assert not _native_matches_spec(_OldApi)
     assert not _native_matches_spec(_Drifted)
     assert not _native_matches_spec(_UnknownType)
     assert not _native_matches_spec(_Broken)
@@ -496,3 +529,34 @@ def test_max_private_key_span_fits_within_default_overlap():
     m = pk.regex.search(widest)
     assert m is not None
     assert len(m.group()) <= DEFAULT_OVERLAP
+
+
+def test_detectors_pickle_their_backend_not_the_module():
+    # NativeBacked: the parallel engine pickles detectors for spawn/forkserver
+    # workers; the backend name travels, the extension module is reloaded
+    import pickle
+
+    from safestream_redactor import Redactor
+
+    r = Redactor(backend="python")
+    clone = pickle.loads(pickle.dumps(r))
+    backed = [d for d in clone._detectors if hasattr(d, "_backend")]
+    assert {d.name for d in backed} >= {"deterministic", "entropy", "contextual"}
+    assert all(d._backend == "python" and d._native is None for d in backed)
+    text = "key AKIAIOSFODNN7EXAMPLE token zX9kQ2mVp7Lw3Rt8Yn4Bc6Df ssn 123456789"
+    assert clone.redact(text) == r.redact(text)
+
+
+def test_international_phone_needs_an_assigned_country_code():
+    from safestream_redactor.detectors.deterministic import phone_ok
+
+    for real in ["+1 (415) 555-2671", "+44 20 7946 0958", "+44(0)20 7946 0958", "+995 32 212 3456"]:
+        assert phone_ok(real), real
+    assert phone_ok("+14155552671")  # unbroken run: E.164 prefix of its digits
+    assert phone_ok("+٤٤ ٢٠ ٧٩٤٦ ٠٩٥٨")  # digit values, any script
+    for fake in ["+28 555 123 4567", "+99 555 123 4567", "+020 555 1234", "+0205551234"]:
+        assert not phone_ok(fake), fake
+    # a timezone offset is not a phone number (the one RedactionBench false
+    # positive this rule removes)
+    assert EntityType.PHONE not in types_in("Tue Nov 28 03:17:04 +0000 2023 root")
+    assert phone_ok("(415) 555-2671")  # no '+': the country-code rule does not apply

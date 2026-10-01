@@ -1,0 +1,163 @@
+"""Generate ``src/unicode_tables.rs``: where Rust's regex and CPython's ``re`` disagree.
+
+The native core must be byte-identical to the Python tier. Both engines are
+Unicode-aware, but they define their character classes differently:
+
+* ``\\w`` — Python: ``str.isalnum()`` or ``_``. Rust: Alphabetic + marks + Nd +
+  connector punctuation + Join_Control. Combining marks, ZWJ/ZWNJ and ``‿`` are
+  word characters to Rust only; ``²``/``½`` (No) are word characters to Python only.
+* ``\\d`` / ``\\s`` — mostly equal, but each CPython ships its own Unicode version
+  (3.10: 13.0 … 3.14: 16.0), so newly assigned digits differ by interpreter, and
+  ``\\x1c`` to ``\\x1f`` are whitespace to Python only.
+* ``(?i)`` — Python lower-cases (``İ`` matches ``i``); Rust uses simple case folding.
+
+This script records, per class, every code point whose classification is not the
+same in the locked Rust ``regex`` crate and in **every** supported CPython. The
+native core treats those code points as *ambiguous*: when one can influence a
+match it hands the window back to the Python oracle instead of guessing. Every
+other code point is classified identically by both engines, which
+``tests/test_native_backend.py`` re-verifies for all 1.1M code points on the
+interpreter under test.
+
+Usage (from ``native/``)::
+
+    cargo run --release --no-default-features --example dump_classes > /tmp/rust.json
+    python tools/gen_unicode_tables.py /tmp/rust.json python3.10 python3.11 ... python3.14
+
+Each interpreter is run as a subprocess (``--dump``) so one script covers them all.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import sys
+import unicodedata
+from pathlib import Path
+
+LETTERS = "abcdefghijklmnopqrstuvwxyz"
+
+
+def _ranges(cps: list[int]) -> list[list[int]]:
+    out: list[list[int]] = []
+    for cp in cps:
+        if out and out[-1][1] + 1 == cp:
+            out[-1][1] = cp
+        else:
+            out.append([cp, cp])
+    return out
+
+
+def dump() -> dict[str, object]:
+    """This interpreter's classification of every code point (run under each CPython)."""
+    w, d, s = [], [], []
+    for cp in range(0x110000):
+        c = chr(cp)
+        if c.isalnum() or c == "_":
+            w.append(cp)
+        if c.isdecimal():
+            d.append(cp)
+        if c.isspace():
+            s.append(cp)
+    any_letter = re.compile("[a-z]", re.IGNORECASE)
+    fold: dict[str, list[int]] = {letter: [] for letter in LETTERS}
+    for cp in range(0x80, 0x110000):
+        c = chr(cp)
+        if any_letter.fullmatch(c):
+            for letter in LETTERS:
+                if re.fullmatch(letter, c, re.IGNORECASE):
+                    fold[letter].append(cp)
+    upper, lower = re.compile("[A-Z]", re.IGNORECASE), re.compile("[a-z]", re.IGNORECASE)
+    fold_upper = [cp for cp in range(0x80, 0x110000) if upper.fullmatch(chr(cp))]
+    fold_lower = [cp for cp in range(0x80, 0x110000) if lower.fullmatch(chr(cp))]
+    return {
+        "fold_upper": _ranges(fold_upper),
+        "fold_lower": _ranges(fold_lower),
+        "version": f"{sys.version_info[0]}.{sys.version_info[1]}",
+        "unicode": unicodedata.unidata_version,
+        "w": _ranges(w),
+        "d": _ranges(d),
+        "s": _ranges(s),
+        "fold": fold,
+    }
+
+
+def _expand(ranges: list[list[int]]) -> set[int]:
+    return {cp for lo, hi in ranges for cp in range(lo, hi + 1)}
+
+
+def _rust_ranges(cps: set[int]) -> str:
+    rows = [f"    (0x{lo:X}, 0x{hi:X})," for lo, hi in _ranges(sorted(cps))]
+    return "\n".join(rows)
+
+
+def main() -> None:
+    rust = json.loads(Path(sys.argv[1]).read_text())
+    pythons = [
+        json.loads(
+            subprocess.run(
+                [exe, __file__, "--dump"], check=True, capture_output=True, text=True
+            ).stdout
+        )
+        for exe in sys.argv[2:]
+    ]
+    engines = [("rust", rust), *((p["version"], p) for p in pythons)]
+
+    def ambiguous(key: str) -> set[int]:
+        sets = [_expand(e[key]) for _, e in engines]
+        return set.union(*sets) - set.intersection(*sets)
+
+    word, digit, space = ambiguous("w"), ambiguous("d"), ambiguous("s")
+    fold: set[int] = ambiguous("fold_upper") | ambiguous("fold_lower")
+    for letter in LETTERS:
+        sets = [set(e["fold"][letter]) for _, e in engines]
+        fold |= set.union(*sets) - set.intersection(*sets)
+    # ASCII must agree everywhere except the four separators below \x20, which
+    # the native core handles by widening its whitespace class explicitly.
+    assert not {cp for cp in word | digit | fold if cp < 0x80}, "ASCII class mismatch"
+    assert {cp for cp in space if cp < 0x80} == set(range(0x1C, 0x20)), sorted(space)
+    space -= set(range(0x1C, 0x20))
+
+    versions = ", ".join(f"CPython {p['version']} (Unicode {p['unicode']})" for p in pythons)
+    out = Path(__file__).resolve().parent.parent / "src" / "unicode_tables.rs"
+    out.write_text(
+        f"""// @generated by tools/gen_unicode_tables.py — do not edit by hand.
+//
+// Code points whose class differs between the locked Rust `regex` crate and at
+// least one of: {versions}.
+// Every code point NOT listed is classified identically by all of them.
+// Sorted, non-overlapping, inclusive (lo, hi) ranges.
+
+/// `\\w` disagrees (marks, ZWJ/ZWNJ, connector punctuation, No numerics, new letters).
+pub(crate) const WORD_AMBIGUOUS: &[(u32, u32)] = &[
+{_rust_ranges(word)}
+];
+
+/// `\\d` disagrees (decimal digits added in a later Unicode version).
+pub(crate) const DIGIT_AMBIGUOUS: &[(u32, u32)] = &[
+{_rust_ranges(digit)}
+];
+
+/// `\\s` disagrees on a non-ASCII code point (expected to be empty).
+pub(crate) const SPACE_AMBIGUOUS: &[(u32, u32)] = &[
+{_rust_ranges(space)}
+];
+
+/// Case-insensitive matching of an ASCII letter disagrees (e.g. `İ` ~ `i` in Python).
+pub(crate) const FOLD_AMBIGUOUS: &[(u32, u32)] = &[
+{_rust_ranges(fold)}
+];
+"""
+    )
+    print(
+        f"wrote {out}: word={len(word)} digit={len(digit)} space={len(space)} "
+        f"fold={len(fold)} code points"
+    )
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--dump"]:
+        json.dump(dump(), sys.stdout)
+    else:
+        main()

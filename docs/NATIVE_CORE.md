@@ -65,8 +65,8 @@ Two candidate native implementations, both gated by the same differential test:
   trailing boundary with explicit trim-back of trailing groups until the lookahead
   holds or the minimum length is violated; then Luhn / `phone_ok`. More code, but
   linear-time with no backtracking (so no truncation and no DoS surface). Must pass
-  the differential+fuzz gate before shipping. **Built and shipped** — see
-  "Sub-step (d)" below.
+  the differential+fuzz gate before shipping. This is now the only route to a native
+  credit_card/phone; until it exists, they stay in Python.
 
 ## Native core plan (step 3, gated)
 
@@ -305,93 +305,228 @@ thing `fancy-regex` structurally cannot give. Whether it beats CPython's C `re`
 enough to matter (Python `re` already does ~11 MB/s for the trio) is itself an open,
 benchmark-gated question before that work is worth starting.
 
-### Sub-step (d) — credit_card/phone as hand-rolled scanners: built, measured, **shipped**
+## 0.5 — exact Unicode parity, the whole deterministic tier, hardening
 
-`native/src/structured.rs` implements the three patterns as scanners that reproduce
-`re.finditer` for the exact Python regex: the same start positions, the same
-depth-first order over quantifier choices (greedy = longest first, optional =
-present first), and the same lookarounds with Python's character classes.
+### A parity bug: `\w` is not the same word class in Rust and CPython
 
-- **credit_card** reduces to a closed form. The optional `[ -]?` is always taken
-  when present (skipping it leaves a separator where the next `\d` must be), so a
-  candidate is a chain of digits, each optionally followed by one separator. The
-  only real choice is the digit count t ∈ 13..19, and greedy-then-backtrack keeps
-  the largest t whose next character passes `(?![\d-])`. That is at most 19 checks
-  per start.
-- **structured phone** has real choices: optional separators let a digit run
-  split many ways. The depth-first search is memoised on (position, groups so far).
-  Whether the rest of the pattern matches from a state does not depend on the path
-  that reached it, so memoising never changes which match is found first. Work per
-  start is bounded by states × choices, not by paths.
-- **bare phone** has mandatory separators, so its search tree is narrow and needs
-  no memo.
+Fuzzing with characters the earlier gate never generated found the native core
+**missing secrets the Python tier redacts**: `AKIAIOSFODNN7EXAMPLE` followed by a
+combining acute accent (U+0301) or a zero-width non-joiner, `a@b.io` followed by a
+zero-width joiner, `2001:db8::1` before a combining mark, an npm token before `‿`.
+7 of 8 probes diverged, mostly in the leaking direction. The cause is the word class
+behind `\b` and `\w`: CPython uses `str.isalnum()` or `_`; Rust's `regex` uses
+Alphabetic + marks + Nd + connector punctuation + Join_Control. Combining marks,
+ZWJ/ZWNJ and `‿` are word characters to Rust only (so `\b` fails after the key and
+nothing matches); `²`/`½` are word characters to CPython only. Two smaller cases
+of the same kind: CPython's `\s` also matches `\x1c`–`\x1f`, and under
+`IGNORECASE` CPython lower-cases (`İ` matches `i`) where Rust case-folds. And each
+CPython ships its own Unicode version (3.10: 13.0 … 3.14: 16.0), so `\d` differs
+on newly added digits.
 
-Validators: Luhn reuses the proven Unicode `digit_value`; `phone_ok` reproduces the
-`strip()`, the ISO-date and SSN shape rejections, and the 7–15 digit count.
+The fix is exact rather than approximate. `native/tools/gen_unicode_tables.py`
+dumps how the locked `regex` crate and **every supported CPython** classify all
+1.1M code points (`\w`, `\d`, `\s`, and case-insensitive ASCII letters) and
+writes `native/src/unicode_tables.rs`: the code points on which any of them
+disagree (13 454 for `\w`, 110 for `\d`, 2 for case folding, none for non-ASCII
+`\s`). Everywhere else the engines agree, which the Python test
+`test_unambiguous_code_points_classify_exactly_like_cpython` re-verifies on the
+interpreter under test (0 mismatches on 3.10, 3.11, 3.12, 3.13 and 3.14). Before a
+scan, `needs_python` checks the text: an ambiguous digit or case-folding code point
+anywhere, or an ambiguous word character next to something a pattern consumes,
+makes the core return `None`, and the caller runs the Python tier on that text.
+All-ASCII text skips the check, and a combining mark inside Devanagari or Thai
+text, away from anything a pattern consumes, does not trigger it. `\x1c`–`\x1f`
+are added to the compiled `\s` explicitly.
 
-**Gates passed** (the bar that `fancy-regex` failed):
+### Everything in the deterministic tier is native now
 
-| Check | Result |
+| Patterns | Engine |
 | --- | --- |
-| `tests/test_native_backend.py`: corpus, 500-example fragment fuzz, 3 000-example character-level scanner fuzz, wired-detector fuzz | identical, on Python 3.11, 3.12 and 3.14 |
-| Ad-hoc differential: 2 000 000 random and structured cases (~76 k card, ~98 k structured-phone, ~89 k bare-phone matches) | **0 divergences** |
-| `benchmarks/baseline.py` corpora, 10 MB × 4 densities: deterministic tier and full `Redactor.redact` output | identical; **123/123** cards on the "low" corpus where `fancy-regex` found 18 |
-| Adversarial 4 MB inputs (all digits, `1 1 1…`, `1-1-1…`, `+` + 30 digits, nested `(12)12.12…`, back-to-back 20-digit cards) | identical and linear: 7–102 MB/s native vs 0.7–10 MB/s Python |
+| 12 credential patterns, anthropic/openai keys | `regex` `find_iter` with SIMD literal prefilters |
+| ssn, ipv4, ipv6 | lookaround-free candidate + boundary check + validator |
+| url_credentials, api_key, aws_secret | `regex` captures (group 1); aws_secret's case-insensitive `(?![A-Za-z0-9/+])` re-checked in code, including `ſ` and the Kelvin sign that CPython's `IGNORECASE` folds into it |
+| credit_card, 2 × phone | hand-written linear scanners (`native/src/digits.rs`) |
+| 6 labeled-identifier rules | `regex` captures, `(?i)` cue alternations as literal prefilters |
 
-**Measured** (`benchmarks/native_backend.py`, 5 MB, best of 3, same container,
-before = `main`'s native core, after = this change):
+**The linear scanners** finish the job `fancy-regex` could not (Sub-step (a)). Each
+regex is transcribed into code that explores alternatives in CPython's priority
+order: greedy quantifiers longest first, `?` taking first, alternation left first.
+A match is bounded (card ≤ 37 characters, phone ≤ 36), so all work for one start
+position happens in a 48-character stack window, and the phone repetitions are
+memoised on (position, iteration). That makes the scan linear with no
+backtracking blow-up, and with no backtrack limit that could truncate. Each pattern
+resumes after its own last match, as `re.finditer` does, and Luhn / `phone_ok` run
+after matching, as in Python. Candidate starts are found 8 bytes at a time (a
+branch-free SWAR test for digits, `+`, `(` or a non-ASCII byte, in safe Rust), and
+the rest of a digit run is skipped once its first digit has been tried.
 
-| Corpus | `backend="python"` | native before | native after |
+The gates: the 1.1M-code-point class check; corpora of card/phone/label edge cases;
+Hypothesis generators built to hit the regexes' corners (Luhn-valid 12–21 digit
+numbers with per-digit separators, 3–6 digit groups with `+`/`(…)` prefixes and
+lookahead-breaking suffixes; 667 of 3 000 examples produce matches); a native vs
+Python streaming test over arbitrary chunk cuts; and a mutation check (two planted
+scanner bugs, both caught, one shrunk to `'0000000000000 4'`).
+
+### Measured
+
+Rust, Criterion, 4 MiB synthetic logs (`cargo bench --no-default-features`; this
+sandbox's numbers vary ±15 % between runs):
+
+| Benchmark | 0 % PII | 50 % PII |
+| --- | --- | --- |
+| `scan/whole` (all native patterns) | ~140 MiB/s | ~120 MiB/s |
+| `scan/regex_only` | ~300 MiB/s | ~220 MiB/s |
+| `scan/digits_only` (card + phone) | ~270 MiB/s | ~260 MiB/s |
+| `scan/windows` (64 KiB chunks + 8 KiB overlap) | ~90 MiB/s | ~85 MiB/s |
+| `scan/labeled` | ~145 MiB/s | ~120 MiB/s |
+| memory-bandwidth floor (count newlines) | ~2.1 GiB/s | ~2.1 GiB/s |
+
+The digit scanners went from 167 to ~270 MiB/s with the SWAR prefilter and run
+skipping. Within the regex half, SSN (520 MiB/s) and IPv6 (2 GiB/s) cost the most:
+they have no literal prefix, so the DFA reads every byte. The other 13 patterns run
+at 9–31 GiB/s. A dedicated SSN scanner is the next native win, but the native scan
+is now a small slice of the pipeline.
+
+Python, per tier (`detect` on 64 KiB windows, 4 MB, 1 % PII):
+
+| Tier | Python | Native | Speedup |
 | --- | --- | --- | --- |
-| none (0 % PII) | 5.0 MB/s | 10.2 MB/s (2.0×) | **55.1 MB/s (11.2×)** |
-| sparse (1 %) | 3.7 MB/s | 6.7 MB/s (1.8×) | **15.8 MB/s (4.3×)** |
-| dense (50 %) | 3.6 MB/s | 5.9 MB/s (1.7×) | **13.5 MB/s (3.9×)** |
+| deterministic | 4.4 MB/s | 114 MB/s | 26× |
+| labeled_identifier | 4.3 MB/s | 154 MB/s | 36× |
+| full `Redactor.detect` | 1.9 MB/s | 15.9 MB/s | 8.4× |
 
-That is the whole deterministic tier as users run it. The remaining Python cost
-is the five label-gated credential patterns (anthropic/openai keys, URL
-credentials, AWS secret, api_key). Whole-pipeline `Redactor.redact` goes from
-1.1–1.3× to **1.6×** over pure Python. The entropy and contextual tiers, both
-still Python, now bound it (see sub-step (b)).
+End to end, `benchmarks/baseline.py --backends python native` (real
+`redact_file`, 10 MB, one worker; detection counts identical in every row):
 
-### Python character classes in the native core (a latent divergence, fixed)
+| Density | Python | Native before | Native now | vs Python | vs native before |
+| --- | --- | --- | --- | --- | --- |
+| none | 1.62 MB/s | 1.92 MB/s | 13.59 MB/s | 8.4× | 7.1× |
+| low (1 %) | 1.52 MB/s | 1.75 MB/s | 11.70 MB/s | 7.7× | 6.7× |
+| medium (10 %) | 1.43 MB/s | 1.60 MB/s | 9.45 MB/s | 6.6× | 5.9× |
+| high (50 %) | 1.19 MB/s | 1.44 MB/s | 5.25 MB/s | 4.4× | 3.6× |
 
-The regex lane used the `regex` crate's own `\w`, `\b` and `\s`, which are not
-Python's. Python's `\w` is `str.isalnum() or "_"`: it includes No numerics such as
-`²`, and excludes combining marks and connector punctuation other than `_`. Rust
-follows UTS#18, which is the reverse on both counts. Python's `\s` (`str.isspace()`)
-includes `\x1c`–`\x1f`, and Unicode White_Space does not. The existing tests never
-put such a character next to a token, so the shipped core diverged in both
-directions. It **missed** `‿AKIAIOSFODNN7EXAMPLE`, `\u0301bob@x.io`, `\u0301::1`
-and a PEM body containing `\x1c`, and it over-detected `²bob@x.io` and
-`²2001:db8::1`.
+What is left is Python: the entropy and contextual tiers (~45–53 MB/s each), and
+building one `Detection` object per match, arbitration and replacement, which is
+why the gain shrinks as density rises. Peak RSS is 42.5 MB (pure Python: 22 MB).
 
-The fix keeps the regex crate and its SIMD prefilters, and changes what it sees.
-The regex lane scans a **shadow** of the text in which each non-ASCII character
-is replaced by a representative with the same UTF-8 length (so every offset is
-unchanged) and the same Python `\w`/`\d`/`\s` membership, chosen so that Rust
-agrees on it. `\x1c`–`\x1f` become `\x0b`. No pattern has a non-ASCII literal or
-a negated class, so no other match decision can change. Validators and boundary
-checks read the original text through Python-exact predicates. Pure-ASCII input
-(the common case) is scanned in place with no copy.
+### Hardening
 
-The predicates come from `native/src/unicode_tables.rs`, which
-`native/scripts/gen_unicode_tables.py` generates by asking Python's `re` about every
-codepoint (CPython 3.14, Unicode 16.0, the same version as the digit table).
-`test_char_classes_match_python_re` re-checks every codepoint against the installed
-interpreter. On an older Python it skips codepoints that its Unicode database
-leaves unassigned, because those characters were assigned later. Across Python
-3.10–3.14, every disagreement with the tables is of that kind; no
-assigned codepoint changes class.
+* **No panics in production code.** The crate denies `unwrap`, `expect` and
+  `panic!` outside tests (clippy); pattern compilation returns an `Error` that the
+  bindings raise as `RuntimeError` at import, where the Python side falls back.
+* **Bounded memory.** Every regex is built with explicit `size_limit` (16 MiB) and
+  `dfa_size_limit` (4 MiB) caps. Output buffers grow with `try_reserve`, so under
+  an `RLIMIT_AS` cap a scan that cannot allocate raises `MemoryError` (the CLI's
+  exit 3) instead of aborting; `test_output_buffer_exhaustion_raises_memory_error_not_abort`
+  checks this in a child process. **Limit:** allocations *inside* the `regex`
+  crate (its lazy-DFA cache grows during a scan) cannot be made fallible on stable
+  Rust, and with under ~2 MB of headroom one aborts the process. The memory budget
+  therefore reserves `NATIVE_PER_WORKER` (32 MiB, against ~20 MB measured) per
+  worker when the native core is active.
+* **No allocation in the scan loops** beyond the output buffer: card/phone windows
+  and memo tables live on the stack, byte-to-character offsets are converted with a
+  reusable sorted table (no per-call `HashMap`), and the bindings keep per-thread
+  scratch buffers.
+* **Pure-Rust build.** `cargo build --no-default-features` has no PyO3 in its
+  dependency graph (`regex`, `regex-syntax`, `aho-corasick`, `memchr` only); CI
+  asserts it. Rust callers reuse the output `Vec` across calls.
 
-### The crate as a Rust library
+### What the requested optimizations do and don't buy
 
-`native/` builds two ways. By default it is a plain Rust library (`rlib`, no
-PyO3 and no libpython), with `detect(text) -> Vec<Detection>` in byte offsets,
-`detect_char_offsets` in Python's character offsets, and `patterns()`. With
-`--features python`, which maturin enables through `[tool.maturin]`, it is the
-`safestream_native` extension, a thin binding in `src/python.rs`. `cargo test` runs
-the Rust unit tests without Python. The byte-identity gate against Python remains
-`tests/test_native_backend.py`.
+* **SIMD multi-pattern matching** already happens: `regex` builds memchr/Teddy
+  (SSE2/AVX2/NEON) literal prefilters per pattern. A single `RegexSet` or one
+  Aho-Corasick automaton over all patterns was measured before and loses the
+  per-pattern prefilters (~6 MB/s). SIMD in the digit scanners is SWAR in safe
+  Rust, not `unsafe` intrinsics.
+* **SIMD Luhn** would not help: Luhn runs once per candidate match on at most 19
+  digits, after matching, and never shows in the profile.
+* **Chunk-boundary splits** are handled by the streaming engine's overlap (8 KiB by
+  default, larger than any native match); the property test `chunk_cuts_preserve_every_match`
+  replays the engine's window logic over arbitrary chunk sizes. One inherent limit
+  carries over from the Python tier: card/phone matching is chained like
+  `re.finditer`, so an *unbroken* run of digits and spaces longer than the overlap
+  could be segmented differently mid-run. Real text breaks such runs.
+
+## 0.5 (cont.) — every default tier is native
+
+Earlier sections declined to port the entropy tier because its threshold is a
+floating-point comparison that cannot be guaranteed bit-identical. It is now ported
+**exactly**, by handling the float the same way the Unicode classes were handled:
+decide natively only where both engines must agree, and hand the rest to Python.
+
+* **Entropy and compound secrets** (`native/src/secrets.rs`). Candidate runs, the
+  letters-only / hex / length / class-diversity / distinct-ratio gates are integer
+  and ASCII logic, identical by construction (the distinct ratio is an
+  integer-over-integer IEEE division in both). Shannon entropy is computed from a
+  stack histogram. For these tokens (at most 66 distinct ASCII characters, at most
+  `MAX_SPAN` long) any faithful `log2` and either summation — CPython 3.12+ uses
+  Neumaier-compensated `sum()`, 3.10/3.11 a naive one — land within ~1e-13 of the
+  true value. So a token whose native entropy is more than **1e-9** from its
+  threshold gets the same verdict in Python, and one more than 1e-6 hundredths from a
+  rounding boundary gets the same `meta["entropy"]` string. Tokens inside either band
+  come back *undecided* and Python classifies and formats them itself. They are
+  rare but real: 16 distinct characters used equally is exactly 4.0 bits, the
+  base64 threshold (`test_entropy_on_the_threshold_is_decided_in_python`).
+* **Contextual tier** (`native/src/context.rs`). Bare-SSN detection is a digit-run
+  scan. `adjust` returns only the boost/suppress *decisions*; the confidence
+  arithmetic stays in Python, so the floats are Python's own. Trigger words are
+  matched against `str.lower()` of the window. All triggers are ASCII, and on every
+  supported CPython exactly two non-ASCII characters lower-case to ASCII (pinned by a
+  test): the Kelvin sign (to `k`, mapped natively) and `İ` (to `i` + combining dot,
+  sent to Python). Native `adjust` is used only for detections from built-in tiers,
+  whose `text` is exactly the span, since a plugin's detection might not be.
+* **Pickling.** A native-backed detector held the extension module and could not be
+  pickled, so `--workers N` with the native backend failed wherever the parallel
+  engine pickles (the `spawn`/`forkserver` start methods: macOS, Windows, Python 3.14
+  on Linux). Detectors now pickle their backend name and reload the module.
+
+The full-pipeline differential test (`test_full_pipeline_matches_python_fuzzed`)
+compares every detection's span, text, type, exact confidence, source and `meta`
+against `backend="python"` on the whole default pipeline. Two planted bugs (drop the
+Kelvin mapping; hex minimum 32 → 31) both fail it.
+
+Per stage, 4 MB on 64 KiB windows (native backend):
+
+| Density | Before (det + labeled native) | Now (all tiers native) |
+| --- | --- | --- |
+| none | 13.1 MB/s (contextual 43 %, entropy 31 %) | 44.2 MB/s |
+| medium | 12.0 MB/s | 28.2 MB/s |
+| high | 6.5 MB/s (adjust 18 %) | 12.6 MB/s |
+
+What remains at high density is per-detection Python work: building `Detection`
+objects, `resolve_overlaps`, and the policy's replacement.
+
+Criterion (4 MiB, `cargo bench --no-default-features`): `scan/entropy` ~530 MiB/s at
+0 % PII and ~400 MiB/s at 50 %; `scan/compound` ~960 / ~870 MiB/s (the Python tiers:
+~45-53 MB/s).
+
+### 200 MB, one and four workers
+
+`benchmarks/baseline.py --sizes 200 --densities low high --workers 1 4 --backends
+python native` (real `redact_file`: read, decode, every tier, arbitration, policy,
+write; 4 vCPU). Detection counts are identical in every Python/native pair (18 579
+at low density, 1 367 479 at high):
+
+| Density | Workers | Python | Native | Speedup |
+| --- | --- | --- | --- | --- |
+| low (1 %) | 1 | 1.31 MB/s | 34.5 MB/s | 26x |
+| low (1 %) | 4 | 5.17 MB/s | 120.7 MB/s | 23x |
+| high (50 %) | 1 | 1.12 MB/s | 10.4 MB/s | 9.3x |
+| high (50 %) | 4 | 2.14 MB/s | 36.5 MB/s | 17x |
+
+Memory stays flat over 200 MB: 42.8 MB RSS for the parent and 36-38 MB per worker
+with the native core (Python: 23-25 MB and 18-20 MB).
+
+### E.164 country codes
+
+`phone_ok` (Python and native alike) now requires an assigned E.164 country code
+for a `+` number: the 215 codes in libphonenumber's metadata, a prefix code. A
+separated 1–3 digit group (`+44 20 …`) must be a code exactly; an unbroken run
+(`+14155552671`) must begin with one; no code starts with 0. The native table is a
+1000-bit set built at compile time (one shift and mask per lookup). On RedactionBench
+it removes the only `+` false positive (a `+0000` timezone offset in a `date` line)
+and loses no gold phone; the synthetic generators, which drew invented codes like
+`+13` and `+25`, now draw real ones.
 
 ## Status
 
@@ -412,15 +547,8 @@ the Rust unit tests without Python. The byte-identity gate against Python remain
   evaluation above). Byte-identical in isolation but under-detected on multi-MB input
   (backtrack-limit truncation, a fail-open miss) and, once made correct, was
   break-even to slightly slower with a catastrophic-backtracking DoS surface.
-  Reverted. Superseded by sub-step (d).
-- Sub-step (d) — credit_card/phone as hand-rolled linear scanners: **done** (see
-  above). Byte-identical on every gate, including the multi-MB corpus that exposed
-  `fancy-regex`. The deterministic tier is 3.9–11.2× faster than pure Python (it
-  was 1.7–2.0×).
-- Python character classes: **fixed** (see above). The native regex lane's `\w`,
-  `\b` and `\s` now follow Python's `re`, and are proven per codepoint.
-- Rust library: **done**. `native/` is an `rlib` by default, and the Python
-  extension is the `python` feature.
+  Reverted; they stay in Python. A hand-rolled linear scanner is the only route left,
+  and is itself benchmark-gated (Python `re` already does ~11 MB/s for the trio).
 - Sub-step (b) — entropy-tier port **evaluated: declined** (see the evaluation
   above). It is already the fastest tier (3–8× the deterministic tier); end-to-end
   ceiling ≤1.27×, against a floating-point `log2` byte-identity hazard that cannot be
@@ -435,10 +563,10 @@ the Rust unit tests without Python. The byte-identity gate against Python remain
   runtime **spec-guard** (`_native_matches_spec`) falls back to pure Python with a
   warning if a version-skewed wheel is ever paired — so a mismatched wheel degrades
   safely instead of diverging.
-- Remaining Python lanes: the five label-gated credential patterns (anthropic/openai
-  keys, URL credentials, AWS secret, api_key) and the entropy tier (declined in
-  sub-step (b)). The label-gated patterns now dominate the deterministic tier's
-  remaining cost on text that contains their anchor words.
+- 0.5: the hand-rolled linear credit_card/phone scanner was built and ships, as do
+  the label-gated credentials and the labeled-identifier tier; a Unicode parity bug
+  (Rust vs CPython `\w`) was found and fixed exactly; see the 0.5 section above.
+  The entropy tier stays in Python (the float `log2` hazard above still holds).
 - Maintainer to-do before the first publish (one-time, external to the repo): create
   the `safestream-redactor-native` project on PyPI (and TestPyPI) and add a GitHub
   Trusted Publisher for workflow `native-wheels.yml` with environment `pypi-native`

@@ -61,6 +61,11 @@ jobs:
       - name: tests (portability, no coverage gate)
         if: runner.os != 'Linux'
         run: pytest -q
+      # the fanotify DLP daemon needs CAP_SYS_ADMIN: run its real-kernel tests as
+      # root (they skip in the unprivileged run above)
+      - name: fanotify daemon tests (root)
+        if: runner.os == 'Linux'
+        run: sudo -E "$(which python)" -m pytest -q tests/test_watch.py
       # smaller variant of the constant-memory proof to keep CI fast;
       # run the full 1 GB check locally with: pytest -m memory -o addopts=''
       - run: pytest -m memory -o addopts='' -q

@@ -41,8 +41,9 @@ python -m safestream_redactor --version
 | `onnx` | `pip install 'safestream-redactor[onnx]'` | On-device ONNX NER model (`--onnx MODEL.onnx --onnx-vocab VOCAB.json`); you supply the model |
 | `ui` | `pip install 'safestream-redactor[ui]'` | Local web playground (`safestream ui`, Streamlit) |
 
-An optional compiled (Rust) core gives the same output as the pure-Python pattern tier,
-faster; enable it with `Redactor(backend="native")`. Its wheel is not on PyPI yet, so build
+An optional compiled (Rust) core gives the same output as the pure-Python pattern and
+labeled-identifier tiers, about 4-8x faster end to end; enable it with
+`Redactor(backend="native")`. Its wheel is not on PyPI yet, so build
 it from source (needs a Rust toolchain):
 
 ```bash

@@ -30,6 +30,18 @@ from safestream_redactor.redactor import Redactor
 from safestream_redactor.report import RedactionStats
 
 
+def _add_backend_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--backend",
+        choices=("python", "native", "auto"),
+        default=None,
+        help="detection engine: python (default), native (the compiled Rust core; "
+        "warns and falls back to python when it is not installed), or auto (native "
+        "when installed). Same output either way; overrides a policy file's "
+        "[detection] backend",
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="safestream",
@@ -39,6 +51,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     common = argparse.ArgumentParser(add_help=False)
+    _add_backend_arg(common)
     # The input positional is added per-subcommand: `redact` takes exactly one,
     # `detect` takes one or more (so it works as a pre-commit hook over staged
     # files). Shared flags live here.
@@ -239,6 +252,7 @@ def _build_parser() -> argparse.ArgumentParser:
     serve.add_argument(
         "--enable-plugins", action="store_true", help="load third-party detector plugins"
     )
+    _add_backend_arg(serve)
     serve.add_argument(
         "--max-body",
         type=int,
@@ -254,6 +268,51 @@ def _build_parser() -> argparse.ArgumentParser:
     mcp.add_argument("--config", help="TOML policy file used for every tool call")
     mcp.add_argument(
         "--enable-plugins", action="store_true", help="load third-party detector plugins"
+    )
+    _add_backend_arg(mcp)
+
+    fan = sub.add_parser(
+        "fanotify",
+        help="Linux DLP daemon: watch directories and audit, redact, or block secrets",
+        description="Watch directory trees with fanotify (CAP_SYS_ADMIN) and audit, "
+        "redact in place, or block reads of files that contain detections. Without "
+        "CAP_SYS_ADMIN, audit and redact fall back to inotify; block refuses to run. "
+        "Logs are JSON lines with paths, types and counts, never the matched text. "
+        "See docs/FANOTIFY.md.",
+    )
+    fan.add_argument(
+        "--watch", action="append", required=True, metavar="DIR", help="directory tree to watch"
+    )
+    fan.add_argument(
+        "--mode",
+        choices=("audit", "redact", "block"),
+        default="audit",
+        help="audit: log findings after each write; redact: rewrite the file with "
+        "detections redacted; block: deny reads of files that contain detections",
+    )
+    fan.add_argument("--config", help="TOML policy file (detection settings)")
+    fan.add_argument(
+        "--enable-plugins", action="store_true", help="load third-party detector plugins"
+    )
+    _add_backend_arg(fan)
+    fan.add_argument(
+        "--max-scan-bytes",
+        type=int,
+        default=64 * 1024 * 1024,
+        metavar="BYTES",
+        help="files larger than this are not scanned (default: 64 MiB); in block mode "
+        "they are denied unless --fail-open",
+    )
+    fan.add_argument(
+        "--fail-open",
+        action="store_true",
+        help="block mode: allow (instead of deny) reads of files that cannot be scanned",
+    )
+    fan.add_argument(
+        "--inotify",
+        dest="force_inotify",
+        action="store_true",
+        help="use the unprivileged inotify backend even when fanotify is available",
     )
 
     ui = sub.add_parser(
@@ -423,13 +482,16 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         kwargs["allow_unsafe_overlap"] = True
     if args.enable_plugins:
         kwargs["load_plugins"] = True
+    if args.backend is not None:
+        kwargs["backend"] = args.backend
     return Redactor(policy=RedactionPolicy(**policy_kwargs), **kwargs)
 
 
 def _server_redactor(args: argparse.Namespace) -> Redactor:
     """The redactor behind ``serve``/``mcp-serve``: the policy file plus ``--enable-plugins``."""
+    backend = {"backend": args.backend} if args.backend is not None else {}
     if not args.config:
-        return Redactor(load_plugins=args.enable_plugins)
+        return Redactor(load_plugins=args.enable_plugins, **backend)
     from safestream_redactor.config import (
         load_config,
         policy_from_config,
@@ -440,6 +502,7 @@ def _server_redactor(args: argparse.Namespace) -> Redactor:
     kwargs = redactor_kwargs_from_config(data, base_dir=os.path.dirname(args.config))
     if args.enable_plugins:
         kwargs["load_plugins"] = True
+    kwargs.update(backend)
     return Redactor(policy=policy_from_config(data), **kwargs)
 
 
@@ -454,6 +517,8 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
     if not limit:
         return None
     from safestream_redactor.memory_budget import (
+        NATIVE_PER_WORKER,
+        PER_WORKER_FIXED,
         MemoryBudget,
         enforce_address_space_limit,
         estimate_interpreter_baseline,
@@ -461,7 +526,13 @@ def _plan_budget(args: argparse.Namespace, redactor: Redactor) -> int | None:
     )
 
     _has_model = getattr(args, "ner", False) or getattr(args, "onnx", None)
-    budget = MemoryBudget(limit, model_budget="512MB" if _has_model else 0)
+    # the native core (backend = "native" | "auto") carries its own fixed cost
+    _native = any(getattr(d, "_native", None) is not None for d in redactor._detectors)
+    budget = MemoryBudget(
+        limit,
+        model_budget="512MB" if _has_model else 0,
+        per_worker_fixed=PER_WORKER_FIXED + (NATIVE_PER_WORKER if _native else 0),
+    )
     requested = getattr(args, "workers", None)
     plan = budget.plan(
         redactor.chunk_size,
@@ -822,6 +893,44 @@ def _cmd_mcp_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_fanotify(args: argparse.Namespace) -> int:
+    import signal
+    import threading
+
+    from safestream_redactor import netguard
+    from safestream_redactor.watch import DlpWatcher, WatchUnavailable
+
+    try:
+        watcher = DlpWatcher(
+            _server_redactor(args),
+            args.watch,
+            mode=args.mode,
+            max_scan_bytes=args.max_scan_bytes,
+            fail_open=args.fail_open,
+            force_inotify=args.force_inotify,
+        )
+    except (ValueError, WatchUnavailable) as exc:
+        print(f"safestream: error: {exc}", file=sys.stderr)
+        return 2
+    netguard.install()  # the daemon reads sensitive files: keep it offline
+    stop = threading.Event()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: stop.set())
+    try:
+        watcher.run(
+            stop,
+            ready=lambda backend: print(
+                f"-- watching {', '.join(watcher.roots)} ({args.mode}, {backend})",
+                file=sys.stderr,
+                flush=True,
+            ),
+        )
+    except WatchUnavailable as exc:
+        print(f"safestream: error: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
 def _cmd_ui(args: argparse.Namespace) -> int:
     from safestream_redactor.ui.launcher import launch
 
@@ -902,6 +1011,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_serve(args)
     if args.command == "mcp-serve":
         return _cmd_mcp_serve(args)
+    if args.command == "fanotify":
+        return _cmd_fanotify(args)
     if args.command == "ui":
         return _cmd_ui(args)
     if getattr(args, "offline_guard", True):

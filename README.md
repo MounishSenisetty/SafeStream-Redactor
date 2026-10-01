@@ -43,6 +43,8 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Web playground** — `safestream ui` opens a local Streamlit page to try detection and redaction interactively: highlighted findings, side-by-side redaction, file upload; loopback-only with telemetry off ([Web Interface](#web-interface)).
 - **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
+- **Native core** — `--backend native` runs every default tier on a compiled Rust core with output byte-identical to the Python tier: 10–35 MB/s per core end to end (9–26× pure Python), 36–121 MB/s on 4 workers ([docs/NATIVE_CORE.md](docs/NATIVE_CORE.md)).
+- **File-system DLP (Linux)** — `safestream fanotify --watch DIR --mode audit|redact|block` logs, redacts in place, or denies reads of files that contain secrets; falls back to inotify without `CAP_SYS_ADMIN` ([docs/FANOTIFY.md](docs/FANOTIFY.md)).
 - **Extensible plugin system** — add custom detection tiers through Python entry points, loaded only when you opt in (`--enable-plugins`); each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).
 - **Configurable policies** — define detection and redaction behavior using TOML.
 
@@ -136,6 +138,12 @@ safestream redact big.log -o clean.log --memory-limit 64MB --workers 8
 
 # expose scan/redact as offline MCP tools for an AI agent (stdio JSON-RPC)
 safestream mcp-serve
+
+# the compiled Rust core (pip install 'safestream-redactor[native]'); same output
+safestream redact huge.log -o clean.log --backend native --workers 4
+
+# Linux DLP daemon: deny reads of any file under /srv/exports that holds a secret
+sudo safestream fanotify --watch /srv/exports --mode block
 
 # per-type counts to stderr, plus a JSON run report for compliance filing
 # (the report contains only type names, counts, and sizes — never matched text)

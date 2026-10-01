@@ -319,3 +319,30 @@ def test_flags_merge_over_config_into_one_construction(tmp_path, monkeypatch):
 def test_malformed_flags_exit_with_a_message(sample, argv, message):
     with pytest.raises(SystemExit, match=message):
         main(["redact", str(sample), "-o", "-", *argv])
+
+
+def test_backend_flag_selects_the_engine_and_overrides_the_config(tmp_path):
+    from safestream_redactor.cli import _build_parser, _build_redactor, _server_redactor
+
+    cfg = tmp_path / "p.toml"
+    cfg.write_text('[detection]\nbackend = "python"\n')
+    parser = _build_parser()
+    args = parser.parse_args(["detect", "-", "--config", str(cfg), "--backend", "auto"])
+    assert _build_redactor(args)._detectors[0]._backend == "auto"
+    args = parser.parse_args(["detect", "-", "--config", str(cfg)])
+    assert _build_redactor(args)._detectors[0]._backend == "python"
+    for command in (["serve"], ["mcp-serve"]):
+        args = parser.parse_args([*command, "--backend", "auto"])
+        assert _server_redactor(args)._detectors[0]._backend == "auto"
+        args = parser.parse_args([*command, "--config", str(cfg), "--backend", "auto"])
+        assert _server_redactor(args)._detectors[0]._backend == "auto"
+
+
+def test_backend_flag_output_is_identical(tmp_path, capsys):
+    src = tmp_path / "in.txt"
+    src.write_text("ssn 123-45-6789 key AKIAIOSFODNN7EXAMPLE call +1 (415) 555-2671\n")
+    outputs = set()
+    for backend in ("python", "auto"):
+        assert main(["redact", str(src), "-o", "-", "--backend", backend]) == 0
+        outputs.add(capsys.readouterr().out)
+    assert len(outputs) == 1

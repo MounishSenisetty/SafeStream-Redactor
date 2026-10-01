@@ -32,6 +32,7 @@ from __future__ import annotations
 import re
 
 from safestream_redactor.detectors.base import StreamingRequirements
+from safestream_redactor.detectors.deterministic import NativeBacked
 from safestream_redactor.entities import Detection, EntityType
 
 # The longest value span this tier emits, and the largest gap between a cue and
@@ -128,7 +129,7 @@ _COMPILED: tuple[tuple[re.Pattern[str], EntityType, float], ...] = tuple(
 )
 
 
-class LabeledIdentifierDetector:
+class LabeledIdentifierDetector(NativeBacked):
     """Promotes label-anchored identifiers (``Student ID: 202184673``) to redactions."""
 
     name = "labeled_identifier"
@@ -136,26 +137,44 @@ class LabeledIdentifierDetector:
         max_span=_MAX_VALUE, left_context=_CUE_WINDOW, right_context=8
     )
 
+    def __init__(self, backend: str = "python") -> None:
+        # Same engine selection as the deterministic tier: the optional native
+        # core runs these rules byte-identically (tests/test_native_backend.py)
+        # and falls back to Python when it is absent or version-skewed.
+        self._attach_native(backend)
+
     def detect(self, text: str) -> list[Detection]:
+        if self._native is not None:  # pragma: no cover - requires native extension
+            spans = self._native_call(self._native.scan_labeled_text, text)
+            if spans is not None:
+                return [
+                    det
+                    for start, vstart, vend, rule in spans
+                    if (det := self._detection(text, start, vstart, vend, rule)) is not None
+                ]
         found: list[Detection] = []
-        for pattern, etype, conf in _COMPILED:
+        for rule, (pattern, _etype, _conf) in enumerate(_COMPILED):
             for m in pattern.finditer(text):
                 # group(1) is the value; emit only that span (never the label).
-                start, end = m.start(1), m.end(1)
-                value = m.group(1)
-                # Guard: the cue plus its gap must fit in the declared window,
-                # so a cue cannot anchor a number far away in the text.
-                if start - m.start() > _CUE_WINDOW:
-                    continue
-                found.append(
-                    Detection(
-                        start=start,
-                        end=end,
-                        text=value,
-                        entity_type=etype,
-                        confidence=conf,
-                        source=self.name,
-                        meta={"cue": m.group(0)[: m.start(1) - m.start()].strip()[:32]},
-                    )
-                )
+                det = self._detection(text, m.start(), m.start(1), m.end(1), rule)
+                if det is not None:
+                    found.append(det)
         return found
+
+    def _detection(
+        self, text: str, start: int, vstart: int, vend: int, rule: int
+    ) -> Detection | None:
+        # Guard: the cue plus its gap must fit in the declared window, so a cue
+        # cannot anchor a number far away in the text.
+        if vstart - start > _CUE_WINDOW:
+            return None
+        _pattern, etype, conf = _COMPILED[rule]
+        return Detection(
+            start=vstart,
+            end=vend,
+            text=text[vstart:vend],
+            entity_type=etype,
+            confidence=conf,
+            source=self.name,
+            meta={"cue": text[start:vstart].strip()[:32]},
+        )

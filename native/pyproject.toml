@@ -22,6 +22,5 @@ Issues = "https://github.com/MounishSenisetty/SafeStream-Redactor/issues"
 
 [tool.maturin]
 module-name = "safestream_native"
-# abi3 wheel: forward-compatible across CPython >= 3.10. `python` enables the
-# PyO3 binding (src/python.rs); without it the crate is a plain Rust library.
+# abi3 wheel: forward-compatible across CPython >= 3.10
 features = ["python"]

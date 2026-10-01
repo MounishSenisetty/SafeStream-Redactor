@@ -78,6 +78,13 @@ STREAM_CHAR_FACTOR = 4
 # generous so the estimate errs toward fewer workers / earlier refusal.
 PER_WORKER_FIXED = 12 * 1024 * 1024
 
+# Extra fixed cost per worker when the native (Rust) core is loaded: its compiled
+# automata plus the regex crate's lazy-DFA caches, which grow during a scan and
+# cannot fail gracefully (an allocation the regex crate cannot make aborts the
+# process). Measured at ~20 MB RSS per process on the 10 MB baseline corpora
+# (docs/NATIVE_CORE.md); reserved with margin so a budgeted run keeps headroom.
+NATIVE_PER_WORKER = 32 * 1024 * 1024
+
 # Default share of the budget held back as an unallocated safety reserve, so the
 # estimate landing exactly on the limit still leaves slack for transient spikes
 # (a single very long line, GC timing) we do not model per-character.

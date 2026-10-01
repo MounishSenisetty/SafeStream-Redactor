@@ -26,6 +26,8 @@ import json
 import random
 from pathlib import Path
 
+from safestream_redactor.detectors.deterministic import E164_COUNTRY_CODES
+
 FIRST = ["james", "maria", "wei", "aisha", "carlos", "yuki", "priya", "liam", "fatima", "igor"]
 LAST = ["smith", "garcia", "chen", "okafor", "patel", "kowalski", "tanaka", "brown", "ali", "roy"]
 DOMAINS = ["corpmail.com", "workplace.io", "bizmail.net", "companyhq.org"]
@@ -62,9 +64,15 @@ def gen_email(rng):
     return f"{rng.choice(FIRST)}.{rng.choice(LAST)}{rng.randint(1, 99)}@{rng.choice(DOMAINS)}"
 
 
+# Real country calling codes of the 1-2 digit form these lines use. The generator
+# once drew any number from 1-60, and +13 or +25 are not country codes; since
+# phone_ok checks E.164 country codes, such "gold" numbers are not phone numbers.
+_CC = sorted(c for c in E164_COUNTRY_CODES if c <= 60)
+
+
 def gen_phone(rng):
     return (
-        f"+{rng.randint(1, 60)} {rng.randint(200, 999)} "
+        f"+{rng.choice(_CC)} {rng.randint(200, 999)} "
         f"{rng.randint(100, 999)} {rng.randint(1000, 9999)}"
     )
 
