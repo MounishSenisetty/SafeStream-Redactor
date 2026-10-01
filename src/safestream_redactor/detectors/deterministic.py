@@ -10,6 +10,7 @@ from __future__ import annotations
 import ipaddress
 import re
 import warnings
+from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
@@ -422,9 +423,17 @@ def _native_matches_spec(mod: Any) -> bool:
     expected = {(p.entity_type.value, p.regex.pattern) for p in _PATTERNS}
     expected |= {(p.entity_type.value, p.candidate.pattern) for p in LF_PATTERNS}
     try:
-        return all((name, src) in expected for name, _conf, src in mod.patterns())
+        native = [(name, src) for name, _conf, src in mod.patterns()]
     except Exception:
         return False
+    if not all(pair in expected for pair in native):
+        return False
+    # A covered type is routed to native wholesale, so native must implement
+    # every Python pattern of that type (phone has two); otherwise the hybrid
+    # would silently drop the missing one.
+    python_counts = Counter(p.entity_type.value for p in _PATTERNS)
+    native_counts = Counter(name for name, _src in native)
+    return all(python_counts[name] == n for name, n in native_counts.items())
 
 
 class DeterministicDetector:
@@ -491,6 +500,12 @@ class DeterministicDetector:
         (converted in the core), so ``text[s:e]`` is exact even on non-ASCII input;
         all native-covered patterns are group-0, so the whole span is the detection.
         """
+        try:
+            hits = self._native.detect(text)
+        except UnicodeEncodeError:
+            # A lone surrogate (e.g. decoded from a JSON "\udcff" escape) has no
+            # UTF-8 form, so the text cannot cross into Rust; run the oracle.
+            return self._detect_python(text, self._patterns)
         names = self._native_names
         found = [
             Detection(
@@ -501,7 +516,7 @@ class DeterministicDetector:
                 confidence=conf,
                 source=self.name,
             )
-            for s, e, ty, conf in self._native.detect(text)
+            for s, e, ty, conf in hits
             if ty in names
         ]
         found.extend(self._detect_python(text, self._py_patterns))

@@ -10,17 +10,27 @@ description = "Native (Rust) detection core for SafeStream-Redactor — optional
 license = "MIT"
 repository = "https://github.com/MounishSenisetty/SafeStream-Redactor"
 homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
-# not published to crates.io; distributed only as a PyPI wheel via maturin
+# not published to crates.io; the Python extension ships as a PyPI wheel via
+# maturin, and Rust consumers depend on this crate by path or git
 publish = false
 
 [lib]
 name = "safestream_native"
-crate-type = ["cdylib"]
+# rlib: the pure-Rust library (no Python) that Rust consumers link statically.
+# cdylib: the Python extension module maturin builds with `--features python`.
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# The default build is the plain Rust library: no PyO3, no libpython.
+default = []
+# The `safestream_native` Python extension (src/python.rs). maturin enables this
+# via [tool.maturin] in pyproject.toml.
+python = ["dep:pyo3"]
 
 [dependencies]
 # abi3-py310: one wheel per platform works for CPython >= 3.10 (keeps the wheel
 # matrix small). extension-module: link against the host interpreter at import.
-pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"] }
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"], optional = true }
 regex = "1"
 
 [profile.release]

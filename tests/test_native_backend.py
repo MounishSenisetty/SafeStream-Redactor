@@ -11,6 +11,10 @@ and it does not ship.
 
 from __future__ import annotations
 
+import re
+import unicodedata
+from collections import Counter
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -50,8 +54,6 @@ def test_unicode_digit_value_matches_python_int():
     EVERY Nd codepoint (and None for non-digits), so IPv4 is byte-identical for
     the installed toolchains rather than merely for a few sampled scripts.
     """
-    import unicodedata
-
     mismatches = []
     for cp in range(0x110000):
         c = chr(cp)
@@ -63,20 +65,70 @@ def test_unicode_digit_value_matches_python_int():
     assert sn.digit_value_of("²") is None  # superscript two: Numeric, not Nd
 
 
-def test_pattern_sources_match_python():
-    """The native pattern sources must be byte-for-byte the validated Python spec.
+_CLASSES = (re.compile(r"\w"), re.compile(r"\d"), re.compile(r"\s"))
 
-    Simple credential patterns come from ``deterministic.py``; validated PII
-    patterns (e.g. ssn) use the lookaround-free candidate from
-    ``_lookaround_free.py`` — the DFA-ready form the native core ports.
+
+def test_char_classes_match_python_re():
+    """Native ``\\w``/``\\d``/``\\s`` must be Python ``re``'s, for EVERY codepoint.
+
+    Rust's own classes differ (``²`` is Python ``\\w`` but not Rust ``\\w``;
+    combining marks are the reverse; Python ``\\s`` includes ``\\x1c``), and the
+    regex lane's ``\\b`` follows ``\\w``, so the native core carries tables
+    generated from Python's ``re``. Codepoints this interpreter's Unicode database
+    leaves unassigned (``Cn``) are skipped when it is older than the tables: those
+    characters were assigned later, and the tables follow the newer standard.
+    """
+    skip_unassigned = unicodedata.unidata_version != sn.UNICODE_VERSION
+    mismatches = []
+    for cp in range(0x110000):
+        c = chr(cp)
+        if 0xD800 <= cp <= 0xDFFF:
+            continue  # lone surrogates cannot cross into Rust (see the surrogate test)
+        if skip_unassigned and unicodedata.category(c) == "Cn":
+            continue
+        expected = tuple(cls.fullmatch(c) is not None for cls in _CLASSES)
+        if sn.char_classes_of(c) != expected:
+            mismatches.append(hex(cp))
+    assert not mismatches, f"native classes diverge from Python re at: {mismatches[:8]}"
+
+
+def _python_sources() -> Counter:
+    """(type, source) for every Python pattern, as the native core must port it.
+
+    Simple credential patterns and the credit_card/phone scanners use the
+    ``deterministic.py`` regex itself; validated PII patterns (e.g. ssn) use the
+    lookaround-free candidate from ``_lookaround_free.py`` — the DFA-ready form.
     """
     from safestream_redactor.detectors._lookaround_free import LF_PATTERNS
     from safestream_redactor.detectors.deterministic import _PATTERNS
 
-    expected = {p.entity_type.value: p.regex.pattern for p in _PATTERNS}
-    expected.update({p.entity_type.value: p.candidate.pattern for p in LF_PATTERNS})
-    for name, _conf, src in sn.patterns():
-        assert src == expected[name], f"native pattern {name} drifted from the Python spec"
+    candidate = {p.entity_type.value: p.candidate.pattern for p in LF_PATTERNS}
+    return Counter(
+        (p.entity_type.value, candidate.get(p.entity_type.value, p.regex.pattern))
+        for p in _PATTERNS
+    )
+
+
+def test_pattern_sources_match_python():
+    """The native pattern sources must be byte-for-byte the validated Python spec.
+
+    Compared as a multiset per covered type: a type the native core covers is
+    routed to it wholesale, so it must implement EVERY Python pattern of that type
+    (phone has two), each exactly once.
+    """
+    python = _python_sources()
+    native = Counter((name, src) for name, _conf, src in sn.patterns())
+    for name in {name for name, _src in native}:
+        want = {k: v for k, v in python.items() if k[0] == name}
+        got = {k: v for k, v in native.items() if k[0] == name}
+        assert got == want, f"native pattern(s) for {name} drifted from the Python spec"
+
+
+def test_scanner_patterns_are_native():
+    """credit_card and both phone patterns run in the native core (no Python lane)."""
+    covered = Counter(name for name, _conf, _src in sn.patterns())
+    assert covered["credit_card"] == 1
+    assert covered["phone"] == 2
 
 
 CORPUS = [
@@ -109,6 +161,23 @@ CORPUS = [
     "文字a@b.io文字 key AKIAIOSFODNN7EXAMPLE",
     "naïve bob@corp.io é ghp_abcdefghijklmnopqrstuvwxyz0123456789",
     "文" * 50 + " eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6y",
+    # Python \\w / \\s differ from Rust's: No numerics (²), combining marks,
+    # connector punctuation (‿), and \\x1c-\\x1f as whitespace
+    "²bob@x.io bob@x.io² x\u0301bob@x.io \u0301bob@x.io",
+    "²2001:db8::1 \u0301::1 ‿AKIAIOSFODNN7EXAMPLE ²AKIAIOSFODNN7EXAMPLE",
+    "-----BEGIN RSA PRIVATE KEY-----\x1cMIIEowIBAAKCAQEA\x1f-----END RSA PRIVATE KEY-----",
+    # credit_card: separators, backtracking to a shorter match, boundaries, Luhn
+    "card 4111 1111 1111 1111 and 4111-1111-1111-1111 and 4111111111111111",
+    "4111 1111 1111 1111 1111 20 digits backtracks to 16",
+    "-4111111111111111 4111111111111111- 4111111111111112 41111111111111111111111",
+    "12 4111111111111111 x5500 0000 0000 0004y 6011-0000-0000-0004",
+    "٤١١١ ١١١١ ١١١١ ١١١١ and 4111 1111\u00a01111 1111",
+    # phone: structured (+cc, (area)) and bare, dates and SSN shapes rejected
+    "call +1 (415) 555-2671 or (415) 555 2671 or +44 20 7946 0958 or +12345678",
+    "bare 555 123 4567 and 555.123.4567 and 555-123-4567 but 2024-01-15 and 123-45-6789",
+    "a+1 555 1234 x(415) 555-2671 +1-555-123-4567. 555 123 4567-8 555 123 4567.1",
+    "10.20.30.40 ٥٥٥ ١٢٣ ٤٥٦٧ +٤٤ ٢٠ ٧٩٤٦ ٠٩٥٨ (٤١٥) ٥٥٥-٢٦٧١",
+    "+1 (415) 555-2671²  +1 (415) 555-2671\u0301 ²555 123 4567 ‿555 123 4567",
 ]
 
 
@@ -152,6 +221,16 @@ _FRAGMENTS = [
     "AKIA",
     "eyJ",
     "SG.",
+    "4111 1111 1111 1111",
+    "+1 (415) 555-2671",
+    "555 123 4567",
+    "+",
+    "(",
+    ")",
+    "²",
+    "\u0301",
+    "‿",
+    "\x1c",
 ]
 
 fuzzed = st.lists(st.sampled_from(_FRAGMENTS), min_size=0, max_size=30).map("".join)
@@ -163,15 +242,39 @@ def test_equivalence_fuzzed(text):
     _assert_equiv(text)
 
 
+# Character-level fuzz for the hand-rolled scanners (credit_card, phone): digits
+# dominate, so random strings are dense with candidate runs, separators and the
+# lookaround characters, which is where a backtracking reimplementation would
+# diverge. Unicode digits, Python-only word characters (²) and Rust-only ones
+# (combining mark, ‿) exercise the boundary classes.
+_SCANNER_ALPHABET = [
+    *"0123456789" * 4,
+    *"  --..+()_aZ",
+    "٤",
+    "١",
+    "²",
+    "\u0301",
+    "‿",
+    "\u00a0",
+    "\x1c",
+]
+scanner_fuzzed = st.text(alphabet=_SCANNER_ALPHABET, max_size=60)
+
+
+@settings(max_examples=3000, derandomize=True, deadline=None)
+@given(text=scanner_fuzzed)
+def test_scanner_equivalence_fuzzed(text):
+    _assert_equiv(text)
+
+
 # ---------------------------------------------------------------------------
 # Wired detector: DeterministicDetector(backend="native") must be byte-identical
 # to backend="python". This is the stronger, end-user-facing gate: it runs the
-# FULL pattern set (native-covered types through the Rust core, the remaining 8
-# -- credit_card, two phone patterns, the label-gated credential patterns --
-# through Python) and asserts the combined output matches pure Python exactly,
-# including source
-# and confidence. The detect-loop tests above cover only the native-covered
-# subset in isolation.
+# FULL pattern set (native-covered types through the Rust core, the remaining 5
+# label-gated credential patterns -- anthropic/openai keys, URL credentials, AWS
+# secret, api_key -- through Python) and asserts the combined output matches pure
+# Python exactly, including source and confidence. The detect-loop tests above
+# cover only the native-covered subset in isolation.
 # ---------------------------------------------------------------------------
 
 
@@ -226,12 +329,12 @@ def test_backend_equivalence_on_corpus():
     _assert_backend_equiv("\n".join(CORPUS))
 
 
-# credit_card / phone exercise the Python-only lane alongside the native lane
+# the label-gated credential patterns exercise the Python lane alongside native
 _WIRED_FRAGMENTS = [
     *_FRAGMENTS,
-    "4111 1111 1111 1111",  # Luhn-valid card (Python lane)
-    "+1 (415) 555-2671",  # structured phone (Python lane)
-    "555 123 4567",  # bare phone
+    "4111 1111 1111 1111",  # Luhn-valid card (native scanner)
+    "+1 (415) 555-2671",  # structured phone (native scanner)
+    "555 123 4567",  # bare phone (native scanner)
     "aws_secret_access_key = " + "A" * 40,  # label-gated AWS secret (Python lane)
     "sk-ant-" + "x" * 30,  # anthropic key (Python lane)
     "password: hunter2hunter2",  # api_key label (Python lane)
@@ -244,6 +347,18 @@ wired_fuzzed = st.lists(st.sampled_from(_WIRED_FRAGMENTS), min_size=0, max_size=
 @given(text=wired_fuzzed)
 def test_backend_equivalence_fuzzed(text):
     _assert_backend_equiv(text)
+
+
+def test_lone_surrogate_falls_back_to_python():
+    """Text with a lone surrogate has no UTF-8 form and cannot reach the Rust core.
+
+    It arrives legitimately (a JSON "\\udcff" escape over the REST API or MCP), so
+    the hybrid detector must scan it with the pure-Python oracle instead of
+    raising UnicodeEncodeError.
+    """
+    text = "bob@x.io \udcff 4111 1111 1111 1111 +1 (415) 555-2671"
+    _assert_backend_equiv(text)
+    assert DeterministicDetector(backend="native").detect(text)
 
 
 def test_auto_backend_uses_native_silently(recwarn):
