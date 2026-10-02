@@ -45,6 +45,8 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
 - **Native core** — `--backend native` runs every default tier on a compiled Rust core with output byte-identical to the Python tier: 10–35 MB/s per core end to end (9–26× pure Python), 36–121 MB/s on 4 workers ([docs/NATIVE_CORE.md](docs/NATIVE_CORE.md)).
 - **File-system DLP (Linux)** — `safestream fanotify --watch DIR --mode audit|redact|block` logs, redacts in place, or denies reads of files that contain secrets; falls back to inotify without `CAP_SYS_ADMIN` ([docs/FANOTIFY.md](docs/FANOTIFY.md)).
+- **More operators** — beyond replace/mask/pseudonymize: salted `hash`, reversible `encrypt` (AES-256-GCM, restored with `safestream deanonymize`) and `fictionalize` (synthetic values from reserved ranges). All are pure functions of the span, so streaming and parallel output stay byte-identical ([docs/PRESIDIO_PARITY.md](docs/PRESIDIO_PARITY.md)).
+- **Regional recognizers (opt-in)** — `--regional` adds checksum-validated IBAN, Bitcoin addresses, UK NHS numbers and India Aadhaar, plus UK NINO, India PAN and Ethereum addresses by shape.
 - **Extensible plugin system** — add custom detection tiers through Python entry points, loaded only when you opt in (`--enable-plugins`); each declares its streaming boundary requirements ([docs/DETECTORS.md](docs/DETECTORS.md)).
 - **Configurable policies** — define detection and redaction behavior using TOML.
 
@@ -109,6 +111,14 @@ safestream redact input.txt -o out.txt --types email,ssn --replace "***" --custo
 
 # mask all but the last 4 characters
 safestream redact cards.csv -o masked.csv --mode mask --keep-last 4
+
+# reversible encryption, then restore it (the key stays out of the process list)
+export SAFESTREAM_ENCRYPT_KEY="$(head -c 32 /dev/urandom | base64)"
+safestream redact input.txt -o enc.txt --mode encrypt
+safestream deanonymize enc.txt -o restored.txt
+
+# synthetic stand-ins (example.com, TEST-NET IPs, 555-01xx phones) and regional IDs
+safestream redact input.txt -o demo.txt --mode fictionalize --hmac-key "$SECRET" --regional
 
 # deterministic pseudonyms (same input -> same token), streaming from stdin
 tail -f app.log | safestream redact - -o - --mode pseudonymize --hmac-key "$SECRET"

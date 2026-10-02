@@ -1,0 +1,42 @@
+# Hardened, offline redaction runner.
+#
+#   mkdir -p data && cp secrets.log data/in.txt
+#   UID_GID="$(id -u):$(id -g)" docker compose run --rm redact
+#   UID_GID="$(id -u):$(id -g)" docker compose run --rm detect
+#
+# What the container is denied, and why it is safe to hand real data:
+#   - no network at all (network_mode: none): redaction never needs one
+#   - read-only root filesystem, no capabilities, no privilege escalation
+#   - a hard 64 MiB memory cap: the engine's working set is constant (see
+#     docs/FORMAL_MODEL.md, Theorem 3), so a file of any size fits in it; if the
+#     claim were ever false the container would be OOM-killed rather than swell
+#
+# The image is the core-only build (no third-party runtime dependencies), so the
+# optional `encrypt` operator, which needs the `cryptography` extra, is not in it:
+# run `pip install 'safestream-redactor[crypto]'` on the host for that mode.
+
+x-hardened: &hardened
+  build: .
+  image: safestream-redactor:local
+  user: "${UID_GID:-10001:10001}"   # read and write the bind mount as yourself
+  network_mode: none
+  read_only: true
+  tmpfs:
+    - /tmp:size=16m
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+  mem_limit: 64m
+  pids_limit: 64
+  volumes:
+    - ./data:/data
+
+services:
+  redact:
+    <<: *hardened
+    command: ["redact", "/data/in.txt", "-o", "/data/out.txt", "--stats"]
+
+  detect:
+    <<: *hardened
+    # file:line:col and type only, never the matched text; non-zero exit on a finding
+    command: ["detect", "/data/in.txt", "--fail-on-detect"]

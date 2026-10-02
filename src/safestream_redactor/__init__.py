@@ -5,6 +5,7 @@ import logging
 from safestream_redactor.calibration import Calibrator
 from safestream_redactor.engine import WindowConfigurationError
 from safestream_redactor.entities import Detection, EntityType
+from safestream_redactor.operators import Deanonymizer
 from safestream_redactor.policy import RedactionMode, RedactionPolicy
 from safestream_redactor.redactor import Redactor
 from safestream_redactor.report import RedactionStats
@@ -17,6 +18,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
     "Calibrator",
+    "Deanonymizer",
     "Detection",
     "EntityType",
     "RedactionMode",

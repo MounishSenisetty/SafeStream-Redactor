@@ -6,6 +6,20 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Operators:** `hash`, `encrypt` and `fictionalize` redaction modes, and
+  `safestream deanonymize` (streaming, constant memory) to reverse `encrypt`. Encrypt is
+  AES-256-GCM with a synthetic (HMAC-derived) nonce so output stays a pure function of the
+  span and the streaming/parallel equivalence guarantee holds. New optional extra `crypto`
+  (`cryptography`). CLI: `--encrypt-key` / `SAFESTREAM_ENCRYPT_KEY`, `--hash-salt`.
+- **Regional recognizers (opt-in, `--regional` / `use_regional=True`):** IBAN (mod-97 and
+  country length), Bitcoin (base58check, bech32/bech32m), Ethereum (shape), UK NHS (mod-11),
+  India Aadhaar (Verhoeff), UK NINO and India PAN (structure). New entity types `iban`,
+  `crypto_address`, `uk_nino`, `nhs_number`, `in_aadhaar`, `in_pan`.
+- `docker-compose.yml`: offline, read-only, memory-capped runner.
+- `docs/PRESIDIO_PARITY.md`: requirement-by-requirement audit with evidence and declined items.
+
 ### Security / correctness
 
 - **Window violations now fail closed at run time too.** A detector (plugin or custom

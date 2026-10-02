@@ -45,6 +45,13 @@ class EntityType(str, Enum):
     # generic sensitive identifier caught only via an adjacent label cue
     # (student/employee/member/patient/account/MRN/licence/passport/... numbers)
     ID_NUMBER = "id_number"
+    # regional / checksum-validated identifiers (opt-in tier: detectors/regional.py)
+    IBAN = "iban"
+    CRYPTO_ADDRESS = "crypto_address"
+    UK_NINO = "uk_nino"
+    NHS_NUMBER = "nhs_number"
+    IN_AADHAAR = "in_aadhaar"
+    IN_PAN = "in_pan"
     # user-supplied words / regexes
     CUSTOM = "custom"
 

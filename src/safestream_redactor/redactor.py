@@ -27,6 +27,18 @@ from safestream_redactor.report import RedactionStats
 
 logger = logging.getLogger(__name__)
 
+# entity types produced only by the opt-in regional tier
+REGIONAL_TYPES = frozenset(
+    {
+        EntityType.IBAN,
+        EntityType.CRYPTO_ADDRESS,
+        EntityType.UK_NINO,
+        EntityType.NHS_NUMBER,
+        EntityType.IN_AADHAAR,
+        EntityType.IN_PAN,
+    }
+)
+
 
 def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence: object) -> None:
     """Reject argument values that would silently corrupt or drop output.
@@ -74,6 +86,11 @@ class Redactor:
     use_entropy:
         Enable the statistical tier that flags high-entropy secrets with no
         published format (on by default).
+    use_regional:
+        Enable the regional tier (IBAN, crypto addresses, UK NINO/NHS, India
+        Aadhaar/PAN; ``detectors/regional.py``). Off by default because it changes
+        what existing deployments redact; naming one of its types in ``types``
+        also enables it.
     calibrator:
         Optional trained :class:`~safestream_redactor.calibration.Calibrator`.
         When given, each detection's hand-set confidence is replaced by the
@@ -122,6 +139,7 @@ class Redactor:
         onnx_labels: str | dict[int | str, str] | None = None,
         onnx_min_score: float = 0.5,
         use_entropy: bool = True,
+        use_regional: bool = False,
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
         load_plugins: bool = False,
@@ -199,6 +217,10 @@ class Redactor:
 
             self._detectors.append(EntropyDetector(backend=backend))
             self._detectors.append(CompoundSecretDetector(backend=backend))
+        from safestream_redactor.detectors.regional import RegionalDetector
+
+        if use_regional or (resolved_types is not None and REGIONAL_TYPES & set(resolved_types)):
+            self._detectors.append(RegionalDetector())
         self._detectors.extend(extra_detectors)
         # third-party detectors registered via entry points (opt-in)
         if load_plugins:

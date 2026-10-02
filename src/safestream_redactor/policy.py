@@ -8,6 +8,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from safestream_redactor.entities import Detection, EntityType
+from safestream_redactor.operators import (
+    HASH_ALGORITHMS,
+    MIN_KEY_BYTES,
+    encrypt_token,
+    fictionalize,
+    hash_token,
+)
 
 
 class RedactionMode(str, Enum):
@@ -21,6 +28,15 @@ class RedactionMode(str, Enum):
     # secret, high-entropy key and treat pseudonymized output as reversible by
     # anyone with that key, not as anonymized. See SECURITY.md.
     PSEUDONYMIZE = "pseudonymize"
+    # Salted digest ("<TYPE:H:hex>"). Unkeyed unless a secret ``hash_salt`` is set;
+    # see operators.py for why that matters.
+    HASH = "hash"
+    # Reversible, deterministic AES-256-GCM tokens ("<TYPE:E:...>") that a
+    # Deanonymizer holding ``encrypt_key`` turns back into the original text.
+    ENCRYPT = "encrypt"
+    # Deterministic type-shaped synthetic values from reserved/never-issued
+    # ranges (example.com, TEST-NET, 555-01xx). Needs ``hmac_key``.
+    FICTIONALIZE = "fictionalize"
 
 
 @dataclass(slots=True)
@@ -45,12 +61,30 @@ class RedactionPolicy:
     # values; the old 10-hex (40-bit) default collided around ~1 million,
     # realistic for a large log with many distinct secrets. Minimum 8.
     pseudonym_length: int = 16
+    # HASH mode: digest algorithm and an optional secret salt.
+    hash_algorithm: str = "sha256"
+    hash_salt: bytes | str | None = None
+    # ENCRYPT mode: secret key (>= 16 bytes; text keys are UTF-8 encoded).
+    encrypt_key: bytes | str | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.mode, str):
             self.mode = RedactionMode(self.mode)
         if isinstance(self.hmac_key, str):
             self.hmac_key = self.hmac_key.encode("utf-8")
+        if isinstance(self.hash_salt, str):
+            self.hash_salt = self.hash_salt.encode("utf-8")
+        if isinstance(self.encrypt_key, str):
+            self.encrypt_key = self.encrypt_key.encode("utf-8")
+        if self.hash_algorithm not in HASH_ALGORITHMS:
+            raise ValueError(f"hash_algorithm must be one of {', '.join(HASH_ALGORITHMS)}")
+        if self.mode is RedactionMode.ENCRYPT:
+            if not self.encrypt_key:
+                raise ValueError("encrypt mode requires an encrypt_key")
+            if len(self.encrypt_key) < MIN_KEY_BYTES:
+                raise ValueError(f"encrypt_key must be at least {MIN_KEY_BYTES} bytes")
+        if self.mode is RedactionMode.FICTIONALIZE and not self.hmac_key:
+            raise ValueError("fictionalize mode requires an hmac_key")
         if not self.mask_char:
             # an empty mask char would delete the masked span instead of hiding
             # it, silently changing the output length and shape
@@ -78,6 +112,16 @@ class RedactionPolicy:
             digest = hmac.new(self.hmac_key, detection.text.encode(), hashlib.sha256)
             token = digest.hexdigest()[: self.pseudonym_length]
             return f"<{detection.entity_type.value.upper()}_{token}>"
+        kind, text = detection.entity_type.value, detection.text
+        if self.mode is RedactionMode.HASH:
+            salt = self.hash_salt if isinstance(self.hash_salt, bytes) else b""
+            return hash_token(self.hash_algorithm, salt, kind, text, self.pseudonym_length)
+        if self.mode is RedactionMode.ENCRYPT:
+            assert isinstance(self.encrypt_key, bytes)
+            return encrypt_token(self.encrypt_key, kind, text)
+        if self.mode is RedactionMode.FICTIONALIZE:
+            assert isinstance(self.hmac_key, bytes)
+            return fictionalize(self.hmac_key, kind, text)
         return self.replacement
 
     def apply(self, text: str, detections: list[Detection]) -> str:
