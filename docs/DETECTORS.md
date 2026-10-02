@@ -101,8 +101,14 @@ logs, where few lines carry names, and the bottleneck for name-dense prose.
 Measured 2026-10-03 (i7-12650H, on battery): T0 alone 5.9 / 31.8 / 59.2 / 58.0 MB/s
 at 1 / 4 / 8 / 16 workers; T0+ONNX 0.04 / 0.11 / 0.11 / 0.11 MB/s. Person recall on
 the synthetic corpus 0.9997; on RedactionBench, mandatory char recall rises from
-0.739 to 0.815 and char F1 from 0.549 to 0.601 (internal char-level metric, not the
+0.759 to 0.823 and char F1 from 0.565 to 0.607 (internal char-level metric, not the
 official R-Score). Details in the README's Evaluation section.
+
+**ALLCAPS forms.** Form labels ending in `:`, `–`, `—` or `►` (`agent`, `doctor`,
+`officer`, `location`, `surname`, plus the person cues above) open a window, and
+ALLCAPS words there (label included) are title-cased in the model's copy:
+`AGENT: TONY PRIZE` is read as `Agent: Tony Prize`. ALLCAPS without a label never
+opens a window.
 
 **Recall-first threshold.** `--onnx-min-score` defaults to 0.35. A span that
 clears it is emitted at confidence `max(score, 0.5)` (the raw score is in
@@ -133,7 +139,7 @@ property of the type, never of the matched text.
 | --- | --- |
 | critical | `aws_key`, `aws_secret`, `private_key`, `github_token`, `slack_token`, `stripe_key`, `openai_key`, `anthropic_key`, `sendgrid_key`, `twilio_key`, `npm_token`, `google_api_key` |
 | high | `slack_webhook`, `jwt`, `api_key`, `url_credentials`, `secret`, `ssn`, `credit_card` |
-| medium | `email`, `phone`, `person`, `custom` |
+| medium | `email`, `phone`, `person`, `address`, `custom` |
 | low | `ipv4`, `ipv6`, `org`, `loc` |
 
 ## Streaming requirements

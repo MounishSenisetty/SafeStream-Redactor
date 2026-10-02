@@ -14,22 +14,22 @@
 
 | Subset | Precision | Recall | F1 | Accuracy | char TP | char FP | char FN |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| all gold | 0.682 | 0.537 | 0.601 | 0.897 | 205764 | 96138 | 177698 |
-| mandatory (read recall) | — | **0.815** | — | — | 134656 | — | 30583 |
-| contextual (read recall) | — | 0.326 | — | — | 71108 | — | 147115 |
+| all gold | 0.685 | 0.545 | 0.607 | 0.898 | 209105 | 96328 | 174357 |
+| mandatory (read recall) | — | **0.823** | — | — | 135937 | — | 29302 |
+| contextual (read recall) | — | 0.335 | — | — | 73168 | — | 145055 |
 
-- **Character-F1 (all gold)**: 0.601  (95% bootstrap CI [0.538, 0.644])
-- **Mandatory character recall** (must-redact coverage): 0.815
-- **Contextual character recall**: 0.326
-- **No-mandatory-leak document rate**: 0.180  (documents with every mandatory character redacted; per-document, not P/R/F1)
+- **Character-F1 (all gold)**: 0.607  (95% bootstrap CI [0.548, 0.650])
+- **Mandatory character recall** (must-redact coverage): 0.823
+- **Contextual character recall**: 0.335
+- **No-mandatory-leak document rate**: 0.215  (documents with every mandatory character redacted; per-document, not P/R/F1)
 
 ## Span-level (type-agnostic, ≥overlap match)
 
 | Subset | Precision | Recall | F1 | TP | FP | FN |
 |---|--:|--:|--:|--:|--:|--:|
-| all gold | 0.493 | 0.146 | 0.226 | 7802 | 8038 | 45484 |
-| mandatory | 0.348 | 0.324 | 0.336 | 5509 | 10331 | 11484 |
-| contextual | 0.364 | 0.159 | 0.221 | 5765 | 10075 | 30528 |
+| all gold | 0.493 | 0.147 | 0.226 | 7823 | 8043 | 45463 |
+| mandatory | 0.348 | 0.325 | 0.336 | 5515 | 10351 | 11478 |
+| contextual | 0.377 | 0.165 | 0.229 | 5975 | 9891 | 30318 |
 
 _Span precision is low by construction: SafeStream emits one span per detected entity, while gold segments a value into many adjacent mandatory/contextual spans, so one prediction can only 1:1-match one of them. Character coverage above is the faithful measure._
 
@@ -37,16 +37,16 @@ _Span precision is low by construction: SafeStream emits one span per detected e
 
 | Domain | Docs | Char P | Char R | Char F1 | Mandatory char recall | Span F1 |
 |---|--:|--:|--:|--:|--:|--:|
-| academic | 16 | 0.594 | 0.381 | 0.464 | 0.831 | 0.197 |
-| code | 16 | 0.656 | 0.696 | 0.675 | 0.801 | 0.443 |
-| emails | 16 | 0.798 | 0.516 | 0.627 | 0.680 | 0.249 |
-| files | 36 | 0.631 | 0.566 | 0.597 | 0.739 | 0.263 |
-| financial | 18 | 0.692 | 0.396 | 0.503 | 0.611 | 0.184 |
-| government | 16 | 0.652 | 0.382 | 0.482 | 0.645 | 0.157 |
-| legal | 18 | 0.399 | 0.344 | 0.369 | 0.651 | 0.198 |
-| logs | 17 | 0.770 | 0.559 | 0.648 | 0.926 | 0.216 |
-| medical | 16 | 0.414 | 0.427 | 0.420 | 0.724 | 0.181 |
-| operations | 15 | 0.811 | 0.455 | 0.583 | 0.633 | 0.256 |
+| academic | 16 | 0.612 | 0.405 | 0.487 | 0.857 | 0.198 |
+| code | 16 | 0.655 | 0.695 | 0.674 | 0.800 | 0.442 |
+| emails | 16 | 0.802 | 0.528 | 0.637 | 0.700 | 0.249 |
+| files | 36 | 0.631 | 0.567 | 0.597 | 0.739 | 0.264 |
+| financial | 18 | 0.711 | 0.432 | 0.537 | 0.690 | 0.187 |
+| government | 16 | 0.663 | 0.417 | 0.512 | 0.695 | 0.156 |
+| legal | 18 | 0.446 | 0.420 | 0.433 | 0.781 | 0.205 |
+| logs | 17 | 0.770 | 0.560 | 0.648 | 0.927 | 0.216 |
+| medical | 16 | 0.423 | 0.458 | 0.440 | 0.752 | 0.174 |
+| operations | 15 | 0.834 | 0.512 | 0.635 | 0.719 | 0.257 |
 | terminal | 16 | 0.709 | 0.617 | 0.659 | 0.861 | 0.283 |
 
 ## What SafeStream predicted (by entity type)
@@ -55,15 +55,16 @@ The dataset has no gold PII types, so this is the distribution of the **predicti
 
 | SafeStream type | predicted spans |
 |---|--:|
-| org | 3478 |
-| loc | 3212 |
+| org | 3473 |
 | ipv4 | 3115 |
-| secret | 1938 |
-| person | 1565 |
+| loc | 2847 |
+| secret | 1934 |
+| person | 1579 |
 | email | 1092 |
-| phone | 254 |
+| address | 341 |
+| phone | 259 |
+| id_number | 218 |
 | aws_account_id | 213 |
-| id_number | 182 |
 | mac_address | 159 |
 | api_key | 154 |
 | jwt | 146 |
@@ -72,7 +73,7 @@ The dataset has no gold PII types, so this is the distribution of the **predicti
 | stripe_key | 46 |
 | ssn | 38 |
 | credit_card | 37 |
-| dob | 24 |
+| dob | 28 |
 | ipv6 | 21 |
 | slack_webhook | 10 |
 | github_token | 6 |
@@ -89,4 +90,4 @@ The dataset has no gold PII types, so this is the distribution of the **predicti
 python -m benchmarks.redactionbench.run run --out-dir research/results/redactionbench/t0_onnx_2026-10-03 --onnx-model models/ner/model.int8.onnx --onnx-vocab models/ner/tokenizer.json --onnx-labels models/ner/labels.json
 ```
 
-_Environment_: Python 3.14.0, Windows-11-10.0.26200-SP0, run took 383.51s.
+_Environment_: Python 3.14.0, Windows-11-10.0.26200-SP0, run took 156.227s.

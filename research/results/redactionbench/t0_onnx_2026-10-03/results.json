@@ -44,19 +44,20 @@
     "failed_samples": [],
     "python": "3.14.0",
     "platform": "Windows-11-10.0.26200-SP0",
-    "duration_seconds": 383.51,
+    "duration_seconds": 156.227,
     "command": "python -m benchmarks.redactionbench.run run --out-dir research/results/redactionbench/t0_onnx_2026-10-03 --onnx-model models/ner/model.int8.onnx --onnx-vocab models/ner/tokenizer.json --onnx-labels models/ner/labels.json",
     "task": "binary redaction (necessity: mandatory/contextual) — RedactionBench R-Score style",
     "predicted_type_distribution": {
-      "org": 3478,
-      "loc": 3212,
+      "org": 3473,
       "ipv4": 3115,
-      "secret": 1938,
-      "person": 1565,
+      "loc": 2847,
+      "secret": 1934,
+      "person": 1579,
       "email": 1092,
-      "phone": 254,
+      "address": 341,
+      "phone": 259,
+      "id_number": 218,
       "aws_account_id": 213,
-      "id_number": 182,
       "mac_address": 159,
       "api_key": 154,
       "jwt": 146,
@@ -65,7 +66,7 @@
       "stripe_key": 46,
       "ssn": 38,
       "credit_card": 37,
-      "dob": 24,
+      "dob": 28,
       "ipv6": 21,
       "slack_webhook": 10,
       "github_token": 6,
@@ -79,245 +80,245 @@
   },
   "overall": {
     "documents": 200,
-    "predicted_spans_total": 15840,
+    "predicted_spans_total": 15866,
     "character_level_rscore_style": {
       "note": "per-character redaction mask; formatting-agnostic (R-Score methodology). Precision/F1/accuracy are meaningful for the 'all' subset; for the mandatory/contextual subsets read RECALL (coverage of that subset).",
       "all": {
-        "char_tp": 205764,
-        "char_fp": 96138,
-        "char_fn": 177698,
-        "char_tn": 2184146,
-        "char_precision": 0.6816,
-        "char_recall": 0.5366,
-        "char_f1": 0.6005,
-        "char_accuracy": 0.8972
+        "char_tp": 209105,
+        "char_fp": 96328,
+        "char_fn": 174357,
+        "char_tn": 2183956,
+        "char_precision": 0.6846,
+        "char_recall": 0.5453,
+        "char_f1": 0.6071,
+        "char_accuracy": 0.8984
       },
       "mandatory": {
-        "char_tp": 134656,
-        "char_fp": 167246,
-        "char_fn": 30583,
-        "char_tn": 2331261,
-        "char_precision": 0.446,
-        "char_recall": 0.8149,
-        "char_f1": 0.5765,
-        "char_accuracy": 0.9257
+        "char_tp": 135937,
+        "char_fp": 169496,
+        "char_fn": 29302,
+        "char_tn": 2329011,
+        "char_precision": 0.4451,
+        "char_recall": 0.8227,
+        "char_f1": 0.5776,
+        "char_accuracy": 0.9254
       },
       "contextual": {
-        "char_tp": 71108,
-        "char_fp": 230794,
-        "char_fn": 147115,
-        "char_tn": 2214729,
-        "char_precision": 0.2355,
-        "char_recall": 0.3259,
-        "char_f1": 0.2734,
-        "char_accuracy": 0.8581
+        "char_tp": 73168,
+        "char_fp": 232265,
+        "char_fn": 145055,
+        "char_tn": 2213258,
+        "char_precision": 0.2396,
+        "char_recall": 0.3353,
+        "char_f1": 0.2795,
+        "char_accuracy": 0.8583
       },
       "char_f1_all_bootstrap_ci_95": [
-        0.6005,
-        0.538,
-        0.6441
+        0.6071,
+        0.5484,
+        0.6499
       ]
     },
     "span_level_type_agnostic": {
       "note": ">=threshold overlap, greedy 1:1, any predicted type counts (dataset has no PII types). Recall = gold redaction spans covered; precision = predictions that land on a gold span.",
       "all": {
-        "tp": 7802,
-        "fp": 8038,
-        "fn": 45484,
-        "precision": 0.4926,
-        "recall": 0.1464,
-        "f1": 0.2257
+        "tp": 7823,
+        "fp": 8043,
+        "fn": 45463,
+        "precision": 0.4931,
+        "recall": 0.1468,
+        "f1": 0.2263
       },
       "mandatory": {
-        "tp": 5509,
-        "fp": 10331,
-        "fn": 11484,
-        "precision": 0.3478,
-        "recall": 0.3242,
-        "f1": 0.3356
+        "tp": 5515,
+        "fp": 10351,
+        "fn": 11478,
+        "precision": 0.3476,
+        "recall": 0.3245,
+        "f1": 0.3357
       },
       "contextual": {
-        "tp": 5765,
-        "fp": 10075,
-        "fn": 30528,
-        "precision": 0.364,
-        "recall": 0.1588,
-        "f1": 0.2212
+        "tp": 5975,
+        "fp": 9891,
+        "fn": 30318,
+        "precision": 0.3766,
+        "recall": 0.1646,
+        "f1": 0.2291
       }
     },
     "mandatory_protection": {
       "note": "fraction of documents with EVERY mandatory character redacted (no leak) — a per-document DLP accuracy, distinct from precision/recall.",
-      "no_leak_document_rate": 0.18
+      "no_leak_document_rate": 0.215
     }
   },
   "per_domain": {
     "academic": {
       "documents": 16,
       "char_all": {
-        "char_tp": 4320,
-        "char_fp": 2952,
-        "char_fn": 7013,
-        "char_tn": 76785,
-        "char_precision": 0.5941,
-        "char_recall": 0.3812,
-        "char_f1": 0.4644,
-        "char_accuracy": 0.8906
+        "char_tp": 4591,
+        "char_fp": 2915,
+        "char_fn": 6742,
+        "char_tn": 76822,
+        "char_precision": 0.6116,
+        "char_recall": 0.4051,
+        "char_f1": 0.4874,
+        "char_accuracy": 0.894
       },
-      "char_mandatory_recall": 0.8314,
+      "char_mandatory_recall": 0.8566,
       "span_all": {
         "tp": 277,
-        "fp": 282,
+        "fp": 279,
         "fn": 1971,
-        "precision": 0.4955,
+        "precision": 0.4982,
         "recall": 0.1232,
-        "f1": 0.1974
+        "f1": 0.1976
       }
     },
     "code": {
       "documents": 16,
       "char_all": {
-        "char_tp": 8426,
-        "char_fp": 4415,
-        "char_fn": 3682,
-        "char_tn": 298876,
-        "char_precision": 0.6562,
-        "char_recall": 0.6959,
-        "char_f1": 0.6755,
-        "char_accuracy": 0.9743
+        "char_tp": 8417,
+        "char_fp": 4431,
+        "char_fn": 3691,
+        "char_tn": 298860,
+        "char_precision": 0.6551,
+        "char_recall": 0.6952,
+        "char_f1": 0.6745,
+        "char_accuracy": 0.9742
       },
-      "char_mandatory_recall": 0.8008,
+      "char_mandatory_recall": 0.7997,
       "span_all": {
         "tp": 232,
-        "fp": 271,
+        "fp": 274,
         "fn": 313,
-        "precision": 0.4612,
+        "precision": 0.4585,
         "recall": 0.4257,
-        "f1": 0.4427
+        "f1": 0.4415
       }
     },
     "emails": {
       "documents": 16,
       "char_all": {
-        "char_tp": 7249,
+        "char_tp": 7417,
         "char_fp": 1832,
-        "char_fn": 6803,
+        "char_fn": 6635,
         "char_tn": 38821,
-        "char_precision": 0.7983,
-        "char_recall": 0.5159,
-        "char_f1": 0.6267,
-        "char_accuracy": 0.8422
+        "char_precision": 0.8019,
+        "char_recall": 0.5278,
+        "char_f1": 0.6366,
+        "char_accuracy": 0.8452
       },
-      "char_mandatory_recall": 0.68,
+      "char_mandatory_recall": 0.7003,
       "span_all": {
-        "tp": 384,
+        "tp": 383,
         "fp": 131,
-        "fn": 2180,
-        "precision": 0.7456,
-        "recall": 0.1498,
-        "f1": 0.2494
+        "fn": 2181,
+        "precision": 0.7451,
+        "recall": 0.1494,
+        "f1": 0.2489
       }
     },
     "files": {
       "documents": 36,
       "char_all": {
-        "char_tp": 62878,
-        "char_fp": 36780,
-        "char_fn": 48136,
-        "char_tn": 478336,
-        "char_precision": 0.6309,
-        "char_recall": 0.5664,
-        "char_f1": 0.5969,
-        "char_accuracy": 0.8644
+        "char_tp": 62940,
+        "char_fp": 36750,
+        "char_fn": 48074,
+        "char_tn": 478366,
+        "char_precision": 0.6314,
+        "char_recall": 0.567,
+        "char_f1": 0.5974,
+        "char_accuracy": 0.8645
       },
-      "char_mandatory_recall": 0.7393,
+      "char_mandatory_recall": 0.7394,
       "span_all": {
-        "tp": 1916,
+        "tp": 1924,
         "fp": 2126,
-        "fn": 8632,
-        "precision": 0.474,
-        "recall": 0.1816,
-        "f1": 0.2626
+        "fn": 8624,
+        "precision": 0.4751,
+        "recall": 0.1824,
+        "f1": 0.2636
       }
     },
     "financial": {
       "documents": 18,
       "char_all": {
-        "char_tp": 4828,
-        "char_fp": 2151,
-        "char_fn": 7380,
-        "char_tn": 82731,
-        "char_precision": 0.6918,
-        "char_recall": 0.3955,
-        "char_f1": 0.5033,
-        "char_accuracy": 0.9018
+        "char_tp": 5275,
+        "char_fp": 2146,
+        "char_fn": 6933,
+        "char_tn": 82736,
+        "char_precision": 0.7108,
+        "char_recall": 0.4321,
+        "char_f1": 0.5375,
+        "char_accuracy": 0.9065
       },
-      "char_mandatory_recall": 0.6106,
+      "char_mandatory_recall": 0.6903,
       "span_all": {
-        "tp": 322,
+        "tp": 327,
         "fp": 210,
-        "fn": 2643,
-        "precision": 0.6053,
-        "recall": 0.1086,
-        "f1": 0.1842
+        "fn": 2638,
+        "precision": 0.6089,
+        "recall": 0.1103,
+        "f1": 0.1868
       }
     },
     "government": {
       "documents": 16,
       "char_all": {
-        "char_tp": 5254,
-        "char_fp": 2809,
-        "char_fn": 8489,
-        "char_tn": 79384,
-        "char_precision": 0.6516,
-        "char_recall": 0.3823,
-        "char_f1": 0.4819,
-        "char_accuracy": 0.8822
+        "char_tp": 5737,
+        "char_fp": 2911,
+        "char_fn": 8006,
+        "char_tn": 79282,
+        "char_precision": 0.6634,
+        "char_recall": 0.4174,
+        "char_f1": 0.5124,
+        "char_accuracy": 0.8862
       },
-      "char_mandatory_recall": 0.645,
+      "char_mandatory_recall": 0.695,
       "span_all": {
-        "tp": 411,
-        "fp": 261,
-        "fn": 4143,
-        "precision": 0.6116,
-        "recall": 0.0903,
-        "f1": 0.1573
+        "tp": 408,
+        "fp": 266,
+        "fn": 4146,
+        "precision": 0.6053,
+        "recall": 0.0896,
+        "f1": 0.1561
       }
     },
     "legal": {
       "documents": 18,
       "char_all": {
-        "char_tp": 6042,
-        "char_fp": 9117,
-        "char_fn": 11527,
-        "char_tn": 310899,
-        "char_precision": 0.3986,
-        "char_recall": 0.3439,
-        "char_f1": 0.3692,
-        "char_accuracy": 0.9388
+        "char_tp": 7386,
+        "char_fp": 9162,
+        "char_fn": 10183,
+        "char_tn": 310854,
+        "char_precision": 0.4463,
+        "char_recall": 0.4204,
+        "char_f1": 0.433,
+        "char_accuracy": 0.9427
       },
-      "char_mandatory_recall": 0.6512,
+      "char_mandatory_recall": 0.7815,
       "span_all": {
-        "tp": 478,
-        "fp": 914,
-        "fn": 2964,
-        "precision": 0.3434,
-        "recall": 0.1389,
-        "f1": 0.1978
+        "tp": 497,
+        "fp": 905,
+        "fn": 2945,
+        "precision": 0.3545,
+        "recall": 0.1444,
+        "f1": 0.2052
       }
     },
     "logs": {
       "documents": 17,
       "char_all": {
-        "char_tp": 88941,
+        "char_tp": 88968,
         "char_fp": 26609,
-        "char_fn": 70057,
+        "char_fn": 70030,
         "char_tn": 527458,
-        "char_precision": 0.7697,
-        "char_recall": 0.5594,
-        "char_f1": 0.6479,
-        "char_accuracy": 0.8644
+        "char_precision": 0.7698,
+        "char_recall": 0.5596,
+        "char_f1": 0.648,
+        "char_accuracy": 0.8645
       },
-      "char_mandatory_recall": 0.9264,
+      "char_mandatory_recall": 0.9268,
       "span_all": {
         "tp": 2901,
         "fp": 3326,
@@ -330,45 +331,45 @@
     "medical": {
       "documents": 16,
       "char_all": {
-        "char_tp": 2632,
-        "char_fp": 3728,
-        "char_fn": 3534,
-        "char_tn": 147661,
-        "char_precision": 0.4138,
-        "char_recall": 0.4269,
-        "char_f1": 0.4202,
-        "char_accuracy": 0.9539
+        "char_tp": 2824,
+        "char_fp": 3853,
+        "char_fn": 3342,
+        "char_tn": 147536,
+        "char_precision": 0.4229,
+        "char_recall": 0.458,
+        "char_f1": 0.4398,
+        "char_accuracy": 0.9543
       },
-      "char_mandatory_recall": 0.7238,
+      "char_mandatory_recall": 0.7524,
       "span_all": {
-        "tp": 217,
-        "fp": 289,
-        "fn": 1675,
-        "precision": 0.4289,
-        "recall": 0.1147,
-        "f1": 0.181
+        "tp": 209,
+        "fp": 301,
+        "fn": 1683,
+        "precision": 0.4098,
+        "recall": 0.1105,
+        "f1": 0.174
       }
     },
     "operations": {
       "documents": 15,
       "char_all": {
-        "char_tp": 2826,
-        "char_fp": 659,
-        "char_fn": 3385,
-        "char_tn": 59534,
-        "char_precision": 0.8109,
-        "char_recall": 0.455,
-        "char_f1": 0.5829,
-        "char_accuracy": 0.9391
+        "char_tp": 3182,
+        "char_fp": 633,
+        "char_fn": 3029,
+        "char_tn": 59560,
+        "char_precision": 0.8341,
+        "char_recall": 0.5123,
+        "char_f1": 0.6347,
+        "char_accuracy": 0.9449
       },
-      "char_mandatory_recall": 0.6328,
+      "char_mandatory_recall": 0.7191,
       "span_all": {
-        "tp": 208,
-        "fp": 46,
-        "fn": 1166,
-        "precision": 0.8189,
-        "recall": 0.1514,
-        "f1": 0.2555
+        "tp": 209,
+        "fp": 43,
+        "fn": 1165,
+        "precision": 0.8294,
+        "recall": 0.1521,
+        "f1": 0.2571
       }
     },
     "terminal": {

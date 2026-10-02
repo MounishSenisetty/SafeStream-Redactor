@@ -14,22 +14,22 @@
 
 | Subset | Precision | Recall | F1 | Accuracy | char TP | char FP | char FN |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| all gold | 0.760 | 0.430 | 0.549 | 0.898 | 164758 | 52021 | 218704 |
-| mandatory (read recall) | — | **0.739** | — | — | 122023 | — | 43216 |
-| contextual (read recall) | — | 0.196 | — | — | 42735 | — | 175488 |
+| all gold | 0.767 | 0.447 | 0.565 | 0.901 | 171504 | 52221 | 211958 |
+| mandatory (read recall) | — | **0.759** | — | — | 125392 | — | 39847 |
+| contextual (read recall) | — | 0.211 | — | — | 46112 | — | 172111 |
 
-- **Character-F1 (all gold)**: 0.549  (95% bootstrap CI [0.488, 0.599])
-- **Mandatory character recall** (must-redact coverage): 0.739
-- **Contextual character recall**: 0.196
+- **Character-F1 (all gold)**: 0.565  (95% bootstrap CI [0.509, 0.614])
+- **Mandatory character recall** (must-redact coverage): 0.759
+- **Contextual character recall**: 0.211
 - **No-mandatory-leak document rate**: 0.140  (documents with every mandatory character redacted; per-document, not P/R/F1)
 
 ## Span-level (type-agnostic, ≥overlap match)
 
 | Subset | Precision | Recall | F1 | TP | FP | FN |
 |---|--:|--:|--:|--:|--:|--:|
-| all gold | 0.724 | 0.103 | 0.180 | 5488 | 2097 | 47798 |
-| mandatory | 0.575 | 0.257 | 0.355 | 4359 | 3226 | 12634 |
-| contextual | 0.536 | 0.112 | 0.185 | 4068 | 3517 | 32225 |
+| all gold | 0.735 | 0.110 | 0.191 | 5854 | 2113 | 47432 |
+| mandatory | 0.573 | 0.269 | 0.366 | 4565 | 3402 | 12428 |
+| contextual | 0.555 | 0.122 | 0.200 | 4426 | 3541 | 31867 |
 
 _Span precision is low by construction: SafeStream emits one span per detected entity, while gold segments a value into many adjacent mandatory/contextual spans, so one prediction can only 1:1-match one of them. Character coverage above is the faithful measure._
 
@@ -37,16 +37,16 @@ _Span precision is low by construction: SafeStream emits one span per detected e
 
 | Domain | Docs | Char P | Char R | Char F1 | Mandatory char recall | Span F1 |
 |---|--:|--:|--:|--:|--:|--:|
-| academic | 16 | 0.694 | 0.051 | 0.095 | 0.183 | 0.032 |
+| academic | 16 | 0.815 | 0.099 | 0.176 | 0.258 | 0.054 |
 | code | 16 | 0.774 | 0.669 | 0.718 | 0.776 | 0.489 |
-| emails | 16 | 0.933 | 0.350 | 0.509 | 0.377 | 0.133 |
-| files | 36 | 0.699 | 0.511 | 0.591 | 0.718 | 0.240 |
-| financial | 18 | 0.961 | 0.123 | 0.218 | 0.201 | 0.054 |
-| government | 16 | 0.939 | 0.076 | 0.140 | 0.146 | 0.034 |
-| legal | 18 | 0.793 | 0.026 | 0.050 | 0.063 | 0.016 |
-| logs | 17 | 0.804 | 0.491 | 0.609 | 0.906 | 0.230 |
-| medical | 16 | 0.525 | 0.085 | 0.146 | 0.167 | 0.045 |
-| operations | 15 | 0.927 | 0.150 | 0.258 | 0.119 | 0.071 |
+| emails | 16 | 0.938 | 0.377 | 0.538 | 0.417 | 0.148 |
+| files | 36 | 0.699 | 0.513 | 0.592 | 0.718 | 0.241 |
+| financial | 18 | 0.974 | 0.191 | 0.319 | 0.381 | 0.083 |
+| government | 16 | 0.931 | 0.166 | 0.281 | 0.346 | 0.060 |
+| legal | 18 | 0.949 | 0.155 | 0.266 | 0.340 | 0.089 |
+| logs | 17 | 0.804 | 0.491 | 0.610 | 0.907 | 0.230 |
+| medical | 16 | 0.656 | 0.171 | 0.271 | 0.244 | 0.070 |
+| operations | 15 | 0.957 | 0.264 | 0.413 | 0.361 | 0.120 |
 | terminal | 16 | 0.715 | 0.596 | 0.650 | 0.830 | 0.271 |
 
 ## What SafeStream predicted (by entity type)
@@ -56,11 +56,12 @@ The dataset has no gold PII types, so this is the distribution of the **predicti
 | SafeStream type | predicted spans |
 |---|--:|
 | ipv4 | 3115 |
-| secret | 1938 |
+| secret | 1934 |
 | email | 1092 |
-| phone | 254 |
+| address | 341 |
+| phone | 259 |
+| id_number | 218 |
 | aws_account_id | 213 |
-| id_number | 182 |
 | mac_address | 159 |
 | api_key | 154 |
 | jwt | 146 |
@@ -69,7 +70,7 @@ The dataset has no gold PII types, so this is the distribution of the **predicti
 | stripe_key | 46 |
 | ssn | 38 |
 | credit_card | 37 |
-| dob | 24 |
+| dob | 28 |
 | ipv6 | 21 |
 | slack_webhook | 10 |
 | github_token | 6 |
@@ -86,4 +87,4 @@ The dataset has no gold PII types, so this is the distribution of the **predicti
 python -m benchmarks.redactionbench.run run --out-dir research/results/redactionbench/t0_2026-10-03
 ```
 
-_Environment_: Python 3.14.0, Windows-11-10.0.26200-SP0, run took 14.746s.
+_Environment_: Python 3.14.0, Windows-11-10.0.26200-SP0, run took 10.791s.

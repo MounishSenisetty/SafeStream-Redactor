@@ -72,7 +72,7 @@ pip install 'safestream-redactor[native]'
 
 # optional local ONNX NER tier — on-device PERSON/ORG/LOC detection via a
 # bring-your-own ONNX model, no data egress (Redactor(use_onnx=True, ...)):
-pip install 'safestream-redactor[onnx]' tokenizers
+pip install 'safestream-redactor[onnx]'
 # ...and export a model once (needs torch + transformers, writes models/ner/):
 python scripts/export_onnx.py --out models/ner
 ```
@@ -490,7 +490,8 @@ identically to whole-text mode.
 
 | Category | Detection Types |
 |---|---|
-| PII | Email, phone, credit card, SSN, IPv4, IPv6 |
+| PII | Email, phone, credit card, SSN, IPv4, IPv6, MAC address, postal address (street line, US city/state/ZIP) |
+| Labeled identifiers | Student/patient/account/MRN/passport numbers, case/docket/policy/claim/visa/record numbers, DOB (the value after an explicit label) |
 | NER | Person, organization, location |
 | Cloud credentials | AWS keys, AWS secrets, Google API keys |
 | Service tokens | GitHub, Slack, Stripe, SendGrid, Twilio, npm |
@@ -592,18 +593,20 @@ scorer is unreleased):
 
 | Config | Char P | Char R | Char F1 | Mandatory recall | Contextual recall | No-leak docs |
 | --- | --: | --: | --: | --: | --: | --: |
-| T0 | 0.760 | 0.430 | 0.549 | 0.739 | 0.196 | 14.0% |
-| T0 + gated ONNX | 0.682 | 0.537 | 0.601 | 0.815 | 0.326 | 18.0% |
+| T0 | 0.767 | 0.447 | 0.565 | 0.759 | 0.211 | 14.0% |
+| T0 + gated ONNX | 0.685 | 0.545 | 0.607 | 0.823 | 0.335 | 21.5% |
 
-Mandatory recall by domain (T0 → T0+ONNX): structured text (logs 0.906 → 0.926,
-terminal 0.830 → 0.861, code 0.776 → 0.801, files 0.718 → 0.739) barely needs the
-model; prose gains most (academic 0.183 → 0.831, medical 0.167 → 0.724, legal
-0.063 → 0.651, government 0.146 → 0.645, operations 0.119 → 0.633, financial
-0.201 → 0.611, emails 0.377 → 0.680). Mandatory recall is **not** 100%: the
-remaining misses are account/record numbers without a label, `name=value` pairs
-merged into one entropy candidate, letters-only secrets, bcrypt hashes (the `.`
-leaks), keys containing `_test_` (suppressed as placeholders), lone
-sentence-initial first names, and street-address numbers.
+Mandatory recall by domain (T0 → T0+ONNX): structured text (logs 0.907 → 0.927,
+terminal 0.830 → 0.861, code 0.776 → 0.800, files 0.718 → 0.739) barely needs the
+model; prose gains most (academic 0.258 → 0.857, legal 0.340 → 0.782, medical
+0.244 → 0.752, operations 0.361 → 0.719, emails 0.418 → 0.700, government
+0.346 → 0.695, financial 0.381 → 0.690). Postal addresses, case/docket/policy/
+claim/visa numbers and form separators (`–`, `►`) are Tier 0 rules; ALLCAPS names
+after a form label (`AGENT: TONY PRIZE`) reach the model. Mandatory recall is
+**not** 100%: the remaining misses include identifiers with no label, `name=value`
+pairs merged into one entropy candidate, letters-only secrets, bcrypt hashes (the
+`.` leaks), keys containing `_test_` (suppressed as placeholders), lone
+sentence-initial first names, and non-US addresses.
 
 **Credentials & secrets** — the genuinely differentiating capability. On a corpus of
 AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random
