@@ -3,14 +3,22 @@
 from __future__ import annotations
 
 import re
+import sys
 
 import pytest
 
 from safestream_redactor import Deanonymizer, RedactionPolicy, Redactor
 from safestream_redactor.cli import main
 from safestream_redactor.detectors.deterministic import luhn_ok
+from safestream_redactor.engine import WindowConfigurationError
 from safestream_redactor.entities import Detection, EntityType
-from safestream_redactor.operators import encrypt_token, fictionalize, hash_token
+from safestream_redactor.errors import MissingExtraError, OperatorError, SafeStreamError
+from safestream_redactor.operators import (
+    MAX_PLAINTEXT_BYTES,
+    encrypt_token,
+    fictionalize,
+    hash_token,
+)
 
 KEY = "k" * 32
 TEXT = "mail bob@corp.example card 4111 1111 1111 1111 ip 10.1.2.3 ssn 123-45-6789 ok\n"
@@ -189,3 +197,70 @@ def test_cli_key_can_come_from_the_environment(tmp_path, monkeypatch) -> None:
     src.write_text(TEXT)
     assert main(["redact", str(src), "-o", str(enc), "--mode", "encrypt"]) == 0
     assert "bob@corp.example" not in enc.read_text()
+
+
+# --- audit fixes: secret hygiene, fail-fast extras, span bound, error hierarchy ----
+
+
+def test_policy_repr_never_shows_key_material() -> None:
+    p = RedactionPolicy(
+        mode="encrypt",
+        encrypt_key="ENC-SECRET-0123456789",
+        hmac_key="HMAC-SECRET",
+        hash_salt="SALT-SECRET",
+    )
+    shown = repr(p) + str(p)
+    for secret in ("ENC-SECRET", "HMAC-SECRET", "SALT-SECRET"):
+        assert secret not in shown
+
+
+@pytest.fixture()
+def no_cryptography(monkeypatch):
+    """Make `import cryptography...` fail, as on an install without the extra."""
+    for name in list(sys.modules):
+        if name == "cryptography" or name.startswith("cryptography."):
+            monkeypatch.setitem(sys.modules, name, None)
+    monkeypatch.setitem(sys.modules, "cryptography.hazmat.primitives.ciphers.aead", None)
+    monkeypatch.setitem(sys.modules, "cryptography.exceptions", None)
+
+
+def test_encrypt_policy_fails_fast_without_the_extra(no_cryptography) -> None:
+    with pytest.raises(MissingExtraError, match=r"safestream-redactor\[crypto\]"):
+        RedactionPolicy(mode="encrypt", encrypt_key=KEY)
+    RedactionPolicy(mode="hash")  # modes that do not need it are unaffected
+
+
+def test_a_missing_extra_is_never_reported_as_a_wrong_key(no_cryptography) -> None:
+    with pytest.raises(MissingExtraError):
+        Deanonymizer(KEY)
+
+
+def test_encrypt_refuses_a_span_it_could_not_restore() -> None:
+    limit = MAX_PLAINTEXT_BYTES
+    ok = encrypt_token(KEY.encode(), "custom", "Z" * limit)
+    d = Deanonymizer(KEY)
+    # the longest permitted token still round-trips through a tiny-chunk stream
+    chunks = (ok[i : i + 997] for i in range(0, len(ok), 997))
+    assert "".join(d.restore_stream(chunks)) == "Z" * limit and d.failed == 0
+    with pytest.raises(OperatorError, match="at most"):
+        encrypt_token(KEY.encode(), "custom", "Z" * (limit + 1))
+
+
+def test_error_hierarchy_has_one_root_and_stays_backward_compatible() -> None:
+    assert issubclass(WindowConfigurationError, SafeStreamError)
+    assert issubclass(WindowConfigurationError, ValueError)  # existing handlers keep working
+    assert issubclass(MissingExtraError, SafeStreamError)
+    assert issubclass(MissingExtraError, ImportError)
+    assert issubclass(OperatorError, SafeStreamError) and issubclass(OperatorError, ValueError)
+
+
+def test_cli_reports_a_missing_extra_as_a_clean_error(tmp_path, capsys, no_cryptography) -> None:
+    src = tmp_path / "in.txt"
+    src.write_text(TEXT)
+    rc = main(
+        ["redact", str(src), "-o", str(tmp_path / "o"), "--mode", "encrypt", "--encrypt-key", KEY]
+    )
+    assert rc == 1
+    assert "safestream-redactor[crypto]" in capsys.readouterr().err
+    with pytest.raises(SystemExit, match=r"safestream-redactor\[crypto\]"):
+        main(["deanonymize", str(src), "-o", str(tmp_path / "o2"), "--encrypt-key", KEY])

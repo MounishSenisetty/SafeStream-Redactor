@@ -22,6 +22,18 @@ Notable changes to this project. The format follows
 
 ### Security / correctness
 
+- **Key material no longer appears in `repr()`** of a `RedactionPolicy` (`hmac_key`,
+  `hash_salt`, `encrypt_key`), so a traceback or log line cannot leak it.
+- **A missing `cryptography` is now a clear, early error.** Building an `encrypt` policy or
+  a `Deanonymizer` without the `crypto` extra raises `MissingExtraError` immediately (and
+  the CLI prints it cleanly); before, it surfaced on the first match mid-stream, and
+  `deanonymize` reported it as "wrong key".
+- **`encrypt` refuses values over 32 KiB** (`OperatorError`). A longer span produced a token
+  the streaming restorer could not hold, so `deanonymize` left it encrypted yet exited 0.
+- **One error root, `SafeStreamError`.** `WindowConfigurationError`, the new
+  `MissingExtraError` (also an `ImportError`) and `OperatorError` (also a `ValueError`)
+  derive from it; existing `except ValueError` / `except ImportError` handlers keep working.
+
 - **Window violations now fail closed at run time too.** A detector (plugin or custom
   regex) that emits a span longer than `overlap` raises `WindowConfigurationError`
   instead of logging a warning and streaming past a window that cannot guarantee it

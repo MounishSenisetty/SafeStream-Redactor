@@ -24,6 +24,7 @@ from typing import Any
 
 from safestream_redactor import __version__
 from safestream_redactor.entities import EntityType
+from safestream_redactor.errors import SafeStreamError
 from safestream_redactor.locate import LineTracker
 from safestream_redactor.policy import RedactionPolicy
 from safestream_redactor.redactor import Redactor
@@ -709,7 +710,7 @@ def _cmd_deanonymize(args: argparse.Namespace) -> int:
         raise SystemExit(f"deanonymize requires --encrypt-key (or {_ENCRYPT_KEY_ENV})")
     try:
         deanon = Deanonymizer(key)
-    except ValueError as exc:
+    except SafeStreamError as exc:
         raise SystemExit(f"safestream: {exc}") from None
     pieces = deanon.restore_stream(_input_chunks(args.input, args.chunk_size, args.encoding))
     if args.output == "-":
@@ -1114,7 +1115,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 3
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, SafeStreamError) as exc:
         print(f"safestream: error: {exc}", file=sys.stderr)
         return 1
 

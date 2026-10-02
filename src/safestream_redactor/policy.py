@@ -8,12 +8,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from safestream_redactor.entities import Detection, EntityType
+from safestream_redactor.errors import OperatorError
 from safestream_redactor.operators import (
     HASH_ALGORITHMS,
     MIN_KEY_BYTES,
     encrypt_token,
     fictionalize,
     hash_token,
+    require_crypto,
 )
 
 
@@ -55,7 +57,7 @@ class RedactionPolicy:
     mask_keep_last: int = 4
     mask_char: str = "*"
     # ``str`` keys are accepted and UTF-8 encoded (a TOML/CLI key is text).
-    hmac_key: bytes | str | None = None
+    hmac_key: bytes | str | None = field(default=None, repr=False)
     # Hex digits kept from the HMAC in pseudonymize mode. 16 hex = 64 bits,
     # which pushes the birthday-collision point past ~4 billion distinct
     # values; the old 10-hex (40-bit) default collided around ~1 million,
@@ -63,9 +65,9 @@ class RedactionPolicy:
     pseudonym_length: int = 16
     # HASH mode: digest algorithm and an optional secret salt.
     hash_algorithm: str = "sha256"
-    hash_salt: bytes | str | None = None
+    hash_salt: bytes | str | None = field(default=None, repr=False)
     # ENCRYPT mode: secret key (>= 16 bytes; text keys are UTF-8 encoded).
-    encrypt_key: bytes | str | None = None
+    encrypt_key: bytes | str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         if isinstance(self.mode, str):
@@ -80,9 +82,10 @@ class RedactionPolicy:
             raise ValueError(f"hash_algorithm must be one of {', '.join(HASH_ALGORITHMS)}")
         if self.mode is RedactionMode.ENCRYPT:
             if not self.encrypt_key:
-                raise ValueError("encrypt mode requires an encrypt_key")
+                raise OperatorError("encrypt mode requires an encrypt_key")
             if len(self.encrypt_key) < MIN_KEY_BYTES:
-                raise ValueError(f"encrypt_key must be at least {MIN_KEY_BYTES} bytes")
+                raise OperatorError(f"encrypt_key must be at least {MIN_KEY_BYTES} bytes")
+            require_crypto()  # fail now, not on the first match mid-stream
         if self.mode is RedactionMode.FICTIONALIZE and not self.hmac_key:
             raise ValueError("fictionalize mode requires an hmac_key")
         if not self.mask_char:

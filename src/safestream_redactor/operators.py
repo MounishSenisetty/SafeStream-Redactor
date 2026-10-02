@@ -36,14 +36,20 @@ import re
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any
 
+from safestream_redactor.errors import MissingExtraError, OperatorError
+
 HASH_ALGORITHMS = ("sha256", "sha512")
 MIN_KEY_BYTES = 16
 
-# A token is "<TYPE:E:payload>". The longest span any tier emits is 8192
-# characters (<= 32 KiB UTF-8); GCM adds a 12-byte nonce and 16-byte tag; base64
-# expands by 4/3. The streaming restorer buffers at most this much of an
-# unterminated token.
-_MAX_TOKEN = 48_000
+# A token is "<TYPE:E:payload>". Encrypt refuses a value longer than this many
+# UTF-8 bytes (the built-in tiers never emit more: 8192 characters x 4 bytes), so
+# the longest token has a known size and the streaming restorer can buffer exactly
+# that much of an unterminated token. Without the cap a very long custom-regex span
+# (reachable with a large ``overlap``) produced a token the restorer could not hold:
+# it was split across chunks, never decrypted, never counted, and the run "succeeded".
+MAX_PLAINTEXT_BYTES = 32_768
+_GCM_OVERHEAD = 12 + 16  # nonce + tag
+_MAX_TOKEN = 4 * (MAX_PLAINTEXT_BYTES + _GCM_OVERHEAD) // 3 + 64  # base64 + "<TYPE:E:" + ">"
 _TOKEN = re.compile(r"<([A-Z][A-Z0-9_]{0,31}):E:([A-Za-z0-9_-]+)>")
 
 
@@ -64,14 +70,23 @@ def _subkeys(key: bytes) -> tuple[bytes, bytes]:
     )
 
 
-def _aesgcm(enc_key: bytes) -> Any:  # optional dependency, imported lazily
+def require_crypto() -> None:
+    """Raise :class:`MissingExtraError` now if the ``crypto`` extra is absent.
+
+    Called when an encrypting policy or a :class:`Deanonymizer` is *built*, so a
+    missing library fails at configuration time, not on the first match mid-stream.
+    """
     try:
-        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    except ImportError as exc:  # pragma: no cover - exercised only without the extra
-        raise ImportError(
-            "encrypt mode needs the 'cryptography' package: "
-            "pip install 'safestream-redactor[crypto]'"
-        ) from exc
+        import cryptography.exceptions
+        import cryptography.hazmat.primitives.ciphers.aead  # noqa: F401
+    except ImportError as exc:
+        raise MissingExtraError("encrypt mode", "crypto") from exc
+
+
+def _aesgcm(enc_key: bytes) -> Any:  # optional dependency, imported lazily
+    require_crypto()
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
     return AESGCM(enc_key)
 
 
@@ -80,6 +95,11 @@ def encrypt_token(key: bytes, entity_type: str, text: str) -> str:
     label = entity_type.upper().encode("ascii")
     enc_key, siv_key = _subkeys(key)
     plaintext = text.encode("utf-8")
+    if len(plaintext) > MAX_PLAINTEXT_BYTES:
+        raise OperatorError(
+            f"encrypt handles a value of at most {MAX_PLAINTEXT_BYTES} UTF-8 bytes "
+            f"(got {len(plaintext)}); a longer one could not be restored by streaming"
+        )
     nonce = hmac.new(siv_key, label + b"\0" + plaintext, hashlib.sha256).digest()[:12]
     sealed = _aesgcm(enc_key).encrypt(nonce, plaintext, label)
     payload = base64.urlsafe_b64encode(nonce + sealed).rstrip(b"=").decode("ascii")
@@ -97,21 +117,22 @@ class Deanonymizer:
     def __init__(self, key: bytes | str) -> None:
         raw = key.encode("utf-8") if isinstance(key, str) else key
         if len(raw) < MIN_KEY_BYTES:
-            raise ValueError(f"encrypt_key must be at least {MIN_KEY_BYTES} bytes")
+            raise OperatorError(f"encrypt_key must be at least {MIN_KEY_BYTES} bytes")
+        require_crypto()
         self._enc_key, _ = _subkeys(raw)
         self.restored = 0
         self.failed = 0
 
     def _decrypt(self, label: str, payload: str) -> str | None:
+        from cryptography.exceptions import InvalidTag
+
+        aes = _aesgcm(self._enc_key)  # a missing extra propagates; it is not a bad token
         try:
             raw = base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4))
-            if len(raw) < 12 + 16:
+            if len(raw) < _GCM_OVERHEAD:
                 return None
-            plaintext = _aesgcm(self._enc_key).decrypt(raw[:12], raw[12:], label.encode("ascii"))
-            return str(plaintext.decode("utf-8"))
-        except (binascii.Error, ValueError):
-            return None
-        except Exception:  # cryptography.exceptions.InvalidTag: wrong key / tampered
+            return str(aes.decrypt(raw[:12], raw[12:], label.encode("ascii")).decode("utf-8"))
+        except (binascii.Error, ValueError, InvalidTag):  # malformed, wrong key or tampered
             return None
 
     def _sub(self, match: re.Match[str]) -> str:

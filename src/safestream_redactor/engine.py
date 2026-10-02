@@ -27,6 +27,7 @@ from dataclasses import dataclass
 
 from safestream_redactor.detectors.base import requirements_of
 from safestream_redactor.entities import Detection
+from safestream_redactor.errors import SafeStreamError
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ DEFAULT_CHUNK_SIZE = 64 * 1024
 DEFAULT_OVERLAP = 8 * 1024
 
 
-class WindowConfigurationError(ValueError):
+class WindowConfigurationError(SafeStreamError, ValueError):
     """The sliding window cannot guarantee boundary-correct redaction.
 
     Raised (fail closed) when ``overlap`` is smaller than the longest span the
