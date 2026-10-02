@@ -360,7 +360,9 @@ impl WordBounded {
                     ((m.start(), m.end()), group)
                 })
             } else {
-                anchored.search(&input).map(|m| ((m.start(), m.end()), None))
+                anchored
+                    .search(&input)
+                    .map(|m| ((m.start(), m.end()), None))
             };
             pos = match found {
                 Some((whole, group)) if whole.1 > start => {
@@ -395,7 +397,10 @@ impl WordBounded {
                     break;
                 };
                 let Some(m) = caps.get(0) else { break };
-                ((m.start(), m.end()), caps.get(1).map(|g| (g.start(), g.end())))
+                (
+                    (m.start(), m.end()),
+                    caps.get(1).map(|g| (g.start(), g.end())),
+                )
             } else {
                 let Some(m) = self.exact.find_at(text, pos) else {
                     break;
@@ -548,7 +553,14 @@ pub(crate) fn scan_regex(text: &str, out: &mut Vec<RawMatch>) -> Result<(), Erro
                 if spec.kind == Kind::AwsSecret && !aws_after_ok(text, end) {
                     return Ok(());
                 }
-                try_push(out, RawMatch { start, end, pattern })
+                try_push(
+                    out,
+                    RawMatch {
+                        start,
+                        end,
+                        pattern,
+                    },
+                )
             })?;
             continue;
         }

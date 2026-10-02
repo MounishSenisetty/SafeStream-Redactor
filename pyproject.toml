@@ -184,5 +184,5 @@ files = ["src"]
 # onnxruntime (the [onnx] extra) ships no stubs and is likewise lazily imported.
 # safestream_native (the [native] extra) is a stub-less compiled module that may
 # or may not be installed; listing it keeps mypy green in both states.
-module = ["spacy", "tomli", "onnxruntime", "numpy", "safestream_native", "streamlit", "streamlit.*", "cryptography", "cryptography.*"]
+module = ["spacy", "tomli", "onnxruntime", "numpy", "tokenizers", "safestream_native", "streamlit", "streamlit.*", "cryptography", "cryptography.*"]
 ignore_missing_imports = true
