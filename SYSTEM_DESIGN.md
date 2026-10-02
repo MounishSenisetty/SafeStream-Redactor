@@ -214,7 +214,7 @@ Derived from the README, the roadmap, and the implementation, the system's objec
 | **Detection** | A single located sensitive span, represented by the `Detection` dataclass (start, end, text, type, confidence, source). |
 | **Redaction** | Rewriting a detected span according to a policy (replace / mask / pseudonymize). |
 | **Chunk** | A fixed-size unit of text read from the input (default 64 KiB). |
-| **Overlap window** | Trailing region of the rolling buffer (default 4 KiB) retained so boundary-straddling entities are seen whole. |
+| **Overlap window** | Trailing region of the rolling buffer (default 8 KiB) retained so boundary-straddling entities are seen whole. |
 | **Tier** | One detection strategy in the pipeline (deterministic, entropy, NER, contextual). |
 | **Detector** | Any object satisfying the `Detector` protocol: a `name` plus `detect(text) -> list[Detection]`. |
 | **Anchor** | A literal substring every match of a pattern must contain, enabling a cheap prefilter. |
@@ -454,7 +454,7 @@ marked *(inference)* are architectural inferences based on the code.
    require `--encoding`. Undecodable bytes are replaced with U+FFFD and *counted*, on the
    assumption that surfacing coverage gaps is safer than hiding them (`report.py`).
 3. **Entities are shorter than the overlap.** The boundary-safety guarantee holds only
-   for entities up to `overlap` characters (default 4 KiB); this is stated in `engine.py`.
+   for entities up to `overlap` characters (default 8 KiB); this is stated in `engine.py`.
    *(inference: PEM private keys are bounded to 8 KiB in the pattern precisely to respect
    this envelope on the largest expected entity.)*
 4. **The host filesystem supports atomic rename within a directory.** `os.replace` is
@@ -1623,8 +1623,9 @@ and a 100-char secret spanning the emit boundary.
 - **Recomputation:** the overlap region is scanned in two consecutive windows (the tail of
   one, the head of the next), a bounded constant-factor cost.
 - **Length bound:** entities longer than `overlap` are not guaranteed whole — mitigated by
-  a generous 4 KiB default and by bounding the largest pattern (PEM key ≤ 8 KiB) and
-  configuring `overlap` upward if needed.
+  an 8 KiB default that equals the largest span any built-in tier can emit (PEM key and
+  entropy candidate are both capped at 8 KiB), and by failing closed — a smaller `overlap`
+  or an over-long span raises `WindowConfigurationError` unless explicitly overridden.
 - **Latency:** emission lags by `overlap` characters.
 
 ### 22.6 Complexity
@@ -1805,8 +1806,8 @@ plus buffers).
 
 ### 25.4 Large-file handling
 
-The 1 GB memory proof (`tests/test_memory.py`) runs with 64 KiB chunks and 4 KiB overlap
-and asserts peak Python allocations < 16 MB. CI runs a 64 MB variant on Linux each build;
+The 1 GB memory proof (`tests/test_memory.py`) runs with 64 KiB chunks and a deliberately small 4 KiB overlap
+(`allow_unsafe_overlap=True`; the shipped default is 8 KiB) and asserts peak Python allocations < 16 MB. CI runs a 64 MB variant on Linux each build;
 the full 1 GB check is opt-in via `SAFESTREAM_MEMTEST_MB` and the `memory` marker.
 
 ### 25.5 Garbage-collection considerations
@@ -1993,7 +1994,7 @@ path duplicates logic with the from-scratch path and reaches into `Redactor._det
 | Parameter | Default | Meaning |
 | :--- | :--- | :--- |
 | `chunk_size` | 65536 | Read block size (bytes/chars). |
-| `overlap` | 4096 | Overlap window; boundary-safety length bound. |
+| `overlap` | 8192 | Overlap window; boundary-safety length bound (fail-closed below the active detectors' minimum). |
 | `min_confidence` | 0.5 | Detection acceptance threshold. |
 | `mode` | `replace` | Redaction mode. |
 | `replacement` | `[REDACTED]` | Default replacement string. |
@@ -2552,8 +2553,9 @@ Stated honestly, mostly from the README, `SECURITY.md`, and `docs/AUDIT.md`:
    `benchmarks/evaluate.py` against an independent corpus yields defensible numbers.
 5. **Detection is probabilistic at the margins.** No detector guarantees complete recall;
    output is risk-reduced, not certified-clean.
-6. **Overlap length bound.** Entities longer than `overlap` (default 4 KiB) are not
-   guaranteed to be caught whole at boundaries.
+6. **Overlap length bound.** Entities longer than `overlap` (default 8 KiB) are not
+   guaranteed to be caught whole at boundaries; the engine halts rather than stream past one
+   (`WindowConfigurationError`) unless `--insecure-allow-leak-prone-overlap` is given.
 7. **Offline guard is best-effort.** Native syscalls, subprocesses, and co-resident
    processes bypass it; a hard boundary needs OS/container-level controls.
 8. **Pseudonymization is reversible.** Keyed and deterministic; re-identifiable by the key
@@ -2695,7 +2697,7 @@ See Section 3.6.
 | Constant | Value | Module |
 | :--- | :--- | :--- |
 | `DEFAULT_CHUNK_SIZE` | 65536 | `engine.py` |
-| `DEFAULT_OVERLAP` | 4096 | `engine.py` |
+| `DEFAULT_OVERLAP` | 8192 | `engine.py` |
 | `min_confidence` | 0.5 | `redactor.py` |
 | Default replacement | `[REDACTED]` | `policy.py` |
 | `pseudonym_length` | 16 hex (64-bit) | `policy.py` |

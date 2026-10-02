@@ -6,6 +6,25 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Security / correctness
+
+- **Window violations now fail closed at run time too.** A detector (plugin or custom
+  regex) that emits a span longer than `overlap` raises `WindowConfigurationError`
+  instead of logging a warning and streaming past a window that cannot guarantee it
+  whole. Opt out with `allow_unsafe_overlap=True` or `--insecure-allow-leak-prone-overlap`
+  (alias of `--allow-unsafe-overlap`). `WindowConfigurationError` subclasses `ValueError`.
+- `examples/policy.toml` shipped `overlap = 4096`, which the overlap guard rejects; now 8192.
+
+### Tests and docs
+
+- `tests/test_equivalence_fuzz.py`: differential property tests, whole == streaming ==
+  parallel, with entities across chunk, emit-boundary and parallel-seam positions.
+- `tests/test_docs_consistency.py`: docs and the example policy must agree with
+  `DEFAULT_OVERLAP`; `SYSTEM_DESIGN.md` corrected from 4 KiB to 8 KiB.
+- Presidio comparison rebuilt around like-for-like tiers (`presidio-regex`,
+  `presidio-sm`); the "250–450×" claim is replaced by measured 15–147× (pattern tier) and
+  ~2× (NER tier).
+
 ### Breaking changes
 
 - **`detect` hides matched text by default.** Findings print as

@@ -87,4 +87,4 @@ patterns = [
 
 [streaming]
 chunk_size = 65536
-overlap = 4096
+overlap = 8192   # >= the longest span any tier emits; smaller values fail closed

@@ -73,11 +73,13 @@ python benchmarks/parallel_speedup.py --size 64 --workers 1 2 4   # asserts byte
 
 ## 4. Comparison with existing tools
 
-- **In this repo, only SafeStream is measured.** Presidio's analyzer was not installed in
-  this environment, so no head-to-head run was produced here. (The top-level README records
-  a *prior* Presidio comparison — SafeStream P=0.999 vs Presidio-patterns P=0.649 on the
-  adversarial corpus, and 9/9 vs 0/9 on a credential corpus — from a run where Presidio was
-  installed.)
+- **A like-for-like Presidio head-to-head is now measured** (2026-10-02, one run):
+  [`benchmarks/PRESIDIO_COMPARISON.md`](../../benchmarks/PRESIDIO_COMPARISON.md),
+  raw data in `results/raw/presidio_compare_2026-10-02.json`. Pattern tier (SafeStream
+  rules vs Presidio's pattern recognizers, no NLP engine): 15–147× faster. NER tier
+  (both on `en_core_web_sm`): ~2× faster, with SafeStream using more memory. The earlier
+  "P=0.649" figure differs from this run (0.741); that run's configuration is not recorded in
+  the repo, so this one supersedes it.
 - A **documented** capability comparison against 10 systems (Presidio, Philter, Piiranha,
   GLiNER, Grepture, Private AI, AWS Comprehend, Google DLP, Microsoft Purview, Tonic AI) is
   in [`../comparisons/README.md`](../comparisons/README.md); the analysis of where
