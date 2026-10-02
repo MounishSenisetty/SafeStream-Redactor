@@ -30,6 +30,16 @@ Notable changes to this project. The format follows
   `deanonymize` reported it as "wrong key".
 - **`encrypt` refuses values over 32 KiB** (`OperatorError`). A longer span produced a token
   the streaming restorer could not hold, so `deanonymize` left it encrypted yet exited 0.
+- **A detector that declares `streaming_safe=False` is now refused** at `Redactor`
+  construction (`WindowConfigurationError`). The flag was documented as disabling streaming
+  but nothing read it, so such a detector was silently run on windows it cannot see across.
+  `StreamingRequirements.stateful` is documented as advisory.
+- **IBAN matching accepts only canonical forms** (electronic, or print form in groups of
+  four). `GB82 W E S T 1 2 3 ...` no longer matches.
+- **Encrypted output no longer trips the entropy tiers.** The ciphertext payload is written
+  in groups of 16 joined by `.`, so no run reaches the 20-character minimum the entropy
+  candidates require; `detect --fail-on-detect` over `--mode encrypt` output is clean.
+  (Token format change; `encrypt` is unreleased.)
 - **One error root, `SafeStreamError`.** `WindowConfigurationError`, the new
   `MissingExtraError` (also an `ImportError`) and `OperatorError` (also a `ValueError`)
   derive from it; existing `except ValueError` / `except ImportError` handlers keep working.

@@ -8,7 +8,7 @@ from collections.abc import Iterable, Iterator
 
 from safestream_redactor._atomic import atomic_output
 from safestream_redactor.calibration import Calibrator
-from safestream_redactor.detectors.base import Detector
+from safestream_redactor.detectors.base import Detector, requirements_of
 from safestream_redactor.detectors.contextual import ContextualScorer
 from safestream_redactor.detectors.custom import CustomDetector
 from safestream_redactor.detectors.deterministic import DeterministicDetector
@@ -236,7 +236,25 @@ class Redactor:
             self._detectors.append(self._scorer)
         logger.debug("detector tiers active: %s", [d.name for d in self._detectors])
 
+        self._reject_non_streaming_detectors()
         self.enforce_overlap_safety(allow_unsafe_overlap)
+
+    def _reject_non_streaming_detectors(self) -> None:
+        """Fail closed on a tier that declares it cannot run on windows.
+
+        Every entry point except :meth:`redact` feeds detectors bounded windows, so a
+        detector with ``streaming_safe=False`` (it needs the whole input) would be run
+        on text it cannot see in full and silently miss what straddles a boundary. The
+        flag used to be documented as disabling streaming but nothing read it; now a
+        declaration is a promise the constructor keeps.
+        """
+        unsafe = [d.name for d in self._detectors if not requirements_of(d).streaming_safe]
+        if unsafe:
+            raise WindowConfigurationError(
+                f"detector(s) {', '.join(unsafe)} declare streaming_safe=False: they need the "
+                "whole input and cannot run on the bounded windows the streaming, file and "
+                "parallel engines use, so they would miss entities across window boundaries"
+            )
 
     def enforce_overlap_safety(self, allow_unsafe: bool = False) -> None:
         """Fail closed unless ``overlap`` covers what the active detectors require.

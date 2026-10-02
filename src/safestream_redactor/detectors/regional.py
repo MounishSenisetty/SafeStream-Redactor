@@ -158,26 +158,30 @@ _AADHAAR_CUE = re.compile(r"(?:aadhaar|aadhar|uidai|uid)[^\n]{0,32}$", re.IGNORE
 def _iban_at(text: str, start: int) -> int | None:
     """End offset of the valid IBAN starting at ``start``, or ``None``.
 
-    The country fixes the length, so take exactly that many alphanumerics (single
-    spaces between them are allowed) instead of matching greedily: a greedy match
-    followed by more capitals (``... 32 OR ...``) would overshoot, fail the
-    checksum and hide the real IBAN.
+    Only the two canonical forms are accepted: the electronic form (no spaces) and the
+    print form (groups of four separated by one space, the last group 1-4 long). The
+    country fixes the length, so exactly that many alphanumerics are taken instead of
+    matching greedily: a greedy match followed by more capitals (``... 32 OR ...``)
+    would overshoot, fail the checksum and hide the real IBAN. Free-form spacing
+    (``GB82 W E S T ...``) is rejected: it is not an IBAN as anyone writes one.
     """
     need = _IBAN_LEN.get(text[start : start + 2])
     if need is None:
         return None
-    i, taken = start, 0
-    while i < len(text) and taken < need:
-        c = text[i]
-        if c.isascii() and c.isalnum() and (c.isdigit() or c.isupper()):
-            taken += 1
-        elif not (c == " " and taken and text[i - 1] != " "):
+    grouped = text[start + 4 : start + 5] == " "
+    i = start
+    for taken in range(need):
+        if grouped and taken and taken % 4 == 0:
+            if text[i : i + 1] != " ":
+                return None
+            i += 1
+        c = text[i : i + 1]
+        if not (c.isascii() and c.isalnum() and (c.isdigit() or c.isupper())):
             return None
         i += 1
-    if taken != need or (i < len(text) and text[i].isascii() and text[i].isalnum()):
+    if i < len(text) and text[i].isascii() and text[i].isalnum():
         return None
-    compact = text[start:i].replace(" ", "")
-    return i if iban_ok(compact) else None
+    return i if iban_ok(text[start:i].replace(" ", "")) else None
 
 
 class RegionalDetector:

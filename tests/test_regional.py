@@ -135,3 +135,38 @@ def test_new_types_have_a_severity(kind: str) -> None:
     from safestream_redactor.severity import severity_for
 
     assert severity_for(EntityType(kind)) in {"critical", "high", "medium", "low"}
+
+
+# --- IBAN must be in a canonical print form (fix F) ---------------------------------
+
+
+@pytest.mark.parametrize(
+    "good",
+    [
+        "GB82WEST12345698765432",  # electronic format
+        "GB82 WEST 1234 5698 7654 32",  # print format: groups of four, last may be short
+        "DE89 3704 0044 0532 0130 00",
+        "NO93 8601 1117 947",  # 15 characters: three full groups and a group of three
+    ],
+)
+def test_iban_accepts_the_canonical_forms(good: str) -> None:
+    assert [d.text for d in DET.detect(f"iban {good} end")] == [good]
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "GB82 W E S T 1 2 3 4 5 6 9 8 7 6 5 4 3 2",  # a space after every character
+        "GB82WEST 1234 5698 7654 32",  # mixed: grouped only after the first eight
+        "GB82  WEST 1234 5698 7654 32",  # double space
+        "GB82 WES T123 4569 8765 432",  # groups not of four
+        "GB82 WEST 1234 5698 7654 3 2",  # last group split
+    ],
+)
+def test_iban_rejects_non_canonical_spacing(bad: str) -> None:
+    assert [d.text for d in DET.detect(f"iban {bad} end") if d.entity_type.value == "iban"] == []
+
+
+def test_longest_iban_span_fits_the_declared_requirement() -> None:
+    # Malta, 31 characters, printed in groups of four: 31 + 7 separators
+    assert RegionalDetector.requirements.max_span >= 31 + (31 - 1) // 4

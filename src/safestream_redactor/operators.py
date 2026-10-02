@@ -49,8 +49,19 @@ MIN_KEY_BYTES = 16
 # it was split across chunks, never decrypted, never counted, and the run "succeeded".
 MAX_PLAINTEXT_BYTES = 32_768
 _GCM_OVERHEAD = 12 + 16  # nonce + tag
-_MAX_TOKEN = 4 * (MAX_PLAINTEXT_BYTES + _GCM_OVERHEAD) // 3 + 64  # base64 + "<TYPE:E:" + ">"
-_TOKEN = re.compile(r"<([A-Z][A-Z0-9_]{0,31}):E:([A-Za-z0-9_-]+)>")
+# The payload is written in groups joined by a separator, never as one long run. The
+# entropy tiers only consider runs of 20+ characters from a fixed alphabet, and "." is
+# in neither alphabet, so with groups of 16 no run in a token can reach that minimum:
+# the ciphertext cannot be flagged as a secret on a rescan (`detect --fail-on-detect`
+# over encrypted output), by construction rather than by an exemption. An exemption
+# would need unbounded left context to recognise a long token mid-window and would
+# break the streaming == whole-document proof; this stays window-local and identical
+# for the Python and native backends.
+_GROUP = 16
+_SEP = "."
+_B64 = 4 * (MAX_PLAINTEXT_BYTES + _GCM_OVERHEAD) // 3
+_MAX_TOKEN = _B64 + _B64 // _GROUP + 64  # payload + separators + "<TYPE:E:" + ">"
+_TOKEN = re.compile(r"<([A-Z][A-Z0-9_]{0,31}):E:([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)>")
 
 
 def hash_token(algorithm: str, salt: bytes, entity_type: str, text: str, length: int) -> str:
@@ -103,7 +114,8 @@ def encrypt_token(key: bytes, entity_type: str, text: str) -> str:
     nonce = hmac.new(siv_key, label + b"\0" + plaintext, hashlib.sha256).digest()[:12]
     sealed = _aesgcm(enc_key).encrypt(nonce, plaintext, label)
     payload = base64.urlsafe_b64encode(nonce + sealed).rstrip(b"=").decode("ascii")
-    return f"<{label.decode('ascii')}:E:{payload}>"
+    grouped = _SEP.join(payload[i : i + _GROUP] for i in range(0, len(payload), _GROUP))
+    return f"<{label.decode('ascii')}:E:{grouped}>"
 
 
 class Deanonymizer:
@@ -128,6 +140,7 @@ class Deanonymizer:
 
         aes = _aesgcm(self._enc_key)  # a missing extra propagates; it is not a bad token
         try:
+            payload = payload.replace(_SEP, "")
             raw = base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4))
             if len(raw) < _GCM_OVERHEAD:
                 return None

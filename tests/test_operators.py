@@ -264,3 +264,37 @@ def test_cli_reports_a_missing_extra_as_a_clean_error(tmp_path, capsys, no_crypt
     assert "safestream-redactor[crypto]" in capsys.readouterr().err
     with pytest.raises(SystemExit, match=r"safestream-redactor\[crypto\]"):
         main(["deanonymize", str(src), "-o", str(tmp_path / "o2"), "--encrypt-key", KEY])
+
+
+# --- ciphertext must not look like a secret to the entropy tiers (fix D) -------------
+
+
+def _sample_values() -> list[str]:
+    import random
+
+    rng = random.Random(7)
+    pool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/_-"
+    values = [f"user{i}@corp{i % 7}.example" for i in range(60)]
+    values += ["".join(rng.choice(pool) for _ in range(n)) for n in (24, 40, 64, 200, 1500, 8000)]
+    return values
+
+
+def test_encrypted_output_raises_no_findings_on_rescan() -> None:
+    r = Redactor(policy=RedactionPolicy(mode="encrypt", encrypt_key=KEY))
+    for value in _sample_values():
+        enc = r.redact(f"value {value} end")
+        assert Redactor().detect(enc) == [], value[:20]
+
+
+def test_no_ciphertext_run_is_long_enough_for_the_entropy_candidates() -> None:
+    """The structural reason the test above cannot be flaky: runs stay under 20 characters."""
+    for value in _sample_values():
+        token = encrypt_token(KEY.encode(), "custom", value)
+        assert max(len(run) for run in re.findall(r"[A-Za-z0-9+/=_-]+", token)) < 20
+
+
+def test_grouped_tokens_still_round_trip() -> None:
+    r = Redactor(policy=RedactionPolicy(mode="encrypt", encrypt_key=KEY))
+    for value in _sample_values():
+        text = f"v {value} w\n"
+        assert Deanonymizer(KEY).restore(r.redact(text)) == text
