@@ -24,7 +24,8 @@ CLEAN = "just an ordinary line\n"
 
 
 def _fanotify_available() -> bool:
-    if os.geteuid() != 0:
+    # evaluated at import, before the module-level Linux skip applies: os.geteuid is POSIX-only
+    if not sys.platform.startswith("linux") or os.geteuid() != 0:
         return False
     import ctypes
 
