@@ -65,6 +65,18 @@ STRUCTURED: list[tuple[str, str, str]] = [
     ("api_key_labeled", "api_key={v}", "Hq7Zp2Lr9Xw4Tb6N"),
     ("password_labeled", 'password: "{v}"', "c0rrect-H0rse-B4ttery!"),
     ("entropy_unlabeled", "deploying with {v} in prod", "3vQ8x7Zk2LmN9pR4sT6wY1bC5dF0gHj"),
+    # legal / insurance reference numbers, form separators, prefixed accounts
+    ("case_number", "in Criminal Case No. {v} the defendant", "24-CR-004817"),
+    ("docket", "Docket # {v} filed", "2024-ON-CV-38812"),
+    ("policy_number", "POLICY NO. {v}\n", "FHO295000"),
+    ("visa_dash_separator", "VISA NO \u2013 {v}", "201512589001"),
+    ("phone_form_pointer", "MOBILE NO \u25ba 91 \u25ba {v}", "9822483077"),
+    ("account_prefixed", "student loan with Navient, account {v} closed", "NV-0038841592"),
+    # postal addresses
+    ("street_address", "mail it to {v}\nAttn: billing", "596 Crossover Way"),
+    ("street_address_caps", "STAY ADDRESS: {v}, NEW YORK", "790 8TH AVE"),
+    ("city_state_zip", "596 Crossover Way\n{v}\n", "Clay, FL 17189-2021"),
+    ("city_state_name_zip", "Street,  {v});", "Chicago,  Illinois  60690"),
 ]
 
 NAMES: list[tuple[str, str, str]] = [
@@ -78,6 +90,7 @@ NAMES: list[tuple[str, str, str]] = [
     ("mr", "Mr. {v} called back.", "Kwame Mensah"),
     ("lowercase_after_cue", "signed by {v} on behalf of the board.", "john smith"),
     ("lowercase_after_colon", "patient: {v} (age 42)", "maria gonzalez"),
+    ("allcaps_after_label", "AGENT: {v}\n(877) 627-1310", "TONY PRIZE"),
 ]
 
 _BACKENDS = ["python"]
@@ -143,6 +156,21 @@ def test_gate_sends_a_tight_window_and_recases_names_after_a_cue():
     assert piece.startswith("signed by John Smith on behalf")
     assert len(piece) < 100
     assert text[offset : offset + len(piece)].lower() == piece.lower()
+
+
+def test_gate_recases_allcaps_only_after_a_label():
+    from safestream_redactor.detectors.onnx_ner import _candidate_windows
+
+    ((offset, piece),) = _candidate_windows("ERROR WARN\nAGENT: TONY PRIZE\nINFO DEBUG")
+    assert piece == "Agent: Tony Prize" and offset == 11
+    # ALLCAPS with no label (log levels, headers) opens no window at all
+    assert _candidate_windows("ERROR WARN INFO\nDEBUG TRACE FATAL\n") == []
+
+
+@pytest.mark.parametrize("backend", _BACKENDS)
+def test_new_tier0_rules_stay_in_their_line_and_need_their_label(backend):
+    text = "4817 Willow Creek Road\nStreet parking only\nin case 2019 fails, see policy."
+    assert [d.text for d in Redactor(backend=backend).detect(text)] == ["4817 Willow Creek Road"]
 
 
 @pytest.mark.parametrize("backend", _BACKENDS)

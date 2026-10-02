@@ -370,6 +370,34 @@ class Pattern:
 
 _DIGIT = re.compile(r"\d")
 
+# Street suffixes in Title and UPPER case (no IGNORECASE: Python and Rust fold
+# a few non-ASCII letters differently), and US states as codes and full names.
+_STREET_SUFFIX = (
+    "Street|STREET|St|ST|Avenue|AVENUE|Ave|AVE|Road|ROAD|Rd|RD|Boulevard|BOULEVARD|Blvd|BLVD"
+    "|Lane|LANE|Ln|LN|Drive|DRIVE|Dr|DR|Way|WAY|Court|COURT|Ct|CT|Place|PLACE|Pl|PL"
+    "|Parkway|PARKWAY|Pkwy|PKWY|Terrace|TERRACE|Circle|CIRCLE|Highway|HIGHWAY|Hwy|HWY"
+    "|Square|SQUARE"
+)
+_US_STATES = (
+    "AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE"
+    "|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|PR|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY"
+    "|Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida"
+    "|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland"
+    "|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada"
+    "|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio"
+    "|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee"
+    "|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming"
+)
+# house number, one to four words, a suffix: "1100 South Marietta Pkwy", "790 8TH AVE"
+_STREET_SRC = (
+    rf"\b[0-9]{{1,6}}[ \t]+(?:[A-Z0-9][A-Za-z0-9'-]*\.?[ \t]+){{1,4}}(?:{_STREET_SUFFIX})\b"
+)
+# "Chicago,  Illinois  60690", "Leto, TX, 22231", "Albuquerque, NM 87131-0025"
+_CITY_ZIP_SRC = (
+    rf"\b[A-Z][A-Za-z]+(?:[ \t][A-Z][A-Za-z]+){{0,2}},[ \t]+(?:{_US_STATES}),?[ \t]+"
+    rf"[0-9]{{5}}(?:-[0-9]{{4}})?\b"
+)
+
 
 def _email_local(c: str) -> bool:
     """The EMAIL local-part class ``[\\w.%+-]``: CPython's ``\\w`` is ``isalnum()`` or ``_``."""
@@ -634,6 +662,11 @@ _PATTERNS: tuple[Pattern, ...] = (
         group=1,
         anchors=(".dkr.ecr.",),
     ),
+    # Postal addresses: a street line ("596 Crossover Way") and a US city/state/ZIP
+    # line ("Clay, FL 17189-2021"). Gaps are [ \t] only, so a match never crosses a
+    # line break into the next line or paragraph. Lookaround-free (native-ready).
+    Pattern(EntityType.ADDRESS, re.compile(_STREET_SRC), 0.8, needs_digit=True),
+    Pattern(EntityType.ADDRESS, re.compile(_CITY_ZIP_SRC), 0.8, needs_digit=True),
     # structured phone: a leading + country code or a (area code) is a strong
     # signal, so this scores high enough to stand on its own.
     Pattern(

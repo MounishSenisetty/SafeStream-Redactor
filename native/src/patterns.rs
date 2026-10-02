@@ -164,6 +164,37 @@ pub const PATTERNS: &[PatternSpec] = &[
         source: r"\b(\d{12})\.dkr\.ecr\.",
         kind: Kind::Captured,
     },
+    // Postal addresses (`deterministic._STREET_SRC` / `_CITY_ZIP_SRC`): exact,
+    // lookaround-free, and line-bounded (gaps are `[ \t]` only).
+    PatternSpec {
+        name: "address",
+        confidence: 0.8,
+        source: concat!(
+            r"\b[0-9]{1,6}[ \t]+(?:[A-Z0-9][A-Za-z0-9'-]*\.?[ \t]+){1,4}",
+            r"(?:Street|STREET|St|ST|Avenue|AVENUE|Ave|AVE|Road|ROAD|Rd|RD|Boulevard|BOULEVARD",
+            r"|Blvd|BLVD|Lane|LANE|Ln|LN|Drive|DRIVE|Dr|DR|Way|WAY|Court|COURT|Ct|CT|Place",
+            r"|PLACE|Pl|PL|Parkway|PARKWAY|Pkwy|PKWY|Terrace|TERRACE|Circle|CIRCLE|Highway",
+            r"|HIGHWAY|Hwy|HWY|Square|SQUARE)\b",
+        ),
+        kind: Kind::Simple,
+    },
+    PatternSpec {
+        name: "address",
+        confidence: 0.8,
+        source: concat!(
+            r"\b[A-Z][A-Za-z]+(?:[ \t][A-Z][A-Za-z]+){0,2},[ \t]+(?:",
+            r"AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT",
+            r"|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|PR|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY",
+            r"|Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware",
+            r"|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana",
+            r"|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana",
+            r"|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina",
+            r"|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina",
+            r"|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia",
+            r"|Wisconsin|Wyoming),?[ \t]+[0-9]{5}(?:-[0-9]{4})?\b",
+        ),
+        kind: Kind::Simple,
+    },
     // The label-gated credentials. anthropic/openai/aws_secret use the
     // lookaround-free sources from `_lookaround_free.py` (proven equal to the
     // originals there); url_credentials and api_key need no rewrite.

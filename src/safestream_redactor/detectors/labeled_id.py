@@ -49,8 +49,9 @@ _CUE_WINDOW = 96
 # separator leaves two adjacent ``\s*`` that backtracking splits every possible
 # way, which is O(n^2) per cue on a long whitespace run (a cue followed by 32K
 # spaces took ~19 s in one ``detect`` call). This form matches the same language
-# with the same greedy choice, in O(n).
-_SEP = r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.]\s*)?"
+# with the same greedy choice, in O(n). Forms also put an en/em dash, a pointer
+# (U+25BA) or a pipe between a label and its value: ``VISA NO \u2013 201512589001``.
+_SEP = r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.\u2013\u2014\u25ba|]\s*)?"
 
 # Each rule: (cue alternation, value pattern, entity type, confidence).
 # The value pattern must use a single capturing group around the emitted span,
@@ -81,7 +82,8 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     # Phone / fax numbers named by a label
     (
         r"phone|tel(?:ephone)?|mobile|cell|fax|contact\s*(?:no|number)",
-        r"(\+?\d[\d\s().-]{6,61}\d)",
+        # a form may split the country code off with a dash or pointer
+        r"(\+?\d[\d\s().\-\u2013\u25ba]{6,61}\d)",
         EntityType.PHONE,
         0.8,
     ),
@@ -97,7 +99,8 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     # Financial account / routing / IBAN / SWIFT
     (
         r"account|acct|routing|aba|iban|swift|bic|bank|sort\s*code",
-        r"([A-Z]{2}\d{2}[A-Z0-9]{6,30}|\d[\d\s-]{4,62}\d)",
+        # IBAN, a lender-prefixed number (MP-00291847, HELOC-8847310), or digits
+        r"([A-Z]{2}\d{2}[A-Z0-9]{6,30}|[A-Z]{1,6}-\d[A-Z0-9-]{3,56}|\d[\d\s-]{4,62}\d)",
         EntityType.ID_NUMBER,
         0.8,
     ),
@@ -109,6 +112,14 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
         r"student|employee|emp|staff|member|customer|client|patient|"
         r"badge|tax|medical\s*record|mrn|npi|licen[cs]e|passport|"
         r"national\s*id|registration|enrol?lment",
+        r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
+        EntityType.ID_NUMBER,
+        0.75,
+    ),
+    # Legal / insurance / immigration reference numbers. "case" counts only with
+    # "no"/"number" ("in case 2 fails" is no label); the value needs a digit.
+    (
+        r"case\s*(?:no|number|num)|docket|policy|claim|visa|record",
         r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
         EntityType.ID_NUMBER,
         0.75,

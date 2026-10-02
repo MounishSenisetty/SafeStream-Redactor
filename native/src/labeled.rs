@@ -13,7 +13,8 @@ use crate::patterns::WordBounded;
 use std::sync::OnceLock;
 
 /// `labeled_id._SEP`.
-const SEP: &str = r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.]\s*)?";
+const SEP: &str =
+    r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.\u2013\u2014\u25ba|]\s*)?";
 
 /// `labeled_id._RULES`: (cue alternation, value pattern, entity type, confidence).
 pub const RULES: &[(&str, &str, &str, f64)] = &[
@@ -31,7 +32,7 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
     ),
     (
         r"phone|tel(?:ephone)?|mobile|cell|fax|contact\s*(?:no|number)",
-        r"(\+?\d[\d\s().-]{6,61}\d)",
+        r"(\+?\d[\d\s().\-\u2013\u25ba]{6,61}\d)",
         "phone",
         0.8,
     ),
@@ -43,7 +44,7 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
     ),
     (
         r"account|acct|routing|aba|iban|swift|bic|bank|sort\s*code",
-        r"([A-Z]{2}\d{2}[A-Z0-9]{6,30}|\d[\d\s-]{4,62}\d)",
+        r"([A-Z]{2}\d{2}[A-Z0-9]{6,30}|[A-Z]{1,6}-\d[A-Z0-9-]{3,56}|\d[\d\s-]{4,62}\d)",
         "id_number",
         0.8,
     ),
@@ -53,6 +54,12 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
             r"badge|tax|medical\s*record|mrn|npi|licen[cs]e|passport|",
             r"national\s*id|registration|enrol?lment"
         ),
+        r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
+        "id_number",
+        0.75,
+    ),
+    (
+        r"case\s*(?:no|number|num)|docket|policy|claim|visa|record",
         r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
         "id_number",
         0.75,

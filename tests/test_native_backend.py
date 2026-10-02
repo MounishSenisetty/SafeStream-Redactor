@@ -142,6 +142,11 @@ CORPUS = [
     "123456789012.dkr.ecr.us-east-1.amazonaws.com/app",
     "order 123456789012 shipped xarn:aws:iam::123456789012:role 1234567890123.dkr.ecr.x",
     "arn:aws:iam::١٢٣٤٥٦٧٨٩٠١٢:role/x s3.amazonaws.com.cn/123456789012 ٩123456789012.dkr.ecr.",
+    # postal addresses: line-bounded, Title or UPPER suffixes, codes and full states
+    "596 Crossover Way\nClay, FL 17189-2021 and 790 8TH AVE, NEW YORK, NY 10036",
+    "Street,  Chicago,  Illinois  60690); 1100 South Marietta Pkwy, Leto, TX, 22231",
+    "4817 Willow Creek Road\nStreet x12 Main St é9 Main St 12 Main Stré Café, NY 10001",
+    "1234567 Main St ١٢ Main St 12\tOak\tDr Kansas City, MO 64105-1234x Seattle, WA 98101",
 ]
 
 
@@ -185,6 +190,15 @@ _FRAGMENTS = [
     "AKIA",
     "eyJ",
     "SG.",
+    "12 ",
+    "Main ",
+    "St",
+    "AVE",
+    "Clay, ",
+    "FL ",
+    "New York ",
+    "17189",
+    "-2021",
 ]
 
 fuzzed = st.lists(st.sampled_from(_FRAGMENTS), min_size=0, max_size=30).map("".join)
@@ -542,6 +556,11 @@ _LABELED_CORPUS = [
     "éssn 123-45-6789 ssné 123456789 José’s ssn: 123-45-6789 “Patient MRN-0042117”",
     "ssn ١٢٣٤٥٦٧٨٩ and phone: ０４４ 20 7946 0958 — card: 4111 1111 1111 1111é",
     "Zoë " + "x " * 400 + "account 12-3456-7890 and DOB: 03/08/1996",
+    # legal / insurance cues, form separators, lender-prefixed accounts
+    "Criminal Case No. 24-CR-004817; Docket # 2024-ON-CV-38812; in case 2019 fails",
+    "POLICY NO. FHO295000 | claim: CLM-77812 | VISA NO \u2013 201512589001",
+    "MOBILE NO \u2013 91 \u2013 9822483077 / phone \u25ba +31 6 2038 8491 | record 4471-22",
+    "account MP-00291847, account HELOC-8847310 and Fidelity account R-00482917é",
 ]
 
 
@@ -586,6 +605,14 @@ _LABEL_PIECES = [
     "é",
     "\u0301",
     "İ",
+    "case no",
+    "docket",
+    "policy",
+    "visa",
+    "\u2013",
+    "\u25ba",
+    "|",
+    "MP-",
 ]
 label_fuzzed = st.lists(st.sampled_from(_LABEL_PIECES), min_size=0, max_size=25).map(" ".join)
 # the same pieces glued together, so non-ASCII letters sit right against cues/values

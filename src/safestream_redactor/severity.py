@@ -51,6 +51,7 @@ _SEVERITY: dict[EntityType, str] = {
     EntityType.EMAIL: MEDIUM,
     EntityType.PHONE: MEDIUM,
     EntityType.PERSON: MEDIUM,
+    EntityType.ADDRESS: MEDIUM,
     # Weakly identifying or ambiguous.
     EntityType.IPV4: LOW,
     EntityType.IPV6: LOW,

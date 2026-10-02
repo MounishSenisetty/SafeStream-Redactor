@@ -44,6 +44,8 @@ class EntityType(str, Enum):
     PERSON = "person"
     ORG = "org"
     LOC = "loc"
+    # postal address: a street line, or "City, ST 12345" (line-bounded patterns)
+    ADDRESS = "address"
     # date of birth (label-anchored)
     DOB = "dob"
     # any calendar date / time of day (opt-in: logs are full of timestamps)

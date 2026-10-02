@@ -261,8 +261,10 @@ _TITLE_RUN_RE = re.compile(
 _CUE_RE = re.compile(
     r"(?<!\w)(?:(?:Dr|Mrs?|Ms|Prof|Dear|Attn|(?i:signed[ \t]+by))\b[.,:]?[ \t]*"
     r"|(?i:sincerely|regards)\b,?[ \t]*\n?[ \t]*"
-    r"|(?i:name|patient|witness|user|contact|employee|customer|client|applicant|author"
-    r"|nurse|physician|cc)[ \t]*:[ \t]*)"
+    r"|(?i:name|surname|patient|witness|user|contact|employee|customer|client|applicant"
+    r"|author|nurse|physician|doctor|officer|agent|location|cc)"
+    # a form label ends in a colon, an en/em dash or a pointer: "AGENT: TONY PRIZE"
+    r"[ \t]*[:\u2013\u2014\u25ba][ \t]*)"
 )
 # up to three words after a cue: the name (in any case) and nothing past a stopword
 _AFTER_CUE_RE = re.compile(r"[^\W\d_][\w'\u2019-]{0,39}(?:[ \t]+[^\W\d_][\w'\u2019-]{0,39}){0,2}")
@@ -271,6 +273,7 @@ _STOPWORDS = frozenset(
      "their", "this", "to", "with", "your", "his", "her", "was", "is", "has", "had",
      "will", "behalf"}
 )  # fmt: skip
+_WORD = re.compile(r"[^\W\d_]+")
 # characters of context on each side of a candidate (about 8-12 words)
 _CONTEXT = 32
 
@@ -291,13 +294,14 @@ def _cue_name(text: str, pos: int) -> list[tuple[int, int]]:
 def _candidate_windows(text: str) -> list[tuple[int, str]]:
     """``(offset, model input)`` windows around every name candidate in ``text``.
 
-    The model input is the window text, except that lower-case words after a cue
-    are capitalised (``signed by john smith`` -> ``John Smith``) so a cased model
-    can see them as names. Capitalising one character keeps the length, so the
-    model's offsets are offsets into ``text`` unchanged.
+    The model input is the window text, except that words after a cue are
+    title-cased (``signed by john smith`` / ``AGENT: JOHN SMITH`` -> ``John Smith``)
+    so a cased model can see them as names. ALLCAPS is recased only after a cue,
+    never in free text, where it is a log level or a header. Each character keeps
+    its length, so the model's offsets are offsets into ``text`` unchanged.
     """
     spans: list[tuple[int, int]] = []
-    recase: list[int] = []  # positions whose character is upper-cased for the model
+    recase: dict[int, str] = {}  # position -> the character the model reads there
     for m in _TITLE_RUN_RE.finditer(text):
         spans.append((m.start(), m.end()))
     for m in _CUE_RE.finditer(text):
@@ -305,10 +309,17 @@ def _candidate_windows(text: str) -> list[tuple[int, str]]:
         if not words:
             continue
         spans.append((m.start(), words[-1][1]))
+        # an ALLCAPS label ("AGENT:") is title-cased too: the model reads a
+        # shouted label as part of the entity and loses the name after it
+        label = [(m.start() + w.start(), m.start() + w.end()) for w in _WORD.finditer(m.group())]
+        for ws, we in label + words:
+            word = text[ws:we]
+            if word.isupper() and len(word) > 1 and all(len(c.lower()) == 1 for c in word):
+                recase.update((ws + i, c.lower()) for i, c in enumerate(word) if i)
         for ws, we in words:
             word = text[ws:we]
             if word.islower() and len(word[0].upper()) == 1:
-                recase.append(ws)
+                recase[ws] = word[0].upper()
     if not spans:
         return []
     # widen by the context (within the line), then merge overlapping windows
@@ -323,16 +334,11 @@ def _candidate_windows(text: str) -> list[tuple[int, str]]:
             windows[-1][1] = max(windows[-1][1], hi)
         else:
             windows.append([lo, hi])
-    recase_set = set(recase)
     out: list[tuple[int, str]] = []
     for lo, hi in windows:
         piece = text[lo:hi]
-        if recase_set:
-            chars = list(piece)
-            for i in range(lo, hi):
-                if i in recase_set:
-                    chars[i - lo] = chars[i - lo].upper()
-            piece = "".join(chars)
+        if recase:
+            piece = "".join(recase.get(i, c) for i, c in enumerate(piece, lo))
         out.append((lo, piece))
     return out
 
