@@ -370,8 +370,12 @@ class Pattern:
 
 _DIGIT = re.compile(r"\d")
 
-# The e-mail local-part alphabet (the first character class of the EMAIL regex).
-_EMAIL_LOCAL = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._%+-")
+
+def _email_local(c: str) -> bool:
+    """The EMAIL local-part class ``[\\w.%+-]``: CPython's ``\\w`` is ``isalnum()`` or ``_``."""
+    return c.isalnum() or c in "_.%+-"
+
+
 _WORD_BOUNDARY = re.compile(r"\b")
 
 
@@ -379,7 +383,7 @@ def _email_scan(regex: re.Pattern[str], text: str) -> Iterator[re.Match[str]]:
     """``regex.finditer(text)`` for the EMAIL pattern, in linear time.
 
     ``finditer`` tries the pattern at every word boundary, and from each one the
-    local part ``[A-Za-z0-9._%+-]+`` scans to the end of its run before failing
+    local part ``[\\w.%+-]+`` scans to the end of its run before failing
     on a missing ``@`` — O(n^2) on a long run such as ``"a.a.a.…"`` (a 32K-char
     window took ~1.3 s; an 8 MiB API body would take hours). A match needs its
     local part to be a run of local-part characters ending *exactly* at an
@@ -399,7 +403,7 @@ def _email_scan(regex: re.Pattern[str], text: str) -> Iterator[re.Match[str]]:
     at = text.find("@")
     while at != -1:
         start = at
-        while start > last_end and text[start - 1] in _EMAIL_LOCAL:
+        while start > last_end and _email_local(text[start - 1]):
             start -= 1
         if start < at:
             boundary = _WORD_BOUNDARY.search(text, start, at)
@@ -414,7 +418,7 @@ def _email_scan(regex: re.Pattern[str], text: str) -> Iterator[re.Match[str]]:
 _PATTERNS: tuple[Pattern, ...] = (
     Pattern(
         EntityType.EMAIL,
-        re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
+        re.compile(r"\b[\w.%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"),
         0.95,
         anchors=("@",),
         scanner=_email_scan,

@@ -185,6 +185,19 @@ def test_ner_overlap_never_leaks_tier0_characters():
     assert got.text == text[0:25]
 
 
+def test_overlapping_name_spans_union_instead_of_leaking():
+    """PERSON "Priya" must not beat ORG "Priya Iyer" and leave "Iyer" exposed."""
+    person = Detection(0, 5, "Priya", EntityType.PERSON, 0.79, source="onnx")
+    org = Detection(0, 10, "Priya Iyer", EntityType.ORG, 0.54, source="onnx")
+    (got,) = resolve_overlaps([person, org])
+    assert (got.start, got.end, got.text, got.entity_type) == (
+        0,
+        10,
+        "Priya Iyer",
+        EntityType.PERSON,
+    )
+
+
 class _Fixed:
     """A stand-in NER tier that returns canned detections."""
 

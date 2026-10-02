@@ -49,7 +49,7 @@ pub const PATTERNS: &[PatternSpec] = &[
     PatternSpec {
         name: "email",
         confidence: 0.95,
-        source: r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+        source: r"\b[\w.%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
         kind: Kind::Simple,
     },
     PatternSpec {
@@ -246,6 +246,10 @@ pub(crate) fn compile(name: &'static str, source: &str) -> Result<Regex, Error> 
 /// A byte span `(start, end)`.
 pub(crate) type Span = (usize, usize);
 
+/// Rejected candidates per text before [`WordBounded`] falls back to the exact
+/// regex (see there).
+const MAX_REJECTED: usize = 64;
+
 /// A pattern compiled so that Unicode `\b` stays fast on non-ASCII text.
 ///
 /// The lazy DFA cannot evaluate a Unicode word boundary once it reads a
@@ -259,6 +263,13 @@ pub(crate) type Span = (usize, usize);
 /// candidate's own length. Candidates are tried left to right and the scan
 /// resumes after each match, which is exactly `captures_iter`'s leftmost-first
 /// order. ASCII text, and patterns without `\b`, use the exact regex directly.
+///
+/// A candidate the exact pattern rejects costs a relaxed search that may scan a
+/// long run again from the next character, so hostile text (a 70K-character
+/// word run glued to an accented letter, before an `@`) would be quadratic.
+/// After [`MAX_REJECTED`] rejections in one text the scan therefore finishes
+/// with the exact regex's own linear-time search instead: same matches, bounded
+/// worst case.
 pub(crate) struct WordBounded {
     exact: Regex,
     fast_path: Option<(Regex, meta::Regex)>,
@@ -300,22 +311,15 @@ impl WordBounded {
         mut f: impl FnMut(Span, Option<Span>) -> Result<(), Error>,
     ) -> Result<(), Error> {
         let Some((relaxed, anchored)) = self.fast_path.as_ref().filter(|_| !text.is_ascii()) else {
-            if want_group {
-                for caps in self.exact.captures_iter(text) {
-                    if let Some(m) = caps.get(0) {
-                        f((m.start(), m.end()), caps.get(1).map(|g| (g.start(), g.end())))?;
-                    }
-                }
-            } else {
-                for m in self.exact.find_iter(text) {
-                    f((m.start(), m.end()), None)?;
-                }
-            }
-            return Ok(());
+            return self.exact_from(text, 0, want_group, f);
         };
         let mut caps = anchored.create_captures();
         let mut pos = 0;
+        let mut rejected = 0;
         while let Some(candidate) = relaxed.find_at(text, pos) {
+            if rejected >= MAX_REJECTED {
+                return self.exact_from(text, pos, want_group, f);
+            }
             let start = candidate.start();
             let input = Input::new(text).range(start..).anchored(Anchored::Yes);
             let found = if want_group {
@@ -333,11 +337,47 @@ impl WordBounded {
                     whole.1
                 }
                 // no match here (or an empty one): the next candidate starts later
-                _ => start + text[start..].chars().next().map_or(1, char::len_utf8),
+                _ => {
+                    rejected += 1;
+                    start + text[start..].chars().next().map_or(1, char::len_utf8)
+                }
             };
             if pos > text.len() {
                 break;
             }
+        }
+        Ok(())
+    }
+
+    /// The exact regex's matches starting at or after `pos`, as `captures_iter`
+    /// would continue them (leftmost-first, resuming after each match).
+    fn exact_from(
+        &self,
+        text: &str,
+        mut pos: usize,
+        want_group: bool,
+        mut f: impl FnMut(Span, Option<Span>) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        while pos <= text.len() {
+            let (whole, group) = if want_group {
+                let Some(caps) = self.exact.captures_at(text, pos) else {
+                    break;
+                };
+                let Some(m) = caps.get(0) else { break };
+                ((m.start(), m.end()), caps.get(1).map(|g| (g.start(), g.end())))
+            } else {
+                let Some(m) = self.exact.find_at(text, pos) else {
+                    break;
+                };
+                ((m.start(), m.end()), None)
+            };
+            f(whole, group)?;
+            // built-in patterns never match empty; step over one anyway
+            pos = if whole.1 > whole.0 {
+                whole.1
+            } else {
+                whole.1 + text[whole.1..].chars().next().map_or(1, char::len_utf8)
+            };
         }
         Ok(())
     }

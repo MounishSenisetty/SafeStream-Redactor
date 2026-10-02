@@ -122,9 +122,10 @@ def decode_bio(
     ``per_token`` is ``(label_id, probability)`` per token, aligned to
     ``tokens``. Consecutive tokens of the same entity tag are merged; a ``B-``
     prefix, a tag change, a special token, or an ``O`` tag closes the current
-    span. The span's confidence is the **minimum** token probability across it
-    (conservative — the whole span is only as trustworthy as its weakest token),
-    and spans below ``min_score`` or whose tag is not in ``tag_map`` are dropped.
+    span. The span's confidence is the **mean** token probability across it: the
+    tier is recall-first, and one uncertain sub-word (a rare surname piece) must
+    not veto a name the other tokens are sure of. Spans below ``min_score`` or
+    whose tag is not in ``tag_map`` are dropped.
 
     Returns ``(start, end, entity_type, confidence, tag)`` tuples.
     """
@@ -138,7 +139,7 @@ def decode_bio(
         nonlocal cur_tag, cur_probs
         if cur_tag:
             entity = tag_map.get(cur_tag)
-            conf = min(cur_probs)
+            conf = sum(cur_probs) / len(cur_probs)
             if entity is not None and conf >= min_score:
                 results.append((cur_start, cur_end, entity, conf, cur_tag))
         cur_tag = ""
@@ -689,7 +690,7 @@ class OnnxPiiDetector:
                         },
                     )
                 )
-        return found
+        return _join_spaced(text, found)
 
     def _predict(self, batch: list[list[int]]) -> list[tuple[list[int], list[float]] | None]:
         """Per token-id row: ``(labels, probabilities)``, or ``None`` when all ``O``."""
@@ -715,6 +716,33 @@ class OnnxPiiDetector:
 
 
 _DECIDED_FLOOR = 0.5
+
+
+def _join_spaced(text: str, found: list[Detection]) -> list[Detection]:
+    """Merge name parts the model tagged separately ("Olusegun" "Tanaka").
+
+    Two spans with only a space or tab between them become one, so the output is
+    a single redaction (it does not reveal how many words a name has), labelled
+    by the more confident part.
+    """
+    found.sort(key=lambda d: d.start)
+    out: list[Detection] = []
+    for det in found:
+        prev = out[-1] if out else None
+        if prev is not None and prev.end <= det.start <= prev.end + 2:
+            gap = text[prev.end : det.start]
+            if gap.strip(" \t") == "":
+                best = prev if prev.confidence >= det.confidence else det
+                end = max(prev.end, det.end)
+                out[-1] = Detection(
+                    prev.start, end, text[prev.start : end], best.entity_type,
+                    best.confidence, best.source, dict(best.meta),
+                )  # fmt: skip
+                continue
+        out.append(det)
+    return out
+
+
 # ponytail: snapping stops after this many characters each way, so a name tag
 # inside a huge base64 blob cannot grow past the tier's declared max_span.
 _SNAP_LIMIT = 32

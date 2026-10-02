@@ -12,7 +12,7 @@ tier; overlaps are resolved most-specific/highest-confidence wins.
 | 2. Statistical | `detectors/entropy.py` | High-entropy tokens with no published format (bespoke keys, session tokens). |
 | 2b. Compound secret | `detectors/entropy.py` (`CompoundSecretDetector`) | High-entropy runs carrying an *embedded strong special* (`! # $ % ^ & * ~`) the base64 entropy candidate splits on — symbol-containing passwords/blobs. Precision-gated (embedded special + class diversity + entropy floor); emits `secret`. |
 | 3. NER (optional) | `detectors/ner.py` | spaCy PERSON/ORG/LOC. Requires the `ner` extra + a model. |
-| 3b. ONNX NER (optional) | `detectors/onnx_ner.py` | Local ONNX token-classifier for PERSON/ORG/LOC, on-device, no data egress. Requires the `onnx` extra + a model. |
+| 3b. ONNX NER (optional) | `detectors/onnx_ner.py` | Local ONNX INT8 token-classifier for PERSON/ORG/LOC, run only on micro-windows around name-shaped text; on-device, no data egress. Requires the `onnx` extra + a model. |
 | 4. Contextual | `detectors/contextual.py` | Nudges confidence from surrounding trigger words; promotes trigger-gated spans (bare SSN next to "ssn:"). |
 
 Custom words/regexes (`detectors/custom.py`) and third-party plugins
@@ -45,7 +45,7 @@ Three seams keep it testable and pluggable (`docs`/tests cover each): a
 `Tokenizer` (built-in pure-Python `WordTokenizer`, or wrap a Hugging Face
 sub-word tokenizer), an `InferenceBackend` (`OnnxRuntimeBackend`, or inject your
 own), and a pure-Python `decode_bio` that merges BIO tags into character-offset
-spans with a conservative (minimum-over-span) confidence. The tier declares
+spans with a mean-over-span confidence. The tier declares
 `StreamingRequirements` so the engine keeps it boundary-correct, and it pickles
 its config (not the session) so it works under the parallel scheduler — exactly
 like the spaCy tier. Labels default to the CoNLL IOB2 scheme
@@ -67,15 +67,42 @@ safestream redact in.txt -o out.txt --onnx models/ner/model.int8.onnx \
     --onnx-vocab models/ner/tokenizer.json --onnx-labels models/ner/labels.json
 ```
 
-**Gating and batching.** The model never sees the raw stream. A line reaches it
-only if it holds a Titlecase word, a non-ASCII character, or a person cue
-(`dr`, `patient`, `signed`, `dear`, ...), so machine text such as timestamps,
-hex, ALLCAPS levels and paths costs one regex search. Gated lines are cut into
-overlapping 500-character pieces, sorted by length, and run as padded batches
-(one session call per 32 rows, one intra-op thread per worker process: scale
-with `--workers`); softmax/argmax are NumPy array operations. A sub-word tag is
-widened to the whole word, and a `B-` tag glued to the previous sub-word
-continues it, so a name is never half-redacted.
+**Micro-span gating.** The model never reads the raw stream, nor whole lines:
+only a short window (about 32 characters of context each side) around a
+name-shaped candidate. A candidate is a run of 2-4 Titlecase words (accented
+Latin and Cyrillic included), one Titlecase word mid-sentence (`contact Alice`),
+or the words right after a person cue: capitalised honorifics (`Dr.`, `Mr`,
+`Dear`), `signed by`, sign-offs (`Regards,` reaches the name on the next line),
+and colon labels (`patient:`, `name:`, `user:`). Machine text (timestamps, hex,
+ALLCAPS levels, paths, `k=v` pairs, `cache=MISS`, `41 ms`) triggers none of
+these, so it costs one regex pass and no inference. On the mixed synthetic
+benchmark corpus the model reads 6.3% of the characters (35.5% with whole-line
+gating). Not gated: a lone sentence-initial first name (`Priya approved ...`),
+since nearly every prose sentence starts with a capital.
+
+**Lower-case names.** The bundled checkpoint is cased, so it does not see
+`signed by john smith` as a name. Lower-case words right after a cue are
+capitalised in the copy the model reads (`John Smith`). Capitalising one
+character keeps the length, so model offsets index the original text unchanged.
+
+**Batching and decoding.** Windows are sorted by length and run as padded
+batches (one session call per 32 rows, one intra-op thread per worker process:
+scale with `--workers`); softmax/argmax are NumPy array operations. A span's
+confidence is the mean of its token probabilities, so one uncertain sub-word
+cannot veto a name. A sub-word tag is widened to the whole word, a `B-` tag
+glued to the previous sub-word continues it, name parts separated only by a
+space become one redaction, and overlapping name spans (`Priya` PERSON inside
+`Priya Iyer` ORG) are merged, so a name is never half-redacted.
+
+**Throughput ceiling.** DistilBERT costs roughly 86 MFLOP per token, about
+1,000 tokens (4 KB of text) per second per core. The tier's throughput is
+therefore that rate divided by the share of text the gate passes: fine for
+logs, where few lines carry names, and the bottleneck for name-dense prose.
+Measured 2026-10-03 (i7-12650H, on battery): T0 alone 5.9 / 31.8 / 59.2 / 58.0 MB/s
+at 1 / 4 / 8 / 16 workers; T0+ONNX 0.04 / 0.11 / 0.11 / 0.11 MB/s. Person recall on
+the synthetic corpus 0.9997; on RedactionBench, mandatory char recall rises from
+0.739 to 0.815 and char F1 from 0.549 to 0.601 (internal char-level metric, not the
+official R-Score). Details in the README's Evaluation section.
 
 **Recall-first threshold.** `--onnx-min-score` defaults to 0.35. A span that
 clears it is emitted at confidence `max(score, 0.5)` (the raw score is in
@@ -86,6 +113,16 @@ the lower threshold.
 span, `resolve_overlaps` keeps one span covering both, labelled by the Tier-0
 detection: a PERSON tag on `john.doe` cannot shrink the redaction of
 `john.doe@example.com` and leave `@example.com` in the clear.
+
+## Tier 0 on non-ASCII text
+
+The native core runs every Tier 0 rule with Unicode `\b`. The fast lazy DFA cannot
+evaluate Unicode `\b` on non-ASCII bytes and falls back to a much slower engine, so
+each `\b` rule is compiled twice: a relaxed copy with the `\b`s removed finds
+candidate starts on the DFA, and the exact regex verifies each one anchored at that
+start. Matches and their order are unchanged; after 64 rejected candidates a rule
+switches to the exact regex so hostile input stays linear. Labeled identifiers went
+from 4.9 to 85.5 MB/s on mixed text (see [NATIVE_CORE.md](NATIVE_CORE.md)).
 
 ## Coverage and severity
 

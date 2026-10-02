@@ -43,7 +43,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Web playground** — `safestream ui` opens a local Streamlit page to try detection and redaction interactively: highlighted findings, side-by-side redaction, file upload; loopback-only with telemetry off ([Web Interface](#web-interface)).
 - **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
-- **Native core** — `--backend native` runs every default tier on a compiled Rust core with output byte-identical to the Python tier: 10–35 MB/s per core end to end (9–26× pure Python), 36–121 MB/s on 4 workers ([docs/NATIVE_CORE.md](docs/NATIVE_CORE.md)).
+- **Native core** — `--backend native` runs every default tier on a compiled Rust core with output byte-identical to the Python tier: 10–35 MB/s per core end to end (9–26× pure Python), 36–121 MB/s on 4 workers. Unicode `\b` stays on the fast DFA path even on non-ASCII text ([docs/NATIVE_CORE.md](docs/NATIVE_CORE.md)).
 - **File-system DLP (Linux)** — `safestream fanotify --watch DIR --mode audit|redact|block` logs, redacts in place, or denies reads of files that contain secrets; falls back to inotify without `CAP_SYS_ADMIN` ([docs/FANOTIFY.md](docs/FANOTIFY.md)).
 - **More operators** — beyond replace/mask/pseudonymize: salted `hash`, reversible `encrypt` (AES-256-GCM, restored with `safestream deanonymize`) and `fictionalize` (synthetic values from reserved ranges). All are pure functions of the span, so streaming and parallel output stay byte-identical ([docs/PRESIDIO_PARITY.md](docs/PRESIDIO_PARITY.md)).
 - **Regional recognizers (opt-in)** — `--regional` adds checksum-validated IBAN, Bitcoin addresses, UK NHS numbers and India Aadhaar, plus UK NINO, India PAN and Ethereum addresses by shape.
@@ -72,7 +72,9 @@ pip install 'safestream-redactor[native]'
 
 # optional local ONNX NER tier — on-device PERSON/ORG/LOC detection via a
 # bring-your-own ONNX model, no data egress (Redactor(use_onnx=True, ...)):
-pip install 'safestream-redactor[onnx]'
+pip install 'safestream-redactor[onnx]' tokenizers
+# ...and export a model once (needs torch + transformers, writes models/ner/):
+python scripts/export_onnx.py --out models/ner
 ```
 
 ```bash
@@ -151,6 +153,9 @@ safestream mcp-serve
 
 # the compiled Rust core (pip install 'safestream-redactor[native]'); same output
 safestream redact huge.log -o clean.log --backend native --workers 4
+
+# add the gated on-device ONNX name tier (PERSON/ORG/LOC) on top of the native core
+safestream redact notes.txt -o notes_clean.txt --backend native --workers 8     --onnx models/ner/model.int8.onnx --onnx-vocab models/ner/tokenizer.json     --onnx-labels models/ner/labels.json
 
 # Linux DLP daemon: deny reads of any file under /srv/exports that holds a secret
 sudo safestream fanotify --watch /srv/exports --mode block
@@ -233,6 +238,16 @@ redact_tree("logs/", "logs_redacted/", Redactor(), workers=8)
 
 # split a single large file across cores; byte-identical to the sequential pass
 Redactor().redact_file("huge.log", "huge_redacted.log", workers=8)
+
+# native core + gated ONNX name tier (paths from scripts/export_onnx.py)
+r = Redactor(
+    backend="native",
+    use_onnx=True,
+    onnx_model="models/ner/model.int8.onnx",
+    onnx_vocab="models/ner/tokenizer.json",
+    onnx_labels="models/ner/labels.json",
+)
+r.redact("signed by john smith, key AKIAIOSFODNN7EXAMPLE")
 
 # enforce the offline guarantee around any block of code
 from safestream_redactor import netguard
@@ -397,13 +412,15 @@ from the same streaming engine the CLI uses, so results match `safestream detect
         │ Tier 2  statistical       │  Shannon-entropy scoring for bespoke,
         │                           │  undocumented high-entropy secrets
         ├───────────────────────────┤
-        │ Tier 3  NER (optional)    │  spaCy PERSON / ORG / LOC
+        │ Tier 3  NER (optional)    │  spaCy, or ONNX INT8 run only on
+        │                           │  ~6% micro-windows around name cues
         ├───────────────────────────┤
         │ Tier 4  contextual        │  trigger words boost/suppress
         │                           │  confidence ("ssn:", "example", ...)
         └───────────────────────────┘
                      │
           confidence filter + overlap resolution
+          (deterministic wins; overlapping name spans merge, never half-redact)
                      │
                      ▼
           redaction policy (replace / mask / pseudonymize / per-type)
@@ -531,7 +548,7 @@ tier buys the highest character recall (0.540) at 0.04 MB/s and a model-sized
 footprint; Presidio-on-spaCy has the highest entity recall (0.659) and no stated memory
 bound. Not measured here: Hyperscan/re2 (a re2 backend was prototyped and rejected, see
 [docs/PERFORMANCE_BACKENDS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PERFORMANCE_BACKENDS.md)),
-gitleaks, and the ONNX tier (bring-your-own-model).
+gitleaks. The ONNX tier is measured separately below.
 
 **Throughput is a known limitation, not a strength.** ~2 MB/s single-core pure Python (about 5–8 MB/s with the native core; measured above) means a
 100 GB file takes hours to a day; compiled scanners (gitleaks, ripgrep-class) are expected to be far
@@ -549,6 +566,44 @@ patterns use lookaround re2 cannot compile — full numbers in
 Closing the constant factor would require first rewriting those patterns to be
 lookaround-free and Unicode-boundary-consistent (on the
 [roadmap](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/ROADMAP.md)).
+
+**Tiered native core + gated ONNX tier.** Measured 2026-10-03 with
+`benchmarks/tiered_bench.py` and the RedactionBench harness on an i7-12650H
+(10 cores / 16 threads), **on battery** (Balanced power plan), so absolute
+throughput is pessimistic. The ONNX model is `dslim/distilbert-NER` exported to INT8
+by `scripts/export_onnx.py`. Raw JSON is in
+[`research/results/raw/tiered_2026-10-03.json`](research/results/raw/tiered_2026-10-03.json).
+
+| Config | 1 worker | 4 | 8 | 16 | p50 / p99 per 64 KiB |
+| --- | --: | --: | --: | --: | --: |
+| T0 (native, no model) | 5.9 MB/s | 31.8 | 59.2 | 58.0 | 3.6 / 6.4 ms |
+| T0 + gated ONNX | 0.04 MB/s | 0.11 | 0.11 | 0.11 | 2.5 / 3.5 s |
+
+On the synthetic tiered corpus (80% logs, 20% prose / structured / names), strict
+full-span recall is 0.9997 for structured PII and secrets (3322/3323, both configs;
+the miss is a letters-only random secret) and 0.9997 for person names with ONNX
+(3226/3227; 0 without a model). The gate passes 6.3% of characters to the model;
+DistilBERT costs about 4 KB/s per core, so T0+ONNX throughput is model-bound and is
+for prose, not bulk logs.
+
+RedactionBench (200 real documents). These are the repo's **internal
+character-level re-implementation**, not the official leaderboard R-Score (its
+scorer is unreleased):
+
+| Config | Char P | Char R | Char F1 | Mandatory recall | Contextual recall | No-leak docs |
+| --- | --: | --: | --: | --: | --: | --: |
+| T0 | 0.760 | 0.430 | 0.549 | 0.739 | 0.196 | 14.0% |
+| T0 + gated ONNX | 0.682 | 0.537 | 0.601 | 0.815 | 0.326 | 18.0% |
+
+Mandatory recall by domain (T0 → T0+ONNX): structured text (logs 0.906 → 0.926,
+terminal 0.830 → 0.861, code 0.776 → 0.801, files 0.718 → 0.739) barely needs the
+model; prose gains most (academic 0.183 → 0.831, medical 0.167 → 0.724, legal
+0.063 → 0.651, government 0.146 → 0.645, operations 0.119 → 0.633, financial
+0.201 → 0.611, emails 0.377 → 0.680). Mandatory recall is **not** 100%: the
+remaining misses are account/record numbers without a label, `name=value` pairs
+merged into one entropy candidate, letters-only secrets, bcrypt hashes (the `.`
+leaks), keys containing `_test_` (suppressed as placeholders), lone
+sentence-initial first names, and street-address numbers.
 
 **Credentials & secrets** — the genuinely differentiating capability. On a corpus of
 AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random

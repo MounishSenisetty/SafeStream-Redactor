@@ -102,12 +102,13 @@ def resolve_overlaps(detections: list[Detection]) -> list[Detection]:
 
     Tier-0 detections resolve among themselves: on overlap the higher-confidence
     one wins; ties go to the longer span (a credit card should beat the phone
-    number hiding inside it). NER detections (:data:`NER_SOURCES`) resolve the
-    same way among themselves, but never *beat* a Tier-0 span: a cluster of
-    overlapping spans that contains a Tier-0 span becomes one span covering the
-    whole cluster, labelled by its best Tier-0 member. Dropping either side
-    would leave the other's uncovered characters in the clear (a PERSON tag on
-    ``john.doe`` must not leave ``@example.com`` of the email exposed).
+    number hiding inside it). NER detections (:data:`NER_SOURCES`) never drop
+    one another or a Tier-0 span: every cluster of overlapping spans that holds
+    an NER span becomes one span covering the whole cluster, labelled by its
+    best Tier-0 member (or, with none, its best NER member). Dropping either side
+    would leave the other's uncovered characters in the clear: a PERSON tag on
+    ``john.doe`` must not leave ``@example.com`` of the email exposed, and a
+    PERSON "Priya" must not beat an ORG "Priya Iyer" and leave "Iyer" exposed.
     """
     ner = [d for d in detections if d.source in NER_SOURCES]
     if not ner:
@@ -116,7 +117,7 @@ def resolve_overlaps(detections: list[Detection]) -> list[Detection]:
     merged: list[Detection] = []
     cluster: list[Detection] = []
     cluster_end = 0
-    for det in sorted(tier0 + _greedy(ner), key=lambda d: d.start):
+    for det in sorted(tier0 + ner, key=lambda d: d.start):
         if cluster and det.start >= cluster_end:
             merged.append(_union(cluster))
             cluster = []
@@ -131,12 +132,10 @@ def _union(cluster: list[Detection]) -> Detection:
     """One span over a start-sorted run of overlapping detections."""
     if len(cluster) == 1:
         return cluster[0]
-    # tier0 and ner were each made non-overlapping, so a cluster of 2+ always
-    # mixes the two and holds at least one Tier-0 span
-    best = max(
-        (d for d in cluster if d.source not in NER_SOURCES),
-        key=lambda d: (d.confidence, d.end - d.start),
-    )
+    # Tier-0 spans were made non-overlapping, so a cluster of 2+ holds an NER
+    # span; a Tier-0 member, when there is one, names the merged span
+    tier0 = [d for d in cluster if d.source not in NER_SOURCES]
+    best = max(tier0 or cluster, key=lambda d: (d.confidence, d.end - d.start))
     text, end = cluster[0].text, cluster[0].end
     for det in cluster[1:]:
         if det.end > end:  # overlapping, so the new tail starts inside text

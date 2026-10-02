@@ -33,6 +33,8 @@ STRUCTURED: list[tuple[str, str, str]] = [
     ("ssn_labeled_bare", "Social Security Number: {v}", "512384721"),
     ("email", "reach me at {v} today", "maria.gonzalez+billing@corp-mail.io"),
     ("email_in_json", '{{"owner": "{v}", "id": 7}}', "w.zhang@hospital.org"),
+    ("email_unicode_local", "notify {v} on failure", "jos\u00e9.garc\u00eda@corp-30.io"),
+    ("email_underscore", "from: {v}", "first_last@corp.com"),
     ("card_visa", "card {v} charged", "4111 1111 1111 1111"),
     ("card_mc_dashed", "payment via {v}", "5500-0000-0000-0004"),
     ("card_amex", "amex {v} on file", "340000000000009"),
@@ -141,3 +143,15 @@ def test_gate_sends_a_tight_window_and_recases_names_after_a_cue():
     assert piece.startswith("signed by John Smith on behalf")
     assert len(piece) < 100
     assert text[offset : offset + len(piece)].lower() == piece.lower()
+
+
+@pytest.mark.parametrize("backend", _BACKENDS)
+def test_hostile_non_ascii_runs_stay_linear(backend):
+    """A huge word run glued to an accented letter, before an "@", is not quadratic."""
+    import time
+
+    redactor = Redactor(backend=backend)
+    text = "\u00e9" + "a" * 60_000 + "@x.io " + "\u00e9" + "a." * 30_000 + "b@x.io\u00e9"
+    started = time.perf_counter()
+    redactor.detect(text)
+    assert time.perf_counter() - started < 5.0
