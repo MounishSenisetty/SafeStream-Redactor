@@ -199,7 +199,7 @@ def test_pinned_buffer_waits_for_more_input_before_rescanning():
         return []
 
     text = "abcdefghijklmnopqrstuvwx"
-    out = "".join(seg for seg, _ in stream_windows(iter(text), detect, 4))
+    out = "".join(seg for seg, _ in stream_windows(iter(text), detect, 4, strict_spans=False))
     assert out == text
     # passes at 8, 12, 16 buffered chars; rescanning per 1-char chunk made it 12
     assert pinned_passes == 3

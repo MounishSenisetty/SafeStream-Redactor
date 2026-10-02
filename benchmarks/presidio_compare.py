@@ -27,11 +27,20 @@ Datasets
                     configuration and is scored type-agnostically: what share of the
                     sensitive characters it redacts, and how much else it redacts.
 
-Tools: ``safestream-native`` (the compiled core, default tiers),
-``safestream-native-ner`` (plus the spaCy ``en_core_web_sm`` NER tier),
-``safestream-python`` (pure Python; same output as native, slower), and
-``presidio`` (``AnalyzerEngine()`` defaults: every recognizer, spaCy
-``en_core_web_lg``).
+Tools are grouped into **like-for-like tiers**; compare within a tier, never across:
+
+*Pattern tier (no ML model on either side)*
+    ``safestream-python`` / ``safestream-native`` (deterministic + entropy + contextual
+    tiers) against ``presidio-regex`` (Presidio's own ``PatternRecognizer`` /
+    checksum recognizers run directly, with **no** NLP engine, so spaCy is not
+    in the timing or the memory).
+*NER tier (a spaCy ``en_core_web_sm`` model on both sides)*
+    ``safestream-native-ner`` against ``presidio-sm`` (the full ``AnalyzerEngine``
+    on the same ``en_core_web_sm`` model).
+*Reference*
+    ``presidio`` (``AnalyzerEngine()`` defaults: every recognizer, spaCy
+    ``en_core_web_lg``) -- Presidio as most users run it; its cost is dominated by
+    the larger model, not the recognizers.
 
     python benchmarks/generate_hard_dataset.py --size-mb 1
     python benchmarks/presidio_compare.py --out benchmarks/PRESIDIO_COMPARISON.md
@@ -54,7 +63,14 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
-TOOLS = ("safestream-native", "safestream-native-ner", "safestream-python", "presidio")
+TOOLS = (
+    "safestream-native",
+    "safestream-native-ner",
+    "safestream-python",
+    "presidio-regex",
+    "presidio-sm",
+    "presidio",
+)
 DATASETS = ("logs", "redactionbench")
 LOG_TYPES = ["email", "phone", "credit_card", "ssn", "ipv4"]
 PRESIDIO_LOG_ENTITIES = ["EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD", "US_SSN", "IP_ADDRESS"]
@@ -101,6 +117,38 @@ def _rss_mb() -> float:
         return int(f.read().split()[1]) * resource.getpagesize() / 2**20
 
 
+def _presidio_regex_analyzer(entities: list[str] | None):
+    """Presidio's rule-based recognizers only, run directly with no NLP engine.
+
+    This is the regex-vs-regex baseline: every non-ML recognizer in Presidio's
+    default registry (patterns, checksums, the ``phonenumbers`` library) is called
+    as ``recognizer.analyze(text, entities, nlp_artifacts=None)``, so neither spaCy
+    nor its tokenizer is loaded or timed. Context-word score boosting (which needs
+    NLP artifacts) is therefore absent -- it only re-ranks scores, and no score
+    threshold is applied, so the *set* of spans is unchanged.
+    """
+    from presidio_analyzer import RecognizerRegistry
+
+    registry = RecognizerRegistry()
+    registry.load_predefined_recognizers(languages=["en"])
+    ml = ("Spacy", "Stanza", "Transformers", "GLiNER")
+    recognizers = [
+        r
+        for r in registry.recognizers
+        if not type(r).__name__.startswith(ml)
+        and (entities is None or set(entities) & set(r.supported_entities))
+    ]
+
+    def analyze(text: str) -> list[tuple[int, int]]:
+        spans = []
+        for rec in recognizers:
+            wanted = [e for e in rec.supported_entities if entities is None or e in entities]
+            spans.extend((r.start, r.end) for r in rec.analyze(text, wanted, nlp_artifacts=None))
+        return spans
+
+    return analyze
+
+
 def run_one(tool: str, dataset: str) -> dict[str, Any]:
     docs = load_dataset(dataset)
     rss_data = _rss_mb()  # the dataset (and pyarrow, for RedactionBench) alone
@@ -128,17 +176,31 @@ def run_one(tool: str, dataset: str) -> dict[str, Any]:
         import logging
 
         logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
-        from presidio_analyzer import AnalyzerEngine
-
-        engine = AnalyzerEngine()
         entities = PRESIDIO_LOG_ENTITIES if restricted else None
+        if tool == "presidio-regex":
+            analyze = _presidio_regex_analyzer(entities)
+        else:
+            from presidio_analyzer import AnalyzerEngine
 
-        def analyze(text: str) -> list[tuple[int, int]]:
-            spans = []
-            for offset, piece in _pieces(text, PRESIDIO_PIECE):
-                for r in engine.analyze(text=piece, language="en", entities=entities):
-                    spans.append((offset + r.start, offset + r.end))
-            return spans
+            if tool == "presidio-sm":
+                from presidio_analyzer.nlp_engine import NlpEngineProvider
+
+                nlp = NlpEngineProvider(
+                    nlp_configuration={
+                        "nlp_engine_name": "spacy",
+                        "models": [{"lang_code": "en", "model_name": "en_core_web_sm"}],
+                    }
+                ).create_engine()
+                engine = AnalyzerEngine(nlp_engine=nlp, supported_languages=["en"])
+            else:
+                engine = AnalyzerEngine()
+
+            def analyze(text: str) -> list[tuple[int, int]]:
+                spans = []
+                for offset, piece in _pieces(text, PRESIDIO_PIECE):
+                    for r in engine.analyze(text=piece, language="en", entities=entities):
+                        spans.append((offset + r.start, offset + r.end))
+                return spans
 
         analyze("warm up the pipeline")
     load_s = time.perf_counter() - t0

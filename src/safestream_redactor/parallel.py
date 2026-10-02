@@ -320,7 +320,11 @@ def _redact_range(job: _Job) -> _RangeResult:
     try:
         with open(fd, "w", encoding=encoding, newline="") as out:
             for segment, detections in stream_windows(
-                feed(), redactor.detect, ov, initial_context=context
+                feed(),
+                redactor.detect,
+                ov,
+                initial_context=context,
+                strict_spans=not redactor.allow_unsafe_overlap,
             ):
                 abs_dets = [(cursor + d.start, d) for d in detections]
                 pending.append((cursor, segment, abs_dets))
