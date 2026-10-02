@@ -40,6 +40,20 @@ DEFAULT_CHUNK_SIZE = 64 * 1024
 # unconditionally. Keep this in sync with ``MAX_SPAN`` in the detectors.
 DEFAULT_OVERLAP = 8 * 1024
 
+
+class WindowConfigurationError(ValueError):
+    """The sliding window cannot guarantee boundary-correct redaction.
+
+    Raised (fail closed) when ``overlap`` is smaller than the longest span the
+    active detectors can emit, or when a detector actually emits a span longer
+    than the overlap. Either lets an entity straddling a chunk boundary be cut
+    and leak (``docs/FORMAL_MODEL.md``, Theorem 1's premise ``overlap >= L_max``).
+    A ``ValueError`` subclass so existing ``except ValueError`` handlers still
+    catch it. Override with ``allow_unsafe_overlap=True`` /
+    ``--insecure-allow-leak-prone-overlap``.
+    """
+
+
 DetectFn = Callable[[str], list[Detection]]
 ApplyFn = Callable[[str, list[Detection]], str]
 
@@ -104,6 +118,7 @@ def stream_windows(
     initial_context: str = "",
     min_emit: int | None = None,
     on_window: WindowObserver | None = None,
+    strict_spans: bool = True,
 ) -> Iterator[tuple[str, list[Detection]]]:
     """Yield ``(segment, detections)`` pairs covering the input exactly once.
 
@@ -127,6 +142,11 @@ def stream_windows(
     detection pass (including passes that emit nothing because a detection
     pins the buffer), before that pass's segment is yielded. It only observes:
     output is identical with or without it.
+
+    ``strict_spans`` (default on) fails closed: a detection longer than
+    ``overlap`` raises :class:`WindowConfigurationError` instead of being
+    streamed past a window that cannot guarantee it whole. Pass ``False`` to
+    downgrade that to a one-time warning.
     """
     if overlap < 0:
         raise ValueError("overlap must be >= 0")
@@ -182,7 +202,7 @@ def stream_windows(
         buffer = "".join(pieces)
         planned = emit_upto = len(buffer) - overlap
         detections, dropped = window_detect(prefix, buffer)
-        warned_overlong = _warn_if_overlong(detections, overlap, warned_overlong)
+        warned_overlong = _check_overlong(detections, overlap, warned_overlong, strict_spans)
         emit_upto = _retreat_boundary(detections, emit_upto)
         observe(prefix, buffer, planned, max(emit_upto, 0), len(detections), dropped, False)
         if emit_upto <= 0:
@@ -198,7 +218,7 @@ def stream_windows(
     buffer = "".join(pieces)
     if buffer:
         detections, dropped = window_detect(prefix, buffer)
-        _warn_if_overlong(detections, overlap, warned_overlong)
+        _check_overlong(detections, overlap, warned_overlong, strict_spans)
         observe(prefix, buffer, len(buffer), len(buffer), len(detections), dropped, True)
         yield buffer, detections
 
@@ -226,29 +246,37 @@ def _retreat_boundary(detections: list[Detection], emit_upto: int) -> int:
         emit_upto = moved
 
 
-def _warn_if_overlong(detections: list[Detection], overlap: int, already: bool) -> bool:
-    """Warn once per stream if a detection is longer than the overlap window.
+def _check_overlong(
+    detections: list[Detection], overlap: int, already: bool, strict: bool = True
+) -> bool:
+    """Fail closed (or warn once) if a detection is longer than the overlap window.
 
     A span longer than ``overlap`` cannot be guaranteed whole across an
     arbitrary chunk boundary (``docs/FORMAL_MODEL.md``, assumption A1): in
     sequential mode it may be cut, and in parallel mode the seam valve falls
     back. The built-in tiers bound every span to the default overlap, so this
-    fires only when a caller shrinks ``overlap`` or a third-party detector emits
-    a longer span than it declared — a fail-open coverage risk worth surfacing
-    rather than swallowing. Returns the updated "already warned" flag.
+    fires only when a caller shrinks ``overlap`` or a detector (a plugin, a
+    custom regex) emits a longer span than it declared. That is a redaction
+    leak waiting for a boundary, so by default it raises
+    :class:`WindowConfigurationError`; ``strict=False`` logs once instead.
+    Returns the updated "already warned" flag.
     """
     if already or overlap <= 0:
         return already
     for det in detections:
         if det.end - det.start > overlap:
-            logger.warning(
-                "detection of type %s spans %d characters, longer than the overlap "
-                "window (%d); an entity this long that straddles a chunk boundary may "
-                "be missed. Raise overlap to at least the longest span you expect.",
-                det.entity_type.value,
-                det.end - det.start,
-                overlap,
+            msg = (
+                f"detection of type {det.entity_type.value} spans {det.end - det.start} "
+                f"characters, longer than the overlap window ({overlap}); an entity this "
+                "long that straddles a chunk boundary may be missed. Raise overlap to at "
+                "least the longest span you expect"
             )
+            if strict:
+                raise WindowConfigurationError(
+                    msg
+                    + ", or pass allow_unsafe_overlap=True (--insecure-allow-leak-prone-overlap)."
+                )
+            logger.warning(msg + ".")
             return True
     return already
 
@@ -260,7 +288,10 @@ def stream_transform(
     overlap: int = DEFAULT_OVERLAP,
     *,
     min_emit: int | None = None,
+    strict_spans: bool = True,
 ) -> Iterator[str]:
     """Yield redacted output for an iterable of text chunks, using O(1) memory."""
-    for segment, detections in stream_windows(chunks, detect, overlap, min_emit=min_emit):
+    for segment, detections in stream_windows(
+        chunks, detect, overlap, min_emit=min_emit, strict_spans=strict_spans
+    ):
         yield apply(segment, detections)

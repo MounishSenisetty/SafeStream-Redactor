@@ -119,9 +119,11 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument("--overlap", type=int, default=None, metavar="CHARS")
     common.add_argument(
         "--allow-unsafe-overlap",
+        "--insecure-allow-leak-prone-overlap",
+        dest="allow_unsafe_overlap",
         action="store_true",
-        help="permit an --overlap below the detectors' safe minimum (fail-open); "
-        "by default a too-small overlap is rejected to avoid boundary-induced leaks",
+        help="permit an --overlap below the detectors' safe minimum, and spans longer "
+        "than it (fail-open); by default both halt the run to avoid boundary-induced leaks",
     )
     common.add_argument(
         "--memory-limit",
