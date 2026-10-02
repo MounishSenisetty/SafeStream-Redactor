@@ -15,6 +15,7 @@ from safestream_redactor.detectors.deterministic import DeterministicDetector
 from safestream_redactor.engine import (
     DEFAULT_CHUNK_SIZE,
     DEFAULT_OVERLAP,
+    WindowConfigurationError,
     WindowObserver,
     read_chunks,
     stream_transform,
@@ -140,6 +141,7 @@ class Redactor:
         self.calibrator = calibrator
         self.chunk_size = chunk_size
         self.overlap = overlap
+        self.allow_unsafe_overlap = allow_unsafe_overlap
         self._scorer = ContextualScorer(backend=backend)
 
         self._detectors: list[Detector] = [DeterministicDetector(resolved_types, backend=backend)]
@@ -228,6 +230,7 @@ class Redactor:
         downgrade the error to a warning. Callers that mutate ``overlap`` or the
         detector set after construction (the CLI does) should re-invoke this.
         """
+        self.allow_unsafe_overlap = allow_unsafe
         needed = self.min_safe_overlap
         if self.overlap >= needed:
             return
@@ -242,13 +245,13 @@ class Redactor:
                 names,
             )
             return
-        raise ValueError(
+        raise WindowConfigurationError(
             f"overlap={self.overlap} is below the {needed}-character safe minimum "
             f"required by the active detectors ({names}). At a smaller overlap an "
             "entity that straddles a chunk boundary can be missed and streaming "
             "output can diverge from a whole-document pass (a redaction leak). "
             f"Raise overlap to at least {needed}, or pass allow_unsafe_overlap=True "
-            "to override (not recommended for redaction)."
+            "(--insecure-allow-leak-prone-overlap) to override (not recommended for redaction)."
         )
 
     @property
@@ -305,7 +308,12 @@ class Redactor:
         :class:`~safestream_redactor.engine.WindowTrace`).
         """
         return stream_windows(
-            chunks, self.detect, self.overlap, min_emit=self.chunk_size, on_window=on_window
+            chunks,
+            self.detect,
+            self.overlap,
+            min_emit=self.chunk_size,
+            on_window=on_window,
+            strict_spans=not self.allow_unsafe_overlap,
         )
 
     def redact_stream(
@@ -321,7 +329,12 @@ class Redactor:
         """
         if stats is None:
             return stream_transform(
-                chunks, self.detect, self.policy.apply, self.overlap, min_emit=self.chunk_size
+                chunks,
+                self.detect,
+                self.policy.apply,
+                self.overlap,
+                min_emit=self.chunk_size,
+                strict_spans=not self.allow_unsafe_overlap,
             )
         return self._redact_stream_with_stats(chunks, stats)
 
@@ -329,7 +342,11 @@ class Redactor:
         self, chunks: Iterable[str], stats: RedactionStats
     ) -> Iterator[str]:
         for segment, detections in stream_windows(
-            chunks, self.detect, self.overlap, min_emit=self.chunk_size
+            chunks,
+            self.detect,
+            self.overlap,
+            min_emit=self.chunk_size,
+            strict_spans=not self.allow_unsafe_overlap,
         ):
             redacted = self.policy.apply(segment, detections)
             stats.add_segment(segment, redacted, detections)

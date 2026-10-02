@@ -17,7 +17,14 @@ from __future__ import annotations
 
 import logging
 
-from safestream_redactor.engine import _retreat_boundary, _warn_if_overlong, stream_windows
+import pytest
+
+from safestream_redactor.engine import (
+    WindowConfigurationError,
+    _check_overlong,
+    _retreat_boundary,
+    stream_windows,
+)
 from safestream_redactor.entities import Detection, EntityType
 
 
@@ -121,21 +128,25 @@ class _FixedSpanDetector:
         return [Detection(0, self.span, text[: self.span], EntityType.CUSTOM, 1.0)]
 
 
-def test_warn_if_overlong_is_a_pure_flagging_helper():
-    # fires once, then reports "already warned" so callers don't repeat it
-    assert _warn_if_overlong([_det(0, 40)], overlap=16, already=False) is True
-    assert _warn_if_overlong([_det(0, 40)], overlap=16, already=True) is True
-    assert _warn_if_overlong([_det(0, 10)], overlap=16, already=False) is False
-    assert _warn_if_overlong([], overlap=16, already=False) is False
+def test_check_overlong_fails_closed_or_flags_once():
+    with pytest.raises(WindowConfigurationError):
+        _check_overlong([_det(0, 40)], overlap=16, already=False)
+    # strict=False: fires once, then reports "already warned" so callers don't repeat it
+    assert _check_overlong([_det(0, 40)], overlap=16, already=False, strict=False) is True
+    assert _check_overlong([_det(0, 40)], overlap=16, already=True) is True
+    assert _check_overlong([_det(0, 10)], overlap=16, already=False) is False
+    assert _check_overlong([], overlap=16, already=False) is False
 
 
-def test_overlong_span_emits_a_warning(caplog):
+def test_overlong_span_raises_by_default_and_warns_when_allowed(caplog):
     text = "z" * 200
     detector = _FixedSpanDetector(span=40)  # longer than the overlap below
-    with caplog.at_level(logging.WARNING, logger="safestream_redactor.engine"):
-        # one chunk carrying the whole text: the span is seen in the first
-        # window (empty prefix), so it survives to the over-long check
+    # one chunk carrying the whole text: the span is seen in the first
+    # window (empty prefix), so it survives to the over-long check
+    with pytest.raises(WindowConfigurationError, match="longer than the overlap"):
         list(stream_windows([text], detector.detect, overlap=16))
+    with caplog.at_level(logging.WARNING, logger="safestream_redactor.engine"):
+        list(stream_windows([text], detector.detect, overlap=16, strict_spans=False))
     assert any("longer than the overlap" in r.message for r in caplog.records)
 
 
