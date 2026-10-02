@@ -30,7 +30,7 @@ what the code enforces; **missing** = no implementation found.
 | # | Claim (README) | Implemented by | Status | Note |
 |---|---|---|---|---|
 | C1 | Constant **O(1) memory**; "redact a 100 GB file with the same footprint as a 1 KB one" | `engine.stream_windows`; `redactor.redact_file` → `read_chunks`/`stream_transform` | **real** | Proven by `tests/test_memory.py` (memory marker). Peak bounded by `chunk_size + overlap + L_max` (FORMAL_MODEL Thm 3). |
-| C2 | Overlap window catches entities that straddle chunk boundaries; "any entity up to `overlap` (default 4 KB) is always seen whole at least once" | `engine.stream_windows` (emit-boundary retreat), `required_overlap`, per-detector `StreamingRequirements` | **real, wording drift** | Code default overlap is **8 KB** (`DEFAULT_OVERLAP = 8*1024`), README §Architecture says "default 4 KB". FORMAL_MODEL uses 8192. Doc inconsistency (R-DOC-1). |
+| C2 | Overlap window catches entities that straddle chunk boundaries; "any entity up to `overlap` (default 4 KB at audit time; 8 KB since R-DOC-1) is always seen whole at least once" | `engine.stream_windows` (emit-boundary retreat), `required_overlap`, per-detector `StreamingRequirements` | **real, wording drift** | Code default overlap is **8 KB** (`DEFAULT_OVERLAP = 8*1024`), README §Architecture says "default 4 KB". FORMAL_MODEL uses 8192. Doc inconsistency (R-DOC-1). |
 | C3 | Emit boundary that would split a detection "retreats to the detection's start" | `engine.stream_windows`, lines 108-112 | **real** | Correct **iff** detections are non-overlapping (see R-ENG-1). |
 | C4 | Already-emitted text kept as read-only left context so contextual tier scores identically to whole-text mode | `engine.stream_windows` `window_detect` + `prefix` carry | **real** | Matches FORMAL_MODEL Thm 1(b). |
 | C5 | Parallel single-file split is **byte-identical** to single-core, seam cross-check falls back on disagreement | `parallel.redact_file_parallel` (seam valve), `_redact_range` | **real, example-tested** | Correct by construction + `test_parallel.py`; but coverage is example-based, not exhaustive/property-based (R-PAR-3). |
@@ -327,7 +327,8 @@ step (343 fast tests + memory proof passing, coverage 96.24%, ruff + mypy strict
 checkpoint before touching): **R-MEM-1** hard enforcement (`setrlimit`/cgroup v2),
 **R-NET-1/2** `unshare`/seccomp hard mode, and the zero-copy streaming evaluation.
 **R-ENG-2** (under-overlap warning → hard failure) was intentionally **not** changed to
-raise-by-default: `min_safe_overlap` is the *worst-case* declared span (8192), and small
+raise-by-default *at the end of Phase 1* (superseded: construction now raises by default, and
+§9 closes the runtime half): `min_safe_overlap` is the *worst-case* declared span (8192), and small
 entities legitimately run with a small overlap (the property/streaming tests themselves
 use overlap 64-256); raising would break that valid, memory-constrained use. The honest
 mitigations are the existing `__init__` warning plus the new runtime over-long-span
@@ -392,3 +393,41 @@ best-effort are now real at the kernel (`RLIMIT_AS` memory enforcement; opt-in
 seccomp/netns offline containment); two tempting optimisations (zero-copy I/O, a
 compiled regex backend) were evaluated with real numbers and honestly declined,
 with the docs updated to match the code rather than the reverse.
+
+---
+
+## 9. Phase 5 — fail-closed windows, mechanical equivalence check, benchmark framing
+
+**R-ENG-2 / R-ENG-4 (closed).** Before this phase only the *construction-time* check was
+fail-closed (`Redactor` raised if `overlap < min_safe_overlap`); the *runtime* check for a
+detector emitting a span longer than the overlap — the case a plugin or custom regex that
+under-declares `StreamingRequirements` actually produces — still only logged a warning.
+Now both raise `engine.WindowConfigurationError` (a `ValueError`, so existing handlers
+keep working): `stream_windows(strict_spans=True)` is the default, `Redactor` and the
+parallel workers forward `allow_unsafe_overlap`, and the CLI accepts
+`--insecure-allow-leak-prone-overlap` (alias of `--allow-unsafe-overlap`). A custom
+regex's span cannot be bounded statically, so the guarantee for it is the runtime check;
+the run halts and, through `atomic_output`, leaves no partial output file.
+Tests: `tests/test_fail_closed_overlap.py`.
+
+**Claim C5 / Theorems 1–2 (evidence strengthened, still evidence not proof).**
+`tests/test_equivalence_fuzz.py` compares whole vs streaming vs sequential-file vs
+parallel byte-for-byte over adversarial Unicode and undecodable bytes, with entities
+written across chunk edges, the emit boundary, the rescan prefix and every parallel seam
+(seams are read from `plan_ranges`). A `deep`-profile run (3000 examples for each streaming
+property, 1000 for the parallel one) found no counterexample. Two planted mutants (`_retreat_boundary` disabled; overlap
+shrunk below the longest span) are both detected. During construction the harness hit a
+Hypothesis 6.168 shrinker crash with differently-alphabeted `st.text` nodes; generators
+use `sampled_from` lists to avoid it.
+
+**R-DOC-1 (re-opened and closed).** `SYSTEM_DESIGN.md` still stated a 4 KiB default in six
+places (one contradicted itself by also citing an 8 KiB PEM bound), and
+`examples/policy.toml` shipped `overlap = 4096`, which the fail-closed guard rejects, so
+the documented example config could not start. All corrected to 8192;
+`tests/test_docs_consistency.py` now fails on a stale default and builds the example policy.
+
+**Claims C17/C18 and the Presidio comparison (re-measured).** The "250–450× faster than
+Presidio" figure compared the native core with Presidio's full spaCy engine. The harness now
+reports like-for-like tiers (see `benchmarks/PRESIDIO_COMPARISON.md`): **15–147×** pattern
+tier, **~2×** NER tier (with SafeStream using ~2.5× more memory there). One run, shared
+4-vCPU container, no repeats. Hyperscan/re2, gitleaks and the ONNX tier remain unmeasured.
