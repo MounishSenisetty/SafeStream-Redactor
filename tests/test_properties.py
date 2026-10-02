@@ -165,6 +165,62 @@ def test_resolve_overlaps_invariants(detections):
     assert resolve_overlaps(kept) == kept
 
 
+def test_ner_overlap_never_leaks_tier0_characters():
+    """A PERSON tag inside an email must not shrink the email's redaction."""
+    text = "mail john.doe@example.com now"
+    email = Detection(5, 25, "john.doe@example.com", EntityType.EMAIL, 0.95)
+    person = Detection(5, 13, "john.doe", EntityType.PERSON, 0.99, source="onnx")
+    for dets in ([email, person], [person, email]):
+        assert resolve_overlaps(dets) == [email]
+    redactor = Redactor(extra_detectors=[_Fixed([person])])
+    assert [(d.text, d.entity_type) for d in redactor.detect(text)] == [
+        ("john.doe@example.com", EntityType.EMAIL)
+    ]
+    assert redactor.redact(text) == "mail [REDACTED] now"
+
+    # an NER span sticking out of a Tier-0 span widens it; the Tier-0 label wins
+    person = Detection(0, 13, "mail john.doe", EntityType.PERSON, 0.99, source="onnx")
+    (got,) = resolve_overlaps([email, person])
+    assert (got.start, got.end, got.entity_type) == (0, 25, EntityType.EMAIL)
+    assert got.text == text[0:25]
+
+
+class _Fixed:
+    """A stand-in NER tier that returns canned detections."""
+
+    name = "onnx"
+
+    def __init__(self, dets: list[Detection]) -> None:
+        self._dets = dets
+
+    def detect(self, text: str) -> list[Detection]:
+        return [Detection(d.start, d.end, d.text, d.entity_type, d.confidence, d.source)
+                for d in self._dets]  # fmt: skip
+
+
+@settings(max_examples=300, derandomize=True, deadline=None)
+@given(
+    spans=st.lists(
+        st.tuples(st.integers(0, 80), st.integers(1, 20), st.booleans(), st.floats(0, 1)),
+        max_size=30,
+    )
+)
+def test_mixed_tier_resolution_covers_every_tier0_character(spans):
+    text = "".join(chr(97 + i % 26) for i in range(120))
+    dets = [
+        Detection(s, s + n, text[s : s + n], EntityType.CUSTOM, c, "onnx" if ner else "custom")
+        for s, n, ner, c in spans
+    ]
+    kept = resolve_overlaps(dets)
+    for a, b in itertools.pairwise(kept):
+        assert a.end <= b.start
+    assert all(k.text == text[k.start : k.end] for k in kept)
+    covered = {i for k in kept for i in range(k.start, k.end)}
+    # every character the Tier-0-only resolution would redact is still redacted
+    tier0 = resolve_overlaps([d for d in dets if d.source == "custom"])
+    assert {i for k in tier0 for i in range(k.start, k.end)} <= covered
+
+
 def test_resolve_overlaps_tiebreak_is_deterministic():
     """Equal-confidence overlaps resolve by longer span, then earlier start.
 

@@ -54,6 +54,9 @@ _SEVERITY: dict[EntityType, str] = {
     # Weakly identifying or ambiguous.
     EntityType.IPV4: LOW,
     EntityType.IPV6: LOW,
+    EntityType.MAC_ADDRESS: LOW,
+    EntityType.AWS_ACCOUNT_ID: LOW,  # an identifier, not a credential
+    EntityType.DATE: LOW,
     EntityType.ORG: LOW,
     EntityType.LOC: LOW,
     EntityType.CUSTOM: MEDIUM,

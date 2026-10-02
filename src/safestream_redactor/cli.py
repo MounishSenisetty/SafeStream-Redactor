@@ -102,8 +102,8 @@ def _build_parser() -> argparse.ArgumentParser:
     common.add_argument(
         "--onnx-min-score",
         type=float,
-        default=0.5,
-        help="drop ONNX detections below this model probability (default: 0.5)",
+        default=0.35,
+        help="drop ONNX detections below this model probability (default: 0.35, recall-first)",
     )
     common.add_argument(
         "--regional",
@@ -111,6 +111,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="enable the regional tier: IBAN, crypto addresses, UK NINO/NHS, India "
         "Aadhaar/PAN (checksum-validated; off by default)",
+    )
+    common.add_argument(
+        "--dates",
+        action="store_true",
+        default=False,
+        help="also redact calendar dates and times of day (off by default: log "
+        "timestamps would be redacted too)",
     )
     common.add_argument(
         "--no-entropy",
@@ -386,9 +393,10 @@ use_onnx = false                            # local ONNX NER tier ([onnx] extra,
 # onnx_model = "model.onnx"                 # required when use_onnx = true
 # onnx_vocab = "vocab.json"                 # required when use_onnx = true (token->id)
 # onnx_labels = "labels.json"               # optional id->tag (default: CoNLL IOB2)
-# onnx_min_score = 0.5
+# onnx_min_score = 0.35
 use_entropy = true                          # high-entropy secret detection
 # use_regional = false                      # IBAN / crypto / UK NINO+NHS / India Aadhaar+PAN
+# use_dates = false                         # calendar dates + times of day (log timestamps too)
 # use_gazetteer = false                     # dictionary-backed person-name tier (no deps)
 # use_ensemble = false                      # semantic PERSON/ORG ensemble (no deps)
 # semantic_policy = "strict"                # ensemble policy: strict | high_recall
@@ -520,6 +528,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         kwargs["use_entropy"] = False
     if getattr(args, "regional", False):
         kwargs["use_regional"] = True
+    if getattr(args, "dates", False):
+        kwargs["use_dates"] = True
     if args.chunk_size is not None:
         kwargs["chunk_size"] = args.chunk_size
     if args.overlap is not None:

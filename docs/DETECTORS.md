@@ -53,6 +53,40 @@ like the spaCy tier. Labels default to the CoNLL IOB2 scheme
 another model. **No pretrained model is bundled** — the tier is the plumbing; the
 accuracy is whatever model you supply.
 
+**Getting a model.** `scripts/export_onnx.py` exports a Hugging Face
+token-classification checkpoint (default `dslim/distilbert-NER`) with dynamic
+batch/sequence axes, quantizes it to INT8 and writes the fast `tokenizer.json`
+and `labels.json` next to it (export needs `torch` + `transformers`; running
+needs only the `[onnx]` extra plus `tokenizers`). Passing that `tokenizer.json`
+as the vocab selects the sub-word `HFTokenizer`, whose offsets index the original
+text directly:
+
+```bash
+python scripts/export_onnx.py --out models/ner
+safestream redact in.txt -o out.txt --onnx models/ner/model.int8.onnx \
+    --onnx-vocab models/ner/tokenizer.json --onnx-labels models/ner/labels.json
+```
+
+**Gating and batching.** The model never sees the raw stream. A line reaches it
+only if it holds a Titlecase word, a non-ASCII character, or a person cue
+(`dr`, `patient`, `signed`, `dear`, ...), so machine text such as timestamps,
+hex, ALLCAPS levels and paths costs one regex search. Gated lines are cut into
+overlapping 500-character pieces, sorted by length, and run as padded batches
+(one session call per 32 rows, one intra-op thread per worker process: scale
+with `--workers`); softmax/argmax are NumPy array operations. A sub-word tag is
+widened to the whole word, and a `B-` tag glued to the previous sub-word
+continues it, so a name is never half-redacted.
+
+**Recall-first threshold.** `--onnx-min-score` defaults to 0.35. A span that
+clears it is emitted at confidence `max(score, 0.5)` (the raw score is in
+`meta["onnx_score"]`), so the pipeline's default `min_confidence` does not undo
+the lower threshold.
+
+**Tier 0 wins overlaps.** When an NER span overlaps a deterministic/entropy
+span, `resolve_overlaps` keeps one span covering both, labelled by the Tier-0
+detection: a PERSON tag on `john.doe` cannot shrink the redaction of
+`john.doe@example.com` and leave `@example.com` in the clear.
+
 ## Coverage and severity
 
 Severity (`severity.py`) drives SARIF levels and MCP output. It is a static

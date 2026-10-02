@@ -216,6 +216,9 @@ _FAKE: dict[str, Callable[[bytes], str]] = {
     "org": lambda d: f"Example Organization {d[0] % 100}",
     "loc": lambda d: f"Exampleville {d[0] % 100}",
     "dob": lambda d: f"19{70 + d[0] % 30}-{1 + d[1] % 12:02d}-{1 + d[2] % 28:02d}",
+    "date": lambda d: f"19{70 + d[0] % 30}-{1 + d[1] % 12:02d}-{1 + d[2] % 28:02d}",
+    # 00:00:5E:00:53:xx is the IANA block reserved for documentation (RFC 7042)
+    "mac_address": lambda d: f"00:00:5e:00:53:{d[0]:02x}",
 }
 
 

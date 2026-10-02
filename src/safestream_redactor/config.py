@@ -80,6 +80,7 @@ _SCHEMA: dict[str, dict[str, str]] = {
         "onnx_min_score": _NUMBER,
         "use_entropy": _BOOL,
         "use_regional": _BOOL,
+        "use_dates": _BOOL,
         "backend": _STR,
     },
     "redaction": {

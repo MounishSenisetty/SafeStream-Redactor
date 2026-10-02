@@ -69,6 +69,15 @@ def test_decode_b_starts_new_entity():
     assert [(s, e, t.value) for s, e, t, _c, _g in out] == [(0, 4, "person"), (5, 9, "person")]
 
 
+def test_decode_b_on_glued_subword_continues_the_word():
+    # "Olusegun Obasanjo" as O|lus|eg|un Obasanjo with every first-name piece B-PER:
+    # one span, or resolution keeps "Olusegun" and leaks the surname
+    tokens = _toks([(0, 1), (1, 4), (4, 6), (6, 8), (9, 17)])
+    preds = [(1, 0.99), (1, 0.99), (1, 0.99), (1, 0.99), (2, 0.98)]
+    out = decode_bio(tokens, preds, _ID2LABEL, _TAG_MAP, 0.5)
+    assert out == [(0, 17, EntityType.PERSON, 0.98, "PER")]
+
+
 def test_decode_tag_change_and_O_break():
     # PER, then O, then ORG -> two spans, the O breaks the run
     tokens = _toks([(0, 3), (4, 7), (8, 12)])
@@ -224,5 +233,5 @@ def test_tag_map_accepts_names_and_enum():
         tag_map={"PER": "person"},
         min_score=0.5,
     )
-    dets = det.detect("John")
+    dets = det.detect("met John")  # mid-sentence: the gate passes it
     assert [d.entity_type for d in dets] == [EntityType.PERSON]

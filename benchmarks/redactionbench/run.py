@@ -963,6 +963,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # the report uses "≥" etc.; a legacy console codepage (Windows cp1252) must
+    # not crash the run after results are written
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     args = build_parser().parse_args(argv)
     return int(args.func(args))
 

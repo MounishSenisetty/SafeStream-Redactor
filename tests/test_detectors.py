@@ -125,6 +125,37 @@ def test_ipv6():
     assert EntityType.IPV6 not in types_in("ratio 12:34:56 ok")
 
 
+def test_mac_address():
+    assert EntityType.MAC_ADDRESS in types_in("hw 00-1A-2B-3C-4D-5E up")
+    # iptables MAC= field: dst + src + ethertype, caught whole
+    found = Redactor().detect("MAC=95:a8:88:cf:93:a8:6f:70:8a:9b:0c:1d:08:00 SRC=1")
+    assert [d.text for d in found] == ["95:a8:88:cf:93:a8:6f:70:8a:9b:0c:1d:08:00"]
+    for benign in ["at 10:14:32 ok", "ratio 12:34:56:78 ok", "mixed 00:1A-2B:3C-4D:5E"]:
+        assert EntityType.MAC_ADDRESS not in types_in(benign), benign
+
+
+def test_aws_account_id_only_where_aws_frames_it():
+    for text in [
+        "arn:aws:kms:us-east-1:479900703959:key/mrk-1",
+        "arn:aws:iam::123456789012:role/Admin",
+        "https://sqs.us-east-1.amazonaws.com/872291069523/queue",
+        "123456789012.dkr.ecr.us-east-1.amazonaws.com/app",
+    ]:
+        found = [d for d in Redactor().detect(text) if d.entity_type is EntityType.AWS_ACCOUNT_ID]
+        assert len(found) == 1 and len(found[0].text) == 12 and found[0].text.isdigit(), text
+    assert EntityType.AWS_ACCOUNT_ID not in types_in("order 123456789012 shipped")
+
+
+def test_dates_are_opt_in():
+    text = "Date: 03/08/2026 at 10:14, signed Aug 19, 2024 (2024-07-04T09:30:00Z)"
+    assert EntityType.DATE not in types_in(text)
+    found = [d.text for d in Redactor(use_dates=True).detect(text)]
+    assert found == ["03/08/2026", "10:14", "Aug 19, 2024", "2024-07-04T09:30:00Z"]
+    assert EntityType.DATE in types_in(text, types=["date"])
+    for benign in ["version 1.12.20", "ratio 16:9", "ports 3000:3000", "13/13/2020", "May I"]:
+        assert EntityType.DATE not in types_in(benign, use_dates=True), benign
+
+
 def test_aws_key():
     assert EntityType.AWS_KEY in types_in("key AKIAIOSFODNN7EXAMPLE")
     assert EntityType.AWS_KEY not in types_in("key AKIA123")

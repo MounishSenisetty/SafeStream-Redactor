@@ -52,7 +52,8 @@ ner = ["spacy>=3.5"]
 # model for PERSON/ORG/LOC, run via onnxruntime with no data egress. Optional and
 # lazily imported; the base install stays pure-Python. Bring your own .onnx model
 # + vocab (Redactor(backend unaffected); see docs/DETECTORS.md).
-onnx = ["onnxruntime>=1.16", "numpy>=1.21"]
+# tokenizers: the Hugging Face fast tokenizer that sub-word models (scripts/export_onnx.py) need.
+onnx = ["onnxruntime>=1.16", "numpy>=1.21", "tokenizers>=0.15"]
 # Optional compiled detection core (Rust, built from native/ — see
 # docs/NATIVE_CORE.md). A byte-identical accelerator for the deterministic tier,
 # selected with Redactor(backend="native"); the base install stays pure-Python and

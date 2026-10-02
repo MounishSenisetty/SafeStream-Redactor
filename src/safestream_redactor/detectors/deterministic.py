@@ -594,6 +594,42 @@ _PATTERNS: tuple[Pattern, ...] = (
         validator=ipv6_ok,
         anchors=(":",),
     ),
+    # MAC / EUI-64: two-hex-digit groups joined by one consistent separator. At
+    # least six groups, so a time (``10:14:32``) never qualifies; up to 20 so an
+    # iptables ``MAC=`` field (dst+src+ethertype, 14 groups) is caught whole.
+    Pattern(
+        EntityType.MAC_ADDRESS,
+        re.compile(
+            r"(?<![\w:.-])[0-9A-Fa-f]{2}([:-])[0-9A-Fa-f]{2}(?:\1[0-9A-Fa-f]{2}){4,18}(?![\w:-])"
+        ),
+        0.85,
+        anchors=(":", "-"),
+    ),
+    # AWS account id: a bare 12-digit run is any number, so only the three places
+    # AWS itself frames one count -- an ARN's account field, an AWS endpoint path
+    # (SQS queue URLs), and an ECR registry host. Only the digits (group 1) are
+    # redacted. Written without lookaround so a DFA engine can run them as-is.
+    Pattern(
+        EntityType.AWS_ACCOUNT_ID,
+        re.compile(r"\barn:aws[a-z-]*:[a-z0-9-]+:[a-z0-9-]*:(\d{12})[:/]"),
+        0.85,
+        group=1,
+        anchors=("arn:aws",),
+    ),
+    Pattern(
+        EntityType.AWS_ACCOUNT_ID,
+        re.compile(r"\.amazonaws\.com(?:\.cn)?/(\d{12})\b"),
+        0.85,
+        group=1,
+        anchors=("amazonaws.com",),
+    ),
+    Pattern(
+        EntityType.AWS_ACCOUNT_ID,
+        re.compile(r"\b(\d{12})\.dkr\.ecr\."),
+        0.85,
+        group=1,
+        anchors=(".dkr.ecr.",),
+    ),
     # structured phone: a leading + country code or a (area code) is a strong
     # signal, so this scores high enough to stand on its own.
     Pattern(
@@ -615,6 +651,80 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.45,
         validator=phone_ok,
         needs_digit=True,
+    ),
+)
+
+
+# --- dates / times (opt-in tier: DateDetector) -------------------------------
+
+_MONTH = (
+    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?"
+    r"|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?"
+)
+_DAY = r"\d{1,2}(?:st|nd|rd|th)?"
+_YEAR = r"(?:19|20)\d{2}"
+
+
+def numeric_date_ok(match_text: str) -> bool:
+    """``a/b/y``: one of a, b is a month (1-12) and the other a day (1-31).
+
+    A ``.``-separated run needs a four-digit year, so a version string such as
+    ``1.12.20`` is not read as a date.
+    """
+    parts = re.split(r"([/.-])", match_text)
+    a, sep, b, year = int(parts[0]), parts[1], int(parts[2]), parts[4]
+    if sep == "." and len(year) != 4:
+        return False
+    return (1 <= a <= 12 and 1 <= b <= 31) or (1 <= a <= 31 and 1 <= b <= 12)
+
+
+def textual_date_ok(match_text: str) -> bool:
+    """Every number is a four-digit year or a day of the month (1-31)."""
+    return all(len(n) == 4 or 1 <= int(n) <= 31 for n in re.findall(r"\d+", match_text))
+
+
+_DATE_PATTERNS: tuple[Pattern, ...] = (
+    # ISO 8601 date, optionally with a time and offset (2024-07-04T09:30:00Z)
+    Pattern(
+        EntityType.DATE,
+        re.compile(
+            rf"(?<![\w.-]){_YEAR}([-/.])(?:0[1-9]|1[0-2])\1(?:0[1-9]|[12]\d|3[01])"
+            r"(?:[T ](?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:[.,]\d{1,9})?)?"
+            r"(?:Z|[+-](?:[01]\d|2[0-3]):?[0-5]\d)?)?(?![\w-]|[.:]\d)"
+        ),
+        0.8,
+        needs_digit=True,
+    ),
+    # 03/08/2026, 8-3-26, 03.08.2026 (month/day order is ambiguous; both are dates)
+    Pattern(
+        EntityType.DATE,
+        re.compile(r"(?<![\w/.-])\d{1,2}([/.-])\d{1,2}\1(?:19|20)?\d{2}(?![\w/-]|\.\d)"),
+        0.8,
+        validator=numeric_date_ok,
+        needs_digit=True,
+    ),
+    # Aug 19, 2024 / 19 August 2024 / Mon, 19 Aug 2024 / March 2025
+    Pattern(
+        EntityType.DATE,
+        re.compile(
+            r"(?<!\w)(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\.?,?\s)?"
+            rf"(?:{_MONTH}\s{_DAY}(?:,?\s{_YEAR})?"
+            rf"|{_DAY}\s(?:of\s)?{_MONTH}(?:,?\s{_YEAR})?"
+            rf"|{_MONTH},?\s{_YEAR})(?!\w)"
+        ),
+        0.8,
+        validator=textual_date_ok,
+        needs_digit=True,
+    ),
+    # time of day: 10:14, 10:14:32.123, 9:05 pm (minutes required, so 16:9 is not one)
+    Pattern(
+        EntityType.DATE,
+        re.compile(
+            r"(?<![\w:.])(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:[.,]\d{1,9})?)?"
+            r"(?:\s?[AaPp]\.?[Mm]\.?(?!\w))?(?![\w:]|[.,]\d)"
+        ),
+        0.8,
+        anchors=(":",),
     ),
 )
 
@@ -886,3 +996,19 @@ class DeterministicDetector(NativeBacked):
                     )
                 )
         return found
+
+
+class DateDetector(DeterministicDetector):
+    """Opt-in tier: calendar dates and times of day (``EntityType.DATE``).
+
+    Off by default because logs carry a timestamp on every line; enable it with
+    ``Redactor(use_dates=True)``, ``--dates``, or by naming ``date`` in ``types``.
+    The patterns live outside ``_PATTERNS`` so the native parity gate and the
+    default type set are untouched; this tier always runs in Python.
+    """
+
+    name = "date"
+
+    def __init__(self) -> None:
+        super().__init__(types=())
+        self._patterns = self._py_patterns = list(_DATE_PATTERNS)

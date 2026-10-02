@@ -130,6 +130,18 @@ CORPUS = [
     "文字a@b.io文字 key AKIAIOSFODNN7EXAMPLE",
     "naïve bob@corp.io é ghp_abcdefghijklmnopqrstuvwxyz0123456789",
     "文" * 50 + " eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6y",
+    # MAC: one separator, 6..20 groups, boundaries, Unicode word chars beside it
+    "hw 00:1A:2B:3C:4D:5E up 00-1a-2b-3c-4d-5e ok 00:1A-2B:3C-4D:5E mixed",
+    "five 00:11:22:33:44 twenty " + ":".join(["ab"] * 20) + " too-many " + "-".join(["cd"] * 21),
+    "MAC=95:a8:88:cf:93:a8:6f:70:8a:9b:0c:1d:08:00 SRC=1 x00:11:22:33:44:55 .00:11:22:33:44:55",
+    "é00:11:22:33:44:55 00:11:22:33:44:55é ‿00:11:22:33:44:55 00:11:22:33:44:55: 10:14:32",
+    # AWS account id: only ARN / endpoint / ECR framing, Unicode digits included
+    "arn:aws:iam::123456789012:role/Admin arn:aws-cn:s3:::bucket "
+    "arn:aws:kms:us-east-1:479900703959:key/k",
+    "https://sqs.us-east-1.amazonaws.com/872291069523/q "
+    "123456789012.dkr.ecr.us-east-1.amazonaws.com/app",
+    "order 123456789012 shipped xarn:aws:iam::123456789012:role 1234567890123.dkr.ecr.x",
+    "arn:aws:iam::١٢٣٤٥٦٧٨٩٠١٢:role/x s3.amazonaws.com.cn/123456789012 ٩123456789012.dkr.ecr.",
 ]
 
 
@@ -263,6 +275,14 @@ _WIRED_FRAGMENTS = [
     "sk-proj-" + "Z" * 25 + "-",  # trailing '-': the word-char end backtracks
     "sk-" + "Q" * 31,  # one short of the legacy 32
     "aws secret access key = " + "x/Y+" * 10,
+    "00:1a:2b:3c:4d:5e",  # MAC, and the pieces that make mixed / long / short runs
+    "-0f",
+    ":0f",
+    "arn:aws:iam::",
+    "123456789012",
+    ":role/x",
+    ".amazonaws.com/",
+    ".dkr.ecr.",
 ]
 
 wired_fuzzed = st.lists(st.sampled_from(_WIRED_FRAGMENTS), min_size=0, max_size=30).map("".join)
@@ -516,6 +536,12 @@ _LABELED_CORPUS = [
     "ACCOUNT   :   1234567890   and acct no. 9876543210",
     "card " + " " * 120 + "4111111111111111",  # beyond the cue window
     "ſsn 123-45-6789 and KELVIN \u212aard 4111111111111111",
+    # non-ASCII text takes the relaxed-candidate + anchored-verify path: a letter
+    # glued to a cue or value, curly quotes, Unicode digits, and a match far from
+    # the only accented character
+    "éssn 123-45-6789 ssné 123456789 José’s ssn: 123-45-6789 “Patient MRN-0042117”",
+    "ssn ١٢٣٤٥٦٧٨٩ and phone: ０４４ 20 7946 0958 — card: 4111 1111 1111 1111é",
+    "Zoë " + "x " * 400 + "account 12-3456-7890 and DOB: 03/08/1996",
 ]
 
 
@@ -562,6 +588,14 @@ _LABEL_PIECES = [
     "İ",
 ]
 label_fuzzed = st.lists(st.sampled_from(_LABEL_PIECES), min_size=0, max_size=25).map(" ".join)
+# the same pieces glued together, so non-ASCII letters sit right against cues/values
+label_glued = st.lists(st.sampled_from(_LABEL_PIECES), min_size=0, max_size=25).map("".join)
+
+
+@settings(max_examples=1500, derandomize=True, deadline=None)
+@given(text=label_glued)
+def test_labeled_rules_fuzzed_glued(text):
+    _assert_labeled_equiv(text)
 
 
 @settings(max_examples=1500, derandomize=True, deadline=None)

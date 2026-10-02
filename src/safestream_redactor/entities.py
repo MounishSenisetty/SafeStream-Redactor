@@ -16,7 +16,11 @@ class EntityType(str, Enum):
     SSN = "ssn"
     IPV4 = "ipv4"
     IPV6 = "ipv6"
+    # hardware (EUI-48/EUI-64) address: a stable device identifier
+    MAC_ADDRESS = "mac_address"
     AWS_KEY = "aws_key"
+    # 12-digit AWS account id, only where an ARN / AWS endpoint frames it
+    AWS_ACCOUNT_ID = "aws_account_id"
     # AWS Secret Access Key (the 40-char secret paired with an access key id)
     AWS_SECRET = "aws_secret"
     GITHUB_TOKEN = "github_token"
@@ -42,6 +46,8 @@ class EntityType(str, Enum):
     LOC = "loc"
     # date of birth (label-anchored)
     DOB = "dob"
+    # any calendar date / time of day (opt-in: logs are full of timestamps)
+    DATE = "date"
     # generic sensitive identifier caught only via an adjacent label cue
     # (student/employee/member/patient/account/MRN/licence/passport/... numbers)
     ID_NUMBER = "id_number"
@@ -85,12 +91,70 @@ class Detection:
         return self.start < other.end and other.start < self.end
 
 
+#: Sources of the statistical name tiers (spaCy, ONNX, gazetteer, ensemble). Every
+#: other source -- the deterministic/entropy/checksum tiers, custom rules and plugins --
+#: is "Tier 0" and takes precedence over these in :func:`resolve_overlaps`.
+NER_SOURCES = frozenset({"ner", "onnx", "gazetteer_name", "semantic_ensemble"})
+
+
 def resolve_overlaps(detections: list[Detection]) -> list[Detection]:
     """Keep at most one detection per region of text.
 
-    On overlap the higher-confidence detection wins; ties go to the longer
-    span (a credit card should beat the phone number hiding inside it).
+    Tier-0 detections resolve among themselves: on overlap the higher-confidence
+    one wins; ties go to the longer span (a credit card should beat the phone
+    number hiding inside it). NER detections (:data:`NER_SOURCES`) resolve the
+    same way among themselves, but never *beat* a Tier-0 span: a cluster of
+    overlapping spans that contains a Tier-0 span becomes one span covering the
+    whole cluster, labelled by its best Tier-0 member. Dropping either side
+    would leave the other's uncovered characters in the clear (a PERSON tag on
+    ``john.doe`` must not leave ``@example.com`` of the email exposed).
     """
+    ner = [d for d in detections if d.source in NER_SOURCES]
+    if not ner:
+        return _greedy(detections)
+    tier0 = _greedy([d for d in detections if d.source not in NER_SOURCES])
+    merged: list[Detection] = []
+    cluster: list[Detection] = []
+    cluster_end = 0
+    for det in sorted(tier0 + _greedy(ner), key=lambda d: d.start):
+        if cluster and det.start >= cluster_end:
+            merged.append(_union(cluster))
+            cluster = []
+        cluster.append(det)
+        cluster_end = max(cluster_end, det.end) if len(cluster) > 1 else det.end
+    if cluster:
+        merged.append(_union(cluster))
+    return merged
+
+
+def _union(cluster: list[Detection]) -> Detection:
+    """One span over a start-sorted run of overlapping detections."""
+    if len(cluster) == 1:
+        return cluster[0]
+    # tier0 and ner were each made non-overlapping, so a cluster of 2+ always
+    # mixes the two and holds at least one Tier-0 span
+    best = max(
+        (d for d in cluster if d.source not in NER_SOURCES),
+        key=lambda d: (d.confidence, d.end - d.start),
+    )
+    text, end = cluster[0].text, cluster[0].end
+    for det in cluster[1:]:
+        if det.end > end:  # overlapping, so the new tail starts inside text
+            text += det.text[end - det.start :]
+            end = det.end
+    return Detection(
+        start=cluster[0].start,
+        end=end,
+        text=text,
+        entity_type=best.entity_type,
+        confidence=best.confidence,
+        source=best.source,
+        meta=dict(best.meta),
+    )
+
+
+def _greedy(detections: list[Detection]) -> list[Detection]:
+    """Best-first selection of pairwise non-overlapping detections."""
     # Process candidates best-first; a candidate is kept only if it overlaps
     # nothing already kept (equivalently, no higher-priority detection covers
     # it). The kept spans are pairwise non-overlapping, so ordered by

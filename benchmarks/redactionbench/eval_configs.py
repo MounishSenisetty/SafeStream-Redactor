@@ -23,12 +23,16 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import resource
 import time
 from pathlib import Path
 from typing import Any
 
 from safestream_redactor import Redactor
+
+try:
+    import resource
+except ImportError:  # Windows: no getrusage; peak RSS is reported as 0
+    resource = None  # type: ignore[assignment]
 
 from . import adapter, loader, metrics
 
@@ -231,7 +235,9 @@ def main(argv: list[str] | None = None) -> int:
         row.update(evaluate_rb(red, rows, args.chunk_size))
         if args.benign:
             row.update(evaluate_benign(red, _load_rows(args.benign_dir), args.chunk_size))
-        row["peak_rss_mb"] = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
+        row["peak_rss_mb"] = (
+            round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1) if resource else 0.0
+        )
         results.append(row)
 
     if len(thresholds) > 1:

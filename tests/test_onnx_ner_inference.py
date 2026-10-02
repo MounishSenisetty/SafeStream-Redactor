@@ -50,7 +50,8 @@ def _build_tiny_model(path: str) -> None:
         [helper.make_tensor_value_info("logits", TensorProto.FLOAT, [1, None, num_labels])],
         initializer=[init],
     )
-    model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)])
+    # IR 10: readable by every onnxruntime the [onnx] extra allows, whatever onnx wrote it
+    model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)], ir_version=10)
     onnx.checker.check_model(model)
     onnx.save(model, path)
 
@@ -91,7 +92,7 @@ def test_real_from_files_with_explicit_labels(tiny_model, tmp_path):
     labels_path = tmp_path / "labels.json"
     labels_path.write_text(json.dumps({str(k): v for k, v in _ID2LABEL.items()}), encoding="utf-8")
     det = OnnxPiiDetector.from_files(model_path, vocab_path, str(labels_path), min_score=0.5)
-    assert [d.entity_type.value for d in det.detect("Paris")] == ["loc"]
+    assert [d.entity_type.value for d in det.detect("in Paris")] == ["loc"]
 
 
 def test_redactor_integration_use_onnx(tiny_model):
@@ -110,7 +111,9 @@ def test_cli_redact_with_onnx(tiny_model, tmp_path, capsys):
 
     model_path, vocab_path = tiny_model
     inp = tmp_path / "in.txt"
-    inp.write_text("John Smith works at Acme Corp in Paris\n", encoding="utf-8")
+    # bytes, not write_text: on Windows that writes "\r\n", which the redactor
+    # (correctly) preserves in its output
+    inp.write_bytes(b"John Smith works at Acme Corp in Paris\n")
     argv = ["redact", str(inp), "-o", "-", "--onnx", model_path]
     argv += ["--onnx-vocab", vocab_path, "--min-confidence", "0.0"]
     rc = main(argv)

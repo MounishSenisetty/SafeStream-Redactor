@@ -151,7 +151,13 @@ def decode_bio(
         if tok.is_special or prefix == "O" or not tag:
             flush()
             continue
+        # Some checkpoints tag every sub-word B- ("O" "lus" "eg" "un"); a B- glued
+        # to the current span (no gap) is still the same word, so it continues.
         if prefix == "B" or not cur_tag or cur_tag != tag:
+            if tag == cur_tag and tok.start == cur_end:
+                cur_end = tok.end
+                cur_probs.append(prob)
+                continue
             flush()
             cur_start, cur_end, cur_tag, cur_probs = tok.start, tok.end, tag, [prob]
         else:  # I- continuing the same tag
@@ -187,6 +193,147 @@ class WordTokenizer:
             key = word.lower() if self._lowercase else word
             out.append(TokenSpan(self._vocab.get(key, self._unk), m.start(), m.end()))
         return out
+
+
+class HFTokenizer:
+    """A Hugging Face *fast* tokenizer (``tokenizer.json``) with character offsets.
+
+    Sub-word models need their own tokenizer; the offsets it returns are character
+    offsets into the very string passed in, so no text is re-assembled from tokens.
+    Special tokens (CLS/SEP) carry ``start == -1``. Needs the ``tokenizers`` package
+    (installed with ``transformers``); imported only when this class is constructed.
+    """
+
+    def __init__(self, tokenizer_file: str, max_length: int = 512) -> None:
+        from tokenizers import Tokenizer as _HFTokenizer  # pragma: no cover - optional dep
+
+        self._tok = _HFTokenizer.from_file(str(tokenizer_file))
+        self._tok.no_padding()
+        self._tok.enable_truncation(max_length)
+        self.pad_id = next(
+            (i for t in ("[PAD]", "<pad>") if (i := self._tok.token_to_id(t)) is not None), 0
+        )
+
+    def _spans(self, enc: Any) -> list[TokenSpan]:
+        return [
+            TokenSpan(i, -1 if special else s, -1 if special else e)
+            for i, (s, e), special in zip(
+                enc.ids, enc.offsets, enc.special_tokens_mask, strict=True
+            )
+        ]
+
+    def encode(self, text: str) -> list[TokenSpan]:
+        return self._spans(self._tok.encode(text))
+
+    def encode_batch(self, texts: list[str]) -> list[list[TokenSpan]]:
+        return [self._spans(e) for e in self._tok.encode_batch(texts)]
+
+
+# --- Tier-1 gate: which spans are worth a model call --------------------------
+
+# The model never reads the raw stream, nor whole lines: only short windows around
+# a name-shaped candidate. Two triggers make a candidate:
+#
+# * a run of 2-4 Titlecase words (Latin incl. accented, Cyrillic): "Maria Gonzalez",
+#   "Siobhan O'Neill", "José García-Márquez";
+# * the words right after a person cue: "signed by", "Dr.", "patient:", ...
+#   Honorifics must be capitalised (a log's "cache=MISS" or "41 ms" is not one), and
+#   cues that are common in machine text ("user", "name", "contact") count only with
+#   a colon, so "user login ok" and "name=foo" stay out. Only a sign-off
+#   ("Regards,") reaches across a line break to the name below it.
+#
+# Timestamps, hex, ALLCAPS levels, paths and k=v pairs trigger neither, so most of
+# a log costs one regex pass and no inference at all.
+_UP = "A-ZÀ-ÖØ-ÞА-ЯЁ"
+_LO = "a-zß-öø-ÿа-яё"
+# "Smith", "Garcia-Marquez", "O'Neill" (accents included)
+_NAME_WORD = (
+    rf"[{_UP}](?:[{_LO}]{{1,40}}(?:['\u2019-][{_UP}]?[{_LO}]{{1,40}})*"
+    rf"|['\u2019][{_UP}][{_LO}]{{1,40}})"
+)
+# a run of 2-4 Titlecase words, or one mid-sentence (after a lower-case word or a
+# comma: "contact Alice and Bob"). A lone sentence-initial word ("Rollback is ...")
+# is not a candidate: in prose that is nearly every sentence.
+_TITLE_RUN_RE = re.compile(
+    rf"(?<!\w)(?:{_NAME_WORD}(?:[ \t]+{_NAME_WORD}){{1,3}}|(?<=[a-z,][ \t]){_NAME_WORD})(?!\w)"
+)
+_CUE_RE = re.compile(
+    r"(?<!\w)(?:(?:Dr|Mrs?|Ms|Prof|Dear|Attn|(?i:signed[ \t]+by))\b[.,:]?[ \t]*"
+    r"|(?i:sincerely|regards)\b,?[ \t]*\n?[ \t]*"
+    r"|(?i:name|patient|witness|user|contact|employee|customer|client|applicant|author"
+    r"|nurse|physician|cc)[ \t]*:[ \t]*)"
+)
+# up to three words after a cue: the name (in any case) and nothing past a stopword
+_AFTER_CUE_RE = re.compile(r"[^\W\d_][\w'\u2019-]{0,39}(?:[ \t]+[^\W\d_][\w'\u2019-]{0,39}){0,2}")
+_STOPWORDS = frozenset(
+    {"a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "or", "our", "the",
+     "their", "this", "to", "with", "your", "his", "her", "was", "is", "has", "had",
+     "will", "behalf"}
+)  # fmt: skip
+# characters of context on each side of a candidate (about 8-12 words)
+_CONTEXT = 32
+
+
+def _cue_name(text: str, pos: int) -> list[tuple[int, int]]:
+    """Spans of the name words right after a cue that ends at ``pos``."""
+    m = _AFTER_CUE_RE.match(text, pos)
+    if m is None:
+        return []
+    words: list[tuple[int, int]] = []
+    for w in re.finditer(r"\S+", m.group()):
+        if w.group().lower() in _STOPWORDS:
+            break
+        words.append((pos + w.start(), pos + w.end()))
+    return words
+
+
+def _candidate_windows(text: str) -> list[tuple[int, str]]:
+    """``(offset, model input)`` windows around every name candidate in ``text``.
+
+    The model input is the window text, except that lower-case words after a cue
+    are capitalised (``signed by john smith`` -> ``John Smith``) so a cased model
+    can see them as names. Capitalising one character keeps the length, so the
+    model's offsets are offsets into ``text`` unchanged.
+    """
+    spans: list[tuple[int, int]] = []
+    recase: list[int] = []  # positions whose character is upper-cased for the model
+    for m in _TITLE_RUN_RE.finditer(text):
+        spans.append((m.start(), m.end()))
+    for m in _CUE_RE.finditer(text):
+        words = _cue_name(text, m.end())
+        if not words:
+            continue
+        spans.append((m.start(), words[-1][1]))
+        for ws, we in words:
+            word = text[ws:we]
+            if word.islower() and len(word[0].upper()) == 1:
+                recase.append(ws)
+    if not spans:
+        return []
+    # widen by the context (within the line), then merge overlapping windows
+    windows: list[list[int]] = []
+    for s, e in sorted(spans):
+        line_start = text.rfind("\n", 0, s) + 1
+        line_end = text.find("\n", e)
+        lo = max(line_start, s - _CONTEXT)
+        hi = min(len(text) if line_end < 0 else line_end, e + _CONTEXT)
+        lo, hi = _snap_to_words(text, lo, hi)
+        if windows and lo <= windows[-1][1]:
+            windows[-1][1] = max(windows[-1][1], hi)
+        else:
+            windows.append([lo, hi])
+    recase_set = set(recase)
+    out: list[tuple[int, str]] = []
+    for lo, hi in windows:
+        piece = text[lo:hi]
+        if recase_set:
+            chars = list(piece)
+            for i in range(lo, hi):
+                if i in recase_set:
+                    chars[i - lo] = chars[i - lo].upper()
+            piece = "".join(chars)
+        out.append((lo, piece))
+    return out
 
 
 # --- onnxruntime backend (lazy, local-only) ----------------------------------
@@ -235,14 +382,29 @@ class OnnxRuntimeBackend:
         attention_mask_name: str | None = None,
         output_name: str | None = None,
         providers: list[str] | None = None,
+        threads: int = 1,
     ) -> None:
         ort, np = _lazy_imports()
         self._np = np
+        opts = ort.SessionOptions()
+        # One worker process = one core: scale out with --workers, which
+        # parallelizes the whole pipeline, rather than oversubscribing cores
+        # with intra-op threads in every worker.
+        opts.intra_op_num_threads = threads
+        opts.inter_op_num_threads = 1
+        opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         # CPU provider only: no remote/execution-provider egress.
         self._session = ort.InferenceSession(
-            str(model_path), providers=providers or ["CPUExecutionProvider"]
+            str(model_path), sess_options=opts, providers=providers or ["CPUExecutionProvider"]
         )
-        input_names = {i.name for i in self._session.get_inputs()}
+        inputs = self._session.get_inputs()
+        input_names = {i.name for i in inputs}
+        # BERT-family exports also take token_type_ids; a single segment is all zeros
+        self._type_ids_name = "token_type_ids" if "token_type_ids" in input_names else None
+        # a model exported with a fixed batch dimension of 1 is fed one row at a time
+        batch_dim = inputs[0].shape[0] if inputs[0].shape else None
+        self.max_batch = 1 if batch_dim == 1 else 32
         resolved_input = input_name or _first_present(
             input_names, ("input_ids", "input", "ids", "tokens")
         )
@@ -268,6 +430,39 @@ class OnnxRuntimeBackend:
         if logits.ndim == 3:  # (batch, seq, labels) -> drop batch
             logits = logits[0]
         return [[float(x) for x in row] for row in logits]
+
+    def predict_batch(
+        self, batch: list[list[int]], pad_id: int, outside_id: int
+    ) -> list[tuple[list[int], list[float]] | None]:  # pragma: no cover - [onnx] extra
+        """Per row: ``(label ids, label probabilities)``, or ``None`` if all ``O``.
+
+        One padded inference call for the whole batch; softmax, argmax and the
+        all-``O`` test are array operations, so Python only touches rows that
+        hold an entity.
+        """
+        np = self._np
+        lengths = np.fromiter(map(len, batch), dtype=np.int64, count=len(batch))
+        ids = np.full((len(batch), int(lengths.max())), pad_id, dtype=np.int64)
+        mask = np.arange(ids.shape[1]) < lengths[:, None]
+        ids[mask] = np.fromiter(
+            (t for row in batch for t in row), dtype=np.int64, count=int(lengths.sum())
+        )
+        feed: dict[str, Any] = {self._input_name: ids}
+        if self._mask_name is not None:
+            feed[self._mask_name] = mask.astype(np.int64)
+        if self._type_ids_name is not None:
+            feed[self._type_ids_name] = np.zeros_like(ids)
+        logits = np.asarray(self._session.run([self._output_name], feed)[0], dtype=np.float32)
+        if logits.ndim == 2:  # model without a batch dimension
+            logits = logits[None]
+        labels = logits.argmax(-1)
+        # max softmax probability = 1 / sum(exp(logit - max logit))
+        probs = 1.0 / np.exp(logits - logits.max(-1, keepdims=True)).sum(-1)
+        has_entity = ((labels != outside_id) & mask).any(-1)
+        return [
+            (labels[i, :n].tolist(), probs[i, :n].tolist()) if has_entity[i] else None
+            for i, n in enumerate(lengths.tolist())
+        ]
 
 
 # --- default label scheme ----------------------------------------------------
@@ -338,7 +533,7 @@ class OnnxPiiDetector:
         vocab: dict[str, int] | None = None,
         id2label: dict[int, str] | None = None,
         tag_map: dict[str, EntityType | str] | None = None,
-        min_score: float = 0.5,
+        min_score: float = 0.35,
         confidence: float | None = None,
         model_name: str | None = None,
         lowercase: bool = True,
@@ -346,12 +541,15 @@ class OnnxPiiDetector:
         output_name: str | None = None,
         attention_mask_name: str | None = None,
         providers: list[str] | None = None,
+        tokenizer_file: str | None = None,
+        threads: int = 1,
         backend: InferenceBackend | None = None,
         tokenizer: Tokenizer | None = None,
     ) -> None:
         self._id2label = {int(k): v for k, v in (id2label or _DEFAULT_ID2LABEL).items()}
         self._tag_map = _normalize_tag_map(tag_map)
         self._min_score = min_score
+        self._outside_id = next((k for k, v in self._id2label.items() if v == "O"), 0)
         # optional fixed confidence: emit this instead of the model probability
         # (parity with the spaCy tier, which assigns a constant confidence).
         self._fixed_confidence = confidence
@@ -374,13 +572,19 @@ class OnnxPiiDetector:
             "output_name": output_name,
             "attention_mask_name": attention_mask_name,
             "providers": providers,
+            "tokenizer_file": tokenizer_file,
+            "threads": threads,
         }
 
         if tokenizer is not None:
             self._tokenizer: Tokenizer = tokenizer
+        elif tokenizer_file is not None:
+            self._tokenizer = HFTokenizer(tokenizer_file)
         else:
             if vocab is None:
-                raise ValueError("vocab= is required unless a tokenizer= is provided")
+                raise ValueError(
+                    "vocab= is required unless a tokenizer= or tokenizer_file= is provided"
+                )
             self._tokenizer = WordTokenizer(vocab, lowercase=lowercase)
 
         if backend is not None:
@@ -394,7 +598,9 @@ class OnnxPiiDetector:
                 attention_mask_name=attention_mask_name,
                 output_name=output_name,
                 providers=providers,
+                threads=threads,
             )
+        self._pad_id: int = getattr(self._tokenizer, "pad_id", 0)
 
     # Parallel scheduler ships detectors to worker processes. An onnxruntime
     # session isn't picklable, so (as the spaCy tier does) pickle only the config
@@ -411,13 +617,17 @@ class OnnxPiiDetector:
 
         ``vocab`` and ``labels`` may be paths to JSON files or already-loaded
         dicts, so the CLI/config can pass file paths and library callers can pass
-        objects. ``labels`` (id -> tag, e.g. ``{"1": "B-PER"}``) defaults to the
-        CoNLL IOB2 scheme when omitted.
+        objects. A ``vocab`` path to a Hugging Face ``tokenizer.json`` (what
+        ``scripts/export_onnx.py`` writes) selects the sub-word :class:`HFTokenizer`.
+        ``labels`` (id -> tag, e.g. ``{"1": "B-PER"}``) defaults to the CoNLL IOB2
+        scheme when omitted.
         """
-        vocab_map = {str(k): int(v) for k, v in _load_json_map(vocab).items()}
         id2label = None
         if labels is not None:
             id2label = {int(k): str(v) for k, v in _load_json_map(labels).items()}
+        if isinstance(vocab, str) and Path(vocab).name == "tokenizer.json":
+            return cls(model_path=model_path, tokenizer_file=vocab, id2label=id2label, **kwargs)
+        vocab_map = {str(k): int(v) for k, v in _load_json_map(vocab).items()}
         return cls(model_path=model_path, vocab=vocab_map, id2label=id2label, **kwargs)
 
     def __getstate__(self) -> dict[str, Any]:
@@ -432,25 +642,90 @@ class OnnxPiiDetector:
         self.__init__(**state)  # type: ignore[misc]
 
     def detect(self, text: str) -> list[Detection]:
-        tokens = self._tokenizer.encode(text)
-        if not tokens:
+        """Run the model on the candidate windows of ``text`` only (see ``_candidate_windows``)."""
+        pieces = _candidate_windows(text)
+        if not pieces:
             return []
-        logits = self._backend.run([t.token_id for t in tokens])
-        per_token: list[tuple[int, float]] = []
-        for row in logits:
-            probs = _softmax(row)
-            idx = _argmax(probs)
-            per_token.append((idx, probs[idx]))
-        spans = decode_bio(tokens, per_token, self._id2label, self._tag_map, self._min_score)
-        return [
-            Detection(
-                start=start,
-                end=end,
-                text=text[start:end],
-                entity_type=entity,
-                confidence=self._fixed_confidence if self._fixed_confidence is not None else conf,
-                source=self.name,
-                meta={"onnx_label": tag, "model": self._model_name},
+        encode_batch = getattr(self._tokenizer, "encode_batch", None)
+        texts = [piece for _, piece in pieces]
+        encoded = (
+            encode_batch(texts) if encode_batch else [self._tokenizer.encode(t) for t in texts]
+        )
+        predictions = self._predict([[t.token_id for t in tokens] for tokens in encoded])
+        found: list[Detection] = []
+        seen: set[tuple[int, int, EntityType]] = set()
+        for (offset, _), tokens, pred in zip(pieces, encoded, predictions, strict=True):
+            if pred is None:
+                continue
+            spans = decode_bio(
+                tokens,
+                list(zip(*pred, strict=True)),
+                self._id2label,
+                self._tag_map,
+                self._min_score,
             )
-            for start, end, entity, conf, tag in spans
-        ]
+            for start, end, entity, score, tag in spans:
+                start, end = _snap_to_words(text, offset + start, offset + end)
+                if (start, end, entity) in seen:  # overlapping pieces, split sub-words
+                    continue
+                seen.add((start, end, entity))
+                found.append(
+                    Detection(
+                        start=start,
+                        end=end,
+                        text=text[start:end],
+                        entity_type=entity,
+                        # a span that cleared min_score is a decision: emit it at
+                        # least at the pipeline's default min_confidence, so a low
+                        # recall-first threshold is not silently undone downstream
+                        confidence=self._fixed_confidence
+                        if self._fixed_confidence is not None
+                        else max(score, _DECIDED_FLOOR),
+                        source=self.name,
+                        meta={
+                            "onnx_label": tag,
+                            "onnx_score": f"{score:.3f}",
+                            "model": self._model_name,
+                        },
+                    )
+                )
+        return found
+
+    def _predict(self, batch: list[list[int]]) -> list[tuple[list[int], list[float]] | None]:
+        """Per token-id row: ``(labels, probabilities)``, or ``None`` when all ``O``."""
+        out: list[tuple[list[int], list[float]] | None] = [None] * len(batch)
+        rows = [i for i, ids in enumerate(batch) if ids]
+        predict_batch = getattr(self._backend, "predict_batch", None)
+        if predict_batch is None:  # a backend with only run(): one row at a time
+            for i in rows:
+                probs = [_softmax(row) for row in self._backend.run(batch[i])]
+                labels = [_argmax(p) for p in probs]
+                if any(lab != self._outside_id for lab in labels):
+                    out[i] = (labels, [p[lab] for p, lab in zip(probs, labels, strict=True)])
+            return out
+        # similar lengths share a batch, so little of each batch is padding
+        rows.sort(key=lambda i: len(batch[i]))
+        size = getattr(self._backend, "max_batch", 32)
+        for k in range(0, len(rows), size):
+            chunk = rows[k : k + size]
+            results = predict_batch([batch[i] for i in chunk], self._pad_id, self._outside_id)
+            for i, res in zip(chunk, results, strict=True):
+                out[i] = res
+        return out
+
+
+_DECIDED_FLOOR = 0.5
+# ponytail: snapping stops after this many characters each way, so a name tag
+# inside a huge base64 blob cannot grow past the tier's declared max_span.
+_SNAP_LIMIT = 32
+
+
+def _snap_to_words(text: str, start: int, end: int) -> tuple[int, int]:
+    """Widen a span to whole words: a sub-word tag must not leave half a name."""
+    lo = max(0, start - _SNAP_LIMIT)
+    while start > lo and text[start - 1].isalnum():
+        start -= 1
+    hi = min(len(text), end + _SNAP_LIMIT)
+    while end < hi and text[end].isalnum():
+        end += 1
+    return start, end

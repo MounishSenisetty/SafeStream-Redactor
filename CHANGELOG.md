@@ -8,6 +8,22 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- **Closing the RedactionBench gap to Presidio.** A span-level diff of the gold spans Presidio
+  catches that SafeStream missed showed three real detector holes, now closed:
+  - `mac_address` (default on): EUI-48/EUI-64 with one consistent `:`/`-` separator, 6-20
+    groups, so an iptables `MAC=` field is caught whole. It has a lookaround-free twin in
+    `_lookaround_free.py`, proven byte-identical by the existing gate.
+  - `aws_account_id` (default on): the 12 digits only where AWS frames them, meaning an ARN
+    account field, an `amazonaws.com/<id>` path, or an ECR host. A bare 12-digit run is not
+    flagged.
+  - `date` (opt-in: `--dates`, `use_dates=True`, or `types=["date"]`): ISO 8601 with time,
+    numeric `d/m/y` in either order, textual (`Aug 19, 2024`, `Mon, 19 Aug 2024`), and time
+    of day. Off by default because every log line carries a timestamp.
+
+  Zero new false positives on the benign corpora. On RedactionBench, NER plus `--dates`
+  reaches entity recall 0.647, char precision 0.492 and char recall 0.577, against
+  Presidio-sm's 0.624, 0.328 and 0.421 in the same run (see
+  `benchmarks/PRESIDIO_COMPARISON.md`).
 - **Operators:** `hash`, `encrypt` and `fictionalize` redaction modes, and
   `safestream deanonymize` (streaming, constant memory) to reverse `encrypt`. Encrypt is
   AES-256-GCM with a synthetic (HMAC-derived) nonce so output stays a pure function of the

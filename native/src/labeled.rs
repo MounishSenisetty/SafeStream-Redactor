@@ -9,8 +9,7 @@
 //! skips straight to candidate cues.
 
 use crate::error::{try_push, Error};
-use crate::patterns::compile;
-use regex::Regex;
+use crate::patterns::WordBounded;
 use std::sync::OnceLock;
 
 /// `labeled_id._SEP`.
@@ -79,13 +78,13 @@ pub struct LabeledMatch {
     pub rule: u8,
 }
 
-fn engine() -> Result<&'static [Regex], Error> {
-    static ENGINE: OnceLock<Result<Vec<Regex>, Error>> = OnceLock::new();
+fn engine() -> Result<&'static [WordBounded], Error> {
+    static ENGINE: OnceLock<Result<Vec<WordBounded>, Error>> = OnceLock::new();
     ENGINE
         .get_or_init(|| {
             rule_sources()
                 .iter()
-                .map(|src| compile("labeled_identifier", &format!("(?i){src}")))
+                .map(|src| WordBounded::new("labeled_identifier", &format!("(?i){src}")))
                 .collect()
         })
         .as_ref()
@@ -98,18 +97,18 @@ fn engine() -> Result<&'static [Regex], Error> {
 /// characters, so the caller applies it after offset conversion.
 pub(crate) fn scan_labeled(text: &str, out: &mut Vec<LabeledMatch>) -> Result<(), Error> {
     for (rule, re) in engine()?.iter().enumerate() {
-        for caps in re.captures_iter(text) {
-            let (Some(whole), Some(value)) = (caps.get(0), caps.get(1)) else {
-                continue;
+        re.for_each(text, true, |(start, _end), value| {
+            let Some((value_start, value_end)) = value else {
+                return Ok(());
             };
             let m = LabeledMatch {
-                start: whole.start(),
-                value_start: value.start(),
-                value_end: value.end(),
+                start,
+                value_start,
+                value_end,
                 rule: rule as u8,
             };
-            try_push(out, m)?;
-        }
+            try_push(out, m)
+        })?;
     }
     Ok(())
 }
