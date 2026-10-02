@@ -79,6 +79,7 @@ _SCHEMA: dict[str, dict[str, str]] = {
         "onnx_labels": _STR,
         "onnx_min_score": _NUMBER,
         "use_entropy": _BOOL,
+        "use_regional": _BOOL,
         "backend": _STR,
     },
     "redaction": {
@@ -89,6 +90,9 @@ _SCHEMA: dict[str, dict[str, str]] = {
         "mask_char": _STR,
         "hmac_key": _STR,
         "pseudonym_length": _INT,
+        "hash_algorithm": _STR,
+        "hash_salt": _STR,
+        "encrypt_key": _STR,
     },
     "custom": {"words": _STR_LIST, "patterns": _STR_LIST},
     "streaming": {"chunk_size": _INT, "overlap": _INT, "allow_unsafe_overlap": _BOOL},

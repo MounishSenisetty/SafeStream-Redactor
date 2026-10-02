@@ -125,3 +125,32 @@ def test_cli_rejects_small_overlap_then_accepts_the_insecure_flag(tmp_path, caps
     )
     assert rc == 0
     assert "bob@corp.example" not in out.read_text()
+
+
+# --- a detector that declares it cannot stream must be refused (fix H) ------------
+
+
+class _NeedsWholeDocument:
+    name = "whole_doc_only"
+    requirements = StreamingRequirements(max_span=10, streaming_safe=False)
+
+    def detect(self, text: str) -> list[Detection]:
+        return []
+
+
+class _Stateful:
+    name = "stateful_but_window_pure"
+    requirements = StreamingRequirements(max_span=10, stateful=True)
+
+    def detect(self, text: str) -> list[Detection]:
+        return []
+
+
+def test_redactor_refuses_a_detector_that_declares_streaming_safe_false() -> None:
+    with pytest.raises(WindowConfigurationError, match="whole_doc_only"):
+        Redactor(extra_detectors=[_NeedsWholeDocument()], use_entropy=False)
+
+
+def test_stateful_is_advisory_and_does_not_block_construction() -> None:
+    r = Redactor(extra_detectors=[_Stateful()], use_entropy=False)
+    assert "stateful_but_window_pure" in r.detector_names

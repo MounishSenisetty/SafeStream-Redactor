@@ -24,10 +24,13 @@ from typing import Any
 
 from safestream_redactor import __version__
 from safestream_redactor.entities import EntityType
+from safestream_redactor.errors import SafeStreamError
 from safestream_redactor.locate import LineTracker
 from safestream_redactor.policy import RedactionPolicy
 from safestream_redactor.redactor import Redactor
 from safestream_redactor.report import RedactionStats
+
+_ENCRYPT_KEY_ENV = "SAFESTREAM_ENCRYPT_KEY"
 
 
 def _add_backend_arg(parser: argparse.ArgumentParser) -> None:
@@ -101,6 +104,13 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.5,
         help="drop ONNX detections below this model probability (default: 0.5)",
+    )
+    common.add_argument(
+        "--regional",
+        action="store_true",
+        default=False,
+        help="enable the regional tier: IBAN, crypto addresses, UK NINO/NHS, India "
+        "Aadhaar/PAN (checksum-validated; off by default)",
     )
     common.add_argument(
         "--no-entropy",
@@ -193,9 +203,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     redact.add_argument(
         "--mode",
-        choices=["replace", "mask", "pseudonymize"],
+        choices=["replace", "mask", "pseudonymize", "hash", "encrypt", "fictionalize"],
         default=None,
-        help="redaction mode (default: replace)",
+        help="redaction mode (default: replace). encrypt is reversible with "
+        "`safestream deanonymize`; fictionalize swaps in synthetic values",
     )
     redact.add_argument("--replace", default=None, metavar="TEXT", help="replacement string")
     redact.add_argument(
@@ -207,7 +218,26 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     redact.add_argument("--keep-last", type=int, default=None, help="mask mode: chars to keep")
     redact.add_argument("--mask-char", default=None)
-    redact.add_argument("--hmac-key", default=None, help="secret for pseudonymize mode")
+    redact.add_argument(
+        "--hmac-key", default=None, help="secret for pseudonymize / fictionalize mode"
+    )
+    redact.add_argument(
+        "--encrypt-key",
+        default=None,
+        help="secret (>= 16 bytes) for encrypt mode; or set SAFESTREAM_ENCRYPT_KEY "
+        "so it stays out of the process list",
+    )
+    redact.add_argument("--hash-salt", default=None, help="secret salt for hash mode")
+
+    deanon = sub.add_parser(
+        "deanonymize",
+        help="restore text encrypted with `redact --mode encrypt` (streaming, constant memory)",
+    )
+    deanon.add_argument("input", help="input file path, or '-' for stdin")
+    deanon.add_argument("-o", "--output", required=True, help="output path, or '-' for stdout")
+    deanon.add_argument("--encrypt-key", default=None, help="the key used to encrypt")
+    deanon.add_argument("--chunk-size", type=int, default=64 * 1024, metavar="CHARS")
+    deanon.add_argument("--encoding", default="utf-8")
 
     detect = sub.add_parser("detect", parents=[common], help="list detections without redacting")
     detect.add_argument(
@@ -358,6 +388,7 @@ use_onnx = false                            # local ONNX NER tier ([onnx] extra,
 # onnx_labels = "labels.json"               # optional id->tag (default: CoNLL IOB2)
 # onnx_min_score = 0.5
 use_entropy = true                          # high-entropy secret detection
+# use_regional = false                      # IBAN / crypto / UK NINO+NHS / India Aadhaar+PAN
 # use_gazetteer = false                     # dictionary-backed person-name tier (no deps)
 # use_ensemble = false                      # semantic PERSON/ORG ensemble (no deps)
 # semantic_policy = "strict"                # ensemble policy: strict | high_recall
@@ -436,6 +467,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         ("keep_last", "mask_keep_last"),
         ("mask_char", "mask_char"),
         ("hmac_key", "hmac_key"),
+        ("encrypt_key", "encrypt_key"),
+        ("hash_salt", "hash_salt"),
     ):
         value = getattr(args, flag, None)
         if value is not None:
@@ -448,8 +481,17 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         replacements[EntityType.from_name(type_name)] = replacement
     if replacements:
         policy_kwargs["replacements"] = replacements
-    if policy_kwargs.get("mode") == "pseudonymize" and not policy_kwargs.get("hmac_key"):
-        raise SystemExit("--mode pseudonymize requires --hmac-key")
+    if policy_kwargs.get("mode") == "encrypt" and not policy_kwargs.get("encrypt_key"):
+        env_key = os.environ.get(_ENCRYPT_KEY_ENV)
+        if env_key:
+            policy_kwargs["encrypt_key"] = env_key
+    for mode, option, needed in (
+        ("pseudonymize", "--hmac-key", "hmac_key"),
+        ("fictionalize", "--hmac-key", "hmac_key"),
+        ("encrypt", f"--encrypt-key (or {_ENCRYPT_KEY_ENV})", "encrypt_key"),
+    ):
+        if policy_kwargs.get("mode") == mode and not policy_kwargs.get(needed):
+            raise SystemExit(f"--mode {mode} requires {option}")
     if args.onnx and not args.onnx_vocab:
         raise SystemExit("--onnx requires --onnx-vocab (a JSON token->id vocab)")
 
@@ -476,6 +518,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         )
     if not args.entropy:
         kwargs["use_entropy"] = False
+    if getattr(args, "regional", False):
+        kwargs["use_regional"] = True
     if args.chunk_size is not None:
         kwargs["chunk_size"] = args.chunk_size
     if args.overlap is not None:
@@ -655,6 +699,32 @@ def _finish_run(
                 version=__version__,
             ),
         )
+
+
+def _cmd_deanonymize(args: argparse.Namespace) -> int:
+    """Reverse ``--mode encrypt`` output; non-zero if any token could not be restored."""
+    from safestream_redactor.operators import Deanonymizer
+
+    key = args.encrypt_key or os.environ.get(_ENCRYPT_KEY_ENV)
+    if not key:
+        raise SystemExit(f"deanonymize requires --encrypt-key (or {_ENCRYPT_KEY_ENV})")
+    try:
+        deanon = Deanonymizer(key)
+    except SafeStreamError as exc:
+        raise SystemExit(f"safestream: {exc}") from None
+    pieces = deanon.restore_stream(_input_chunks(args.input, args.chunk_size, args.encoding))
+    if args.output == "-":
+        _write_stdout(pieces, args.encoding)
+    else:
+        _atomic_write_stream(args.output, pieces, args.encoding)
+    if deanon.failed:
+        print(
+            f"safestream: {deanon.failed} token(s) could not be decrypted "
+            "(wrong key or modified text) and were left in place",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
 
 
 def _cmd_redact(args: argparse.Namespace) -> int:
@@ -1017,6 +1087,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_fanotify(args)
     if args.command == "ui":
         return _cmd_ui(args)
+    if args.command == "deanonymize":
+        return _cmd_deanonymize(args)
     if getattr(args, "offline_guard", True):
         from safestream_redactor import netguard
 
@@ -1043,7 +1115,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 3
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, SafeStreamError) as exc:
         print(f"safestream: error: {exc}", file=sys.stderr)
         return 1
 

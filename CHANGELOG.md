@@ -6,7 +6,43 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Operators:** `hash`, `encrypt` and `fictionalize` redaction modes, and
+  `safestream deanonymize` (streaming, constant memory) to reverse `encrypt`. Encrypt is
+  AES-256-GCM with a synthetic (HMAC-derived) nonce so output stays a pure function of the
+  span and the streaming/parallel equivalence guarantee holds. New optional extra `crypto`
+  (`cryptography`). CLI: `--encrypt-key` / `SAFESTREAM_ENCRYPT_KEY`, `--hash-salt`.
+- **Regional recognizers (opt-in, `--regional` / `use_regional=True`):** IBAN (mod-97 and
+  country length), Bitcoin (base58check, bech32/bech32m), Ethereum (shape), UK NHS (mod-11),
+  India Aadhaar (Verhoeff), UK NINO and India PAN (structure). New entity types `iban`,
+  `crypto_address`, `uk_nino`, `nhs_number`, `in_aadhaar`, `in_pan`.
+- `docker-compose.yml`: offline, read-only, memory-capped runner.
+- `docs/PRESIDIO_PARITY.md`: requirement-by-requirement audit with evidence and declined items.
+
 ### Security / correctness
+
+- **Key material no longer appears in `repr()`** of a `RedactionPolicy` (`hmac_key`,
+  `hash_salt`, `encrypt_key`), so a traceback or log line cannot leak it.
+- **A missing `cryptography` is now a clear, early error.** Building an `encrypt` policy or
+  a `Deanonymizer` without the `crypto` extra raises `MissingExtraError` immediately (and
+  the CLI prints it cleanly); before, it surfaced on the first match mid-stream, and
+  `deanonymize` reported it as "wrong key".
+- **`encrypt` refuses values over 32 KiB** (`OperatorError`). A longer span produced a token
+  the streaming restorer could not hold, so `deanonymize` left it encrypted yet exited 0.
+- **A detector that declares `streaming_safe=False` is now refused** at `Redactor`
+  construction (`WindowConfigurationError`). The flag was documented as disabling streaming
+  but nothing read it, so such a detector was silently run on windows it cannot see across.
+  `StreamingRequirements.stateful` is documented as advisory.
+- **IBAN matching accepts only canonical forms** (electronic, or print form in groups of
+  four). `GB82 W E S T 1 2 3 ...` no longer matches.
+- **Encrypted output no longer trips the entropy tiers.** The ciphertext payload is written
+  in groups of 16 joined by `.`, so no run reaches the 20-character minimum the entropy
+  candidates require; `detect --fail-on-detect` over `--mode encrypt` output is clean.
+  (Token format change; `encrypt` is unreleased.)
+- **One error root, `SafeStreamError`.** `WindowConfigurationError`, the new
+  `MissingExtraError` (also an `ImportError`) and `OperatorError` (also a `ValueError`)
+  derive from it; existing `except ValueError` / `except ImportError` handlers keep working.
 
 - **Window violations now fail closed at run time too.** A detector (plugin or custom
   regex) that emits a span longer than `overlap` raises `WindowConfigurationError`

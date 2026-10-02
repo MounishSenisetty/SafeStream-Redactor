@@ -41,6 +41,12 @@ _SEVERITY: dict[EntityType, str] = {
     EntityType.SSN: HIGH,
     EntityType.CREDIT_CARD: HIGH,
     EntityType.ID_NUMBER: HIGH,
+    EntityType.IBAN: HIGH,
+    EntityType.UK_NINO: HIGH,
+    EntityType.NHS_NUMBER: HIGH,
+    EntityType.IN_AADHAAR: HIGH,
+    EntityType.IN_PAN: HIGH,
+    EntityType.CRYPTO_ADDRESS: MEDIUM,  # public by design, but links a person to funds
     EntityType.DOB: MEDIUM,
     EntityType.EMAIL: MEDIUM,
     EntityType.PHONE: MEDIUM,

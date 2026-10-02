@@ -71,6 +71,8 @@ native = ["safestream-redactor-native>=0.4.0,<0.5"]
 # Streamlit is imported only by ui/app.py, inside the process `safestream ui`
 # starts; the base install and every other entry point never import it.
 ui = ["streamlit>=1.40,<2"]
+# Reversible `encrypt` redaction mode + `safestream deanonymize` (AES-256-GCM).
+crypto = ["cryptography>=42"]
 dev = [
   "pytest>=7.0",
   "pytest-cov>=4.1",
@@ -79,6 +81,7 @@ dev = [
   "mypy>=1.8",
   "pyyaml>=6.0",
   "pre-commit>=3.5",
+  "cryptography>=42",
 ]
 # google-re2 is used only by benchmarks/re2_backend.py (the evaluated-and-not-
 # adopted compiled-regex backend); it is never imported by the shipped package.
@@ -180,5 +183,5 @@ files = ["src"]
 # onnxruntime (the [onnx] extra) ships no stubs and is likewise lazily imported.
 # safestream_native (the [native] extra) is a stub-less compiled module that may
 # or may not be installed; listing it keeps mypy green in both states.
-module = ["spacy", "tomli", "onnxruntime", "numpy", "safestream_native", "streamlit", "streamlit.*"]
+module = ["spacy", "tomli", "onnxruntime", "numpy", "safestream_native", "streamlit", "streamlit.*", "cryptography", "cryptography.*"]
 ignore_missing_imports = true

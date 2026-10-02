@@ -8,7 +8,7 @@ from collections.abc import Iterable, Iterator
 
 from safestream_redactor._atomic import atomic_output
 from safestream_redactor.calibration import Calibrator
-from safestream_redactor.detectors.base import Detector
+from safestream_redactor.detectors.base import Detector, requirements_of
 from safestream_redactor.detectors.contextual import ContextualScorer
 from safestream_redactor.detectors.custom import CustomDetector
 from safestream_redactor.detectors.deterministic import DeterministicDetector
@@ -26,6 +26,18 @@ from safestream_redactor.policy import RedactionPolicy
 from safestream_redactor.report import RedactionStats
 
 logger = logging.getLogger(__name__)
+
+# entity types produced only by the opt-in regional tier
+REGIONAL_TYPES = frozenset(
+    {
+        EntityType.IBAN,
+        EntityType.CRYPTO_ADDRESS,
+        EntityType.UK_NINO,
+        EntityType.NHS_NUMBER,
+        EntityType.IN_AADHAAR,
+        EntityType.IN_PAN,
+    }
+)
 
 
 def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence: object) -> None:
@@ -74,6 +86,11 @@ class Redactor:
     use_entropy:
         Enable the statistical tier that flags high-entropy secrets with no
         published format (on by default).
+    use_regional:
+        Enable the regional tier (IBAN, crypto addresses, UK NINO/NHS, India
+        Aadhaar/PAN; ``detectors/regional.py``). Off by default because it changes
+        what existing deployments redact; naming one of its types in ``types``
+        also enables it.
     calibrator:
         Optional trained :class:`~safestream_redactor.calibration.Calibrator`.
         When given, each detection's hand-set confidence is replaced by the
@@ -122,6 +139,7 @@ class Redactor:
         onnx_labels: str | dict[int | str, str] | None = None,
         onnx_min_score: float = 0.5,
         use_entropy: bool = True,
+        use_regional: bool = False,
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
         load_plugins: bool = False,
@@ -199,6 +217,10 @@ class Redactor:
 
             self._detectors.append(EntropyDetector(backend=backend))
             self._detectors.append(CompoundSecretDetector(backend=backend))
+        from safestream_redactor.detectors.regional import RegionalDetector
+
+        if use_regional or (resolved_types is not None and REGIONAL_TYPES & set(resolved_types)):
+            self._detectors.append(RegionalDetector())
         self._detectors.extend(extra_detectors)
         # third-party detectors registered via entry points (opt-in)
         if load_plugins:
@@ -214,7 +236,25 @@ class Redactor:
             self._detectors.append(self._scorer)
         logger.debug("detector tiers active: %s", [d.name for d in self._detectors])
 
+        self._reject_non_streaming_detectors()
         self.enforce_overlap_safety(allow_unsafe_overlap)
+
+    def _reject_non_streaming_detectors(self) -> None:
+        """Fail closed on a tier that declares it cannot run on windows.
+
+        Every entry point except :meth:`redact` feeds detectors bounded windows, so a
+        detector with ``streaming_safe=False`` (it needs the whole input) would be run
+        on text it cannot see in full and silently miss what straddles a boundary. The
+        flag used to be documented as disabling streaming but nothing read it; now a
+        declaration is a promise the constructor keeps.
+        """
+        unsafe = [d.name for d in self._detectors if not requirements_of(d).streaming_safe]
+        if unsafe:
+            raise WindowConfigurationError(
+                f"detector(s) {', '.join(unsafe)} declare streaming_safe=False: they need the "
+                "whole input and cannot run on the bounded windows the streaming, file and "
+                "parallel engines use, so they would miss entities across window boundaries"
+            )
 
     def enforce_overlap_safety(self, allow_unsafe: bool = False) -> None:
         """Fail closed unless ``overlap`` covers what the active detectors require.

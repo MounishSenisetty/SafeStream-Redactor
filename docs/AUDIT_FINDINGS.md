@@ -431,3 +431,65 @@ Presidio" figure compared the native core with Presidio's full spaCy engine. The
 reports like-for-like tiers (see `benchmarks/PRESIDIO_COMPARISON.md`): **15–147×** pattern
 tier, **~2×** NER tier (with SafeStream using ~2.5× more memory there). One run, shared
 4-vCPU container, no repeats. Hyperscan/re2, gitleaks and the ONNX tier remain unmeasured.
+
+---
+
+## 10. Phase 6: architecture audit of the operators and regional tier (findings A-H)
+
+An SOLID/clean-architecture audit of `operators.py`, `detectors/regional.py`, `policy.py`,
+`engine.py` and `redactor.py`. Every finding below was **reproduced with a script before it
+was fixed**, and each fix has a regression test. Fixes landed in `ac09625` (A, B, E, 7) and
+`16f360e` (H, F, D).
+
+### Closed
+
+| ID | Finding | Resolution | Regression test(s) |
+|---|---|---|---|
+| **A** | `hmac_key`, `hash_salt` and `encrypt_key` appeared in `repr()` of a `RedactionPolicy`, so a traceback or log line could leak them (`hmac_key` was pre-existing; the pattern was copied). | `field(repr=False)` on all three. | `test_policy_repr_never_shows_key_material` |
+| **B** | A missing `cryptography` was reported as a wrong key: `Deanonymizer._decrypt` had `except Exception`, which swallowed the `ImportError`. An `encrypt` policy was also accepted without the library and failed only on the first match, mid-stream. | `require_crypto()` runs when an encrypt policy or a `Deanonymizer` is built (`MissingExtraError`); decryption catches only `InvalidTag` and malformed-payload errors; the CLI prints a clean message. | `test_encrypt_policy_fails_fast_without_the_extra`, `test_a_missing_extra_is_never_reported_as_a_wrong_key`, `test_cli_reports_a_missing_extra_as_a_clean_error` |
+| **E** | Silent non-restoration: a 40,000-character span (reachable with `overlap=60000`) encrypted to a 53,386-character token, larger than the restorer's fixed 48,000-character buffer. It was split across chunks, never decrypted, **never counted**, and `deanonymize` exited 0. | `MAX_PLAINTEXT_BYTES = 32_768`; `encrypt_token` raises `OperatorError` past it; `_MAX_TOKEN` is derived from that bound. | `test_encrypt_refuses_a_span_it_could_not_restore` (the largest permitted value round-trips through 997-character chunks) |
+| **7** | No common error root. The existing domain exceptions derive from three unrelated builtins (`ValueError`, `RuntimeError`, `Exception`); the new code raised bare `ValueError`/`ImportError`. | `errors.SafeStreamError`; `WindowConfigurationError`, `MissingExtraError` (also `ImportError`) and `OperatorError` (also `ValueError`) derive from it, so existing `except` clauses keep working. | `test_error_hierarchy_has_one_root_and_stays_backward_compatible` |
+| **H** | `StreamingRequirements.streaming_safe` was documented as disabling streaming but nothing read it, so a detector declaring it could not run on windows was silently streamed (fail-open). | `Redactor` raises `WindowConfigurationError` at construction. `stateful` stays **advisory** (documented as such) so third-party plugins that pass it keep working. | `test_redactor_refuses_a_detector_that_declares_streaming_safe_false`, `test_stateful_is_advisory_and_does_not_block_construction` |
+| **F** | IBAN matching accepted free-form spacing (`GB82 W E S T 1 2 3 ...`); the worst-case span stayed under the declared `max_span` only by accident. | Only the electronic form and the print form (groups of four, last group 1-4) are accepted. | `test_iban_accepts_the_canonical_forms`, `test_iban_rejects_non_canonical_spacing`, `test_longest_iban_span_fits_the_declared_requirement` |
+| **D** | Encrypted output was not scan-clean: the base64 payload tripped the entropy tier (three `secret` findings at 0.6 on a rescan), so `detect --fail-on-detect` over `--mode encrypt` output would fail. | Token format change: the payload is written in **groups of 16 joined by `.`**. The entropy candidates need a 20+ character run from fixed alphabets that exclude `.`, so no run in a token can reach the minimum. | `test_encrypted_output_raises_no_findings_on_rescan`, `test_no_ciphertext_run_is_long_enough_for_the_entropy_candidates`, `test_grouped_tokens_still_round_trip` |
+
+### Decisions and trade-offs
+
+* **D was reshaped, not exempted.** An exemption (skip entropy findings inside a
+  `<TYPE:E:...>` envelope) would have to recognise a token mid-window, but a token can be
+  up to ~44K characters and the window's left context is only `overlap` (8 KiB by
+  default). The decision would then depend on unbounded left context, violating assumption
+  **A2** of `docs/FORMAL_MODEL.md` and breaking the streaming == whole-document guarantee.
+  Reshaping the token is window-local, identical for the Python and native backends (the
+  native parity gate is untouched), and holds by construction rather than by a heuristic.
+  The format changed because `encrypt` had not been released.
+* **H halts construction, deliberately.** Every entry point except `Redactor.redact` feeds
+  detectors bounded windows, so a detector that needs the whole input would miss entities
+  that straddle a boundary. Raising in the constructor protects the streaming invariant at
+  the price that such a detector cannot be used with `Redactor` at all, not even through
+  `redact()`. That is the intended fail-closed behaviour; a plugin author who needs
+  whole-document analysis must run it outside the streaming pipeline.
+* **`stateful` is advisory.** Removing the field would break any plugin that constructs
+  `StreamingRequirements(stateful=True)`; the proof assumes window-pure detectors and a
+  stateful one documents its own guarantees.
+
+### Open: known and tracked for a dedicated patch
+
+| ID | Finding | Evidence |
+|---|---|---|
+| **C** | `fictionalize` is not a fixed point: its output is re-detected (`example.com` emails, TEST-NET addresses), so redacting the output again changes it. | `usercd7610b9@example.com` -> `user727f0a35@example.com` and `192.0.2.50` -> `203.0.113.51` on a second pass. A document should be redacted once, or the reserved ranges exempted from detection. |
+| **G** | Deterministic-tier card recall (existing code, not introduced here): a Luhn-valid card followed by a space and digits is mishandled. | `card 4111 1111 1111 1111 10.1.2.3` -> `card [REDACTED].1.2.3` (the card swallows the IP's first octet and the rest leaks); in a variant where the card follows `...example` and the address is detected first, the card itself stayed unredacted. Reproduced twice; the root cause is **not yet isolated** (suspected: the card candidate greedily absorbs the next digit group, then loses overlap resolution). Needs a regression test in `tests/test_detectors.py` before any change. |
+
+### Open design items from the same audit (no behavioural defect)
+
+* **OCP:** adding an operator touches six places (enum, `__post_init__`, `render`, CLI
+  choices, config schema, MCP strategy enum). Recommended: an `Operator` protocol and a
+  registry, keeping the `mode="hash"` strings.
+* **OCP/DIP:** `RegionalDetector.detect` hard-codes eight rule blocks and `redactor.py`
+  carries `REGIONAL_TYPES`. Recommended: a rule table and a `produces` declaration on the
+  detector.
+* **Exceptions:** `NetworkAccessError`, `ResourceExhaustionError`, `WatchUnavailable`,
+  `MCPError`, `SettingsError` and `InputError` are not yet under `SafeStreamError`.
+* **ISP:** `RedactionPolicy` carries key material for every operator; `Redactor.__init__`
+  has 24 parameters.
+

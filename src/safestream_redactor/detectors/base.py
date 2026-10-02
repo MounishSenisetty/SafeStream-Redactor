@@ -41,14 +41,17 @@ class StreamingRequirements:
         to ``max_span`` when sizing the overlap so the trailing context is still
         buffered when the candidate is scored.
     stateful:
-        True if the detector carries state across ``detect`` calls. The built-in
-        tiers are all stateless (each ``detect`` call is a pure function of its
-        input window), which is what makes the streaming/parallel equivalence
-        proof hold; a stateful detector must document its own guarantees.
+        **Advisory only; nothing enforces it.** True if the detector carries state
+        across ``detect`` calls. The built-in tiers are all stateless (each ``detect``
+        call is a pure function of its input window), which is what makes the
+        streaming/parallel equivalence proof hold; a stateful detector must document
+        its own guarantees. The flag is surfaced by the MCP ``detectors`` tool.
     streaming_safe:
-        False if the detector cannot be run on windows at all (it needs the
-        whole input). Such a detector disables the streaming fast path; none of
-        the built-ins set this.
+        False if the detector cannot be run on windows at all (it needs the whole
+        input). **Enforced:** :class:`~safestream_redactor.redactor.Redactor` raises
+        :class:`~safestream_redactor.engine.WindowConfigurationError` at construction
+        for such a detector, because every entry point but ``redact`` is windowed.
+        None of the built-ins set this.
     """
 
     max_span: int
