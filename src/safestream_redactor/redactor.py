@@ -142,6 +142,7 @@ class Redactor:
         onnx_vocab: str | dict[str, int] | None = None,
         onnx_labels: str | dict[int | str, str] | None = None,
         onnx_min_score: float = 0.35,
+        onnx_batch_size: int = 1,
         use_entropy: bool = True,
         use_regional: bool = False,
         use_dates: bool = False,
@@ -207,7 +208,11 @@ class Redactor:
                 raise ValueError("use_onnx requires onnx_model and onnx_vocab")
             self._detectors.append(
                 OnnxPiiDetector.from_files(
-                    onnx_model, onnx_vocab, onnx_labels, min_score=onnx_min_score
+                    onnx_model,
+                    onnx_vocab,
+                    onnx_labels,
+                    min_score=onnx_min_score,
+                    batch_size=onnx_batch_size,
                 )
             )
         # statistical tier: generic high-entropy secrets (on by default). The

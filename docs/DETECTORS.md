@@ -115,6 +115,18 @@ clears it is emitted at confidence `max(score, 0.5)` (the raw score is in
 `meta["onnx_score"]`), so the pipeline's default `min_confidence` does not undo
 the lower threshold.
 
+**One window per inference call (deterministic by default).** An INT8 model made
+by dynamic quantization (`scripts/export_onnx.py` makes one) computes its
+activation scale over the whole input tensor, so a window's scores depend on the
+other windows in its batch, and batches depend on chunking. With batching, the
+exported DistilBERT changed about 10% of its spans between 16K and 24K chunks on
+one RedactionBench document, which made streaming output depend on chunk size and
+parallel output differ from sequential. The tier therefore runs each window on
+its own by default. `--onnx-batch-size N` (`onnx_batch_size` in a policy) batches
+up to N windows per call: faster, and **non-deterministic** with INT8 models.
+`tests/test_onnx_determinism.py` holds the default to identical output across
+chunk sizes, whole-text vs streaming, and parallel vs sequential.
+
 **Tier 0 wins overlaps.** When an NER span overlaps a deterministic/entropy
 span, `resolve_overlaps` keeps one span covering both, labelled by the Tier-0
 detection: a PERSON tag on `john.doe` cannot shrink the redaction of

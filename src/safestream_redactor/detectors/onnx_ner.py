@@ -390,6 +390,7 @@ class OnnxRuntimeBackend:
         output_name: str | None = None,
         providers: list[str] | None = None,
         threads: int = 1,
+        batch_size: int = 1,
     ) -> None:
         ort, np = _lazy_imports()
         self._np = np
@@ -411,7 +412,7 @@ class OnnxRuntimeBackend:
         self._type_ids_name = "token_type_ids" if "token_type_ids" in input_names else None
         # a model exported with a fixed batch dimension of 1 is fed one row at a time
         batch_dim = inputs[0].shape[0] if inputs[0].shape else None
-        self.max_batch = 1 if batch_dim == 1 else 32
+        self.max_batch = 1 if batch_dim == 1 else max(1, batch_size)
         resolved_input = input_name or _first_present(
             input_names, ("input_ids", "input", "ids", "tokens")
         )
@@ -550,6 +551,7 @@ class OnnxPiiDetector:
         providers: list[str] | None = None,
         tokenizer_file: str | None = None,
         threads: int = 1,
+        batch_size: int = 1,
         backend: InferenceBackend | None = None,
         tokenizer: Tokenizer | None = None,
     ) -> None:
@@ -581,7 +583,15 @@ class OnnxPiiDetector:
             "providers": providers,
             "tokenizer_file": tokenizer_file,
             "threads": threads,
+            "batch_size": batch_size,
         }
+        # One window per inference call by default. An INT8 dynamically quantized
+        # model computes its activation scale over the whole input tensor, so a
+        # window's scores depend on which other windows share its batch -- and
+        # batch composition depends on chunking. Batching therefore makes output
+        # differ between chunk sizes, streaming and whole text, and parallel and
+        # sequential runs. batch_size > 1 is faster and explicitly non-deterministic.
+        self._batch_size = max(1, batch_size)
 
         if tokenizer is not None:
             self._tokenizer: Tokenizer = tokenizer
@@ -606,6 +616,7 @@ class OnnxPiiDetector:
                 output_name=output_name,
                 providers=providers,
                 threads=threads,
+                batch_size=batch_size,
             )
         self._pad_id: int = getattr(self._tokenizer, "pad_id", 0)
 
@@ -712,7 +723,7 @@ class OnnxPiiDetector:
             return out
         # similar lengths share a batch, so little of each batch is padding
         rows.sort(key=lambda i: len(batch[i]))
-        size = getattr(self._backend, "max_batch", 32)
+        size = min(self._batch_size, getattr(self._backend, "max_batch", self._batch_size))
         for k in range(0, len(rows), size):
             chunk = rows[k : k + size]
             results = predict_batch([batch[i] for i in chunk], self._pad_id, self._outside_id)

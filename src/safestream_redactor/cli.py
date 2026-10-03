@@ -106,6 +106,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="drop ONNX detections below this model probability (default: 0.35, recall-first)",
     )
     common.add_argument(
+        "--onnx-batch-size",
+        type=int,
+        default=1,
+        metavar="N",
+        help="ONNX windows per inference call (default: 1). Above 1 is faster but "
+        "NON-DETERMINISTIC with INT8 models: output then depends on chunking, and "
+        "parallel output may differ from sequential",
+    )
+    common.add_argument(
         "--regional",
         action="store_true",
         default=False,
@@ -394,6 +403,7 @@ use_onnx = false                            # local ONNX NER tier ([onnx] extra,
 # onnx_vocab = "vocab.json"                 # required when use_onnx = true (token->id)
 # onnx_labels = "labels.json"               # optional id->tag (default: CoNLL IOB2)
 # onnx_min_score = 0.35
+# onnx_batch_size = 1                       # >1 is faster but non-deterministic (INT8)
 use_entropy = true                          # high-entropy secret detection
 # use_regional = false                      # IBAN / crypto / UK NINO+NHS / India Aadhaar+PAN
 # use_dates = false                         # calendar dates + times of day (log timestamps too)
@@ -523,6 +533,7 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
             onnx_vocab=args.onnx_vocab,
             onnx_labels=args.onnx_labels,
             onnx_min_score=args.onnx_min_score,
+            onnx_batch_size=args.onnx_batch_size,
         )
     if not args.entropy:
         kwargs["use_entropy"] = False
