@@ -31,7 +31,6 @@ import argparse
 import datetime as dt
 import importlib.metadata as md
 import json
-import os
 import platform
 import subprocess
 import sys
@@ -49,7 +48,12 @@ from benchmarks import corpora  # noqa: E402
 Pred = tuple[int, int, str]
 ONNX_DIR = ROOT / "models" / "ner"
 PRESIDIO_PIECE = 20_000  # spaCy refuses >1M chars and grows with length: feed pieces
-TRANSFORMERS_MODEL = os.environ.get("PRESIDIO_TRANSFORMERS_MODEL", "dslim/bert-base-NER")
+# Presidio's transformers engine with two MIT-licensed models: the de-identification
+# model Presidio's docs use as their example, and a general-purpose NER model.
+TRANSFORMERS_MODELS = {
+    "presidio-trf-deid": "StanfordAIMI/stanford-deidentifier-base",
+    "presidio-trf-bert": "dslim/bert-base-NER",
+}
 
 # name -> (tier, safestream Redactor kwargs | None for Presidio)
 _ONNX = {
@@ -68,7 +72,8 @@ SYSTEMS: dict[str, tuple[str, dict[str, Any] | None]] = {
     "presidio-regex": ("pattern", None),
     "presidio-sm": ("ner", None),
     "presidio-lg": ("ner", None),
-    "presidio-transformers": ("ner", None),
+    "presidio-trf-deid": ("ner", None),
+    "presidio-trf-bert": ("ner", None),
 }
 
 
@@ -133,18 +138,11 @@ def _presidio(name: str) -> Callable[[str], list[Pred]]:
     else:
         from presidio_analyzer.nlp_engine import NlpEngineProvider
 
-        if name == "presidio-transformers":
+        if name in TRANSFORMERS_MODELS:
+            model_name = {"spacy": "en_core_web_sm", "transformers": TRANSFORMERS_MODELS[name]}
             config: dict[str, Any] = {
                 "nlp_engine_name": "transformers",
-                "models": [
-                    {
-                        "lang_code": "en",
-                        "model_name": {
-                            "spacy": "en_core_web_sm",
-                            "transformers": TRANSFORMERS_MODEL,
-                        },
-                    }
-                ],
+                "models": [{"lang_code": "en", "model_name": model_name}],
             }
         else:
             model = {"presidio-sm": "en_core_web_sm", "presidio-lg": "en_core_web_lg"}[name]
@@ -208,6 +206,11 @@ def run_one(system: str, corpus: str, split: str) -> dict[str, Any]:
         "bytes": sum(len(d.text.encode("utf-8")) for d in docs),
         "peak_rss_mb": peak,
         "tool_rss_mb": peak - base_rss,
+        # audit trail: what this process actually ran with. A heavy framework
+        # pulled in by an unrelated install inflates load time and memory.
+        "python": sys.executable,
+        "versions": _versions(),
+        "heavy_modules_loaded": sorted(m for m in _HEAVY if m in sys.modules),
         "preds": preds,
     }
 
@@ -262,6 +265,8 @@ def score_doc(doc: corpora.Doc, preds: list[Pred]) -> dict[str, float]:
         "ent_total": len(doc.spans),
         "ent_covered": sum(1 for g in doc.spans if all(pred_mask[g.start : g.end])),
     }
+    if not doc.spans:  # a gold-free document: any detection on it is a false alarm
+        c |= {"neg_docs": 1, "neg_flagged": int(bool(preds))}
     mand = [g for g in doc.spans if g.necessity == "mandatory"]
     if mand:
         m_mask = bytearray(n)
@@ -305,6 +310,7 @@ HEADLINE = (
     "ent_f1_strict",
     "mandatory_recall",
     "no_leak_doc_rate",
+    "fp_doc_rate",
 )
 
 
@@ -320,6 +326,7 @@ def metrics(get: Callable[[str], Any]) -> dict[str, Any]:
         out |= {f"ent_p_{kind}": p, f"ent_r_{kind}": r, f"ent_f1_{kind}": _f1(p, r)}
     out["mandatory_recall"] = _ratio(get("mand_cov"), get("mand_total"))
     out["no_leak_doc_rate"] = _ratio(get("mand_noleak_docs"), get("mand_docs"))
+    out["fp_doc_rate"] = _ratio(get("neg_flagged"), get("neg_docs"))
     return out
 
 
@@ -418,28 +425,38 @@ def _cpu_name() -> str:
     return platform.processor()
 
 
+_DISTS = (
+    "safestream-redactor",
+    "safestream-redactor-native",
+    "presidio-analyzer",
+    "spacy",
+    "spacy-huggingface-pipelines",
+    "en-core-web-sm",
+    "en-core-web-lg",
+    "onnxruntime",
+    "tokenizers",
+    "transformers",
+    "torch",
+    "numpy",
+)
+_HEAVY = ("torch", "transformers", "spacy", "onnxruntime", "tensorflow", "gliner", "stanza")
+
+
+def _versions() -> dict[str, str | None]:
+    out: dict[str, str | None] = {}
+    for dist in _DISTS:
+        try:
+            out[dist] = md.version(dist)
+        except md.PackageNotFoundError:
+            out[dist] = None
+    return out
+
+
 def environment() -> dict[str, Any]:
     import psutil
 
     battery = psutil.sensors_battery()
-    versions = {}
-    for dist in (
-        "safestream-redactor",
-        "safestream-redactor-native",
-        "presidio-analyzer",
-        "spacy",
-        "en-core-web-sm",
-        "en-core-web-lg",
-        "onnxruntime",
-        "tokenizers",
-        "transformers",
-        "torch",
-        "numpy",
-    ):
-        try:
-            versions[dist] = md.version(dist)
-        except md.PackageNotFoundError:
-            versions[dist] = None
+    versions = _versions()
 
     def git(*args: str) -> str:
         return subprocess.run(
@@ -481,7 +498,8 @@ def markdown(report: dict[str, Any]) -> str:
     ]
     if report.get("previously_exposed"):
         lines += [f"> **Previously exposed:** {report['previously_exposed']}", ""]
-    has_mand = any(s["point"]["mandatory_recall"] for s in report["scores"]["systems"].values())
+    has_mand = report.get("has_necessity", False)
+    has_neg = report.get("has_negatives", False)
     head = (
         "| System | Tier | Char P | Char R | Char F1 | Entity R (covered) "
         "| Ent F1 partial | Ent F1 strict |"
@@ -490,6 +508,9 @@ def markdown(report: dict[str, Any]) -> str:
     if has_mand:
         head += " Mandatory R | No-leak docs |"
         sep += "---|---|"
+    if has_neg:
+        head += " FP doc rate |"
+        sep += "---|"
     head += " MB/s | p50 / p99 ms | Load s | Peak / tool RSS MB |"
     sep += "---|---|---|---|"
     lines += [head, sep]
@@ -514,6 +535,8 @@ def markdown(report: dict[str, Any]) -> str:
                 _fmt_ci(s["point"][k], s["ci95"].get(k))
                 for k in ("mandatory_recall", "no_leak_doc_rate")
             ]
+        if has_neg:
+            cell.append(_fmt_ci(s["point"]["fp_doc_rate"], s["ci95"].get("fp_doc_rate")))
         cell += [
             f"{run['mb_s']:.3f}",
             f"{run['p50_ms']:.1f} / {run['p99_ms']:.1f}",
@@ -549,6 +572,18 @@ def markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _interpreter(system: str, venv_root: Path | None) -> str:
+    if venv_root is None:
+        return sys.executable
+    family = (
+        "safestream"
+        if system.startswith("safestream")
+        else ("presidio-trf" if system in TRANSFORMERS_MODELS else "presidio")
+    )
+    sub = "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
+    return str(venv_root / family / sub)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -564,6 +599,13 @@ def main() -> None:
         "--json", type=Path, help="raw results file (default: research/results/raw/...)"
     )
     ap.add_argument("--md", type=Path, help="also write the markdown table here")
+    ap.add_argument(
+        "--venv-root",
+        type=Path,
+        help="run each system family in its own virtualenv under this folder "
+        "(safestream/, presidio/, presidio-trf/), so no tool pays for another's "
+        "dependencies; default: this interpreter for every system",
+    )
     args = ap.parse_args()
     if args.run_one:
         json.dump(run_one(*args.run_one), sys.stdout)
@@ -579,7 +621,7 @@ def main() -> None:
         print(f"# {args.corpus}/{args.split}: {system} ...", file=sys.stderr, flush=True)
         proc = subprocess.run(
             [
-                sys.executable,
+                _interpreter(system, args.venv_root),
                 "-m",
                 "benchmarks.harness",
                 "--run-one",
@@ -619,7 +661,10 @@ def main() -> None:
         else None,
         "corpus_notes": corpus.notes,
         "corpus_skipped": corpus.skipped,
+        "has_necessity": any(g.necessity == "mandatory" for d in corpus.docs for g in d.spans),
+        "has_negatives": any(not d.spans for d in corpus.docs),
         "environment": env,
+        "isolated_venvs": str(args.venv_root) if args.venv_root else None,
         "systems": {s: SYSTEMS[s][0] for s in args.systems},
         "runs": runs,
         "scores": evaluate(corpus.docs, preds, resamples=args.bootstrap),

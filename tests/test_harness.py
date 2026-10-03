@@ -38,6 +38,12 @@ def test_score_doc_char_entity_and_mandatory_counts():
     assert c["*|gold"] == 2 and c["*|pred"] == 2
 
 
+def test_fp_doc_rate_counts_flagged_gold_free_documents():
+    docs = [Doc("pos", "key", [Gold(0, 3, "SECRET")]), Doc("n1", "uuid"), Doc("n2", "sha")]
+    out = harness.evaluate(docs, {"s": [[(0, 3, "SECRET")], [(0, 4, "SECRET")], []]}, resamples=0)
+    assert out["systems"]["s"]["point"]["fp_doc_rate"] == 0.5  # one of two negatives flagged
+
+
 def test_partial_match_is_one_to_one():
     golds = [(0, 4), (5, 9)]
     # one prediction covering both golds matches only one of them
