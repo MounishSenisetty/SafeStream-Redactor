@@ -148,8 +148,27 @@ class EntropyDetector(NativeBacked):
             token = m.group()
             entropy = self._secret_entropy(token)
             if entropy is not None and not _identifier_not_secret(text, m.start(), token):
-                found.append(self._detection(m.start(), m.end(), token, entropy))
+                self._emit(found, m.start(), m.end(), token, entropy)
         return found
+
+    def _emit(
+        self, found: list[Detection], start: int, end: int, token: str, entropy: float
+    ) -> None:
+        """Append the detection; a ``key=value`` token is the value alone.
+
+        ``=`` is in the candidate alphabet (base64 padding), so ``session=x9…``
+        arrives as one token. The key is not the secret: the value is re-judged on
+        its own and emitted without the key. A value too short or too plain on its
+        own is left to the tiers that read field names (structured, label rules).
+        Shared Python step, so both backends agree.
+        """
+        key, eq, value = token.partition("=")
+        if eq and value and not value.startswith("=") and _IDENT_KEY.match(key):
+            value_entropy = self._secret_entropy(value)
+            if value_entropy is None:
+                return
+            start, token, entropy = start + len(key) + 1, value, value_entropy
+        found.append(self._detection(start, end, token, entropy))
 
     def _detection(self, start: int, end: int, token: str, entropy: float) -> Detection:
         return Detection(
@@ -178,7 +197,7 @@ class EntropyDetector(NativeBacked):
             entropy = native_entropy if decided else self._secret_entropy(token)
             # the identifier check is shared Python code, so both backends agree
             if entropy is not None and not _identifier_not_secret(text, start, token):
-                found.append(self._detection(start, end, token, entropy))
+                self._emit(found, start, end, token, entropy)
         return found
 
 
