@@ -521,11 +521,30 @@ def _power() -> str:
     return "AC" if battery.power_plugged else f"BATTERY ({battery.percent:.0f}%)"
 
 
+_WIN_POWER_MODES = {  # Windows 11 power-mode overlays (Settings > Power > Power mode)
+    "961cc777-2547-4f9d-8174-7d86181b8a7a": "Best power efficiency",
+    "00000000-0000-0000-0000-000000000000": "Balanced",
+    "ded574b5-45a0-4f42-8737-46345c09c238": "Best performance",
+}
+
+
 def _power_plan() -> str | None:
+    """Power scheme plus the Windows 11 power mode, which throttles the CPU on its own."""
     if sys.platform != "win32":
         return None
+    import winreg
+
     out = subprocess.run(["powercfg", "/getactivescheme"], capture_output=True, text=True)
-    return out.stdout.strip().split("(")[-1].rstrip(")") or None
+    scheme = out.stdout.strip().split("(")[-1].rstrip(")")
+    try:
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes",
+        )
+        mode = str(winreg.QueryValueEx(key, "ActiveOverlayAcPowerScheme")[0]).lower()
+    except OSError:
+        return scheme
+    return f"{scheme}; AC power mode: {_WIN_POWER_MODES.get(mode, mode)}"
 
 
 def environment() -> dict[str, Any]:
