@@ -30,11 +30,12 @@ def _group(corpus: str, doc_id: str) -> str:
     """Documents that must land on the same side of the split.
 
     Nosey Parker repeats near-identical examples within one rule, so the secrets
-    corpus splits by rule (a rule's positives and negatives together), never by
-    example: dev and test then hold different vendor formats.
+    corpus splits by rule (all of a rule's examples together), never by
+    example: dev and test then hold different vendor formats. Generated negatives
+    are independent random draws, so each is its own group.
     """
-    if corpus == "secrets":
-        return doc_id.removeprefix("np-pos-").removeprefix("np-neg-").rsplit("-", 1)[0]
+    if corpus == "secrets" and doc_id.startswith("np-pos-"):
+        return doc_id.removeprefix("np-pos-").rsplit("-", 1)[0]
     return doc_id
 
 

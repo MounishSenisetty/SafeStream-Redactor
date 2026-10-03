@@ -25,9 +25,8 @@ conll2003          tner/conll2003, Reuters      test split; ``dslim/distilbert-N
                                                 as independent for the ONNX tier
 n2c2               i2b2/n2c2 2014, DUA          loader only (``N2C2_DIR`` env var)
 secrets            Nosey Parker rules,          rule ``examples`` (positives) and
-                   Apache-2.0                   ``negative_examples``; plus generated
-                                                hard negatives (UUIDs, hashes, base64,
-                                                minified JS)
+                   Apache-2.0                   generated hard negatives (UUIDs,
+                                                hashes, base64, minified JS)
 logs               generate_hard_dataset.py     self-generated regression fixture, not
                                                 an accuracy corpus
 =================  ===========================  =====================================
@@ -334,8 +333,8 @@ def _np_regex(pattern: str) -> re.Pattern[str]:
 
 
 def load_secrets() -> Corpus:
-    """Nosey Parker rule examples as positives; its negative examples plus generated
-    hard negatives (UUIDs, hashes, base64 blobs, minified JS) as secret-free docs.
+    """Nosey Parker rule examples as positives; generated hard negatives (UUIDs,
+    hashes, base64 blobs, minified JS) as secret-free docs.
 
     Gold is the rule's own capture group(s) -- Nosey Parker's labelling, not ours --
     or the whole match for a rule without groups. An example its own rule cannot
@@ -366,21 +365,22 @@ def load_secrets() -> Corpus:
                 places = [(m.start(g), m.end(g)) for g in groups] or [(m.start(), m.end())]
                 spans = [Gold(s, e, "SECRET") for s, e in places if e > s]
                 docs.append(Doc(f"np-pos-{rid}-{k}", example, spans))
-            for k, example in enumerate(rule.get("negative_examples") or []):
-                docs.append(Doc(f"np-neg-{rid}-{k}", example, []))
+            # Nosey Parker's negative_examples are NOT used: they mean "this rule
+            # must not fire", not "nothing sensitive here" -- many hold real emails,
+            # IPs or secret-shaped values that a redactor is right to hide.
     docs.extend(_hard_negatives())
     return Corpus(
         "secrets",
         docs,
         files,
         _revision(directory),
-        "positives: Nosey Parker rule examples (Apache-2.0); negatives: its "
-        "negative_examples + generated hard negatives",
+        "positives: Nosey Parker rule examples (Apache-2.0); negatives: generated "
+        "high-entropy non-secrets (UUIDs, commit SHAs, digests, base64 images, minified JS)",
         skipped,
     )
 
 
-def _hard_negatives(n: int = 50, seed: int = 20261003) -> list[Doc]:
+def _hard_negatives(n: int = 200, seed: int = 20261003) -> list[Doc]:
     """High-entropy text that is *not* a secret: what a secret scanner must not flag."""
     rng = random.Random(seed)
 
