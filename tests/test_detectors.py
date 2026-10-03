@@ -508,8 +508,50 @@ def test_url_without_password_is_not_flagged():
 
 def test_entropy_detects_high_entropy_secret():
     assert EntityType.SECRET in types_in("secret Zx9Kq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0")
-    # 32-char high-entropy hex
-    assert EntityType.SECRET in types_in("digest a3f5e8d9c2b1046789abcdef01234567")
+    # 32-char high-entropy hex (after a hash word it would be a digest: see below)
+    assert EntityType.SECRET in types_in("token a3f5e8d9c2b1046789abcdef01234567")
+
+
+_HEX40 = "91957296ca119fc6aab8a682b3e5dcf9bdedd74a"
+_HEX64 = "61415f82180df828e3b8d638ae5bb3913a26ff9b" + "0c1d2e3f4a5b6c7d8e9f0a1b"
+_UUID = "2ba5949a-ea6e-40a0-8f4b-9d659c2a7e11"
+_PNG = "iVBORw0KGgozzUwp7S2FxlITmFp2FeknRE7xQfrX0aB9cD8eF7gH6iJ5"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"request_id={_UUID} status=200",
+        f"commit {_HEX40}\nMerge branch 'main'",
+        f"sha256:{_HEX64}  image.tar",
+        f"FROM app@sha256:{_HEX64}",
+        f"checksum (md5): {_HEX64[:32]}",
+        f'<img src="data:image/png;base64,{_PNG}">',
+    ],
+)
+def test_entropy_skips_identifiers_that_are_not_secrets(text):
+    assert EntityType.SECRET not in types_in(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"API_KEY={_UUID}",  # a key is a key whatever its shape
+        f"auth token: {_HEX40}",
+        f"secret = {_HEX64}",
+        f"password {_PNG}",
+        f"blob {_HEX40}",  # hex with no hash word stays a candidate secret
+    ],
+)
+def test_entropy_keeps_the_same_shapes_after_a_secret_key(text):
+    # redacted in full, by whichever tier labels it (api_key wins some overlaps)
+    value = text.split()[-1].split("=")[-1]
+    assert value not in Redactor().redact(text)
+
+
+def test_identifier_check_reads_only_its_own_line():
+    # a secret key on the previous line does not rescue a commit hash
+    assert EntityType.SECRET not in types_in(f"password: hunter2\ncommit {_HEX40}")
 
 
 def test_entropy_ignores_low_entropy_and_words():

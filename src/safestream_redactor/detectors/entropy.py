@@ -39,6 +39,47 @@ _CANDIDATE = re.compile(rf"[A-Za-z0-9+/=_-]{{20,{MAX_SPAN}}}")
 _HEX = re.compile(r"\A[0-9a-fA-F]+\Z")
 _ALPHA_ONLY = re.compile(r"\A[A-Za-z]+\Z")
 
+# High-entropy shapes that are identifiers, not secrets (a UUID, a commit or
+# content digest, an inline image). Dropped unless a secret-like key precedes
+# the value on its line: ``API_KEY=6f1c…-…`` is a key whatever its shape.
+# The checks read at most ``_CONTEXT`` characters to the left of a token, which
+# the tier declares to the streaming engine, so streaming output still equals
+# whole-text output.
+_CONTEXT = 80
+_UUID = re.compile(
+    r"\A[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\Z"
+)
+_DIGEST_LENGTHS = frozenset({32, 40, 56, 64, 96, 128})  # md5, sha1, sha224 ... sha512
+_HASH_CONTEXT = re.compile(
+    r"(?i)\b(?:commit|sha(?:1|224|256|384|512)?|md5|digest|checksum|hash|integrity|etag"
+    r"|rev(?:ision)?)\b[^\n]{0,16}\Z"
+)
+_IDENT_KEY = re.compile(r"\A[A-Za-z_][A-Za-z0-9_.-]*\Z")
+_DATA_URI = re.compile(r"(?i)\bdata:[\w.+-]+/[\w.+-]+;base64,\Z")
+_SECRET_KEY = re.compile(
+    r"(?i)(?:pass(?:word|wd)?|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|auth"
+    r"|credential|private[_-]?key)[^\n]{0,40}\Z"
+)
+
+
+def _identifier_not_secret(text: str, start: int, token: str) -> bool:
+    """True for a UUID, a digest after a hash word, or a data-URI payload,
+    unless a secret-like key precedes the token on its line."""
+    left = text[max(0, start - _CONTEXT) : start]
+    left = left[left.rfind("\n") + 1 :]  # this line only
+    # ``=`` is in the candidate alphabet (base64 padding), so ``request_id=<uuid>``
+    # arrives as one token: judge the value, with the key as context
+    key, eq, value = token.partition("=")
+    if eq and value and not value.startswith("=") and _IDENT_KEY.match(key):
+        left, token = left + key + eq, value
+    if _SECRET_KEY.search(left):
+        return False
+    if _UUID.match(token):
+        return True
+    if len(token) in _DIGEST_LENGTHS and _HEX.match(token) and _HASH_CONTEXT.search(left):
+        return True
+    return bool(_DATA_URI.search(left))
+
 
 def shannon_entropy(text: str) -> float:
     """Shannon entropy in bits per character (0 for uniform, up to log2(alphabet))."""
@@ -59,8 +100,9 @@ class EntropyDetector(NativeBacked):
 
     name = "entropy"
     # A candidate run is capped at MAX_SPAN characters (see _CANDIDATE), so that
-    # is the longest span this tier can emit.
-    requirements = StreamingRequirements(max_span=MAX_SPAN)
+    # is the longest span this tier can emit; the identifier check reads
+    # _CONTEXT characters before each candidate.
+    requirements = StreamingRequirements(max_span=MAX_SPAN, left_context=_CONTEXT)
 
     def __init__(
         self,
@@ -105,7 +147,7 @@ class EntropyDetector(NativeBacked):
         for m in _CANDIDATE.finditer(text):
             token = m.group()
             entropy = self._secret_entropy(token)
-            if entropy is not None:
+            if entropy is not None and not _identifier_not_secret(text, m.start(), token):
                 found.append(self._detection(m.start(), m.end(), token, entropy))
         return found
 
@@ -134,7 +176,8 @@ class EntropyDetector(NativeBacked):
         for start, end, native_entropy, decided in runs:
             token = text[start:end]
             entropy = native_entropy if decided else self._secret_entropy(token)
-            if entropy is not None:
+            # the identifier check is shared Python code, so both backends agree
+            if entropy is not None and not _identifier_not_secret(text, start, token):
                 found.append(self._detection(start, end, token, entropy))
         return found
 
