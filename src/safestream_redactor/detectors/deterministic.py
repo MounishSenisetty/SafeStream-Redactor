@@ -908,6 +908,36 @@ class NativeBacked:
 # Rules that match the value after a label rather than a self-identifying format.
 _LABEL_GATED = frozenset({EntityType.API_KEY, EntityType.AWS_SECRET, EntityType.URL_CREDENTIALS})
 
+# Bare phone candidates (no + and no parentheses) score below the default
+# threshold and need a cue word, because digit groups are also dates and ids.
+# Two shapes are phone numbers on their own: a separated NANP number (area code
+# and exchange start 2-9: 415-555-0134, 930.167.3943) and a national number
+# with a 0 trunk prefix and 9-12 digits (079 0442 1744, 0680 298 70 63). Bare
+# unseparated digit runs (epochs, order numbers) are untouched.
+_BARE_PHONE_CONFIDENCE = 0.45
+_SHAPED_PHONE_CONFIDENCE = 0.55
+_NANP_SHAPED = re.compile(r"[2-9]\d{2}[ .-][2-9]\d{2}[ .-]\d{4}\Z")
+_TRUNK_SHAPED = re.compile(r"0[1-9]\d{0,3}(?:[ .-]\d{2,4}){2,4}\Z")
+# a "+<country code>" just before a bare match the + pattern rejected: redact it
+# with the number rather than leave it in the clear
+_PHONE_PREFIX = re.compile(r"(?<![\w+])\+\d{1,4}[ .-]?\Z")
+_PHONE_PREFIX_CONTEXT = 6
+
+
+def _shape_phones(text: str, found: list[Detection]) -> None:
+    for d in found:
+        if d.entity_type is not EntityType.PHONE or d.confidence != _BARE_PHONE_CONFIDENCE:
+            continue
+        if _NANP_SHAPED.match(d.text) or (
+            _TRUNK_SHAPED.match(d.text) and 9 <= sum(c.isdigit() for c in d.text) <= 12
+        ):
+            d.confidence = _SHAPED_PHONE_CONFIDENCE
+            d.meta["phone_shape"] = "formatted"
+        prefix = _PHONE_PREFIX.search(text, max(0, d.start - _PHONE_PREFIX_CONTEXT), d.start)
+        if prefix:
+            d.start = prefix.start()
+            d.text = text[d.start : d.end]
+
 
 class DeterministicDetector(NativeBacked):
     """Runs the built-in regex+validator patterns, optionally a subset of types.
@@ -928,7 +958,10 @@ class DeterministicDetector(NativeBacked):
     """
 
     name = "deterministic"
-    requirements = StreamingRequirements(max_span=DETERMINISTIC_MAX_SPAN)
+    # left context: the phone-prefix check reads a few characters before a match
+    requirements = StreamingRequirements(
+        max_span=DETERMINISTIC_MAX_SPAN, left_context=_PHONE_PREFIX_CONTEXT + 2
+    )
 
     def __init__(
         self,
@@ -966,7 +999,9 @@ class DeterministicDetector(NativeBacked):
         # A label-gated credential rule matches whatever follows the label; a
         # reference or placeholder there (process.env.KEY, ${DB_PASS}, ****) is not
         # the secret. Shared Python post-filter, so both backends agree.
-        return [d for d in found if not (d.entity_type in _LABEL_GATED and is_placeholder(d.text))]
+        found = [d for d in found if not (d.entity_type in _LABEL_GATED and is_placeholder(d.text))]
+        _shape_phones(text, found)  # shared Python step as well
+        return found
 
     def _detect_hybrid(self, text: str) -> list[Detection]:  # pragma: no cover - native only
         """Native core for the covered types, Python for the rest.

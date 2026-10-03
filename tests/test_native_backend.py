@@ -30,7 +30,11 @@ _TYPES = [EntityType.from_name(n) for n in _COVERED]
 
 
 def _python(text: str) -> list[tuple]:
-    dets = DeterministicDetector(types=_TYPES, prefilter=True).detect(text)
+    # the raw pattern scan, which the core reproduces; the shared Python
+    # post-steps (reference filter, phone shaping) run identically after either
+    # backend and are covered by _assert_backend_equiv on the full detector
+    det = DeterministicDetector(types=_TYPES, prefilter=True)
+    dets = det._detect_python(text, det._patterns)
     return sorted(
         (d.start, d.end, d.text, d.entity_type.value, round(d.confidence, 6)) for d in dets
     )

@@ -38,9 +38,11 @@ def test_phone_rejects_date_and_ssn_shapes():
 
 
 def test_bare_phone_needs_context():
-    # a bare grouped number is ambiguous with ids -> only fires with a phone cue
-    assert EntityType.PHONE not in types_in("row 415 555 0132 end")
-    assert EntityType.PHONE in types_in("call 415 555 0132 now")
+    # a bare grouped number that is not phone-shaped (123 is no NANP area code)
+    # is ambiguous with ids -> only fires with a phone cue. A valid separated
+    # NANP number needs no cue (test_phone_shaped_numbers_need_no_cue).
+    assert EntityType.PHONE not in types_in("row 123 456 7890 end")
+    assert EntityType.PHONE in types_in("call 123 456 7890 now")
 
 
 def test_credit_card_luhn():
@@ -677,3 +679,44 @@ def test_entropy_key_value_token_redacts_the_value_not_the_key():
 def test_label_gated_key_keeps_base64_padding_inside_the_redaction():
     out = Redactor().redact("secret: QmFzZTY0U2VjcmV0VmFsdWU== end")
     assert out == "secret: [REDACTED] end"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "to stop receiving messages to 618-226-1460",  # separated NANP, no cue
+        "fax 415.555.0134 today",
+        "ring 079 0442 1744 after six",  # national format with a 0 trunk prefix
+        "0680 298 70 63",
+    ],
+)
+def test_phone_shaped_numbers_need_no_cue(text):
+    assert EntityType.PHONE in types_in(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "order 123-456-7890 shipped",  # 123 is not a NANP area code
+        "ref 930.167.3943",  # exchange 167 starts with 1
+        "ts 1696345200 ok",  # bare 10-digit run: an epoch, needs a cue
+        "batch 4155552671 done",
+        "id 123 456 789",
+        "on 2024-03-15",
+        "version 10.2.33",
+        "in 2019 we had 412 555 users",
+    ],
+)
+def test_unlabelled_digit_runs_that_are_not_phone_shaped_stay(text):
+    assert EntityType.PHONE not in types_in(text)
+
+
+def test_bare_ten_digits_count_with_a_cue_or_a_phone_field():
+    assert EntityType.PHONE in types_in("call 4155552671 now")
+    assert Redactor().redact('{"phone": "4155552671"}') == '{"phone": "[REDACTED]"}'
+
+
+def test_country_code_prefix_is_redacted_with_the_number():
+    # "+144" is not an assigned code, so the + pattern rejects the number; the
+    # bare match must still take the prefix with it rather than leave it in clear
+    assert Redactor().redact("call +144 65 989-0865") == "call [REDACTED]"
