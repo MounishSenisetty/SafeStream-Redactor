@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import re
 
-from safestream_redactor.detectors.base import StreamingRequirements
+from safestream_redactor.detectors.base import StreamingRequirements, is_placeholder
 from safestream_redactor.detectors.labeled_id import dob_value_pattern
 from safestream_redactor.entities import Detection, EntityType
 
@@ -107,31 +107,28 @@ def _norm(key: str) -> str:
     return _NORMALISE.sub("", _TRAILING_INDEX.sub("", key.strip().lower()))
 
 
+# A field whose name ends like this holds a secret (FromEmailPassword, vm_password,
+# DB_PASS, client_secret, X-Auth-Token, AccountKey, ConnectionString_B2B). Suffixes,
+# not substrings: password_policy, token_type and passwordExpiry are not secrets.
+_SECRET_SUFFIXES = (
+    "password", "passwd", "passphrase", "pwd", "pass", "pswd", "secret", "token",
+    "apikey", "accesskey", "secretkey", "privatekey", "signingkey", "encryptionkey",
+    "masterkey", "authkey", "accountkey", "sharedaccesskey", "credential",
+    "credentials", "connectionstring", "connstring", "dsn",
+)  # fmt: skip
+_SECRET_EXACT = frozenset({"pw", "pin", "otp", "cvv", "cvc"})
+
+
 def field_type(key: str, prose: bool = False) -> EntityType | None:
     """The entity type a field name announces, or ``None``."""
     norm = _norm(key)
     found = _TYPE_OF.get(norm)
+    secretish = norm in _SECRET_EXACT or norm.endswith(_SECRET_SUFFIXES)
+    if found is None and secretish and not norm.endswith(("bypass", "compass")):
+        found = EntityType.SECRET
     if found is None and prose:
         found = _PROSE_ONLY.get(norm)
     return found
-
-
-# --- placeholders: a reference or a mask is never the sensitive value ----------
-
-_PLACEHOLDER = re.compile(
-    r"(?i)\A(?:"
-    r"|null|none|nil|undefined|n/?a|-+|\.+|_+|\*+|x+|#+"  # empty, masks, rulers
-    r"|\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%"  # ${VAR} $VAR %VAR%
-    r"|\{\{[^}]*\}\}|\{[A-Za-z_][A-Za-z0-9_.]*\}"  # {{ var }} {var}
-    r"|<[^>]*>|\[[^\]]*redacted[^\]]*\]|redacted|masked"
-    r"|(?:os\.environ|process\.env|env)[\[.(].*|(?:os\.)?getenv\(.*\)"
-    r")\Z"
-)
-
-
-def is_placeholder(value: str) -> bool:
-    """True for empty values, masks and references to a value stored elsewhere."""
-    return bool(_PLACEHOLDER.match(value.strip().strip("\"'")))
 
 
 # --- value validators ------------------------------------------------------------
@@ -188,6 +185,11 @@ _STATUS_WORDS = frozenset(
 )
 
 
+_SWITCH_WORDS = frozenset(
+    {"true", "false", "yes", "no", "on", "off", "enabled", "disabled", "required", "optional"}
+)
+
+
 def _valid(etype: EntityType, value: str) -> bool:
     if is_placeholder(value):
         return False
@@ -201,6 +203,10 @@ def _valid(etype: EntityType, value: str) -> bool:
         return bool(_HAS_DIGIT.search(value)) and len(value) <= 64
     if etype is EntityType.USERNAME:
         return bool(_USERNAME_VALUE.match(value)) and value.lower() not in _STATUS_WORDS
+    if etype is EntityType.SECRET:
+        # any non-placeholder value of 3+ characters, letters-only included
+        # ("open sesame"); a bare boolean or switch word is configuration
+        return 3 <= len(value) <= _MAX_VALUE and value.lower() not in _SWITCH_WORDS
     # ADDRESS, SEX, TITLE: free text, but never a status word or a bare boolean
     return bool(_PLACE_VALUE.match(value)) and value.lower() not in _STATUS_WORDS
 
@@ -270,6 +276,9 @@ def _line_value(etype: EntityType, value: str) -> str:
         return value  # a quoted value is delimited: the caller unquotes and checks it
     if etype is EntityType.ID_NUMBER:
         return _id_prefix(value)
+    if etype is EntityType.SECRET:
+        # an unquoted secret is one token: "password = abuser1234  # comment"
+        return value.split()[0] if value.split() else ""
     if etype is EntityType.USERNAME and any(c.isspace() for c in value):
         # a username field holds one token; "User1: Thank you, User2" is a
         # transcript speaker label followed by a sentence, not a username
@@ -305,6 +314,24 @@ _PAIR = re.compile(
     rf"(?:\"([^\"\n]{{1,{_V}}})\"|'([^'\n]{{1,{_V}}})'|([^\s&;,\"'<>()]{{1,{_V}}}))"
 )
 _TRIM = " \t,;"
+
+# Secret-only forms (a secret field's value may sit anywhere on a line):
+# a quoted value assigned to an identifier: $mail->Password = 'x', :password => 'x',
+# my_password := "x", vm_password': "x"; the key is the identifier before the operator
+_ASSIGN = re.compile(
+    rf"([A-Za-z_][A-Za-z0-9_]{{0,{_MAX_KEY - 1}}})[\"']?[ \t]*(?:=>|:=|=|:)[ \t]*"
+    rf"(?:\"([^\"\n]{{1,{_V}}})\"|'([^'\n]{{1,{_V}}})')"
+)
+# .NET appSettings: <add key="SmtpPassword" value="x" />
+_KEY_VALUE_ATTRS = re.compile(rf"\bkey=\"({_KEY})\"[ \t]+value=\"([^\"\n]{{1,{_V}}})\"")
+# prose: "The default password is 'blooberry'" (quoted values only)
+_PROSE_SECRET = re.compile(
+    r"(?i)\b(?:password|passwd|passphrase|passcode|pin)[ \t]+(?:is|was)[ \t]*:?[ \t]*"
+    r"(?:\"([^\"\n]{3,64})\"|'([^'\n]{3,64})')"
+)
+# the user part of a URI's userinfo (scheme://user:password@host): a username
+# field; the password is the deterministic tier's url_credentials
+_USERINFO = re.compile(r"\b[a-z][a-z0-9+.-]{1,15}://([^\s:/@\"'<>]{1,64}):[^\s/@\"'<>]{1,128}@")
 
 
 class StructuredFieldDetector:
@@ -370,4 +397,18 @@ class StructuredFieldDetector:
                 span = first_group(m, range(2, 5))
                 if span:
                     emit(m.group(1), *span)
+            for m in _KEY_VALUE_ATTRS.finditer(text):
+                emit(m.group(1), m.start(2), m.end(2))
+        if "=" in text or ":" in text:
+            for m in _ASSIGN.finditer(text):
+                span = first_group(m, range(2, 4))
+                if span and field_type(m.group(1)) is EntityType.SECRET:
+                    emit(m.group(1), *span)
+        for m in _PROSE_SECRET.finditer(text):
+            span = first_group(m, range(1, 3))
+            if span:
+                emit("password", *span)
+        if "://" in text:
+            for m in _USERINFO.finditer(text):
+                emit("username", m.start(1), m.end(1))
         return sorted(found.values(), key=lambda d: (d.start, d.end))

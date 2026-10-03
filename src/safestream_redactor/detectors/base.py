@@ -14,6 +14,7 @@ attribute is treated with a conservative default (see :func:`requirements_of`).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
@@ -93,3 +94,21 @@ def requirements_of(detector: object) -> StreamingRequirements:
     """
     req = getattr(detector, "requirements", None)
     return req if isinstance(req, StreamingRequirements) else _DEFAULT_REQUIREMENTS
+
+
+# --- placeholders: a reference or a mask is never the sensitive value ----------
+
+_PLACEHOLDER = re.compile(
+    r"(?i)\A(?:"
+    r"|null|none|nil|undefined|n/?a|-+|\.+|_+|\*+|x+|#+"  # empty, masks, rulers
+    r"|\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%"  # ${VAR} $VAR %VAR%
+    r"|\{\{[^}]*\}\}|\{[A-Za-z_][A-Za-z0-9_.]*\}"  # {{ var }} {var}
+    r"|<[^>]*>|\[[^\]]*redacted[^\]]*\]|redacted|masked"
+    r"|(?:os\.environ|process\.env|env)[\[.(].*|(?:os\.)?getenv\(.*\)"
+    r")\Z"
+)
+
+
+def is_placeholder(value: str) -> bool:
+    """True for empty values, masks and references to a value stored elsewhere."""
+    return bool(_PLACEHOLDER.match(value.strip().strip("\"'")))

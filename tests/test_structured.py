@@ -137,3 +137,61 @@ def test_detector_is_window_pure_and_bounded():
     long_value = "A" + "b" * 300
     assert det.detect(f'{{"name": "{long_value}"}}') == []  # value over the bound
     assert det.requirements.max_span == 128
+
+
+# --- secret fields (target 3) ---------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "value"),
+    [
+        ("password = 'open sesame'", "open sesame"),  # letters-only, with a space
+        ('db_password := "Tr0ub4dor&3"', "Tr0ub4dor&3"),
+        ('"AdminPassword" : "correcthorse"', "correcthorse"),
+        ("$cfg->Password = 'hunter22';", "hunter22"),
+        (":password => 'swordfish1',", "swordfish1"),
+        ('<add key="SmtpPassword" value="Pa55w0rd!"/>', "Pa55w0rd!"),
+        ("The admin password is 'letmein99'", "letmein99"),
+        ("Server=db;Database=app;Pwd=Zx9!q2;Encrypt=true", "Zx9!q2"),
+        ("Endpoint=https://x.example.io;Id=a1;Secret=QmFzZTY0U2VjcmV0PQ==", "QmFzZTY0U2VjcmV0PQ=="),
+        ("export API_TOKEN=tok_9f8e7d6c5b4a", "tok_9f8e7d6c5b4a"),
+        ("client_secret: s3cr3t-value  # rotate quarterly", "s3cr3t-value"),
+    ],
+)
+def test_secret_field_values_are_fully_redacted(text, value):
+    assert _redacted(text, value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["None", "null", "nil", '""', "''", "${DB_PASS}", "$DB_PASS", "%DB_PASS%",
+     "{{ db_pass }}", 'os.environ["DB_PASS"]', "process.env.DB_PASS",
+     'getenv("DB_PASS")', "os.getenv('DB_PASS')", "<redacted>", "****", "true"],
+)  # fmt: skip
+def test_secret_references_and_placeholders_are_never_redacted(value):
+    for text in (f"password = {value}", f'"password": {value}', f"password: {value}"):
+        assert Redactor().redact(text) == text, text
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["token_type: Bearer", "password_policy: strict", "passwordExpiryDays: 90", "bypass: cache",
+     "compass: north", "password_reset_required: false"],
+)  # fmt: skip
+def test_secret_suffix_rule_leaves_lookalike_fields_alone(text):
+    assert Redactor().redact(text) == text
+
+
+def test_connection_string_user_and_password_are_both_redacted():
+    out = Redactor().redact("Server=db;Database=app;User=svc;Pwd=Zx9!q2;Encrypt=true")
+    assert out == "Server=db;Database=app;User=[REDACTED];Pwd=[REDACTED];Encrypt=true"
+
+
+def test_label_gated_rules_skip_references():
+    for text in ("api_key = process.env.KEY", "password = ${DB_PASS}", "secret: ****"):
+        assert Redactor().redact(text) == text, text
+
+
+def test_uri_userinfo_username_and_password_are_both_redacted():
+    out = Redactor().redact("postgresql://report_user:S3cret@db.internal:5432/app")
+    assert out == "postgresql://[REDACTED]:[REDACTED]@db.internal:5432/app"
