@@ -845,3 +845,12 @@ def test_e164_table_matches_python():
     from safestream_redactor.detectors.deterministic import E164_COUNTRY_CODES
 
     assert frozenset(sn.e164_country_codes()) == E164_COUNTRY_CODES
+
+
+def test_vendor_tokens_and_password_hashes_match_python():
+    from test_vendor_tokens import HASHES, VENDOR
+
+    for spec in [*VENDOR.values(), *HASHES.values()]:
+        for text in (spec, f"x {spec} y", f"é{spec}é", f"文{spec}", f"{spec}\u0301", spec[:-3]):
+            _assert_equiv(text)
+            _assert_backend_equiv(text)

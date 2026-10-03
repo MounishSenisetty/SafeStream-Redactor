@@ -37,6 +37,8 @@ _SEVERITY: dict[EntityType, str] = {
     EntityType.API_KEY: HIGH,
     EntityType.URL_CREDENTIALS: HIGH,
     EntityType.SECRET: HIGH,
+    EntityType.VENDOR_TOKEN: CRITICAL,
+    EntityType.PASSWORD_HASH: HIGH,
     # Regulated / directly identifying PII.
     EntityType.SSN: HIGH,
     EntityType.CREDIT_CARD: HIGH,

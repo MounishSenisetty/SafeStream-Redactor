@@ -135,6 +135,8 @@ _SECRET_TYPES = [
     "stripe_key",
     "twilio_key",
     "url_credentials",
+    "vendor_token",
+    "password_hash",
 ]
 SAFESTREAM_TO_CANONICAL.update(dict.fromkeys(_SECRET_TYPES, "SECRET"))
 

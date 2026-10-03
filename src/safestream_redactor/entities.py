@@ -38,6 +38,11 @@ class EntityType(str, Enum):
     ANTHROPIC_KEY = "anthropic_key"
     # password embedded in a connection-string / URL userinfo section
     URL_CREDENTIALS = "url_credentials"
+    # a prefixed token from a vendor without its own type (Atlassian, Doppler,
+    # Dropbox, Vault, Mapbox, Teams webhooks, Salesforce, Telegram, New Relic, Mailgun)
+    VENDOR_TOKEN = "vendor_token"
+    # a password hash (bcrypt, sha-crypt, md5-crypt, argon2, scrypt, PBKDF2, Kerberos)
+    PASSWORD_HASH = "password_hash"
     # generic high-entropy secret (no published format)
     SECRET = "secret"
     # NER tier

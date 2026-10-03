@@ -536,6 +536,125 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.98,
         anchors=("npm_",),
     ),
+    # --- vendor tokens with a distinctive prefix, matched over their WHOLE span
+    # (a prefix or a tail left in the clear is a leak). Phase 1, target 5.
+    Pattern(  # Atlassian API token
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bATATT3[A-Za-z0-9_=-]{150,220}"),
+        0.95,
+        anchors=("ATATT3",),
+    ),
+    Pattern(  # Doppler service, personal, CLI, SCIM and audit tokens
+        EntityType.VENDOR_TOKEN,
+        re.compile(
+            r"\bdp\.(?:ct|pt|st|sa|scim|audit)(?:\.[A-Za-z0-9_-]{2,35})?\.[A-Za-z0-9]{40,44}\b"
+        ),
+        0.95,
+        anchors=("dp.",),
+    ),
+    Pattern(  # Dropbox short-lived access token
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bsl\.[A-Za-z0-9_-]{130,152}"),
+        0.95,
+        anchors=("sl.",),
+    ),
+    Pattern(  # HashiCorp Vault service, batch and recovery tokens
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bhv[sbr]\.[A-Za-z0-9_-]{24,250}"),
+        0.95,
+        anchors=("hvs.", "hvb.", "hvr."),
+    ),
+    Pattern(  # Mapbox public/secret token (pk.eyJ... / sk.eyJ...)
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\b[ps]k\.eyJ[A-Za-z0-9_-]{20,400}\.[A-Za-z0-9_-]{20,100}"),
+        0.95,
+        anchors=("k.eyJ",),
+    ),
+    Pattern(  # Microsoft Teams incoming webhook URL
+        EntityType.VENDOR_TOKEN,
+        re.compile(
+            r"https://(?:[A-Za-z0-9-]{1,40}\.webhook\.office\.com/webhookb2"
+            r"|outlook\.office(?:365)?\.com/webhook)/[^\s\"'<>]{40,300}"
+        ),
+        0.95,
+        anchors=("webhook",),
+    ),
+    Pattern(  # Salesforce access token: org id ! session
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\b00D[A-Za-z0-9]{12,15}![A-Za-z0-9._]{80,120}"),
+        0.95,
+        anchors=("00D",),
+    ),
+    Pattern(  # Telegram bot token
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\b\d{8,10}:AA[A-Za-z0-9_-]{33}\b"),
+        0.95,
+        anchors=(":AA",),
+    ),
+    Pattern(  # New Relic user, ingest, browser and insights keys
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bNR(?:AA|AK|II|JS|AL|IQ)-[A-Za-z0-9]{20,40}\b"),
+        0.95,
+        anchors=("NRAA-", "NRAK-", "NRII-", "NRJS-", "NRAL-", "NRIQ-"),
+    ),
+    Pattern(  # Mailgun private API key
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bkey-[0-9a-f]{32}\b"),
+        0.95,
+        anchors=("key-",),
+    ),
+    # --- password hashes, whole span including the $, . and / they contain
+    Pattern(  # bcrypt
+        EntityType.PASSWORD_HASH,
+        re.compile(r"\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}"),
+        0.95,
+        anchors=("$2",),
+    ),
+    Pattern(  # sha256-crypt / sha512-crypt
+        EntityType.PASSWORD_HASH,
+        re.compile(r"\$[56]\$(?:rounds=\d{1,9}\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{43,86}"),
+        0.95,
+        anchors=("$5$", "$6$"),
+    ),
+    Pattern(  # md5-crypt / Apache apr1
+        EntityType.PASSWORD_HASH,
+        re.compile(r"\$(?:1|apr1)\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}"),
+        0.95,
+        anchors=("$1$", "$apr1$"),
+    ),
+    Pattern(  # Cisco type 8/9, scrypt ($7$) and yescrypt ($y$)
+        EntityType.PASSWORD_HASH,
+        re.compile(
+            r"\$(?:[89]\$[./A-Za-z0-9]{14}|7\$[./A-Za-z0-9]{11,64}"
+            r"|y\$[./A-Za-z0-9]{1,32}\$[./A-Za-z0-9]{1,64})\$[./A-Za-z0-9]{43,86}"
+        ),
+        0.95,
+        anchors=("$8$", "$9$", "$7$", "$y$"),
+    ),
+    Pattern(  # argon2
+        EntityType.PASSWORD_HASH,
+        re.compile(
+            r"\$argon2(?:id|i|d)\$v=\d{1,3}\$m=\d{1,10},t=\d{1,10},p=\d{1,3}"
+            r"\$[A-Za-z0-9+/]{8,128}\$[A-Za-z0-9+/]{16,128}"
+        ),
+        0.95,
+        anchors=("$argon2",),
+    ),
+    Pattern(  # PBKDF2 (Django pbkdf2_sha256$..., passlib $pbkdf2-sha256$...)
+        EntityType.PASSWORD_HASH,
+        re.compile(
+            r"(?:\bpbkdf2_sha(?:1|256|512)|\$pbkdf2(?:-sha(?:1|256|512))?)"
+            r"\$\d{1,10}\$[./A-Za-z0-9+=]{4,64}\$[./A-Za-z0-9+=]{16,128}"
+        ),
+        0.95,
+        anchors=("pbkdf2",),
+    ),
+    Pattern(  # Kerberos AS-REP / TGS hashes (crackable offline)
+        EntityType.PASSWORD_HASH,
+        re.compile(r"\$krb5(?:asrep|tgs|pa)\$\d{1,2}\$[A-Za-z0-9$@.:_*/-]{40,8000}"),
+        0.95,
+        anchors=("$krb5",),
+    ),
     Pattern(
         EntityType.ANTHROPIC_KEY,
         re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}(?<=[A-Za-z0-9_])\b"),
