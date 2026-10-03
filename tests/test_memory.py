@@ -41,7 +41,7 @@ def big_file(tmp_path_factory):
 
 
 @pytest.mark.memory
-def test_constant_memory_on_large_file(big_file, tmp_path):
+def test_constant_memory_on_large_file(big_file, tmp_path, record_property):
     out = tmp_path / "out.log"
     redactor = Redactor(chunk_size=64 * 1024, overlap=4 * 1024, allow_unsafe_overlap=True)
 
@@ -49,6 +49,11 @@ def test_constant_memory_on_large_file(big_file, tmp_path):
     redactor.redact_file(big_file, out)
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
+
+    # report the number, not just the verdict (shown with -rA / in JUnit XML)
+    record_property("peak_python_allocations_mb", round(peak / 1e6, 2))
+    record_property("input_mb", SIZE_MB)
+    print(f"input {SIZE_MB} MB: peak Python allocations {peak / 1e6:.2f} MB")
 
     # Peak Python allocations must be a small multiple of the chunk size —
     # nowhere near the input size. 16 MB is orders of magnitude below 1 GB.
