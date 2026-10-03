@@ -229,3 +229,6 @@ benchmarks/results/
 
 # exported ONNX NER models (scripts/export_onnx.py)
 models/
+
+# third-party evaluation corpora and models (downloaded, never committed; see benchmarks/corpora/)
+benchmarks/data/external/
