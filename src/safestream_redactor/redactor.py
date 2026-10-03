@@ -62,6 +62,16 @@ def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence
         raise ValueError(f"min_confidence must be a number in [0, 1], got {min_confidence!r}")
 
 
+# Named detection profiles: defaults for the opt-in tiers, resolved before
+# construction. An explicit argument always wins over the profile. "default"
+# suits logs and machine text; "prose" adds tiers whose matches are common
+# noise in logs (every date and time of day) but sensitive in documents.
+PROFILES: dict[str, dict[str, bool]] = {
+    "default": {},
+    "prose": {"use_dates": True},
+}
+
+
 class Redactor:
     """Detects and redacts sensitive entities in strings, streams, and files.
 
@@ -94,7 +104,11 @@ class Redactor:
     use_dates:
         Enable the date/time tier (``EntityType.DATE``). Off by default because
         logs carry a timestamp on every line; naming ``date`` in ``types`` also
-        enables it.
+        enables it. Labelled dates of birth (``DOB: …``) are always detected.
+    profile:
+        ``"default"`` or ``"prose"`` (see :data:`PROFILES`). A profile only sets
+        the tiers you leave unset (``None``): ``profile="prose", use_dates=False``
+        keeps dates off. Unknown names raise ``ValueError``.
     calibrator:
         Optional trained :class:`~safestream_redactor.calibration.Calibrator`.
         When given, each detection's hand-set confidence is replaced by the
@@ -145,7 +159,8 @@ class Redactor:
         onnx_batch_size: int = 1,
         use_entropy: bool = True,
         use_regional: bool = False,
-        use_dates: bool = False,
+        use_dates: bool | None = None,
+        profile: str = "default",
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
         load_plugins: bool = False,
@@ -159,6 +174,11 @@ class Redactor:
             if types is None
             else [t if isinstance(t, EntityType) else EntityType.from_name(t) for t in types]
         )
+        if profile not in PROFILES:
+            raise ValueError(f"unknown profile {profile!r}; choose from {sorted(PROFILES)}")
+        if use_dates is None:
+            use_dates = PROFILES[profile].get("use_dates", False)
+        self.profile = profile
         _validate_streaming_args(chunk_size, overlap, min_confidence)
         self.policy = policy or RedactionPolicy()
         self.min_confidence = min_confidence

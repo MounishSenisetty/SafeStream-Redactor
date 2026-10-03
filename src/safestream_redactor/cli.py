@@ -122,6 +122,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "Aadhaar/PAN (checksum-validated; off by default)",
     )
     common.add_argument(
+        "--profile",
+        choices=("default", "prose"),
+        default=None,
+        help="detection profile: 'default' for logs and machine text, 'prose' for "
+        "documents (adds every date and time of day); explicit flags still win",
+    )
+    common.add_argument(
         "--dates",
         action="store_true",
         default=False,
@@ -406,6 +413,7 @@ use_onnx = false                            # local ONNX NER tier ([onnx] extra,
 # onnx_batch_size = 1                       # >1 is faster but non-deterministic (INT8)
 use_entropy = true                          # high-entropy secret detection
 # use_regional = false                      # IBAN / crypto / UK NINO+NHS / India Aadhaar+PAN
+# profile = "default"                       # or "prose": documents (adds dates and times)
 # use_dates = false                         # calendar dates + times of day (log timestamps too)
 # use_gazetteer = false                     # dictionary-backed person-name tier (no deps)
 # use_ensemble = false                      # semantic PERSON/ORG ensemble (no deps)
@@ -539,6 +547,8 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         kwargs["use_entropy"] = False
     if getattr(args, "regional", False):
         kwargs["use_regional"] = True
+    if getattr(args, "profile", None):
+        kwargs["profile"] = args.profile
     if getattr(args, "dates", False):
         kwargs["use_dates"] = True
     if args.chunk_size is not None:

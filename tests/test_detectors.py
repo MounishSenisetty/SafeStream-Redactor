@@ -156,6 +156,17 @@ def test_dates_are_opt_in():
         assert EntityType.DATE not in types_in(benign, use_dates=True), benign
 
 
+def test_prose_profile_enables_dates_and_explicit_flags_win():
+    text = "Signed Aug 19, 2024"
+    assert EntityType.DATE not in types_in(text)
+    assert EntityType.DATE not in types_in(text, profile="default")
+    assert EntityType.DATE in types_in(text, profile="prose")
+    assert EntityType.DATE not in types_in(text, profile="prose", use_dates=False)
+    assert Redactor(profile="prose").profile == "prose"
+    with pytest.raises(ValueError, match="unknown profile"):
+        Redactor(profile="poetry")
+
+
 def test_aws_key():
     assert EntityType.AWS_KEY in types_in("key AKIAIOSFODNN7EXAMPLE")
     assert EntityType.AWS_KEY not in types_in("key AKIA123")

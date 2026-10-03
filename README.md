@@ -122,6 +122,11 @@ safestream deanonymize enc.txt -o restored.txt
 # synthetic stand-ins (example.com, TEST-NET IPs, 555-01xx phones) and regional IDs
 safestream redact input.txt -o demo.txt --mode fictionalize --hmac-key "$SECRET" --regional
 
+# documents rather than logs: the "prose" profile adds every date and time of day
+# (off by default because logs timestamp every line; labelled dates of birth are
+# always redacted). Also `profile = "prose"` under [detection] in a policy file
+safestream redact letter.txt -o letter_clean.txt --profile prose
+
 # deterministic pseudonyms (same input -> same token), streaming from stdin
 tail -f app.log | safestream redact - -o - --mode pseudonymize --hmac-key "$SECRET"
 
