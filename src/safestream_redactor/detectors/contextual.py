@@ -43,6 +43,23 @@ _BARE_SSN = re.compile(r"(?<![\d-])\d{9}(?![\d-])")
 BOOST = 0.2
 SUPPRESS = 0.4
 
+_NUMBER_TYPES = frozenset({EntityType.CREDIT_CARD, EntityType.PHONE, EntityType.SSN})
+
+
+def _embedded_number(text: str, det: Detection) -> bool:
+    """A card/phone/SSN match with letters or digits on BOTH sides sits inside a
+    longer alphanumeric token (0x5290840009852788 6E0F... is an Ethereum address,
+    not a card). It is not a standalone number, and redacting just that run would
+    leave the rest of the token in the clear while hiding the token's real type."""
+    return (
+        det.entity_type in _NUMBER_TYPES
+        and det.start > 0
+        and det.end < len(text)
+        and text[det.start - 1].isalnum()
+        and text[det.end].isalnum()
+    )
+
+
 # Detections whose ``text`` is exactly ``text[start:end]``: the built-in tiers.
 # The native ``adjust`` reads the span from the text, so only these may use it;
 # a plugin's detection is adjusted in Python.
@@ -57,7 +74,7 @@ class ContextualScorer(NativeBacked):
     name = "contextual"
     # Emits at most a 9-digit bare-SSN span, but reads up to ``window`` chars of
     # left context to gate it; declare both so the engine preserves that context.
-    requirements = StreamingRequirements(max_span=9, left_context=48)
+    requirements = StreamingRequirements(max_span=9, left_context=48, right_context=1)
 
     def __init__(
         self,
@@ -113,6 +130,9 @@ class ContextualScorer(NativeBacked):
                 self._apply(det, bool(flags[i] & 1), bool(flags[i] & 2))
             else:
                 self._apply(det, *self._decide(text, det))
+            if _embedded_number(text, det):  # shared Python check, both backends
+                det.confidence = 0.0
+                det.meta["context"] = "embedded"
         return detections
 
     def detect(self, text: str) -> list[Detection]:
