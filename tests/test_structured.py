@@ -110,7 +110,11 @@ def test_sex_and_title_fields_only_in_the_prose_profile():
             "Passport Number: [REDACTED] issued in Leeds",
         ),
         ("DOB: May 14 shipped", "DOB: May 14 shipped"),  # not a full date
-        ("Username: bob42 logged in", "Username: [REDACTED] logged in"),
+        # a username line holds one token: a transcript speaker label is not one
+        ("Username: bob42", "Username: [REDACTED]"),
+        ("Username: bob42 logged in", "Username: bob42 logged in"),
+        ("User1: Thank you, User2. I agree.", "User1: Thank you, User2. I agree."),
+        ("**User2**: Absolutely, User1.", "**User2**: Absolutely, User1."),
     ],
 )
 def test_line_values_are_cut_to_what_their_type_can_be(text, expected):

@@ -270,6 +270,10 @@ def _line_value(etype: EntityType, value: str) -> str:
         return value  # a quoted value is delimited: the caller unquotes and checks it
     if etype is EntityType.ID_NUMBER:
         return _id_prefix(value)
+    if etype is EntityType.USERNAME and any(c.isspace() for c in value):
+        # a username field holds one token; "User1: Thank you, User2" is a
+        # transcript speaker label followed by a sentence, not a username
+        return ""
     prefix = _LINE_PREFIX.get(etype)
     if prefix is None:
         return value
