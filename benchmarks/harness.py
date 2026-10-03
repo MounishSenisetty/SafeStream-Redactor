@@ -33,8 +33,10 @@ import importlib.metadata as md
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -75,6 +77,8 @@ SYSTEMS: dict[str, tuple[str, dict[str, Any] | None]] = {
     "safestream-python": ("pattern", {"backend": "python"}),
     "safestream-native": ("pattern", {"backend": "native"}),
     "safestream-native-dates": ("pattern", {"backend": "native", "use_dates": True}),
+    # the "prose" detection profile (documents rather than logs)
+    "safestream-native-prose": ("pattern", {"backend": "native", "profile": "prose"}),
     "safestream-native-onnx": ("ner", {"backend": "native", **_ONNX}),
     # opt-in batched inference: faster, but output depends on chunking (INT8)
     "safestream-native-onnx-batched": (
@@ -82,6 +86,7 @@ SYSTEMS: dict[str, tuple[str, dict[str, Any] | None]] = {
         {"backend": "native", "onnx_batch_size": 32, **_ONNX},
     ),
     "safestream-native-onnx-dates": ("ner", {"backend": "native", "use_dates": True, **_ONNX}),
+    "safestream-native-onnx-prose": ("ner", {"backend": "native", "profile": "prose", **_ONNX}),
     "safestream-native-spacy": ("ner", {"backend": "native", "use_ner": True}),
     "presidio-regex": ("pattern", None),
     "presidio-sm": ("ner", None),
@@ -203,8 +208,11 @@ def _rss_mb() -> float:
     return float(psutil.Process().memory_info().rss) / 2**20
 
 
-def run_one(system: str, corpus: str, split: str) -> dict[str, Any]:
-    docs = corpora.load(corpus, split).docs
+def run_one(system: str, texts_path: str) -> dict[str, Any]:
+    # The parent wrote just this split's texts: parsing a whole corpus here
+    # (ai4privacy's file is mostly token columns) would put the loader's peak
+    # into every tool's memory high-water mark.
+    texts: list[str] = json.loads(Path(texts_path).read_text(encoding="utf-8"))
     base_rss = _rss_mb()  # the data alone: subtracted to get the tool's own memory
     t0 = time.perf_counter()
     _tier, kwargs = SYSTEMS[system]
@@ -212,16 +220,16 @@ def run_one(system: str, corpus: str, split: str) -> dict[str, Any]:
     analyze("Warm up: John Smith, john@example.com, 4111 1111 1111 1111.")
     load_s = time.perf_counter() - t0
     preds, per_doc = [], []
-    for d in docs:
+    for text in texts:
         t = time.perf_counter()
-        preds.append(analyze(d.text))
+        preds.append(analyze(text))
         per_doc.append(time.perf_counter() - t)
     peak = _peak_rss_mb()
     return {
         "system": system,
         "load_s": load_s,
         "per_doc_s": per_doc,
-        "bytes": sum(len(d.text.encode("utf-8")) for d in docs),
+        "bytes": sum(len(t.encode("utf-8")) for t in texts),
         "peak_rss_mb": peak,
         "tool_rss_mb": peak - base_rss,
         # audit trail: what this process actually ran with. A heavy framework
@@ -287,6 +295,27 @@ def score_doc(doc: corpora.Doc, preds: list[Pred]) -> dict[str, float]:
     }
     if not doc.spans:  # a gold-free document: any detection on it is a false alarm
         c |= {"neg_docs": 1, "neg_flagged": int(bool(preds))}
+    # Presidio-scope: only gold Presidio can detect. Characters of other gold
+    # count neither as hits nor as false alarms.
+    scope = [g for g in doc.spans if g.type in corpora.PRESIDIO_SCOPE]
+    out_mask = bytearray(n)
+    for g in doc.spans:
+        if g.type not in corpora.PRESIDIO_SCOPE:
+            out_mask[g.start : g.end] = b"\x01" * (g.end - g.start)
+    s_mask = bytearray(n)
+    for g in scope:
+        s_mask[g.start : g.end] = b"\x01" * (g.end - g.start)
+    s_tp = sum(1 for a, b in zip(s_mask, pred_mask, strict=True) if a and b)
+    s_fp = sum(
+        1 for a, b, o in zip(s_mask, pred_mask, out_mask, strict=True) if b and not a and not o
+    )
+    c |= {
+        "scope_tp": s_tp,
+        "scope_fp": s_fp,
+        "scope_fn": s_mask.count(1) - s_tp,
+        "scope_ent_total": len(scope),
+        "scope_ent_full": sum(1 for g in scope if all(pred_mask[g.start : g.end])),
+    }
     mand = [g for g in doc.spans if g.necessity == "mandatory"]
     if mand:
         m_mask = bytearray(n)
@@ -331,6 +360,8 @@ HEADLINE = (
     "mandatory_recall",
     "no_leak_doc_rate",
     "fp_doc_rate",
+    "scope_char_f1",
+    "scope_fully_redacted",
 )
 
 
@@ -347,6 +378,10 @@ def metrics(get: Callable[[str], Any]) -> dict[str, Any]:
     out["mandatory_recall"] = _ratio(get("mand_cov"), get("mand_total"))
     out["no_leak_doc_rate"] = _ratio(get("mand_noleak_docs"), get("mand_docs"))
     out["fp_doc_rate"] = _ratio(get("neg_flagged"), get("neg_docs"))
+    sp = _ratio(get("scope_tp"), get("scope_tp") + get("scope_fp"))
+    sr = _ratio(get("scope_tp"), get("scope_tp") + get("scope_fn"))
+    out |= {"scope_char_p": sp, "scope_char_r": sr, "scope_char_f1": _f1(sp, sr)}
+    out["scope_fully_redacted"] = _ratio(get("scope_ent_full"), get("scope_ent_total"))
     return out
 
 
@@ -451,10 +486,10 @@ def sample_errors(
     for doc, ps in zip(docs, preds, strict=True):
         mask = bytearray(len(doc.text))
         for s, e, _t in ps:
-            mask[max(0, s) : max(0, e)] = b"" * (max(0, e) - max(0, s))
+            mask[max(0, s) : max(0, e)] = b"\x01" * (max(0, e) - max(0, s))
         gold = bytearray(len(doc.text))
         for g in doc.spans:
-            gold[g.start : g.end] = b"" * (g.end - g.start)
+            gold[g.start : g.end] = b"\x01" * (g.end - g.start)
             covered = sum(mask[g.start : g.end])
             if covered < g.end - g.start:
                 add(g.type, "missed", doc, g.start, g.end, covered)
@@ -598,6 +633,7 @@ def markdown(report: dict[str, Any]) -> str:
         lines += [f"> **Previously exposed:** {report['previously_exposed']}", ""]
     has_mand = report.get("has_necessity", False)
     has_neg = report.get("has_negatives", False)
+    has_scope = report.get("has_scope", False)
     head = (
         "| System | Tier | Char P | Char R | Char F1 | Entity R (covered) "
         "| Ent F1 partial | Ent F1 strict |"
@@ -609,6 +645,9 @@ def markdown(report: dict[str, Any]) -> str:
     if has_neg:
         head += " FP doc rate |"
         sep += "---|"
+    if has_scope:
+        head += " Char F1 (Presidio-scope) | Fully redacted (Presidio-scope) |"
+        sep += "---|---|"
     head += " MB/s | p50 / p99 ms | Load s | Peak / tool RSS MB |"
     sep += "---|---|---|---|"
     lines += [head, sep]
@@ -635,6 +674,11 @@ def markdown(report: dict[str, Any]) -> str:
             ]
         if has_neg:
             cell.append(_fmt_ci(s["point"]["fp_doc_rate"], s["ci95"].get("fp_doc_rate")))
+        if has_scope:
+            cell += [
+                _fmt_ci(s["point"][k], s["ci95"].get(k))
+                for k in ("scope_char_f1", "scope_fully_redacted")
+            ]
         cell += [
             f"{run['mb_s']:.3g}",
             f"{run['p50_ms']:.1f} / {run['p99_ms']:.1f}",
@@ -686,9 +730,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument(
-        "--run-one", nargs=3, metavar=("SYSTEM", "CORPUS", "SPLIT"), help=argparse.SUPPRESS
-    )
+    ap.add_argument("--run-one", nargs=2, metavar=("SYSTEM", "TEXTS_JSON"), help=argparse.SUPPRESS)
     ap.add_argument("--corpus", choices=sorted(corpora.LOADERS))
     ap.add_argument("--split", default="dev", choices=("dev", "test", "all"))
     ap.add_argument("--systems", nargs="+", default=list(SYSTEMS), choices=list(SYSTEMS))
@@ -741,6 +783,9 @@ def main() -> None:
         )
     runs: dict[str, dict[str, Any]] = {}
     preds: dict[str, list[list[Pred]]] = {}
+    texts_dir = Path(tempfile.mkdtemp(prefix="safestream-harness-"))
+    texts_path = texts_dir / f"{args.corpus}_{args.split}.json"
+    texts_path.write_text(json.dumps([d.text for d in corpus.docs]), encoding="utf-8")
     ckpt_dir = args.checkpoint_dir
     if ckpt_dir:
         ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -763,8 +808,7 @@ def main() -> None:
                 "benchmarks.harness",
                 "--run-one",
                 system,
-                args.corpus,
-                args.split,
+                str(texts_path),
             ],
             capture_output=True,
             text=True,
@@ -795,6 +839,7 @@ def main() -> None:
                 json.dumps({"commit": env["commit"], "run": {**run, "preds": preds[system]}}),
                 encoding="utf-8",
             )
+    shutil.rmtree(texts_dir, ignore_errors=True)  # corpus text never outlives the run
     manifest = corpora.SPLITS / f"{args.corpus}.json"
     report = {
         "corpus": args.corpus,
@@ -808,6 +853,7 @@ def main() -> None:
         "corpus_skipped": corpus.skipped,
         "has_necessity": any(g.necessity == "mandatory" for d in corpus.docs for g in d.spans),
         "has_negatives": any(not d.spans for d in corpus.docs),
+        "has_scope": any(g.type in corpora.PRESIDIO_SCOPE for d in corpus.docs for g in d.spans),
         "environment": env,
         "isolated_venvs": str(args.venv_root) if args.venv_root else None,
         "systems": {s: SYSTEMS[s][0] for s in args.systems},

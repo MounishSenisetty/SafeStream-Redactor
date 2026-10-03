@@ -167,6 +167,31 @@ _PRESIDIO_ID = [
 ]
 
 
+# Canonical types Presidio (its recognizers + its spaCy/transformers NER) can
+# emit. "Presidio-scope" metrics score only gold of these types, so adding a type
+# Presidio lacks (SECRET, USERNAME, MAC_ADDRESS, ...) can never raise them. Types
+# only Presidio detects (URL, NRP, ...) stay in scope: a stricter test for
+# SafeStream than "types both tools detect".
+PRESIDIO_SCOPE = frozenset(
+    {
+        "PERSON",
+        "LOCATION",
+        "ORGANIZATION",
+        "NRP",
+        "DATE_TIME",
+        "EMAIL_ADDRESS",
+        "PHONE_NUMBER",
+        "CREDIT_CARD",
+        "US_SSN",
+        "IP_ADDRESS",
+        "IBAN_CODE",
+        "URL",
+        "CRYPTO",
+        "ID",
+    }
+)
+
+
 def presidio_to_canonical(entity: str) -> str:
     return "ID" if entity in _PRESIDIO_ID else entity
 
