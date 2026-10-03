@@ -123,6 +123,8 @@ def field_type(key: str, prose: bool = False) -> EntityType | None:
     """The entity type a field name announces, or ``None``."""
     norm = _norm(key)
     found = _TYPE_OF.get(norm)
+    if found is None and norm.endswith("username"):  # smtp_username, REACT_APP_AUTH_USERNAME
+        found = EntityType.USERNAME
     secretish = norm in _SECRET_EXACT or norm.endswith(_SECRET_SUFFIXES)
     if found is None and secretish and not norm.endswith(("bypass", "compass")):
         found = EntityType.SECRET

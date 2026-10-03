@@ -195,3 +195,11 @@ def test_label_gated_rules_skip_references():
 def test_uri_userinfo_username_and_password_are_both_redacted():
     out = Redactor().redact("postgresql://report_user:S3cret@db.internal:5432/app")
     assert out == "postgresql://[REDACTED]:[REDACTED]@db.internal:5432/app"
+
+
+def test_username_suffix_fields():
+    assert (
+        Redactor().redact("REACT_APP_AUTH_USERNAME=bowie") == "REACT_APP_AUTH_USERNAME=[REDACTED]"
+    )
+    assert Redactor().redact('smtp_username: "mailer01"') == 'smtp_username: "[REDACTED]"'
+    assert field_type("display_name") is None
