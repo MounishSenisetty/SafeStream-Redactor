@@ -1,0 +1,5328 @@
+{
+ "corpus": "conll2003",
+ "split": "dev",
+ "n_docs": 173,
+ "source_revision": "b18612dee0007b1f7129731dbf2f5f2ed4039ad3",
+ "previously_exposed": null,
+ "corpus_notes": "CoNLL-2003 test; the bundled ONNX model was trained on CoNLL train",
+ "corpus_skipped": [],
+ "has_necessity": false,
+ "has_negatives": true,
+ "environment": {
+  "date": "2026-10-03T16:29:24+05:30",
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12650H",
+  "physical_cores": 10,
+  "logical_cores": 16,
+  "power": "AC",
+  "power_plan": "Balanced; AC power mode: Best power efficiency",
+  "os": "Windows-11-10.0.26200-SP0",
+  "multiprocessing_start_method": "spawn",
+  "python": "3.14.0",
+  "versions": {
+   "safestream-redactor": "0.4.0",
+   "safestream-redactor-native": "0.4.0",
+   "presidio-analyzer": "2.2.355",
+   "spacy": "3.8.13",
+   "spacy-huggingface-pipelines": "0.0.4",
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": "3.8.0",
+   "onnxruntime": "1.24.4",
+   "tokenizers": "0.22.2",
+   "transformers": "4.57.6",
+   "torch": "2.11.0",
+   "numpy": "2.3.5"
+  },
+  "commit": "cebe7419c5e06204133e72a69a8dc12764d4d7ed",
+  "dirty": false
+ },
+ "isolated_venvs": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs",
+ "systems": {
+  "safestream-python": "pattern",
+  "safestream-native": "pattern",
+  "safestream-native-dates": "pattern",
+  "safestream-native-onnx": "ner",
+  "safestream-native-onnx-batched": "ner",
+  "safestream-native-spacy": "ner",
+  "presidio-regex": "pattern",
+  "presidio-sm": "ner",
+  "presidio-lg": "ner",
+  "presidio-trf-deid": "ner",
+  "presidio-trf-bert": "ner"
+ },
+ "runs": {
+  "safestream-python": {
+   "system": "safestream-python",
+   "load_s": 0.055985799997870345,
+   "bytes": 125787,
+   "peak_rss_mb": 29.6640625,
+   "tool_rss_mb": 1.2890625,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\safestream\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.30.0",
+    "tokenizers": "0.23.2",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 0.08975929998996435,
+   "mb_s": 1.4013812497876408,
+   "p50_ms": 0.4698999982792884,
+   "p99_ms": 1.1000999984389637
+  },
+  "safestream-native": {
+   "system": "safestream-native",
+   "load_s": 0.14665279999826453,
+   "bytes": 125787,
+   "peak_rss_mb": 59.34765625,
+   "tool_rss_mb": 31.1171875,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\safestream\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.30.0",
+    "tokenizers": "0.23.2",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 0.0075832999718841165,
+   "mb_s": 16.587369676310914,
+   "p50_ms": 0.039599999581696466,
+   "p99_ms": 0.16600000162725337
+  },
+  "safestream-native-dates": {
+   "system": "safestream-native-dates",
+   "load_s": 0.15018179999970016,
+   "bytes": 125787,
+   "peak_rss_mb": 59.47265625,
+   "tool_rss_mb": 31.23828125,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\safestream\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.30.0",
+    "tokenizers": "0.23.2",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 0.024817300032736966,
+   "mb_s": 5.068520742952376,
+   "p50_ms": 0.14169999849400483,
+   "p99_ms": 0.34840000080293976
+  },
+  "safestream-native-onnx": {
+   "system": "safestream-native-onnx",
+   "load_s": 0.5678568000002997,
+   "bytes": 125787,
+   "peak_rss_mb": 178.19921875,
+   "tool_rss_mb": 149.95703125,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\safestream\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.30.0",
+    "tokenizers": "0.23.2",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 16.913474799981486,
+   "mb_s": 0.007437087972019665,
+   "p50_ms": 70.05500000013853,
+   "p99_ms": 535.0216000006185
+  },
+  "safestream-native-onnx-batched": {
+   "system": "safestream-native-onnx-batched",
+   "load_s": 0.54701450000357,
+   "bytes": 125787,
+   "peak_rss_mb": 231.7734375,
+   "tool_rss_mb": 203.39453125,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\safestream\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.30.0",
+    "tokenizers": "0.23.2",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 12.794685199995001,
+   "mb_s": 0.00983119147003704,
+   "p50_ms": 69.93749999674037,
+   "p99_ms": 453.35659999909694
+  },
+  "safestream-native-spacy": {
+   "system": "safestream-native-spacy",
+   "load_s": 1.2845387000015762,
+   "bytes": 125787,
+   "peak_rss_mb": 162.45703125,
+   "tool_rss_mb": 134.1796875,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\safestream\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.30.0",
+    "tokenizers": "0.23.2",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 2.282190799996897,
+   "mb_s": 0.05511677638879757,
+   "p50_ms": 11.308200002531521,
+   "p99_ms": 30.21169999919948
+  },
+  "presidio-regex": {
+   "system": "presidio-regex",
+   "load_s": 1.4227350000001024,
+   "bytes": 125787,
+   "peak_rss_mb": 105.8828125,
+   "tool_rss_mb": 77.55859375,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\presidio\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 1.23326229997474,
+   "mb_s": 0.10199533384145158,
+   "p50_ms": 6.5557999987504445,
+   "p99_ms": 20.498699999734527
+  },
+  "presidio-sm": {
+   "system": "presidio-sm",
+   "load_s": 1.5889602999995986,
+   "bytes": 125787,
+   "peak_rss_mb": 158.59375,
+   "tool_rss_mb": 130.40234375,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\presidio\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 5.323227099965152,
+   "mb_s": 0.023629839125372552,
+   "p50_ms": 29.359699998167343,
+   "p99_ms": 64.2840000000433
+  },
+  "presidio-lg": {
+   "system": "presidio-lg",
+   "load_s": 2.4939703999989433,
+   "bytes": 125787,
+   "peak_rss_mb": 735.0078125,
+   "tool_rss_mb": 706.5859375,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\presidio\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 5.619720100003178,
+   "mb_s": 0.022383143245858255,
+   "p50_ms": 30.84329999910551,
+   "p99_ms": 71.6151999986323
+  },
+  "presidio-trf-deid": {
+   "system": "presidio-trf-deid",
+   "load_s": 14.130892699999094,
+   "bytes": 125787,
+   "peak_rss_mb": 851.5859375,
+   "tool_rss_mb": 823.18359375,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\presidio-trf\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": "0.0.4",
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": null,
+    "tokenizers": "0.22.2",
+    "transformers": "4.57.6",
+    "torch": "2.14.1",
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "spacy",
+    "torch",
+    "transformers"
+   ],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 240.04128399998444,
+   "mb_s": 0.0005240223594205076,
+   "p50_ms": 1347.5836000034178,
+   "p99_ms": 3158.1047999970906
+  },
+  "presidio-trf-bert": {
+   "system": "presidio-trf-bert",
+   "load_s": 10.880341200001567,
+   "bytes": 125787,
+   "peak_rss_mb": 854.1953125,
+   "tool_rss_mb": 825.86328125,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\presidio-trf\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": "0.0.4",
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": null,
+    "tokenizers": "0.22.2",
+    "transformers": "4.57.6",
+    "torch": "2.14.1",
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "spacy",
+    "torch",
+    "transformers"
+   ],
+   "threads": 1,
+   "power_at_end": "AC",
+   "analyze_s": 217.65685999997004,
+   "mb_s": 0.0005779142453861427,
+   "p50_ms": 1219.2497000032745,
+   "p99_ms": 2654.147799999919
+  }
+ },
+ "scores": {
+  "systems": {
+   "safestream-python": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-dates": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 172,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-onnx": {
+    "point": {
+     "char_p": 0.8979611235207452,
+     "char_r": 0.7142479113900124,
+     "char_f1": 0.7956373436644628,
+     "entity_recall_covered": 0.6477396021699819,
+     "ent_p_partial": 0.8188073394495413,
+     "ent_r_partial": 0.6455696202531646,
+     "ent_f1_partial": 0.7219413549039433,
+     "ent_p_strict": 0.7587155963302752,
+     "ent_r_strict": 0.5981916817359856,
+     "ent_f1_strict": 0.668958543983822,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.6666666666666666
+    },
+    "ci95": {
+     "char_p": [
+      0.8782568433120251,
+      0.918283208308862
+     ],
+     "char_r": [
+      0.6766336757142877,
+      0.7491369350816645
+     ],
+     "char_f1": [
+      0.7704600725677835,
+      0.8182587534568561
+     ],
+     "entity_recall_covered": [
+      0.608815231528216,
+      0.6840712193753178
+     ],
+     "ent_p_partial": [
+      0.7790330502292725,
+      0.8593912465522285
+     ],
+     "ent_r_partial": [
+      0.6057429656212618,
+      0.6818066936185104
+     ],
+     "ent_f1_partial": [
+      0.6937551357979151,
+      0.747775163877699
+     ],
+     "ent_p_strict": [
+      0.7137262235474061,
+      0.8064210494773818
+     ],
+     "ent_r_strict": [
+      0.5605145957404902,
+      0.635513289444656
+     ],
+     "ent_f1_strict": [
+      0.6366721210912061,
+      0.7001461885344461
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      1.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 967,
+      "p_partial": 0.6049638055842813,
+      "r_partial": 0.6997607655502392,
+      "f1_partial": 0.64891846921797,
+      "p_strict": 0.5470527404343329,
+      "r_strict": 0.6327751196172249,
+      "f1_strict": 0.5867997781475318
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 498,
+      "p_partial": 0.7730923694779116,
+      "r_partial": 0.47885572139303484,
+      "f1_partial": 0.5913978494623656,
+      "p_strict": 0.7028112449799196,
+      "r_strict": 0.43532338308457713,
+      "f1_strict": 0.5376344086021505
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 702,
+      "p_partial": 0.9472934472934473,
+      "r_partial": 0.8385876418663304,
+      "f1_partial": 0.8896321070234114,
+      "p_strict": 0.9273504273504274,
+      "r_strict": 0.8209331651954602,
+      "f1_strict": 0.8709030100334447
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-onnx-batched": {
+    "point": {
+     "char_p": 0.8971681922196796,
+     "char_r": 0.7114126942123766,
+     "char_f1": 0.7935651183874844,
+     "entity_recall_covered": 0.6452079566003617,
+     "ent_p_partial": 0.8164295548416705,
+     "ent_r_partial": 0.6433996383363472,
+     "ent_f1_partial": 0.7196601941747572,
+     "ent_p_strict": 0.7558513079394218,
+     "ent_r_strict": 0.5956600361663653,
+     "ent_f1_strict": 0.6662621359223301,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.6666666666666666
+    },
+    "ci95": {
+     "char_p": [
+      0.8769138105306632,
+      0.9167700847642946
+     ],
+     "char_r": [
+      0.6736951292609716,
+      0.7453177452991148
+     ],
+     "char_f1": [
+      0.7684111405999275,
+      0.8153802837261034
+     ],
+     "entity_recall_covered": [
+      0.6051613780278039,
+      0.6804519191846548
+     ],
+     "ent_p_partial": [
+      0.776560189079555,
+      0.8579466707524621
+     ],
+     "ent_r_partial": [
+      0.6030617516993237,
+      0.6800474522746306
+     ],
+     "ent_f1_partial": [
+      0.6926573962257349,
+      0.7454489170479515
+     ],
+     "ent_p_strict": [
+      0.7102423670495032,
+      0.8035391343724093
+     ],
+     "ent_r_strict": [
+      0.5570944244525898,
+      0.6332481398439953
+     ],
+     "ent_f1_strict": [
+      0.633627189310982,
+      0.6971316540298184
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      1.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 972,
+      "p_partial": 0.6049382716049383,
+      "r_partial": 0.7033492822966507,
+      "f1_partial": 0.6504424778761062,
+      "p_strict": 0.5442386831275721,
+      "r_strict": 0.6327751196172249,
+      "f1_strict": 0.5851769911504425
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 484,
+      "p_partial": 0.7706611570247934,
+      "r_partial": 0.4639303482587065,
+      "f1_partial": 0.5791925465838509,
+      "p_strict": 0.7004132231404959,
+      "r_strict": 0.4216417910447761,
+      "f1_strict": 0.5263975155279502
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 710,
+      "p_partial": 0.9394366197183098,
+      "r_partial": 0.8411097099621689,
+      "f1_partial": 0.8875582168995342,
+      "p_strict": 0.9169014084507042,
+      "r_strict": 0.8209331651954602,
+      "f1_strict": 0.8662674650698603
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-spacy": {
+    "point": {
+     "char_p": 0.8548529932695714,
+     "char_r": 0.7298227044191585,
+     "char_f1": 0.7874054285539491,
+     "entity_recall_covered": 0.691500904159132,
+     "ent_p_partial": 0.9398849973863043,
+     "ent_r_partial": 0.6502712477396022,
+     "ent_f1_partial": 0.7687045746045319,
+     "ent_p_strict": 0.7548353371667538,
+     "ent_r_strict": 0.5222423146473779,
+     "ent_f1_strict": 0.6173578452330054,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.3333333333333333
+    },
+    "ci95": {
+     "char_p": [
+      0.8363304928840528,
+      0.8727209556187172
+     ],
+     "char_r": [
+      0.6982539502319974,
+      0.7607327106380614
+     ],
+     "char_f1": [
+      0.7667793764380669,
+      0.8079034036816742
+     ],
+     "entity_recall_covered": [
+      0.6601738738075162,
+      0.7222023445463812
+     ],
+     "ent_p_partial": [
+      0.9262381643451725,
+      0.953192263458221
+     ],
+     "ent_r_partial": [
+      0.6191163558244602,
+      0.6799583868985746
+     ],
+     "ent_f1_partial": [
+      0.7454120728312076,
+      0.7910833255000813
+     ],
+     "ent_p_strict": [
+      0.7228505190952073,
+      0.7843702156269236
+     ],
+     "ent_r_strict": [
+      0.4868384889689005,
+      0.5571065622315362
+     ],
+     "ent_f1_strict": [
+      0.584090352443273,
+      0.6501860913340715
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      1.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 713,
+      "p_partial": 0.7854137447405329,
+      "r_partial": 0.6698564593301436,
+      "f1_partial": 0.7230471271788251,
+      "p_strict": 0.7447405329593267,
+      "r_strict": 0.6351674641148325,
+      "f1_strict": 0.6856036152356358
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 508,
+      "p_partial": 0.5885826771653543,
+      "r_partial": 0.3718905472636816,
+      "f1_partial": 0.45579268292682923,
+      "p_strict": 0.4074803149606299,
+      "r_strict": 0.2574626865671642,
+      "f1_strict": 0.3155487804878049
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 679,
+      "p_partial": 0.7893961708394698,
+      "r_partial": 0.6759142496847415,
+      "f1_partial": 0.7282608695652174,
+      "p_strict": 0.614138438880707,
+      "r_strict": 0.5258511979823455,
+      "f1_strict": 0.5665760869565217
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-regex": {
+    "point": {
+     "char_p": 0.11836174799137762,
+     "char_r": 0.0228329490038937,
+     "char_f1": 0.03828115096970466,
+     "entity_recall_covered": 0.011573236889692586,
+     "ent_p_partial": 0.08756567425569177,
+     "ent_r_partial": 0.018083182640144666,
+     "ent_f1_partial": 0.02997601918465228,
+     "ent_p_strict": 0.05604203152364273,
+     "ent_r_strict": 0.011573236889692586,
+     "ent_f1_strict": 0.01918465227817746,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.3333333333333333
+    },
+    "ci95": {
+     "char_p": [
+      0.08644577513542492,
+      0.1527181848089169
+     ],
+     "char_r": [
+      0.01606859372973927,
+      0.03006063631466023
+     ],
+     "char_f1": [
+      0.02724067995504897,
+      0.049885421671295845
+     ],
+     "entity_recall_covered": [
+      0.00692035538043732,
+      0.017067172903218637
+     ],
+     "ent_p_partial": [
+      0.06185473289597001,
+      0.11475627063662167
+     ],
+     "ent_r_partial": [
+      0.012331171805162652,
+      0.02444989941067304
+     ],
+     "ent_f1_partial": [
+      0.020594619378217098,
+      0.040065908150446146
+     ],
+     "ent_p_strict": [
+      0.03479535974973931,
+      0.07966779084515158
+     ],
+     "ent_r_strict": [
+      0.00692035538043732,
+      0.017067172903218637
+     ],
+     "ent_f1_strict": [
+      0.011570990544450937,
+      0.02809564318837723
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      1.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 124,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 356,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 87,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-sm": {
+    "point": {
+     "char_p": 0.5846488217799131,
+     "char_r": 0.5796317997958643,
+     "char_f1": 0.5821295013193113,
+     "entity_recall_covered": 0.5721518987341773,
+     "ent_p_partial": 0.519931856899489,
+     "ent_r_partial": 0.5518987341772152,
+     "ent_f1_partial": 0.5354385964912282,
+     "ent_p_strict": 0.4500851788756388,
+     "ent_r_strict": 0.4777576853526221,
+     "ent_f1_strict": 0.46350877192982454,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 1.0
+    },
+    "ci95": {
+     "char_p": [
+      0.5495850115534247,
+      0.618278956722777
+     ],
+     "char_r": [
+      0.5453979834663713,
+      0.6122458076459836
+     ],
+     "char_f1": [
+      0.55089161590601,
+      0.6115693939790272
+     ],
+     "entity_recall_covered": [
+      0.5391870386183696,
+      0.6032329724152822
+     ],
+     "ent_p_partial": [
+      0.48255651097648367,
+      0.5564242088756419
+     ],
+     "ent_r_partial": [
+      0.5213858692578306,
+      0.5809640824506979
+     ],
+     "ent_f1_partial": [
+      0.5058790976648418,
+      0.5646086967709838
+     ],
+     "ent_p_strict": [
+      0.417382233847678,
+      0.482857913167132
+     ],
+     "ent_r_strict": [
+      0.4451460119902868,
+      0.5118081060872379
+     ],
+     "ent_f1_strict": [
+      0.43372552046666135,
+      0.4937415964145481
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      1.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 927,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 356,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 693,
+      "p_partial": 0.8008658008658008,
+      "r_partial": 0.6638755980861244,
+      "f1_partial": 0.7259646827992151,
+      "p_strict": 0.7662337662337663,
+      "r_strict": 0.6351674641148325,
+      "f1_strict": 0.6945716154349247
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 188,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 680,
+      "p_partial": 0.7897058823529411,
+      "r_partial": 0.6771752837326608,
+      "f1_partial": 0.7291242362525457,
+      "p_strict": 0.6147058823529412,
+      "r_strict": 0.5271122320302648,
+      "f1_strict": 0.5675492192803802
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 87,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-lg": {
+    "point": {
+     "char_p": 0.6344830152174722,
+     "char_r": 0.6446527804029789,
+     "char_f1": 0.6395274704669043,
+     "entity_recall_covered": 0.6506329113924051,
+     "ent_p_partial": 0.6035169210351692,
+     "ent_r_partial": 0.6578661844484629,
+     "ent_f1_partial": 0.6295206783180481,
+     "ent_p_strict": 0.5666887856668879,
+     "ent_r_strict": 0.6177215189873417,
+     "ent_f1_strict": 0.5911057276345388,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 1.0
+    },
+    "ci95": {
+     "char_p": [
+      0.5961679584904344,
+      0.6699850941686436
+     ],
+     "char_r": [
+      0.6133283662666248,
+      0.6772188702839925
+     ],
+     "char_f1": [
+      0.6071154212332412,
+      0.670460464311694
+     ],
+     "entity_recall_covered": [
+      0.6204506050931928,
+      0.6812771305408747
+     ],
+     "ent_p_partial": [
+      0.5680162966378209,
+      0.6377218009362867
+     ],
+     "ent_r_partial": [
+      0.6287048249506162,
+      0.6877747887184922
+     ],
+     "ent_f1_partial": [
+      0.6003963447156812,
+      0.6572835909990781
+     ],
+     "ent_p_strict": [
+      0.530539540880499,
+      0.6007785668657973
+     ],
+     "ent_r_strict": [
+      0.5875829466248333,
+      0.6496199242665583
+     ],
+     "ent_f1_strict": [
+      0.5613894000736107,
+      0.6210863462045965
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      1.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 710,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 356,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 963,
+      "p_partial": 0.7403946002076843,
+      "r_partial": 0.8528708133971292,
+      "f1_partial": 0.7926625903279598,
+      "p_strict": 0.7185877466251298,
+      "r_strict": 0.8277511961722488,
+      "f1_strict": 0.7693162868260145
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 210,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 684,
+      "p_partial": 0.9049707602339181,
+      "r_partial": 0.7805800756620429,
+      "f1_partial": 0.8381855111712931,
+      "p_strict": 0.8406432748538012,
+      "r_strict": 0.725094577553594,
+      "f1_strict": 0.7786052809749492
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 87,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-trf-deid": {
+    "point": {
+     "char_p": 0.5770337005481088,
+     "char_r": 0.4019581899973538,
+     "char_f1": 0.4738413547237077,
+     "entity_recall_covered": 0.33707052441229657,
+     "ent_p_partial": 0.474883480062144,
+     "ent_r_partial": 0.33164556962025316,
+     "ent_f1_partial": 0.39054514480408864,
+     "ent_p_strict": 0.4199896426721906,
+     "ent_r_strict": 0.2933092224231465,
+     "ent_f1_strict": 0.3454003407155026,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.3333333333333333
+    },
+    "ci95": {
+     "char_p": [
+      0.5201515870205191,
+      0.6281864265769886
+     ],
+     "char_r": [
+      0.35769995604528027,
+      0.4434372635260913
+     ],
+     "char_f1": [
+      0.42617896482748385,
+      0.5188909467378952
+     ],
+     "entity_recall_covered": [
+      0.29992065526776257,
+      0.37287646170092503
+     ],
+     "ent_p_partial": [
+      0.4256811220148619,
+      0.5222989208023963
+     ],
+     "ent_r_partial": [
+      0.29614919877314816,
+      0.36574086863106203
+     ],
+     "ent_f1_partial": [
+      0.3523806527996472,
+      0.4281864480403323
+     ],
+     "ent_p_strict": [
+      0.3728369529438593,
+      0.46603570930561
+     ],
+     "ent_r_strict": [
+      0.2589004159110746,
+      0.32707697079773673
+     ],
+     "ent_f1_strict": [
+      0.3066193549046356,
+      0.38178074578419485
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      1.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 458,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 438,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 931,
+      "p_partial": 0.7647690655209453,
+      "r_partial": 0.8978562421185372,
+      "f1_partial": 0.8259860788863108,
+      "p_strict": 0.6960257787325457,
+      "r_strict": 0.8171500630517023,
+      "f1_strict": 0.7517401392111369
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 100,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-trf-bert": {
+    "point": {
+     "char_p": 0.7644516752249733,
+     "char_r": 0.5684043397724265,
+     "char_f1": 0.6520098868219071,
+     "entity_recall_covered": 0.5580470162748644,
+     "ent_p_partial": 0.7174515235457064,
+     "ent_r_partial": 0.5620253164556962,
+     "ent_f1_partial": 0.6302981139728251,
+     "ent_p_strict": 0.6888273314866112,
+     "ent_r_strict": 0.5396021699819168,
+     "ent_f1_strict": 0.6051510849726222,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.3333333333333333
+    },
+    "ci95": {
+     "char_p": [
+      0.7216467557410936,
+      0.8026324827221518
+     ],
+     "char_r": [
+      0.5231181278683896,
+      0.6141801168293349
+     ],
+     "char_f1": [
+      0.6085433073599374,
+      0.691110026886907
+     ],
+     "entity_recall_covered": [
+      0.5175022748716385,
+      0.6000100401606425
+     ],
+     "ent_p_partial": [
+      0.683275065128508,
+      0.7492364712139343
+     ],
+     "ent_r_partial": [
+      0.519163807486138,
+      0.6045862263008669
+     ],
+     "ent_f1_partial": [
+      0.593461177644521,
+      0.6655184074185209
+     ],
+     "ent_p_strict": [
+      0.653485142327884,
+      0.7222481271241796
+     ],
+     "ent_r_strict": [
+      0.4975921090215961,
+      0.5812257586563288
+     ],
+     "ent_f1_strict": [
+      0.5685183328865652,
+      0.6408541132214381
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      1.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 124,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 356,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 836,
+      "pred": 824,
+      "p_partial": 0.9114077669902912,
+      "r_partial": 0.8983253588516746,
+      "f1_partial": 0.9048192771084337,
+      "p_strict": 0.8847087378640777,
+      "r_strict": 0.8720095693779905,
+      "f1_strict": 0.8783132530120482
+     },
+     "MISC": {
+      "gold": 332,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 804,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 793,
+      "pred": 771,
+      "p_partial": 0.9429312581063554,
+      "r_partial": 0.9167717528373266,
+      "f1_partial": 0.9296675191815856,
+      "p_strict": 0.9105058365758755,
+      "r_strict": 0.8852459016393442,
+      "f1_strict": 0.89769820971867
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 87,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {
+   "safestream-python - safestream-native": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-python - safestream-native-dates": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-python - safestream-native-onnx": {
+    "char_p": [
+     -0.918283208308862,
+     -0.8983596873833052,
+     -0.8782568433120251
+    ],
+    "char_r": [
+     -0.7491369350816645,
+     -0.7137816815254897,
+     -0.6766336757142877
+    ],
+    "char_f1": [
+     -0.8182587534568561,
+     -0.795332652209672,
+     -0.7704600725677835
+    ],
+    "entity_recall_covered": [
+     -0.6840712193753178,
+     -0.6467611369206858,
+     -0.608815231528216
+    ],
+    "ent_p_partial": [
+     -0.8593912465522286,
+     -0.8202802169421488,
+     -0.7790330502292725
+    ],
+    "ent_r_partial": [
+     -0.6818066936185104,
+     -0.6447177108723676,
+     -0.6057429656212618
+    ],
+    "ent_f1_partial": [
+     -0.7477751638776992,
+     -0.7217858771188297,
+     -0.6937551357979151
+    ],
+    "ent_f1_strict": [
+     -0.7001461885344461,
+     -0.6687046520850268,
+     -0.6366721210912061
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666666,
+     0.0
+    ]
+   },
+   "safestream-python - safestream-native-onnx-batched": {
+    "char_p": [
+     -0.9167700847642946,
+     -0.8976842585010749,
+     -0.8769138105306632
+    ],
+    "char_r": [
+     -0.7453177452991148,
+     -0.7112457439792675,
+     -0.6736951292609716
+    ],
+    "char_f1": [
+     -0.8153802837261034,
+     -0.7933241729693133,
+     -0.7684111405999277
+    ],
+    "entity_recall_covered": [
+     -0.6804519191846548,
+     -0.6444615102004831,
+     -0.6051613780278039
+    ],
+    "ent_p_partial": [
+     -0.8579466707524622,
+     -0.8178994092349625,
+     -0.776560189079555
+    ],
+    "ent_r_partial": [
+     -0.6800474522746306,
+     -0.6423480835122639,
+     -0.6030617516993237
+    ],
+    "ent_f1_partial": [
+     -0.7454489170479515,
+     -0.7197169808916302,
+     -0.6926573962257349
+    ],
+    "ent_f1_strict": [
+     -0.6971316540298185,
+     -0.6659038462184701,
+     -0.633627189310982
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666666,
+     0.0
+    ]
+   },
+   "safestream-python - safestream-native-spacy": {
+    "char_p": [
+     -0.8727209556187172,
+     -0.8556019962119148,
+     -0.8363304928840528
+    ],
+    "char_r": [
+     -0.7607327106380614,
+     -0.7309027334200253,
+     -0.6982539502319975
+    ],
+    "char_f1": [
+     -0.8079034036816742,
+     -0.7880970226634487,
+     -0.7667793764380669
+    ],
+    "entity_recall_covered": [
+     -0.7222023445463812,
+     -0.6918889470438727,
+     -0.6601738738075162
+    ],
+    "ent_p_partial": [
+     -0.953192263458221,
+     -0.9400104329681794,
+     -0.9262381643451725
+    ],
+    "ent_r_partial": [
+     -0.6799583868985746,
+     -0.6512306243704549,
+     -0.6191163558244602
+    ],
+    "ent_f1_partial": [
+     -0.7910833255000813,
+     -0.7694287498090633,
+     -0.7454120728312076
+    ],
+    "ent_f1_strict": [
+     -0.6501860913340715,
+     -0.6186590876135811,
+     -0.584090352443273
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-python - presidio-regex": {
+    "char_p": [
+     -0.15271818480891694,
+     -0.11806454629150123,
+     -0.08644577513542492
+    ],
+    "char_r": [
+     -0.030060636314660234,
+     -0.02286381370049649,
+     -0.01606859372973927
+    ],
+    "char_f1": [
+     -0.049885421671295845,
+     -0.0383029954899223,
+     -0.027240679955048974
+    ],
+    "entity_recall_covered": [
+     -0.017067172903218644,
+     -0.011508858180322736,
+     -0.00692035538043732
+    ],
+    "ent_p_partial": [
+     -0.11475627063662168,
+     -0.08744642652045917,
+     -0.061854732895970016
+    ],
+    "ent_r_partial": [
+     -0.02444989941067304,
+     -0.018078782839015678,
+     -0.012331171805162655
+    ],
+    "ent_f1_partial": [
+     -0.040065908150446146,
+     -0.0298736097158941,
+     -0.020594619378217098
+    ],
+    "ent_f1_strict": [
+     -0.028095643188377237,
+     -0.019061544226106363,
+     -0.011570990544450939
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-python - presidio-sm": {
+    "char_p": [
+     -0.618278956722777,
+     -0.5848964170103716,
+     -0.5495850115534247
+    ],
+    "char_r": [
+     -0.6122458076459836,
+     -0.5797496385949651,
+     -0.5453979834663714
+    ],
+    "char_f1": [
+     -0.6115693939790272,
+     -0.5818806007835079,
+     -0.55089161590601
+    ],
+    "entity_recall_covered": [
+     -0.6032329724152822,
+     -0.5721347110304913,
+     -0.5391870386183696
+    ],
+    "ent_p_partial": [
+     -0.556424208875642,
+     -0.5199377591382365,
+     -0.48255651097648367
+    ],
+    "ent_r_partial": [
+     -0.5809640824506979,
+     -0.5522986596519298,
+     -0.5213858692578306
+    ],
+    "ent_f1_partial": [
+     -0.5646086967709838,
+     -0.5352798582658443,
+     -0.5058790976648418
+    ],
+    "ent_f1_strict": [
+     -0.4937415964145482,
+     -0.46402084752132666,
+     -0.43372552046666135
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "safestream-python - presidio-lg": {
+    "char_p": [
+     -0.6699850941686437,
+     -0.6344766090649971,
+     -0.5961679584904344
+    ],
+    "char_r": [
+     -0.6772188702839925,
+     -0.6446371031230946,
+     -0.6133283662666249
+    ],
+    "char_f1": [
+     -0.670460464311694,
+     -0.6392742239339178,
+     -0.6071154212332412
+    ],
+    "entity_recall_covered": [
+     -0.6812771305408747,
+     -0.650427540513447,
+     -0.6204506050931928
+    ],
+    "ent_p_partial": [
+     -0.6377218009362867,
+     -0.6032173027057042,
+     -0.568016296637821
+    ],
+    "ent_r_partial": [
+     -0.6877747887184922,
+     -0.6578397116079546,
+     -0.6287048249506163
+    ],
+    "ent_f1_partial": [
+     -0.6572835909990781,
+     -0.629364637393317,
+     -0.6003963447156812
+    ],
+    "ent_f1_strict": [
+     -0.6210863462045965,
+     -0.5911862044939906,
+     -0.5613894000736107
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "safestream-python - presidio-trf-deid": {
+    "char_p": [
+     -0.6281864265769886,
+     -0.5768870623923485,
+     -0.5201515870205191
+    ],
+    "char_r": [
+     -0.44343726352609136,
+     -0.401606663205723,
+     -0.3576999560452803
+    ],
+    "char_f1": [
+     -0.5188909467378952,
+     -0.472773938086281,
+     -0.4261789648274839
+    ],
+    "entity_recall_covered": [
+     -0.37287646170092503,
+     -0.33654699376708785,
+     -0.29992065526776257
+    ],
+    "ent_p_partial": [
+     -0.5222989208023963,
+     -0.4743933205940025,
+     -0.4256811220148619
+    ],
+    "ent_r_partial": [
+     -0.36574086863106203,
+     -0.33127221549176955,
+     -0.2961491987731482
+    ],
+    "ent_f1_partial": [
+     -0.4281864480403323,
+     -0.38991340715478645,
+     -0.3523806527996472
+    ],
+    "ent_f1_strict": [
+     -0.3817807457841949,
+     -0.34433625032106496,
+     -0.3066193549046356
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-python - presidio-trf-bert": {
+    "char_p": [
+     -0.8026324827221518,
+     -0.7646715118397654,
+     -0.7216467557410936
+    ],
+    "char_r": [
+     -0.614180116829335,
+     -0.5691648136632252,
+     -0.5231181278683896
+    ],
+    "char_f1": [
+     -0.691110026886907,
+     -0.6524057343656307,
+     -0.6085433073599374
+    ],
+    "entity_recall_covered": [
+     -0.6000100401606425,
+     -0.5587066157123167,
+     -0.5175022748716386
+    ],
+    "ent_p_partial": [
+     -0.7492364712139343,
+     -0.7172398629181451,
+     -0.683275065128508
+    ],
+    "ent_r_partial": [
+     -0.6045862263008669,
+     -0.562680649418998,
+     -0.519163807486138
+    ],
+    "ent_f1_partial": [
+     -0.6655184074185209,
+     -0.6307188173689691,
+     -0.593461177644521
+    ],
+    "ent_f1_strict": [
+     -0.6408541132214381,
+     -0.6050995948544033,
+     -0.5685183328865652
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-dates": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-onnx": {
+    "char_p": [
+     -0.918283208308862,
+     -0.8983596873833052,
+     -0.8782568433120251
+    ],
+    "char_r": [
+     -0.7491369350816645,
+     -0.7137816815254897,
+     -0.6766336757142877
+    ],
+    "char_f1": [
+     -0.8182587534568561,
+     -0.795332652209672,
+     -0.7704600725677835
+    ],
+    "entity_recall_covered": [
+     -0.6840712193753178,
+     -0.6467611369206858,
+     -0.608815231528216
+    ],
+    "ent_p_partial": [
+     -0.8593912465522286,
+     -0.8202802169421488,
+     -0.7790330502292725
+    ],
+    "ent_r_partial": [
+     -0.6818066936185104,
+     -0.6447177108723676,
+     -0.6057429656212618
+    ],
+    "ent_f1_partial": [
+     -0.7477751638776992,
+     -0.7217858771188297,
+     -0.6937551357979151
+    ],
+    "ent_f1_strict": [
+     -0.7001461885344461,
+     -0.6687046520850268,
+     -0.6366721210912061
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666666,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-onnx-batched": {
+    "char_p": [
+     -0.9167700847642946,
+     -0.8976842585010749,
+     -0.8769138105306632
+    ],
+    "char_r": [
+     -0.7453177452991148,
+     -0.7112457439792675,
+     -0.6736951292609716
+    ],
+    "char_f1": [
+     -0.8153802837261034,
+     -0.7933241729693133,
+     -0.7684111405999277
+    ],
+    "entity_recall_covered": [
+     -0.6804519191846548,
+     -0.6444615102004831,
+     -0.6051613780278039
+    ],
+    "ent_p_partial": [
+     -0.8579466707524622,
+     -0.8178994092349625,
+     -0.776560189079555
+    ],
+    "ent_r_partial": [
+     -0.6800474522746306,
+     -0.6423480835122639,
+     -0.6030617516993237
+    ],
+    "ent_f1_partial": [
+     -0.7454489170479515,
+     -0.7197169808916302,
+     -0.6926573962257349
+    ],
+    "ent_f1_strict": [
+     -0.6971316540298185,
+     -0.6659038462184701,
+     -0.633627189310982
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666666,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-spacy": {
+    "char_p": [
+     -0.8727209556187172,
+     -0.8556019962119148,
+     -0.8363304928840528
+    ],
+    "char_r": [
+     -0.7607327106380614,
+     -0.7309027334200253,
+     -0.6982539502319975
+    ],
+    "char_f1": [
+     -0.8079034036816742,
+     -0.7880970226634487,
+     -0.7667793764380669
+    ],
+    "entity_recall_covered": [
+     -0.7222023445463812,
+     -0.6918889470438727,
+     -0.6601738738075162
+    ],
+    "ent_p_partial": [
+     -0.953192263458221,
+     -0.9400104329681794,
+     -0.9262381643451725
+    ],
+    "ent_r_partial": [
+     -0.6799583868985746,
+     -0.6512306243704549,
+     -0.6191163558244602
+    ],
+    "ent_f1_partial": [
+     -0.7910833255000813,
+     -0.7694287498090633,
+     -0.7454120728312076
+    ],
+    "ent_f1_strict": [
+     -0.6501860913340715,
+     -0.6186590876135811,
+     -0.584090352443273
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-regex": {
+    "char_p": [
+     -0.15271818480891694,
+     -0.11806454629150123,
+     -0.08644577513542492
+    ],
+    "char_r": [
+     -0.030060636314660234,
+     -0.02286381370049649,
+     -0.01606859372973927
+    ],
+    "char_f1": [
+     -0.049885421671295845,
+     -0.0383029954899223,
+     -0.027240679955048974
+    ],
+    "entity_recall_covered": [
+     -0.017067172903218644,
+     -0.011508858180322736,
+     -0.00692035538043732
+    ],
+    "ent_p_partial": [
+     -0.11475627063662168,
+     -0.08744642652045917,
+     -0.061854732895970016
+    ],
+    "ent_r_partial": [
+     -0.02444989941067304,
+     -0.018078782839015678,
+     -0.012331171805162655
+    ],
+    "ent_f1_partial": [
+     -0.040065908150446146,
+     -0.0298736097158941,
+     -0.020594619378217098
+    ],
+    "ent_f1_strict": [
+     -0.028095643188377237,
+     -0.019061544226106363,
+     -0.011570990544450939
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-sm": {
+    "char_p": [
+     -0.618278956722777,
+     -0.5848964170103716,
+     -0.5495850115534247
+    ],
+    "char_r": [
+     -0.6122458076459836,
+     -0.5797496385949651,
+     -0.5453979834663714
+    ],
+    "char_f1": [
+     -0.6115693939790272,
+     -0.5818806007835079,
+     -0.55089161590601
+    ],
+    "entity_recall_covered": [
+     -0.6032329724152822,
+     -0.5721347110304913,
+     -0.5391870386183696
+    ],
+    "ent_p_partial": [
+     -0.556424208875642,
+     -0.5199377591382365,
+     -0.48255651097648367
+    ],
+    "ent_r_partial": [
+     -0.5809640824506979,
+     -0.5522986596519298,
+     -0.5213858692578306
+    ],
+    "ent_f1_partial": [
+     -0.5646086967709838,
+     -0.5352798582658443,
+     -0.5058790976648418
+    ],
+    "ent_f1_strict": [
+     -0.4937415964145482,
+     -0.46402084752132666,
+     -0.43372552046666135
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-lg": {
+    "char_p": [
+     -0.6699850941686437,
+     -0.6344766090649971,
+     -0.5961679584904344
+    ],
+    "char_r": [
+     -0.6772188702839925,
+     -0.6446371031230946,
+     -0.6133283662666249
+    ],
+    "char_f1": [
+     -0.670460464311694,
+     -0.6392742239339178,
+     -0.6071154212332412
+    ],
+    "entity_recall_covered": [
+     -0.6812771305408747,
+     -0.650427540513447,
+     -0.6204506050931928
+    ],
+    "ent_p_partial": [
+     -0.6377218009362867,
+     -0.6032173027057042,
+     -0.568016296637821
+    ],
+    "ent_r_partial": [
+     -0.6877747887184922,
+     -0.6578397116079546,
+     -0.6287048249506163
+    ],
+    "ent_f1_partial": [
+     -0.6572835909990781,
+     -0.629364637393317,
+     -0.6003963447156812
+    ],
+    "ent_f1_strict": [
+     -0.6210863462045965,
+     -0.5911862044939906,
+     -0.5613894000736107
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-trf-deid": {
+    "char_p": [
+     -0.6281864265769886,
+     -0.5768870623923485,
+     -0.5201515870205191
+    ],
+    "char_r": [
+     -0.44343726352609136,
+     -0.401606663205723,
+     -0.3576999560452803
+    ],
+    "char_f1": [
+     -0.5188909467378952,
+     -0.472773938086281,
+     -0.4261789648274839
+    ],
+    "entity_recall_covered": [
+     -0.37287646170092503,
+     -0.33654699376708785,
+     -0.29992065526776257
+    ],
+    "ent_p_partial": [
+     -0.5222989208023963,
+     -0.4743933205940025,
+     -0.4256811220148619
+    ],
+    "ent_r_partial": [
+     -0.36574086863106203,
+     -0.33127221549176955,
+     -0.2961491987731482
+    ],
+    "ent_f1_partial": [
+     -0.4281864480403323,
+     -0.38991340715478645,
+     -0.3523806527996472
+    ],
+    "ent_f1_strict": [
+     -0.3817807457841949,
+     -0.34433625032106496,
+     -0.3066193549046356
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-trf-bert": {
+    "char_p": [
+     -0.8026324827221518,
+     -0.7646715118397654,
+     -0.7216467557410936
+    ],
+    "char_r": [
+     -0.614180116829335,
+     -0.5691648136632252,
+     -0.5231181278683896
+    ],
+    "char_f1": [
+     -0.691110026886907,
+     -0.6524057343656307,
+     -0.6085433073599374
+    ],
+    "entity_recall_covered": [
+     -0.6000100401606425,
+     -0.5587066157123167,
+     -0.5175022748716386
+    ],
+    "ent_p_partial": [
+     -0.7492364712139343,
+     -0.7172398629181451,
+     -0.683275065128508
+    ],
+    "ent_r_partial": [
+     -0.6045862263008669,
+     -0.562680649418998,
+     -0.519163807486138
+    ],
+    "ent_f1_partial": [
+     -0.6655184074185209,
+     -0.6307188173689691,
+     -0.593461177644521
+    ],
+    "ent_f1_strict": [
+     -0.6408541132214381,
+     -0.6050995948544033,
+     -0.5685183328865652
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native-dates - safestream-native-onnx": {
+    "char_p": [
+     -0.918283208308862,
+     -0.8983596873833052,
+     -0.8782568433120251
+    ],
+    "char_r": [
+     -0.7491369350816645,
+     -0.7137816815254897,
+     -0.6766336757142877
+    ],
+    "char_f1": [
+     -0.8182587534568561,
+     -0.795332652209672,
+     -0.7704600725677835
+    ],
+    "entity_recall_covered": [
+     -0.6840712193753178,
+     -0.6467611369206858,
+     -0.608815231528216
+    ],
+    "ent_p_partial": [
+     -0.8593912465522286,
+     -0.8202802169421488,
+     -0.7790330502292725
+    ],
+    "ent_r_partial": [
+     -0.6818066936185104,
+     -0.6447177108723676,
+     -0.6057429656212618
+    ],
+    "ent_f1_partial": [
+     -0.7477751638776992,
+     -0.7217858771188297,
+     -0.6937551357979151
+    ],
+    "ent_f1_strict": [
+     -0.7001461885344461,
+     -0.6687046520850268,
+     -0.6366721210912061
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666666,
+     0.0
+    ]
+   },
+   "safestream-native-dates - safestream-native-onnx-batched": {
+    "char_p": [
+     -0.9167700847642946,
+     -0.8976842585010749,
+     -0.8769138105306632
+    ],
+    "char_r": [
+     -0.7453177452991148,
+     -0.7112457439792675,
+     -0.6736951292609716
+    ],
+    "char_f1": [
+     -0.8153802837261034,
+     -0.7933241729693133,
+     -0.7684111405999277
+    ],
+    "entity_recall_covered": [
+     -0.6804519191846548,
+     -0.6444615102004831,
+     -0.6051613780278039
+    ],
+    "ent_p_partial": [
+     -0.8579466707524622,
+     -0.8178994092349625,
+     -0.776560189079555
+    ],
+    "ent_r_partial": [
+     -0.6800474522746306,
+     -0.6423480835122639,
+     -0.6030617516993237
+    ],
+    "ent_f1_partial": [
+     -0.7454489170479515,
+     -0.7197169808916302,
+     -0.6926573962257349
+    ],
+    "ent_f1_strict": [
+     -0.6971316540298185,
+     -0.6659038462184701,
+     -0.633627189310982
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666666,
+     0.0
+    ]
+   },
+   "safestream-native-dates - safestream-native-spacy": {
+    "char_p": [
+     -0.8727209556187172,
+     -0.8556019962119148,
+     -0.8363304928840528
+    ],
+    "char_r": [
+     -0.7607327106380614,
+     -0.7309027334200253,
+     -0.6982539502319975
+    ],
+    "char_f1": [
+     -0.8079034036816742,
+     -0.7880970226634487,
+     -0.7667793764380669
+    ],
+    "entity_recall_covered": [
+     -0.7222023445463812,
+     -0.6918889470438727,
+     -0.6601738738075162
+    ],
+    "ent_p_partial": [
+     -0.953192263458221,
+     -0.9400104329681794,
+     -0.9262381643451725
+    ],
+    "ent_r_partial": [
+     -0.6799583868985746,
+     -0.6512306243704549,
+     -0.6191163558244602
+    ],
+    "ent_f1_partial": [
+     -0.7910833255000813,
+     -0.7694287498090633,
+     -0.7454120728312076
+    ],
+    "ent_f1_strict": [
+     -0.6501860913340715,
+     -0.6186590876135811,
+     -0.584090352443273
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native-dates - presidio-regex": {
+    "char_p": [
+     -0.15271818480891694,
+     -0.11806454629150123,
+     -0.08644577513542492
+    ],
+    "char_r": [
+     -0.030060636314660234,
+     -0.02286381370049649,
+     -0.01606859372973927
+    ],
+    "char_f1": [
+     -0.049885421671295845,
+     -0.0383029954899223,
+     -0.027240679955048974
+    ],
+    "entity_recall_covered": [
+     -0.017067172903218644,
+     -0.011508858180322736,
+     -0.00692035538043732
+    ],
+    "ent_p_partial": [
+     -0.11475627063662168,
+     -0.08744642652045917,
+     -0.061854732895970016
+    ],
+    "ent_r_partial": [
+     -0.02444989941067304,
+     -0.018078782839015678,
+     -0.012331171805162655
+    ],
+    "ent_f1_partial": [
+     -0.040065908150446146,
+     -0.0298736097158941,
+     -0.020594619378217098
+    ],
+    "ent_f1_strict": [
+     -0.028095643188377237,
+     -0.019061544226106363,
+     -0.011570990544450939
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native-dates - presidio-sm": {
+    "char_p": [
+     -0.618278956722777,
+     -0.5848964170103716,
+     -0.5495850115534247
+    ],
+    "char_r": [
+     -0.6122458076459836,
+     -0.5797496385949651,
+     -0.5453979834663714
+    ],
+    "char_f1": [
+     -0.6115693939790272,
+     -0.5818806007835079,
+     -0.55089161590601
+    ],
+    "entity_recall_covered": [
+     -0.6032329724152822,
+     -0.5721347110304913,
+     -0.5391870386183696
+    ],
+    "ent_p_partial": [
+     -0.556424208875642,
+     -0.5199377591382365,
+     -0.48255651097648367
+    ],
+    "ent_r_partial": [
+     -0.5809640824506979,
+     -0.5522986596519298,
+     -0.5213858692578306
+    ],
+    "ent_f1_partial": [
+     -0.5646086967709838,
+     -0.5352798582658443,
+     -0.5058790976648418
+    ],
+    "ent_f1_strict": [
+     -0.4937415964145482,
+     -0.46402084752132666,
+     -0.43372552046666135
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "safestream-native-dates - presidio-lg": {
+    "char_p": [
+     -0.6699850941686437,
+     -0.6344766090649971,
+     -0.5961679584904344
+    ],
+    "char_r": [
+     -0.6772188702839925,
+     -0.6446371031230946,
+     -0.6133283662666249
+    ],
+    "char_f1": [
+     -0.670460464311694,
+     -0.6392742239339178,
+     -0.6071154212332412
+    ],
+    "entity_recall_covered": [
+     -0.6812771305408747,
+     -0.650427540513447,
+     -0.6204506050931928
+    ],
+    "ent_p_partial": [
+     -0.6377218009362867,
+     -0.6032173027057042,
+     -0.568016296637821
+    ],
+    "ent_r_partial": [
+     -0.6877747887184922,
+     -0.6578397116079546,
+     -0.6287048249506163
+    ],
+    "ent_f1_partial": [
+     -0.6572835909990781,
+     -0.629364637393317,
+     -0.6003963447156812
+    ],
+    "ent_f1_strict": [
+     -0.6210863462045965,
+     -0.5911862044939906,
+     -0.5613894000736107
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -1.0,
+     0.0
+    ]
+   },
+   "safestream-native-dates - presidio-trf-deid": {
+    "char_p": [
+     -0.6281864265769886,
+     -0.5768870623923485,
+     -0.5201515870205191
+    ],
+    "char_r": [
+     -0.44343726352609136,
+     -0.401606663205723,
+     -0.3576999560452803
+    ],
+    "char_f1": [
+     -0.5188909467378952,
+     -0.472773938086281,
+     -0.4261789648274839
+    ],
+    "entity_recall_covered": [
+     -0.37287646170092503,
+     -0.33654699376708785,
+     -0.29992065526776257
+    ],
+    "ent_p_partial": [
+     -0.5222989208023963,
+     -0.4743933205940025,
+     -0.4256811220148619
+    ],
+    "ent_r_partial": [
+     -0.36574086863106203,
+     -0.33127221549176955,
+     -0.2961491987731482
+    ],
+    "ent_f1_partial": [
+     -0.4281864480403323,
+     -0.38991340715478645,
+     -0.3523806527996472
+    ],
+    "ent_f1_strict": [
+     -0.3817807457841949,
+     -0.34433625032106496,
+     -0.3066193549046356
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native-dates - presidio-trf-bert": {
+    "char_p": [
+     -0.8026324827221518,
+     -0.7646715118397654,
+     -0.7216467557410936
+    ],
+    "char_r": [
+     -0.614180116829335,
+     -0.5691648136632252,
+     -0.5231181278683896
+    ],
+    "char_f1": [
+     -0.691110026886907,
+     -0.6524057343656307,
+     -0.6085433073599374
+    ],
+    "entity_recall_covered": [
+     -0.6000100401606425,
+     -0.5587066157123167,
+     -0.5175022748716386
+    ],
+    "ent_p_partial": [
+     -0.7492364712139343,
+     -0.7172398629181451,
+     -0.683275065128508
+    ],
+    "ent_r_partial": [
+     -0.6045862263008669,
+     -0.562680649418998,
+     -0.519163807486138
+    ],
+    "ent_f1_partial": [
+     -0.6655184074185209,
+     -0.6307188173689691,
+     -0.593461177644521
+    ],
+    "ent_f1_strict": [
+     -0.6408541132214381,
+     -0.6050995948544033,
+     -0.5685183328865652
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.3333333333333333,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - safestream-native-onnx-batched": {
+    "char_p": [
+     -0.0023242277921547176,
+     0.0007783536166161009,
+     0.004040450583112792
+    ],
+    "char_r": [
+     0.000317165559319052,
+     0.002719451485171942,
+     0.005608563646260549
+    ],
+    "char_f1": [
+     -0.00017908825631228196,
+     0.0020418586221188084,
+     0.004441652235091734
+    ],
+    "entity_recall_covered": [
+     0.0003290583867701429,
+     0.002493765902532863,
+     0.0050543801124161005
+    ],
+    "ent_p_partial": [
+     -0.004258416893648742,
+     0.002359503325803536,
+     0.009280994111703793
+    ],
+    "ent_r_partial": [
+     -0.0007181393033286049,
+     0.0021246461587653975,
+     0.004966344165151279
+    ],
+    "ent_f1_partial": [
+     -0.0008530856812184268,
+     0.0022001154471255613,
+     0.005685527740859413
+    ],
+    "ent_f1_strict": [
+     -0.0024595132094990617,
+     0.002618925106116554,
+     0.007448916978598156
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - safestream-native-spacy": {
+    "char_p": [
+     0.024477036529003286,
+     0.042895612623232826,
+     0.06076297842148432
+    ],
+    "char_r": [
+     -0.04780822206874194,
+     -0.01673309934012096,
+     0.0170375540807103
+    ],
+    "char_f1": [
+     -0.013205885107258883,
+     0.007260413767514129,
+     0.029411148929226184
+    ],
+    "entity_recall_covered": [
+     -0.076797380467378,
+     -0.04479284360712893,
+     -0.011126151371513536
+    ],
+    "ent_p_partial": [
+     -0.16313365047030426,
+     -0.11961076708555446,
+     -0.07642385875824478
+    ],
+    "ent_r_partial": [
+     -0.042735127291913956,
+     -0.006086965997662508,
+     0.030136560899701077
+    ],
+    "ent_f1_partial": [
+     -0.07226490130602685,
+     -0.047505358680021814,
+     -0.022940703981301738
+    ],
+    "ent_f1_strict": [
+     0.018078317549668346,
+     0.05038982241490925,
+     0.08442449744494972
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.30952380952380953,
+     1.0
+    ]
+   },
+   "safestream-native-onnx - presidio-regex": {
+    "char_p": [
+     0.7451050739580931,
+     0.7804181045405323,
+     0.8138962290066668
+    ],
+    "char_r": [
+     0.6529907985859844,
+     0.6908191099259631,
+     0.7259244532999076
+    ],
+    "char_f1": [
+     0.7319150088269782,
+     0.7570185848347617,
+     0.7812797431895536
+    ],
+    "entity_recall_covered": [
+     0.5967988134611865,
+     0.6352004494849111,
+     0.6725021448142992
+    ],
+    "ent_p_partial": [
+     0.686758859727593,
+     0.7322265819135219,
+     0.7776005303205233
+    ],
+    "ent_r_partial": [
+     0.5872427980386148,
+     0.6264478602678647,
+     0.6645845660905234
+    ],
+    "ent_f1_partial": [
+     0.6644645591655828,
+     0.691552945188494,
+     0.718599420161226
+    ],
+    "ent_f1_strict": [
+     0.6181071241073605,
+     0.6497206144919302,
+     0.6804335017244333
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.3333333333333333,
+     1.0
+    ]
+   },
+   "safestream-native-onnx - presidio-sm": {
+    "char_p": [
+     0.2769484353762416,
+     0.3139459758334766,
+     0.3523772602566132
+    ],
+    "char_r": [
+     0.09748319902338612,
+     0.13395383792220877,
+     0.16971115442047482
+    ],
+    "char_f1": [
+     0.18446263575114513,
+     0.21302850144334623,
+     0.2426787314660142
+    ],
+    "entity_recall_covered": [
+     0.03985311944399543,
+     0.07476490933972829,
+     0.10973898401390272
+    ],
+    "ent_p_partial": [
+     0.24223129900409315,
+     0.3004801110662337,
+     0.357738499587046
+    ],
+    "ent_r_partial": [
+     0.05556070829761977,
+     0.09269275684577338,
+     0.12912037378636293
+    ],
+    "ent_f1_partial": [
+     0.15686867674654442,
+     0.18645963468346294,
+     0.21557640075737944
+    ],
+    "ent_f1_strict": [
+     0.17505679879083227,
+     0.2052553861312958,
+     0.23692798720590114
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.33333333333333337,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - presidio-lg": {
+    "char_p": [
+     0.2208577135220876,
+     0.26433034901172636,
+     0.3083660680190642
+    ],
+    "char_r": [
+     0.029004608645390194,
+     0.06849959119240256,
+     0.1091511533739194
+    ],
+    "char_f1": [
+     0.1214177065602559,
+     0.15603250525443635,
+     0.18774623785339659
+    ],
+    "entity_recall_covered": [
+     -0.04156037271278908,
+     -0.004081637710835251,
+     0.033261950217931574
+    ],
+    "ent_p_partial": [
+     0.1552806371726799,
+     0.21749677482788937,
+     0.27809667298204527
+    ],
+    "ent_r_partial": [
+     -0.050628642227714786,
+     -0.01347154007638579,
+     0.022595176752473342
+    ],
+    "ent_f1_partial": [
+     0.057146680844426194,
+     0.09203921413968402,
+     0.1260340576818198
+    ],
+    "ent_f1_strict": [
+     0.03763009887266341,
+     0.07784839922045311,
+     0.11788957041905801
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.33333333333333337,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - presidio-trf-deid": {
+    "char_p": [
+     0.26683795636127794,
+     0.32194884149384884,
+     0.3798727689826766
+    ],
+    "char_r": [
+     0.2755362055561736,
+     0.31183337633895847,
+     0.35357797727194695
+    ],
+    "char_f1": [
+     0.2850465949965071,
+     0.32169318819038023,
+     0.3634131681183434
+    ],
+    "entity_recall_covered": [
+     0.2737543019686898,
+     0.3105015214462229,
+     0.34953451988823686
+    ],
+    "ent_p_partial": [
+     0.2804320563916978,
+     0.3460422453821843,
+     0.4128533422839878
+    ],
+    "ent_r_partial": [
+     0.27899566828407824,
+     0.3131895749036717,
+     0.3508603328269088
+    ],
+    "ent_f1_partial": [
+     0.298992448220593,
+     0.33155477066408745,
+     0.36804483445168973
+    ],
+    "ent_f1_strict": [
+     0.288263378350341,
+     0.3238230243718302,
+     0.36436664664213825
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.3333333333333333,
+     1.0
+    ]
+   },
+   "safestream-native-onnx - presidio-trf-bert": {
+    "char_p": [
+     0.08954985637065759,
+     0.1338311802572808,
+     0.1825275394095604
+    ],
+    "char_r": [
+     0.10691011828529348,
+     0.1448414991098098,
+     0.18464586355035262
+    ],
+    "char_f1": [
+     0.10803571791186053,
+     0.14351887569482158,
+     0.18083496335410582
+    ],
+    "entity_recall_covered": [
+     0.05314510892333468,
+     0.08805730731105588,
+     0.12449402142917332
+    ],
+    "ent_p_partial": [
+     0.04091662885052384,
+     0.10290735259087774,
+     0.16441204765737352
+    ],
+    "ent_r_partial": [
+     0.04704630017983156,
+     0.0821250846289403,
+     0.11867171703690854
+    ],
+    "ent_f1_partial": [
+     0.054209762175154975,
+     0.09153607769334704,
+     0.1278591281242682
+    ],
+    "ent_f1_strict": [
+     0.02214224107466753,
+     0.06463132286818535,
+     0.1037897103145143
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.3333333333333333,
+     1.0
+    ]
+   },
+   "safestream-native-onnx-batched - safestream-native-spacy": {
+    "char_p": [
+     0.023736902147731404,
+     0.04212452239891573,
+     0.060033494472206225
+    ],
+    "char_r": [
+     -0.050522619108828715,
+     -0.019675810378263325,
+     0.01374398453327576
+    ],
+    "char_f1": [
+     -0.015372150746744176,
+     0.005163442435843157,
+     0.027019052289529777
+    ],
+    "entity_recall_covered": [
+     -0.08019061666180133,
+     -0.04746494066882412,
+     -0.013064543509818583
+    ],
+    "ent_p_partial": [
+     -0.16522909594822946,
+     -0.12165586430739267,
+     -0.07849712345465328
+    ],
+    "ent_r_partial": [
+     -0.04467327536752242,
+     -0.008098658828599226,
+     0.02818075654096702
+    ],
+    "ent_f1_partial": [
+     -0.07402990092535078,
+     -0.049795053830834546,
+     -0.02535785578234337
+    ],
+    "ent_f1_strict": [
+     0.015462716392621274,
+     0.04747821769095745,
+     0.08115994220784287
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.30952380952380953,
+     1.0
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-regex": {
+    "char_p": [
+     0.7438274688977664,
+     0.7795668195845235,
+     0.812847892820404
+    ],
+    "char_r": [
+     0.6501282474599342,
+     0.6880735311552979,
+     0.7233403322696437
+    ],
+    "char_f1": [
+     0.7295326192207922,
+     0.7548946470498177,
+     0.77907374304812
+    ],
+    "entity_recall_covered": [
+     0.5944458315312128,
+     0.6327097750716666,
+     0.6696765156231596
+    ],
+    "ent_p_partial": [
+     0.6859726820071639,
+     0.729964079672127,
+     0.7748618127243879
+    ],
+    "ent_r_partial": [
+     0.5855870847496357,
+     0.6242447533339561,
+     0.6619678628923269
+    ],
+    "ent_f1_partial": [
+     0.6629191216588846,
+     0.6893202248560699,
+     0.7154111117201756
+    ],
+    "ent_f1_strict": [
+     0.6149025422128117,
+     0.6465751073192868,
+     0.6780118654434418
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.3333333333333333,
+     1.0
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-sm": {
+    "char_p": [
+     0.27690619336838035,
+     0.3130369000952894,
+     0.35141336380508353
+    ],
+    "char_r": [
+     0.09480995100313991,
+     0.13121639403551705,
+     0.16643985572531164
+    ],
+    "char_f1": [
+     0.18251673190639697,
+     0.21116374541544697,
+     0.23992184857289195
+    ],
+    "entity_recall_covered": [
+     0.03804066716641674,
+     0.07219884007816202,
+     0.10670287150115881
+    ],
+    "ent_p_partial": [
+     0.2397591768586737,
+     0.2984562705267261,
+     0.35574591887552726
+    ],
+    "ent_r_partial": [
+     0.05325408834519698,
+     0.09048991530692324,
+     0.12787074609158072
+    ],
+    "ent_f1_partial": [
+     0.15484583568307558,
+     0.18421687379612628,
+     0.21307095444995233
+    ],
+    "ent_f1_strict": [
+     0.17186540717466156,
+     0.20254282414247315,
+     0.23358582561065663
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.33333333333333337,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-lg": {
+    "char_p": [
+     0.22059467396536123,
+     0.2636425688990261,
+     0.30738453629801327
+    ],
+    "char_r": [
+     0.02647827383806928,
+     0.06567047597212938,
+     0.10505221421936664
+    ],
+    "char_f1": [
+     0.12028502205754411,
+     0.15382255995073307,
+     0.18542066503071558
+    ],
+    "entity_recall_covered": [
+     -0.04362280372871023,
+     -0.006461771897650848,
+     0.03081946777639705
+    ],
+    "ent_p_partial": [
+     0.15380289699756874,
+     0.2150408967188539,
+     0.2749111323908365
+    ],
+    "ent_r_partial": [
+     -0.052532967470733584,
+     -0.015533613229811505,
+     0.020712972152738287
+    ],
+    "ent_f1_partial": [
+     0.05624518728922344,
+     0.08991527269553806,
+     0.12328160718184063
+    ],
+    "ent_f1_strict": [
+     0.034744081836142415,
+     0.0757191776459551,
+     0.11501025629430661
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.33333333333333337,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-trf-deid": {
+    "char_p": [
+     0.2666773015695114,
+     0.3208636181826208,
+     0.3804338114976008
+    ],
+    "char_r": [
+     0.2732539170481648,
+     0.3090252118088243,
+     0.34958601876285805
+    ],
+    "char_f1": [
+     0.2832635863485646,
+     0.3198620298872743,
+     0.3610919726702976
+    ],
+    "entity_recall_covered": [
+     0.27176340020655754,
+     0.30788603743263127,
+     0.3455894752609054
+    ],
+    "ent_p_partial": [
+     0.27890727581260183,
+     0.3436047462442835,
+     0.4093472336169982
+    ],
+    "ent_r_partial": [
+     0.277125547361081,
+     0.3112555056988036,
+     0.34759546413035913
+    ],
+    "ent_f1_partial": [
+     0.2973138542591944,
+     0.3293561674813369,
+     0.36525613449291533
+    ],
+    "ent_f1_strict": [
+     0.2851610130391116,
+     0.32124423216923315,
+     0.36119556676276765
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.3333333333333333,
+     1.0
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-trf-bert": {
+    "char_p": [
+     0.08926958546636916,
+     0.13327250503447752,
+     0.1826501665970711
+    ],
+    "char_r": [
+     0.10428283188446037,
+     0.14200114430726057,
+     0.1814574970990327
+    ],
+    "char_f1": [
+     0.10630837654760734,
+     0.141317855877436,
+     0.17852413293365466
+    ],
+    "entity_recall_covered": [
+     0.05091936411427184,
+     0.08568330837936905,
+     0.12208570341859969
+    ],
+    "ent_p_partial": [
+     0.039038944558287623,
+     0.10070265936329664,
+     0.1624557394142984
+    ],
+    "ent_r_partial": [
+     0.045145940341522695,
+     0.07999282639885219,
+     0.11543393609821856
+    ],
+    "ent_f1_partial": [
+     0.052660890923189194,
+     0.08925648211263804,
+     0.12480899430508713
+    ],
+    "ent_f1_strict": [
+     0.019029408327782635,
+     0.062154605395714546,
+     0.10123484219001735
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.3333333333333333,
+     1.0
+    ]
+   },
+   "safestream-native-spacy - presidio-regex": {
+    "char_p": [
+     0.7000569520105747,
+     0.7370452977525879,
+     0.7715898536711309
+    ],
+    "char_r": [
+     0.6744953755873482,
+     0.7076407182967579,
+     0.7385954941866847
+    ],
+    "char_f1": [
+     0.7251240995894783,
+     0.7497527403122373,
+     0.7709133552738173
+    ],
+    "entity_recall_covered": [
+     0.6476785955172001,
+     0.6802809912751361,
+     0.7111801514369749
+    ],
+    "ent_p_partial": [
+     0.8235110716634464,
+     0.8525957342497542,
+     0.8789843247691773
+    ],
+    "ent_r_partial": [
+     0.6001401856100269,
+     0.6332699068844585,
+     0.6610420753541704
+    ],
+    "ent_f1_partial": [
+     0.7138608867185542,
+     0.7391481926973116,
+     0.7614550724394173
+    ],
+    "ent_f1_strict": [
+     0.5637743889226308,
+     0.5992456171911877,
+     0.6310145774476743
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.0,
+     1.0
+    ]
+   },
+   "safestream-native-spacy - presidio-sm": {
+    "char_p": [
+     0.2382482956285118,
+     0.27068979931304604,
+     0.30658937659106195
+    ],
+    "char_r": [
+     0.12047237523070879,
+     0.15018809560212604,
+     0.18299936196627714
+    ],
+    "char_f1": [
+     0.1808128433857242,
+     0.20561629597864678,
+     0.23316006949853374
+    ],
+    "entity_recall_covered": [
+     0.09149058853578709,
+     0.11921481143201135,
+     0.1484629629629629
+    ],
+    "ent_p_partial": [
+     0.3871869100561212,
+     0.42034733086700027,
+     0.45308364748530794
+    ],
+    "ent_r_partial": [
+     0.072708830801952,
+     0.09829171023514816,
+     0.12486906938517398
+    ],
+    "ent_f1_partial": [
+     0.20789496422003254,
+     0.23335940148344048,
+     0.26107631643075196
+    ],
+    "ent_f1_strict": [
+     0.13101021730985585,
+     0.15396857250887128,
+     0.1798490210663543
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666667,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - presidio-lg": {
+    "char_p": [
+     0.18323207910846834,
+     0.22107830261114264,
+     0.2616030757964357
+    ],
+    "char_r": [
+     0.05334932638864115,
+     0.08516740166010162,
+     0.11991621748696135
+    ],
+    "char_f1": [
+     0.1198570209219636,
+     0.14796454990054514,
+     0.17955835009031296
+    ],
+    "entity_recall_covered": [
+     0.009030889443093038,
+     0.040873126308884955,
+     0.07493637035788481
+    ],
+    "ent_p_partial": [
+     0.30410536341073,
+     0.3366846787809058,
+     0.36868736177502637
+    ],
+    "ent_r_partial": [
+     -0.039367623362794354,
+     -0.007893300747995047,
+     0.02648844302306899
+    ],
+    "ent_f1_partial": [
+     0.10965709808876191,
+     0.13948291609200159,
+     0.17307512834357575
+    ],
+    "ent_f1_strict": [
+     -0.013193645136371978,
+     0.027055031261798923,
+     0.0684458397734036
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666667,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - presidio-trf-deid": {
+    "char_p": [
+     0.22575350264111121,
+     0.27849670136722154,
+     0.33679643924495145
+    ],
+    "char_r": [
+     0.2802389802125606,
+     0.3295936389452886,
+     0.3754774340671381
+    ],
+    "char_f1": [
+     0.2701193055983177,
+     0.3151585439654527,
+     0.3606540154710942
+    ],
+    "entity_recall_covered": [
+     0.30913057342784767,
+     0.3558832314193505,
+     0.3995243495129814
+    ],
+    "ent_p_partial": [
+     0.42098227630183227,
+     0.4658564583529796,
+     0.5113253616170904
+    ],
+    "ent_r_partial": [
+     0.2756572951231886,
+     0.31987415904293726,
+     0.3648449872414393
+    ],
+    "ent_f1_partial": [
+     0.3383604203152023,
+     0.3792637831240633,
+     0.42190089119669405
+    ],
+    "ent_f1_strict": [
+     0.22676749597758383,
+     0.2733987928417996,
+     0.32379508137917684
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.0,
+     1.0
+    ]
+   },
+   "safestream-native-spacy - presidio-trf-bert": {
+    "char_p": [
+     0.049460221105442514,
+     0.09032805174500202,
+     0.13791166001601227
+    ],
+    "char_r": [
+     0.1176255787563532,
+     0.16149047596690358,
+     0.20381993258191392
+    ],
+    "char_f1": [
+     0.09860681765971074,
+     0.13560718153167844,
+     0.17461023124429004
+    ],
+    "entity_recall_covered": [
+     0.094554808935771,
+     0.13346456086286596,
+     0.17260899583258552
+    ],
+    "ent_p_partial": [
+     0.19268796866196744,
+     0.22225407649074552,
+     0.25580984585486216
+    ],
+    "ent_r_partial": [
+     0.04823256340579703,
+     0.08771590878277608,
+     0.1299952000045578
+    ],
+    "ent_f1_partial": [
+     0.1060293705770873,
+     0.13862554610968936,
+     0.17317683571120596
+    ],
+    "ent_f1_strict": [
+     -0.032461363871661555,
+     0.013763162378022886,
+     0.05731457038993851
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     0.0,
+     1.0
+    ]
+   },
+   "presidio-regex - presidio-sm": {
+    "char_p": [
+     -0.5053561383839608,
+     -0.4657959519007965,
+     -0.4273484561884358
+    ],
+    "char_r": [
+     -0.5898534732898819,
+     -0.5564518473280975,
+     -0.5217966751041542
+    ],
+    "char_f1": [
+     -0.5752681731467298,
+     -0.5433562299381816,
+     -0.5114756844345539
+    ],
+    "entity_recall_covered": [
+     -0.592581276199348,
+     -0.5603365465241861,
+     -0.526720067671521
+    ],
+    "ent_p_partial": [
+     -0.4732158984109013,
+     -0.4318215366762911,
+     -0.3917400013449518
+    ],
+    "ent_r_partial": [
+     -0.5626445362372995,
+     -0.5343973280157159,
+     -0.5037087878973828
+    ],
+    "ent_f1_partial": [
+     -0.5360350971272053,
+     -0.5053555439034036,
+     -0.4746588969799539
+    ],
+    "ent_f1_strict": [
+     -0.47431465673433926,
+     -0.44479121488923123,
+     -0.4140823921565438
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666667,
+     0.0
+    ]
+   },
+   "presidio-regex - presidio-lg": {
+    "char_p": [
+     -0.557543265277516,
+     -0.5149368427396562,
+     -0.4740174038801263
+    ],
+    "char_r": [
+     -0.6555020694717365,
+     -0.6214961090776607,
+     -0.5890161154465953
+    ],
+    "char_f1": [
+     -0.634233005270673,
+     -0.6005654849689464,
+     -0.5665774291208083
+    ],
+    "entity_recall_covered": [
+     -0.6704681182638182,
+     -0.6388069829558685,
+     -0.6078070696413147
+    ],
+    "ent_p_partial": [
+     -0.5567605278245785,
+     -0.515493492280175,
+     -0.47499476003836594
+    ],
+    "ent_r_partial": [
+     -0.6700084387590558,
+     -0.6396330165335187,
+     -0.6104688963707022
+    ],
+    "ent_f1_partial": [
+     -0.6295676913285799,
+     -0.5993712273190913,
+     -0.5687064454283632
+    ],
+    "ent_f1_strict": [
+     -0.6029495990291928,
+     -0.5717350165581406,
+     -0.539632680751307
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -1.0,
+     -0.6666666666666667,
+     0.0
+    ]
+   },
+   "presidio-regex - presidio-trf-deid": {
+    "char_p": [
+     -0.5075540507497052,
+     -0.456849826430765,
+     -0.40742902689467025
+    ],
+    "char_r": [
+     -0.41986425791320575,
+     -0.37825970599026865,
+     -0.3356423809484379
+    ],
+    "char_f1": [
+     -0.4812368786763495,
+     -0.4346001613699928,
+     -0.38764998990636507
+    ],
+    "entity_recall_covered": [
+     -0.3615132217520057,
+     -0.325018209268929,
+     -0.28890392337746484
+    ],
+    "ent_p_partial": [
+     -0.4348292020277228,
+     -0.3852656810307661,
+     -0.3413211530052609
+    ],
+    "ent_r_partial": [
+     -0.3467093992215099,
+     -0.31295582321231735,
+     -0.2792185537235043
+    ],
+    "ent_f1_partial": [
+     -0.397571768980205,
+     -0.35968396063291297,
+     -0.32178951353556945
+    ],
+    "ent_f1_strict": [
+     -0.36364246452955856,
+     -0.32510566989469664,
+     -0.28663609191494055
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "presidio-regex - presidio-trf-bert": {
+    "char_p": [
+     -0.686042163188693,
+     -0.6450475077785583,
+     -0.6052803640347192
+    ],
+    "char_r": [
+     -0.5912377143761298,
+     -0.5462434418873015,
+     -0.49992297401082597
+    ],
+    "char_f1": [
+     -0.6551911363327253,
+     -0.6139613358077167,
+     -0.569986162178445
+    ],
+    "entity_recall_covered": [
+     -0.5884904456905945,
+     -0.5471563799756813,
+     -0.5058688918598105
+    ],
+    "ent_p_partial": [
+     -0.66981853665848,
+     -0.6290741362350081,
+     -0.5912616707259468
+    ],
+    "ent_r_partial": [
+     -0.5864695213286787,
+     -0.5444502566401535,
+     -0.5011351862587056
+    ],
+    "ent_f1_partial": [
+     -0.6372062858487442,
+     -0.6002629284815856,
+     -0.5628683870247214
+    ],
+    "ent_f1_strict": [
+     -0.623032767789481,
+     -0.585614920878138,
+     -0.5502651336638571
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "presidio-sm - presidio-lg": {
+    "char_p": [
+     -0.06226111089856863,
+     -0.04969357602801627,
+     -0.037839164300233055
+    ],
+    "char_r": [
+     -0.08437954330836658,
+     -0.06501669552189371,
+     -0.04636489008273025
+    ],
+    "char_f1": [
+     -0.07190936292020071,
+     -0.057248724219699454,
+     -0.04346306051141421
+    ],
+    "entity_recall_covered": [
+     -0.10007460235928714,
+     -0.07839864423753062,
+     -0.05770384608993008
+    ],
+    "ent_p_partial": [
+     -0.09972778509378614,
+     -0.08320217562082605,
+     -0.06863829554630466
+    ],
+    "ent_r_partial": [
+     -0.1285197958924054,
+     -0.10586750771567344,
+     -0.08363995534148706
+    ],
+    "ent_f1_partial": [
+     -0.11099864205791331,
+     -0.09380222379803477,
+     -0.0774730845408516
+    ],
+    "ent_f1_strict": [
+     -0.15440466012657525,
+     -0.12673965695570916,
+     -0.10173831494547395
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "presidio-sm - presidio-trf-deid": {
+    "char_p": [
+     -0.022515893429068158,
+     0.008343243305807324,
+     0.04077030003279508
+    ],
+    "char_r": [
+     0.1414228595467672,
+     0.17899803176626927,
+     0.21460320523040086
+    ],
+    "char_f1": [
+     0.07725033514504709,
+     0.10946674951812327,
+     0.14098132372403263
+    ],
+    "entity_recall_covered": [
+     0.19592790561509893,
+     0.23605911916752392,
+     0.2759901289966513
+    ],
+    "ent_p_partial": [
+     0.016268357893899934,
+     0.04570851338793144,
+     0.07587912947374559
+    ],
+    "ent_r_partial": [
+     0.18337606005436594,
+     0.22127090648295175,
+     0.25903309457101586
+    ],
+    "ent_f1_partial": [
+     0.11280729354045806,
+     0.14596396560694472,
+     0.1778519521366318
+    ],
+    "ent_f1_strict": [
+     0.08259425236444032,
+     0.11879798324150262,
+     0.15671587944667614
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.6666666666666667,
+     1.0
+    ]
+   },
+   "presidio-sm - presidio-trf-bert": {
+    "char_p": [
+     -0.20104170344011357,
+     -0.1792956285215166,
+     -0.15713707612600697
+    ],
+    "char_r": [
+     -0.025307605751325884,
+     0.011109835723517536,
+     0.04707212677628669
+    ],
+    "char_f1": [
+     -0.09785791035571932,
+     -0.07007058736867716,
+     -0.04176391923278162
+    ],
+    "entity_recall_covered": [
+     -0.022854519926227286,
+     0.013600770601927437,
+     0.050953395188535165
+    ],
+    "ent_p_partial": [
+     -0.22239946367510327,
+     -0.19705749881494666,
+     -0.17319660889902275
+    ],
+    "ent_r_partial": [
+     -0.04837130327063547,
+     -0.010274672588936495,
+     0.027962882690316253
+    ],
+    "ent_f1_partial": [
+     -0.12348790792576497,
+     -0.0949608418310709,
+     -0.0658937437775558
+    ],
+    "ent_f1_strict": [
+     -0.17796340551181952,
+     -0.1406918309600216,
+     -0.10622995881389256
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.6666666666666667,
+     1.0
+    ]
+   },
+   "presidio-lg - presidio-trf-deid": {
+    "char_p": [
+     0.030526935585121106,
+     0.05828417008111991,
+     0.08788340102557739
+    ],
+    "char_r": [
+     0.2091060429369598,
+     0.24380616567588903,
+     0.27504419624404997
+    ],
+    "char_f1": [
+     0.1368611832724499,
+     0.16679166085852845,
+     0.19490102489829148
+    ],
+    "entity_recall_covered": [
+     0.2781529667084303,
+     0.3141955302687395,
+     0.34911706046923907
+    ],
+    "ent_p_partial": [
+     0.10221569668407646,
+     0.1289912112660204,
+     0.15614525719435476
+    ],
+    "ent_r_partial": [
+     0.29275972986781656,
+     0.32694406821235844,
+     0.36085570533228567
+    ],
+    "ent_f1_partial": [
+     0.2099624171474725,
+     0.23962644308553924,
+     0.2697334411795764
+    ],
+    "ent_f1_strict": [
+     0.2139934801815641,
+     0.24638780552695538,
+     0.2791934959720865
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.6666666666666667,
+     1.0
+    ]
+   },
+   "presidio-lg - presidio-trf-bert": {
+    "char_p": [
+     -0.15040779230194,
+     -0.12947291065325894,
+     -0.10975083811002578
+    ],
+    "char_r": [
+     0.04370454053326492,
+     0.07621172300210705,
+     0.10703802811230395
+    ],
+    "char_f1": [
+     -0.03695549745059812,
+     -0.012847569939975267,
+     0.011952653835774908
+    ],
+    "entity_recall_covered": [
+     0.06043600322388926,
+     0.09244005271434919,
+     0.12472458153055473
+    ],
+    "ent_p_partial": [
+     -0.13340669872133132,
+     -0.11385528924101362,
+     -0.09457875550188836
+    ],
+    "ent_r_partial": [
+     0.06396569452563224,
+     0.09548695159938225,
+     0.12768519787044216
+    ],
+    "ent_f1_partial": [
+     -0.025124552059409663,
+     -0.0010645781077846528,
+     0.023824613435781353
+    ],
+    "ent_f1_strict": [
+     -0.04119373657440091,
+     -0.01417356337107123,
+     0.013926363010825145
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.6666666666666667,
+     1.0
+    ]
+   },
+   "presidio-trf-deid - presidio-trf-bert": {
+    "char_p": [
+     -0.21291492137214638,
+     -0.18794666698393286,
+     -0.16473579258340518
+    ],
+    "char_r": [
+     -0.19772903635457298,
+     -0.16725092278719514,
+     -0.13750270071044576
+    ],
+    "char_f1": [
+     -0.2059018721180839,
+     -0.1787507181672482,
+     -0.15371283151670698
+    ],
+    "entity_recall_covered": [
+     -0.2588916422383105,
+     -0.2217292732469615,
+     -0.1865887876935441
+    ],
+    "ent_p_partial": [
+     -0.2741048137547234,
+     -0.24294093137702422,
+     -0.21300316827683233
+    ],
+    "ent_r_partial": [
+     -0.2677539942391261,
+     -0.23092624356775301,
+     -0.1971839376983262
+    ],
+    "ent_f1_partial": [
+     -0.2727020993284786,
+     -0.2404816452327431,
+     -0.21005970355551462
+    ],
+    "ent_f1_strict": [
+     -0.2937846256118604,
+     -0.260242288213409,
+     -0.2285076170571609
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  }
+ },
+ "command": "python.exe -m benchmarks.harness --corpus conll2003 --split dev --systems safestream-python safestream-native safestream-native-dates safestream-native-onnx safestream-native-onnx-batched safestream-native-spacy presidio-regex presidio-sm presidio-lg presidio-trf-deid presidio-trf-bert --venv-root C:/Users/MOUNISH/.safestream-bench/venvs --checkpoint-dir benchmarks/data/external/checkpoints/phase0-dev --bootstrap 2000 --json research/results/raw/2026-10-03_conll2003_dev.json --md research/results/raw/2026-10-03_conll2003_dev.md"
+}
