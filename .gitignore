@@ -232,3 +232,4 @@ models/
 
 # third-party evaluation corpora and models (downloaded, never committed; see benchmarks/corpora/)
 benchmarks/data/external/
+errors_*.json

@@ -404,6 +404,46 @@ def evaluate(
     return {"systems": result, "paired_diff_ci95": paired}
 
 
+def sample_errors(
+    docs: list[corpora.Doc], preds: list[list[Pred]], limit: int, context: int = 40
+) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    """Up to ``limit`` misses and false alarms per type, with surrounding text.
+
+    A miss is a gold span not fully redacted (it leaks); a false alarm is a
+    prediction that touches no gold character. For error analysis on *dev*
+    splits only, and never committed for corpora whose licence forbids
+    redistribution.
+    """
+    out: dict[str, dict[str, list[dict[str, Any]]]] = {}
+
+    def add(t: str, kind: str, doc: corpora.Doc, s: int, e: int, covered: int = 0) -> None:
+        bucket = out.setdefault(t, {"missed": [], "false_alarm": []})[kind]
+        if len(bucket) < limit:
+            bucket.append(
+                {
+                    "doc": doc.doc_id,
+                    "span": doc.text[s:e],
+                    "covered_chars": covered,
+                    "context": doc.text[max(0, s - context) : e + context],
+                }
+            )
+
+    for doc, ps in zip(docs, preds, strict=True):
+        mask = bytearray(len(doc.text))
+        for s, e, _t in ps:
+            mask[max(0, s) : max(0, e)] = b"" * (max(0, e) - max(0, s))
+        gold = bytearray(len(doc.text))
+        for g in doc.spans:
+            gold[g.start : g.end] = b"" * (g.end - g.start)
+            covered = sum(mask[g.start : g.end])
+            if covered < g.end - g.start:
+                add(g.type, "missed", doc, g.start, g.end, covered)
+        for s, e, t in ps:
+            if not any(gold[max(0, s) : max(0, e)]):
+                add(t, "false_alarm", doc, s, e)
+    return out
+
+
 # --- environment ---------------------------------------------------------------
 
 
@@ -600,6 +640,15 @@ def main() -> None:
     )
     ap.add_argument("--md", type=Path, help="also write the markdown table here")
     ap.add_argument(
+        "--errors",
+        type=int,
+        default=0,
+        metavar="N",
+        help="write up to N missed / false-alarm examples per type per system to "
+        "--errors-out (dev splits only; contains corpus text, never commit it)",
+    )
+    ap.add_argument("--errors-out", type=Path, help="where --errors writes its JSON")
+    ap.add_argument(
         "--venv-root",
         type=Path,
         help="run each system family in its own virtualenv under this folder "
@@ -670,6 +719,12 @@ def main() -> None:
         "scores": evaluate(corpus.docs, preds, resamples=args.bootstrap),
         "command": " ".join([Path(sys.executable).name, "-m", "benchmarks.harness", *sys.argv[1:]]),
     }
+    if args.errors:
+        if args.split == "test":
+            ap.error("--errors is for dev splits: looking at test errors is tuning on test")
+        errors = {n: sample_errors(corpus.docs, p, args.errors) for n, p in preds.items()}
+        target = args.errors_out or Path(f"errors_{args.corpus}_{args.split}.json")
+        target.write_text(json.dumps(errors, indent=1, ensure_ascii=False), encoding="utf-8")
     out = args.json or ROOT / "research" / "results" / "raw" / (
         f"{dt.date.today().isoformat()}_{args.corpus}_{args.split}.json"
     )
