@@ -31,6 +31,7 @@ import argparse
 import datetime as dt
 import importlib.metadata as md
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -47,7 +48,15 @@ from benchmarks import corpora  # noqa: E402
 
 Pred = tuple[int, int, str]
 ONNX_DIR = ROOT / "models" / "ner"
-PRESIDIO_PIECE = 20_000  # spaCy refuses >1M chars and grows with length: feed pieces
+PRESIDIO_PIECE = 20_000
+# Every system runs on one thread so per-core throughput is like-for-like (the
+# ONNX tier is single-threaded; torch would otherwise use every core).
+# Multi-core scaling is measured separately (benchmarks/parallel_speedup.py).
+THREADS = 1
+_THREAD_ENV = {
+    k: str(THREADS)
+    for k in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "TORCH_NUM_THREADS")
+}  # spaCy refuses >1M chars and grows with length: feed pieces
 # Presidio's transformers engine with two MIT-licensed models: the de-identification
 # model Presidio's docs use as their example, and a general-purpose NER model.
 TRANSFORMERS_MODELS = {
@@ -159,6 +168,10 @@ def _presidio(name: str) -> Callable[[str], list[Pred]]:
             nlp_engine=NlpEngineProvider(nlp_configuration=config).create_engine(),
             supported_languages=["en"],
         )
+        if name in TRANSFORMERS_MODELS:
+            import torch
+
+            torch.set_num_threads(THREADS)  # like-for-like with the 1-thread tools
 
         def run(piece: str) -> list[tuple[int, int, str]]:
             return [(r.start, r.end, r.entity_type) for r in engine.analyze(piece, language="en")]
@@ -216,6 +229,8 @@ def run_one(system: str, corpus: str, split: str) -> dict[str, Any]:
         "python": sys.executable,
         "versions": _versions(),
         "heavy_modules_loaded": sorted(m for m in _HEAVY if m in sys.modules),
+        "threads": THREADS,
+        "power_at_end": _power(),
         "preds": preds,
     }
 
@@ -497,10 +512,27 @@ def _versions() -> dict[str, str | None]:
     return out
 
 
-def environment() -> dict[str, Any]:
+def _power() -> str:
     import psutil
 
     battery = psutil.sensors_battery()
+    if battery is None:
+        return "no battery (AC)"
+    return "AC" if battery.power_plugged else f"BATTERY ({battery.percent:.0f}%)"
+
+
+def _power_plan() -> str | None:
+    if sys.platform != "win32":
+        return None
+    out = subprocess.run(["powercfg", "/getactivescheme"], capture_output=True, text=True)
+    return out.stdout.strip().split("(")[-1].rstrip(")") or None
+
+
+def environment() -> dict[str, Any]:
+    import multiprocessing
+
+    import psutil
+
     versions = _versions()
 
     def git(*args: str) -> str:
@@ -513,10 +545,12 @@ def environment() -> dict[str, Any]:
         "cpu": _cpu_name(),
         "physical_cores": psutil.cpu_count(logical=False),
         "logical_cores": psutil.cpu_count(logical=True),
-        "power": "no battery (AC)"
-        if battery is None
-        else ("AC" if battery.power_plugged else f"BATTERY ({battery.percent:.0f}%)"),
+        "power": _power(),
+        "power_plan": _power_plan(),
         "os": platform.platform(),
+        # Windows/macOS spawn worker processes (no fork): each worker re-imports
+        # and reloads its models, which matters for parallel memory and startup
+        "multiprocessing_start_method": multiprocessing.get_start_method(),
         "python": platform.python_version(),
         "versions": versions,
         "commit": git("rev-parse", "HEAD"),
@@ -654,6 +688,12 @@ def main() -> None:
     )
     ap.add_argument("--errors-out", type=Path, help="where --errors writes its JSON")
     ap.add_argument(
+        "--checkpoint-dir",
+        type=Path,
+        help="save each finished system run here and resume from it (same clean commit "
+        "only), so an interrupted run loses at most one system",
+    )
+    ap.add_argument(
         "--venv-root",
         type=Path,
         help="run each system family in its own virtualenv under this folder "
@@ -671,7 +711,20 @@ def main() -> None:
     env = environment()
     runs: dict[str, dict[str, Any]] = {}
     preds: dict[str, list[list[Pred]]] = {}
+    ckpt_dir = args.checkpoint_dir
+    if ckpt_dir:
+        ckpt_dir.mkdir(parents=True, exist_ok=True)
     for system in args.systems:
+        ckpt = ckpt_dir / f"{args.corpus}_{args.split}_{system}.json" if ckpt_dir else None
+        if ckpt and ckpt.exists():
+            saved = json.loads(ckpt.read_text(encoding="utf-8"))
+            if saved.get("commit") == env["commit"] and not env["dirty"]:
+                print(f"# {args.corpus}/{args.split}: {system} (resumed)", file=sys.stderr)
+                run = saved["run"]
+                preds[system] = [[tuple(p) for p in doc] for doc in run.pop("preds")]
+                runs[system] = run
+                continue
+            print(f"# {system}: checkpoint is from another commit, re-running", file=sys.stderr)
         print(f"# {args.corpus}/{args.split}: {system} ...", file=sys.stderr, flush=True)
         proc = subprocess.run(
             [
@@ -687,6 +740,7 @@ def main() -> None:
             text=True,
             cwd=ROOT,
             encoding="utf-8",
+            env={**os.environ, **_THREAD_ENV},
         )
         if proc.returncode != 0:
             reason = (proc.stderr.strip().splitlines() or ["failed"])[-1]
@@ -704,6 +758,11 @@ def main() -> None:
             "p99_ms": 1000 * lat[min(len(lat) - 1, int(0.99 * len(lat)))] if lat else 0.0,
         }
         runs[system] = run
+        if ckpt:  # one finished (system, corpus, split) survives an interruption
+            ckpt.write_text(
+                json.dumps({"commit": env["commit"], "run": {**run, "preds": preds[system]}}),
+                encoding="utf-8",
+            )
     manifest = corpora.SPLITS / f"{args.corpus}.json"
     report = {
         "corpus": args.corpus,
