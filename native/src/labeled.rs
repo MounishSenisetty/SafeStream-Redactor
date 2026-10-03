@@ -26,7 +26,16 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
     ),
     (
         r"dob|date\s*of\s*birth|birth\s*date|born(?:\s*on)?",
-        r"(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})",
+        concat!(
+            r"(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}",
+            r"|\d{1,2}(?:st|nd|rd|th)?[ \t]{1,3}(?:of[ \t]{1,3})?",
+            r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?",
+            r"|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)",
+            r"\.?,?[ \t]{1,3}\d{2,4}",
+            r"|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?",
+            r"|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)",
+            r"\.?[ \t]{1,3}\d{1,2}(?:st|nd|rd|th)?,?[ \t]{1,3}\d{2,4})"
+        ),
         "dob",
         0.8,
     ),

@@ -53,6 +53,12 @@ _CUE_WINDOW = 96
 # (U+25BA) or a pipe between a label and its value: ``VISA NO \u2013 201512589001``.
 _SEP = r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.\u2013\u2014\u25ba|]\s*)?"
 
+# Month names for textual dates of birth (matched case-insensitively).
+_MONTH = (
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?"
+    r"|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+)
+
 # Each rule: (cue alternation, value pattern, entity type, confidence).
 # The value pattern must use a single capturing group around the emitted span,
 # and every value must be bounded to ``_MAX_VALUE`` characters: that bound is the
@@ -75,7 +81,12 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     # Dates of birth
     (
         r"dob|date\s*of\s*birth|birth\s*date|born(?:\s*on)?",
-        r"(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})",
+        # numeric, day-month-year or month-day-year ("14 May 1988", "May 14,
+        # 1988"); gaps are 1-3 spaces/tabs so a value never crosses a line and
+        # stays within _MAX_VALUE
+        r"(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}"
+        r"|\d{1,2}(?:st|nd|rd|th)?[ \t]{1,3}(?:of[ \t]{1,3})?" + _MONTH + r"\.?,?[ \t]{1,3}\d{2,4}"
+        r"|" + _MONTH + r"\.?[ \t]{1,3}\d{1,2}(?:st|nd|rd|th)?,?[ \t]{1,3}\d{2,4})",
         EntityType.DOB,
         0.8,
     ),
