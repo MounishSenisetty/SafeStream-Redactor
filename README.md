@@ -579,10 +579,26 @@ targets of the current work.
 | presidio-research (one sentence per document) | 1.10 MB/s | 3.02 MB/s | 0.013 MB/s |
 
 The native core is 3–12× pure Python, and the ONNX tier is model-bound (it is for
-prose, not bulk logs). Multi-core scaling (`--workers N`) and the Best-performance
-power mode are measured separately; earlier single-file figures (10–35 MB/s per
-core, 36–121 MB/s on 4 workers, 5.9 → 59 MB/s on 1 → 8 workers) came from other
-machines or a battery run and are not quoted until re-measured. A Vectorscan/re2
+prose, not bulk logs).
+
+**Throughput, Best performance mode, 1 thread / 16 threads** (`benchmarks/throughput.py`,
+a fixed ~2 MB dev sample per corpus, 120 s budget per run; raw data in
+[`research/results/raw/2026-10-03_throughput.json`](research/results/raw/2026-10-03_throughput.json)):
+
+| System | presidio-research | ai4privacy | RedactionBench | CoNLL |
+| --- | --: | --: | --: | --: |
+| SafeStream native | 6.61 / 6.55 MB/s | 14.0 / 13.3 | 17.2 / 18.1 | 27.2 / 27.4 |
+| SafeStream + ONNX | 0.013 / 0.020 | 0.015 / 0.051 | 0.023 / 0.096 | 0.0095 / 0.037 |
+| Presidio regex | 0.125 / 0.138 | 0.136 / 0.145 | 0.058 / 0.063 | 0.092 / 0.090 |
+| Presidio `sm` | 0.015 / 0.013 | 0.023 / 0.023 | 0.020 / 0.020 | 0.020 / 0.021 |
+| Presidio transformers (de-id model) | 0.0007 / 0.0024 | 0.0010 / 0.0047 | 0.0008 / 0.0039 | 0.0009 / 0.0032 |
+
+Threads help only the model runtimes: Presidio's transformers engine gains 3–5×, the
+ONNX tier 1.6–4×; at equal threads the ONNX tier stays 8–30× faster than it. SafeStream's
+own multi-core path is processes (`--workers N`), not threads; its scaling is not yet
+re-measured, and earlier single-file figures (10–35 MB/s per core, 36–121 MB/s on 4
+workers, 5.9 → 59 MB/s on 1 → 8 workers) came from other machines or a battery run and
+are not quoted until it is. A Vectorscan/re2
 backend was prototyped and rejected
 ([docs/PERFORMANCE_BACKENDS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PERFORMANCE_BACKENDS.md)).
 
