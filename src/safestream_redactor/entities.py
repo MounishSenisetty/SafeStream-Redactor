@@ -50,6 +50,11 @@ class EntityType(str, Enum):
     DOB = "dob"
     # any calendar date / time of day (opt-in: logs are full of timestamps)
     DATE = "date"
+    # the value of a username/login field (field-anchored only)
+    USERNAME = "username"
+    # sex/gender and honorific/job-title fields (prose profile only)
+    SEX = "sex"
+    TITLE = "title"
     # generic sensitive identifier caught only via an adjacent label cue
     # (student/employee/member/patient/account/MRN/licence/passport/... numbers)
     ID_NUMBER = "id_number"

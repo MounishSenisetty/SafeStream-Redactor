@@ -129,17 +129,21 @@ and cue — so enabling it raises `C_left` to `2216` by default (§3.5); this is
 still far below the overlap, and the engine sizes the overlap from that declared
 value, so equivalence holds when the tier is enabled.
 
-### 3.2 `C_right = 8`
+### 3.2 `C_right = 128`
 
-The widest declared right-context in the default pipeline is the label-anchored
-cascade's `right_context=8` (`labeled_id.py`), a conservative bound on the
-trailing separators/suffix a cue→value match may consult; the underlying regex
-reaches at most ~2 characters past the value. The base tiers reach less: the
-widest right-context assertion elsewhere is the negative lookahead `(?!\.\d)` on
-the phone and IPv4 patterns (`deterministic.py`), inspecting 2 characters, and
-every validator (`luhn_ok`, `ssn_ok`, `ipv4_ok`, `ipv6_ok`, `phone_ok`) reads
-only the matched text. The opt-in ensemble declares `right_context=32`, which
-raises `C_right` to 32 when it is enabled — still far below the overlap.
+The widest declared right-context in the default pipeline is the structured-field
+tier's `right_context=128` (`structured.py`, added in Phase 1). A `Label: value`
+line has no closing delimiter, so deciding where its value ends (the next known
+field label, or the longest prefix its type can be) reads up to the 128-character
+value cap past the value's start. Before that tier the bound was the label-anchored
+cascade's `right_context=8` (`labeled_id.py`), a conservative bound on the trailing
+separators/suffix a cue→value match may consult; the underlying regex reaches at
+most ~2 characters past the value. The base tiers reach less: the widest
+right-context assertion elsewhere is the negative lookahead `(?!\.\d)` on the phone
+and IPv4 patterns (`deterministic.py`), inspecting 2 characters, and every
+validator (`luhn_ok`, `ssn_ok`, `ipv4_ok`, `ipv6_ok`, `phone_ok`) reads only the
+matched text. The opt-in ensemble declares `right_context=32`. All are far below
+the overlap.
 
 ### 3.3 `L_max = 8192` (after WI-1)
 
@@ -171,7 +175,7 @@ A1 true for every emitted span while still redacting the entire secret.
 ### 3.4 Consequence
 
 ```
-max(C_left, C_right) = 96  <=  L_max = 8192  =  w = DEFAULT_OVERLAP
+max(C_left, C_right) = 128  <=  L_max = 8192  =  w = DEFAULT_OVERLAP
 ```
 
 Both A1 and A2 hold at the default configuration, so
@@ -345,7 +349,7 @@ in exactly these cases, all of them detectable or documented:
   from their propagation parameter (§3.5). A third-party detector that declares
   too little is outside the contract until corrected.
 - **A detector needing unbounded (or document-global) context.** A2 fixes a small
-  finite `C_right` (8 in the default pipeline). Any tier that must look
+  finite `C_right` (128 in the default pipeline). Any tier that must look
   arbitrarily far — most notably an LLM tier that conditions on a whole document,
   or a stateful tier whose propagation window is unbounded — breaks A2, and
   neither theorem applies to it. This is the principled reason the offline,

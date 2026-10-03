@@ -27,7 +27,7 @@ from safestream_redactor.redactor import Redactor
 # the contextual scorer (48); C_right is that cascade's declared trailing reach
 # (8); L_max is the default overlap. Keep these three in sync with the doc.
 DOC_C_LEFT = 96
-DOC_C_RIGHT = 8
+DOC_C_RIGHT = 128  # structured-field tier (Phase 1); was 8
 DOC_L_MAX = 8 * 1024
 
 

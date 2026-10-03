@@ -52,12 +52,15 @@ _SEVERITY: dict[EntityType, str] = {
     EntityType.PHONE: MEDIUM,
     EntityType.PERSON: MEDIUM,
     EntityType.ADDRESS: MEDIUM,
+    EntityType.USERNAME: MEDIUM,
     # Weakly identifying or ambiguous.
     EntityType.IPV4: LOW,
     EntityType.IPV6: LOW,
     EntityType.MAC_ADDRESS: LOW,
     EntityType.AWS_ACCOUNT_ID: LOW,  # an identifier, not a credential
     EntityType.DATE: LOW,
+    EntityType.SEX: LOW,
+    EntityType.TITLE: LOW,
     EntityType.ORG: LOW,
     EntityType.LOC: LOW,
     EntityType.CUSTOM: MEDIUM,

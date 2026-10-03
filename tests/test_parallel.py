@@ -120,6 +120,8 @@ _CONFIG_SPECIMENS = [
     "codename ProjectX launched",
     "see ZQX-48213 now",
     "due 2024-03-15 09:30 sharp",
+    '{"LastName": "Arap", "Phone": "+44 20 7946 0958", "username": "midhat25"}',
+    "<GivenName2>Vick</GivenName2> Passport Number: X1234567 issued",
 ]
 
 

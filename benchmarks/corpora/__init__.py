@@ -113,6 +113,9 @@ SAFESTREAM_TO_CANONICAL: dict[str, str] = {
     "nhs_number": "ID",
     "uk_nino": "ID",
     "custom": "CUSTOM",
+    "username": "USERNAME",
+    "sex": "SEX",
+    "title": "TITLE",
 }
 _SECRET_TYPES = [
     "anthropic_key",

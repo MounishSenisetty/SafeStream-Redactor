@@ -137,6 +137,13 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     ),
 )
 
+
+def dob_value_pattern() -> str:
+    """The date-of-birth value pattern, non-capturing, for reuse by other tiers."""
+    value = next(v for _cue, v, etype, _conf in _RULES if etype is EntityType.DOB)
+    return "(?:" + value[1:-1] + ")"  # its one capturing group, made non-capturing
+
+
 # One compiled pattern per rule: cue, then a bounded gap, then the value group.
 _COMPILED: tuple[tuple[re.Pattern[str], EntityType, float], ...] = tuple(
     (

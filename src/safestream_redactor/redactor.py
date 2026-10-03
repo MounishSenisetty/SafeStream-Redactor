@@ -68,7 +68,7 @@ def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence
 # noise in logs (every date and time of day) but sensitive in documents.
 PROFILES: dict[str, dict[str, bool]] = {
     "default": {},
-    "prose": {"use_dates": True},
+    "prose": {"use_dates": True, "use_prose_fields": True},
 }
 
 
@@ -105,6 +105,9 @@ class Redactor:
         Enable the date/time tier (``EntityType.DATE``). Off by default because
         logs carry a timestamp on every line; naming ``date`` in ``types`` also
         enables it. Labelled dates of birth (``DOB: …``) are always detected.
+    use_prose_fields:
+        Also redact sex/gender and honorific/job-title fields (``"Gender": "F"``).
+        Off by default; on in the prose profile.
     profile:
         ``"default"`` or ``"prose"`` (see :data:`PROFILES`). A profile only sets
         the tiers you leave unset (``None``): ``profile="prose", use_dates=False``
@@ -160,6 +163,7 @@ class Redactor:
         use_entropy: bool = True,
         use_regional: bool = False,
         use_dates: bool | None = None,
+        use_prose_fields: bool | None = None,
         profile: str = "default",
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
@@ -178,6 +182,8 @@ class Redactor:
             raise ValueError(f"unknown profile {profile!r}; choose from {sorted(PROFILES)}")
         if use_dates is None:
             use_dates = PROFILES[profile].get("use_dates", False)
+        if use_prose_fields is None:
+            use_prose_fields = PROFILES[profile].get("use_prose_fields", False)
         self.profile = profile
         _validate_streaming_args(chunk_size, overlap, min_confidence)
         self.policy = policy or RedactionPolicy()
@@ -205,6 +211,22 @@ class Redactor:
         }
         if resolved_types is None or _labeled_types.intersection(resolved_types):
             self._detectors.append(LabeledIdentifierDetector(backend=backend))
+        # values of structured fields (JSON/XML/YAML/form labels) typed by the field
+        # name; sex/gender and honorific fields only in the prose profile
+        from safestream_redactor.detectors.structured import StructuredFieldDetector
+
+        _field_types = {
+            EntityType.PERSON,
+            EntityType.ADDRESS,
+            EntityType.PHONE,
+            EntityType.DOB,
+            EntityType.ID_NUMBER,
+            EntityType.USERNAME,
+            EntityType.SEX,
+            EntityType.TITLE,
+        }
+        if resolved_types is None or _field_types.intersection(resolved_types):
+            self._detectors.append(StructuredFieldDetector(prose=use_prose_fields))
         custom_words = list(custom_words)
         custom_patterns = list(custom_patterns)
         if custom_words or custom_patterns:
