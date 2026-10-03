@@ -40,8 +40,8 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
         0.8,
     ),
     (
-        r"phone|tel(?:ephone)?|mobile|cell|fax|contact\s*(?:no|number)",
-        r"(\+?\d[\d\s().\-\u2013\u25ba]{6,61}\d)",
+        r"phone|tel(?:ephone)?|mobile|cell|fax|call|contact\s*(?:no|number)",
+        r"(\+?\d[\d \t().\-\u2013\u25ba]{6,61}\d)",
         "phone",
         0.8,
     ),

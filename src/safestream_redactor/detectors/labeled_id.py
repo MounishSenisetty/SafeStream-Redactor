@@ -92,9 +92,9 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     ),
     # Phone / fax numbers named by a label
     (
-        r"phone|tel(?:ephone)?|mobile|cell|fax|contact\s*(?:no|number)",
+        r"phone|tel(?:ephone)?|mobile|cell|fax|call|contact\s*(?:no|number)",
         # a form may split the country code off with a dash or pointer
-        r"(\+?\d[\d\s().\-\u2013\u25ba]{6,61}\d)",
+        r"(\+?\d[\d \t().\-\u2013\u25ba]{6,61}\d)",
         EntityType.PHONE,
         0.8,
     ),

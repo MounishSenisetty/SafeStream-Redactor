@@ -138,3 +138,12 @@ def test_detector_declares_streaming_requirements() -> None:
     # boundary is still seen whole
     assert req.required_overlap >= req.left_context
     assert req.max_span >= 32
+
+
+def test_labeled_phone_value_never_crosses_a_line() -> None:
+    text = "phone=+1 415 555 0134\n2026-09-30T10:14:03Z DEBUG next line"
+    assert Redactor().redact(text) == "phone=[REDACTED]\n2026-09-30T10:14:03Z DEBUG next line"
+
+
+def test_call_is_a_phone_cue_for_a_bare_number() -> None:
+    assert Redactor().redact("call 4155552671 now") == "call [REDACTED] now"
