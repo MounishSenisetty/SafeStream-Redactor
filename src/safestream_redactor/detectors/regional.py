@@ -234,3 +234,18 @@ class RegionalDetector:
         for m in _PAN.finditer(text):
             out.append(emit(text, m.start(), m.end(), EntityType.IN_PAN, 0.75, "pan"))
         return out
+
+
+class IbanDetector(RegionalDetector):
+    """The IBAN rule alone (ISO 13616 mod-97 and the country's length): on by
+    default. The rest of the regional tier stays opt-in (``--regional``)."""
+
+    name = "iban"
+
+    def detect(self, text: str) -> list[Detection]:
+        out: list[Detection] = []
+        for m in _IBAN_START.finditer(text):
+            end = _iban_at(text, m.start())
+            if end is not None:
+                out.append(self._emit(text, m.start(), end, EntityType.IBAN, 0.9, "iban"))
+        return out

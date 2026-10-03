@@ -114,6 +114,7 @@ SAFESTREAM_TO_CANONICAL: dict[str, str] = {
     "uk_nino": "ID",
     "custom": "CUSTOM",
     "username": "USERNAME",
+    "url": "URL",
     "sex": "SEX",
     "title": "TITLE",
 }

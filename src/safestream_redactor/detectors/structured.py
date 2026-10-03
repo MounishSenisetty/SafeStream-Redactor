@@ -117,6 +117,31 @@ _SECRET_SUFFIXES = (
     "credentials", "connectionstring", "connstring", "dsn",
 )  # fmt: skip
 _SECRET_EXACT = frozenset({"pw", "pin", "otp", "cvv", "cvc"})
+# Field names that mean something else in a URL query (OAuth "state" is a CSRF
+# nonce, not a place), so they are not personal data there.
+_QUERY_NOT_PII = frozenset({"state"})
+# Extra names that are sensitive as URL query parameters (after ? or &) but too
+# generic as field names elsewhere: ?key=, ?sig=, ?session=, ?code=, ?email=
+_QUERY_TYPES: dict[str, EntityType] = {
+    **dict.fromkeys(("email", "mail", "emailaddress", "e"), EntityType.EMAIL),
+    **dict.fromkeys(
+        (
+            "key",
+            "sig",
+            "signature",
+            "session",
+            "sessionid",
+            "sid",
+            "auth",
+            "code",
+            "otp",
+            "hash",
+            "jwt",
+            "bearer",
+        ),
+        EntityType.SECRET,
+    ),
+}
 
 
 def field_type(key: str, prose: bool = False) -> EntityType | None:
@@ -205,6 +230,8 @@ def _valid(etype: EntityType, value: str) -> bool:
         return bool(_HAS_DIGIT.search(value)) and len(value) <= 64
     if etype is EntityType.USERNAME:
         return bool(_USERNAME_VALUE.match(value)) and value.lower() not in _STATUS_WORDS
+    if etype is EntityType.EMAIL:
+        return "@" in value or "%40" in value.lower()
     if etype is EntityType.SECRET:
         # any non-placeholder value of 3+ characters, letters-only included
         # ("open sesame"); a bare boolean or switch word is configuration
@@ -353,8 +380,12 @@ class StructuredFieldDetector:
     def detect(self, text: str) -> list[Detection]:
         found: dict[tuple[int, int], Detection] = {}
 
-        def emit(key: str, start: int, end: int, line: bool = False) -> None:
+        def emit(key: str, start: int, end: int, line: bool = False, query: bool = False) -> None:
             etype = field_type(key, self.prose)
+            if query and _norm(key) in _QUERY_NOT_PII:
+                etype = None
+            elif etype is None and query:  # a URL query parameter: its own vocabulary
+                etype = _QUERY_TYPES.get(_norm(key))
             if etype is None:
                 return
             raw = text[start:end]
@@ -398,7 +429,7 @@ class StructuredFieldDetector:
             for m in _PAIR.finditer(text):
                 span = first_group(m, range(2, 5))
                 if span:
-                    emit(m.group(1), *span)
+                    emit(m.group(1), *span, query=m.group(0)[0] in "?&")
             for m in _KEY_VALUE_ATTRS.finditer(text):
                 emit(m.group(1), m.start(2), m.end(2))
         if "=" in text or ":" in text:

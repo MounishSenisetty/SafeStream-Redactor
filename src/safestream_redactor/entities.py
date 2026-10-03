@@ -57,6 +57,9 @@ class EntityType(str, Enum):
     DATE = "date"
     # the value of a username/login field (field-anchored only)
     USERNAME = "username"
+    # every URL (prose profile); by default only credentialed/webhook URLs and
+    # the values of sensitive query parameters are redacted
+    URL = "url"
     # sex/gender and honorific/job-title fields (prose profile only)
     SEX = "sex"
     TITLE = "title"

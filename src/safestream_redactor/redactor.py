@@ -68,7 +68,7 @@ def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence
 # noise in logs (every date and time of day) but sensitive in documents.
 PROFILES: dict[str, dict[str, bool]] = {
     "default": {},
-    "prose": {"use_dates": True, "use_prose_fields": True},
+    "prose": {"use_dates": True, "use_prose_fields": True, "use_urls": True},
 }
 
 
@@ -105,6 +105,10 @@ class Redactor:
         Enable the date/time tier (``EntityType.DATE``). Off by default because
         logs carry a timestamp on every line; naming ``date`` in ``types`` also
         enables it. Labelled dates of birth (``DOB: …``) are always detected.
+    use_urls:
+        Redact every URL. Off by default (URLs with credentials, webhook URLs and
+        the values of sensitive query parameters are always redacted); on in the
+        prose profile.
     use_prose_fields:
         Also redact sex/gender and honorific/job-title fields (``"Gender": "F"``).
         Off by default; on in the prose profile.
@@ -164,6 +168,7 @@ class Redactor:
         use_regional: bool = False,
         use_dates: bool | None = None,
         use_prose_fields: bool | None = None,
+        use_urls: bool | None = None,
         profile: str = "default",
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
@@ -184,6 +189,8 @@ class Redactor:
             use_dates = PROFILES[profile].get("use_dates", False)
         if use_prose_fields is None:
             use_prose_fields = PROFILES[profile].get("use_prose_fields", False)
+        if use_urls is None:
+            use_urls = PROFILES[profile].get("use_urls", False)
         self.profile = profile
         _validate_streaming_args(chunk_size, overlap, min_confidence)
         self.policy = policy or RedactionPolicy()
@@ -269,10 +276,17 @@ class Redactor:
 
             self._detectors.append(EntropyDetector(backend=backend))
             self._detectors.append(CompoundSecretDetector(backend=backend))
-        from safestream_redactor.detectors.regional import RegionalDetector
+        from safestream_redactor.detectors.regional import IbanDetector, RegionalDetector
 
         if use_regional or (resolved_types is not None and REGIONAL_TYPES & set(resolved_types)):
             self._detectors.append(RegionalDetector())
+        elif resolved_types is None:
+            # IBAN (checksum-validated) is on by default; the rest is opt-in
+            self._detectors.append(IbanDetector())
+        if use_urls or (resolved_types is not None and EntityType.URL in resolved_types):
+            from safestream_redactor.detectors.deterministic import UrlDetector
+
+            self._detectors.append(UrlDetector())
         if use_dates or (resolved_types is not None and EntityType.DATE in resolved_types):
             from safestream_redactor.detectors.deterministic import DateDetector
 

@@ -62,6 +62,7 @@ _SEVERITY: dict[EntityType, str] = {
     EntityType.AWS_ACCOUNT_ID: LOW,  # an identifier, not a credential
     EntityType.DATE: LOW,
     EntityType.SEX: LOW,
+    EntityType.URL: LOW,
     EntityType.TITLE: LOW,
     EntityType.ORG: LOW,
     EntityType.LOC: LOW,

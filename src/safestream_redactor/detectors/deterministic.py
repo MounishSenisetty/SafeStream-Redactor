@@ -1026,6 +1026,7 @@ class NativeBacked:
 
 # Rules that match the value after a label rather than a self-identifying format.
 _LABEL_GATED = frozenset({EntityType.API_KEY, EntityType.AWS_SECRET, EntityType.URL_CREDENTIALS})
+_NEXT_PARAM = re.compile(r"&[A-Za-z_][A-Za-z0-9_.-]{0,40}=")
 
 # Bare phone candidates (no + and no parentheses) score below the default
 # threshold and need a cue word, because digit groups are also dates and ids.
@@ -1119,6 +1120,10 @@ class DeterministicDetector(NativeBacked):
         # reference or placeholder there (process.env.KEY, ${DB_PASS}, ****) is not
         # the secret. Shared Python post-filter, so both backends agree.
         found = [d for d in found if not (d.entity_type in _LABEL_GATED and is_placeholder(d.text))]
+        for d in found:  # in a URL, "&name=" starts the next query parameter
+            if d.entity_type in _LABEL_GATED and (cut := _NEXT_PARAM.search(d.text)):
+                d.end = d.start + cut.start()
+                d.text = d.text[: cut.start()]
         _shape_phones(text, found)  # shared Python step as well
         return found
 
@@ -1196,6 +1201,30 @@ class DeterministicDetector(NativeBacked):
                     )
                 )
         return found
+
+
+# Every URL (prose profile). Ends on a character that cannot be sentence
+# punctuation, so "see https://x.example/a." keeps its full stop; bounded below
+# the streaming overlap.
+_URL_PATTERNS: tuple[Pattern, ...] = (
+    Pattern(
+        EntityType.URL,
+        re.compile(r"(?:\b(?:https?|ftp)://|\bwww\.)[^\s<>\"'`]{0,2000}[^\s<>\"'`.,;:!?)\]}]"),
+        0.8,
+        anchors=("://", "www."),
+    ),
+)
+
+
+class UrlDetector(DeterministicDetector):
+    """Prose-profile tier: every URL (``EntityType.URL``). By default only URLs
+    with credentials, webhook paths, and sensitive query values are redacted."""
+
+    name = "url"
+
+    def __init__(self) -> None:
+        super().__init__(types=())
+        self._patterns = self._py_patterns = list(_URL_PATTERNS)
 
 
 class DateDetector(DeterministicDetector):
