@@ -528,6 +528,36 @@ it removes the only `+` false positive (a `+0000` timezone offset in a `date` li
 and loses no gold phone; the synthetic generators, which drew invented codes like
 `+13` and `+25`, now draw real ones.
 
+## Unicode word boundaries on non-ASCII text
+
+The `regex` crate's lazy DFA cannot evaluate a Unicode `` once it reads a
+non-ASCII byte; the search then falls back to a much slower engine for the rest
+of the haystack. Sixteen patterns and every label-anchored rule use ``, so a
+single accented name or curly quote in a 64 KiB window made the whole window
+10-20x slower. A synthetic corpus with a few accented names per window ran the
+full native `detect` at 1.7 MB/s.
+
+`patterns::WordBounded` keeps the exact semantics and the speed. On ASCII text,
+or for a pattern without ``, it scans as before. Otherwise a *relaxed* copy of
+the pattern with every `` removed (its match starts are a superset of the
+exact pattern's, and it has nothing the DFA must give up on) finds candidate
+starts at DFA speed, and the exact pattern verifies each one with an *anchored*
+search (`regex-automata`), which costs only the candidate's length. Candidates
+are tried left to right and the scan resumes after each match, which is
+`captures_iter`'s leftmost-first order. After 64 rejected candidates in one
+window the scan finishes with the exact regex's own linear-time search, so
+hostile input (a 60K-character word run glued to an accented letter, before an
+`@`) stays linear; `tests/test_recall_vectors.py` times it.
+
+Same corpus, 64 KiB windows, after the change (byte-identical output, checked by
+the differential tests plus glued-Unicode corpus lines and a 1,500-example fuzz):
+
+| Tier | Before | After |
+| --- | --- | --- |
+| deterministic | 11.5 MB/s | 37.0 MB/s |
+| labeled_identifier | 4.9 MB/s | 85.5 MB/s |
+| full `Redactor.detect` | 1.7 MB/s | 14.7 MB/s |
+
 ## Status
 
 - Step 2 (`detectors/_lookaround_free.py` + `tests/test_lookaround_free.py`):

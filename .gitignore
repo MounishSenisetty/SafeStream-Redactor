@@ -226,3 +226,6 @@ benchmarks/data/*
 benchmarks/data_hard/
 # Benchmark run outputs (predictions/results/reports) are regenerated, not tracked.
 benchmarks/results/
+
+# exported ONNX NER models (scripts/export_onnx.py)
+models/

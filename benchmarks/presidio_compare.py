@@ -66,6 +66,9 @@ ROOT = Path(__file__).resolve().parent.parent
 TOOLS = (
     "safestream-native",
     "safestream-native-ner",
+    # + the opt-in date/time tier: Presidio's default redacts DATE_TIME, so this is
+    # the configuration that matches Presidio's scope on RedactionBench
+    "safestream-native-ner-dates",
     "safestream-python",
     "presidio-regex",
     "presidio-sm",
@@ -159,7 +162,8 @@ def run_one(tool: str, dataset: str) -> dict[str, Any]:
 
         redactor = Redactor(
             backend="python" if tool == "safestream-python" else "native",
-            use_ner=tool.endswith("-ner"),
+            use_ner="-ner" in tool,
+            use_dates=tool.endswith("-dates"),
             types=LOG_TYPES if restricted else None,
         )
 

@@ -1,0 +1,394 @@
+{
+  "metadata": {
+    "tool": "safestream-redactor",
+    "safestream_version": "0.4.0",
+    "dataset": {
+      "repo_id": "RedactionBench/RedactionBench",
+      "source": "vendored files in benchmarks\\data\\redactionbench",
+      "revision": "d45e9cec89bc49c69355e252fec29cc0229982f6",
+      "files": [
+        "benchmarks\\data\\redactionbench\\hf\\data\\test-00000-of-00001.parquet"
+      ],
+      "raw_rows": 200,
+      "parsed_records": 200,
+      "scored_records": 200,
+      "resolved_fields": {
+        "text": "raw_text",
+        "id": null,
+        "domain": "category",
+        "redacted_text": null,
+        "spans": "spans"
+      },
+      "load_skipped": []
+    },
+    "config": {
+      "prediction_mode": "streaming",
+      "chunk_size": 4096,
+      "overlap_match_threshold": 0.5,
+      "min_confidence": 0.5,
+      "use_ner": false,
+      "types": null,
+      "detector_tiers": [
+        "deterministic",
+        "labeled_identifier",
+        "entropy",
+        "compound_secret",
+        "contextual"
+      ],
+      "label_map_overrides": "",
+      "gold_label_kind": "necessity"
+    },
+    "evaluated_types": [],
+    "unsupported_categories": {},
+    "failed_samples": [],
+    "python": "3.14.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "duration_seconds": 10.791,
+    "command": "python -m benchmarks.redactionbench.run run --out-dir research/results/redactionbench/t0_2026-10-03",
+    "task": "binary redaction (necessity: mandatory/contextual) — RedactionBench R-Score style",
+    "predicted_type_distribution": {
+      "ipv4": 3115,
+      "secret": 1934,
+      "email": 1092,
+      "address": 341,
+      "phone": 259,
+      "id_number": 218,
+      "aws_account_id": 213,
+      "mac_address": 159,
+      "api_key": 154,
+      "jwt": 146,
+      "aws_key": 78,
+      "url_credentials": 58,
+      "stripe_key": 46,
+      "ssn": 38,
+      "credit_card": 37,
+      "dob": 28,
+      "ipv6": 21,
+      "slack_webhook": 10,
+      "github_token": 6,
+      "openai_key": 5,
+      "aws_secret": 4,
+      "slack_token": 2,
+      "sendgrid_key": 1,
+      "anthropic_key": 1,
+      "private_key": 1
+    }
+  },
+  "overall": {
+    "documents": 200,
+    "predicted_spans_total": 7967,
+    "character_level_rscore_style": {
+      "note": "per-character redaction mask; formatting-agnostic (R-Score methodology). Precision/F1/accuracy are meaningful for the 'all' subset; for the mandatory/contextual subsets read RECALL (coverage of that subset).",
+      "all": {
+        "char_tp": 171504,
+        "char_fp": 52221,
+        "char_fn": 211958,
+        "char_tn": 2228063,
+        "char_precision": 0.7666,
+        "char_recall": 0.4473,
+        "char_f1": 0.5649,
+        "char_accuracy": 0.9008
+      },
+      "mandatory": {
+        "char_tp": 125392,
+        "char_fp": 98333,
+        "char_fn": 39847,
+        "char_tn": 2400174,
+        "char_precision": 0.5605,
+        "char_recall": 0.7589,
+        "char_f1": 0.6447,
+        "char_accuracy": 0.9481
+      },
+      "contextual": {
+        "char_tp": 46112,
+        "char_fp": 177613,
+        "char_fn": 172111,
+        "char_tn": 2267910,
+        "char_precision": 0.2061,
+        "char_recall": 0.2113,
+        "char_f1": 0.2087,
+        "char_accuracy": 0.8687
+      },
+      "char_f1_all_bootstrap_ci_95": [
+        0.5649,
+        0.5089,
+        0.6139
+      ]
+    },
+    "span_level_type_agnostic": {
+      "note": ">=threshold overlap, greedy 1:1, any predicted type counts (dataset has no PII types). Recall = gold redaction spans covered; precision = predictions that land on a gold span.",
+      "all": {
+        "tp": 5854,
+        "fp": 2113,
+        "fn": 47432,
+        "precision": 0.7348,
+        "recall": 0.1099,
+        "f1": 0.1911
+      },
+      "mandatory": {
+        "tp": 4565,
+        "fp": 3402,
+        "fn": 12428,
+        "precision": 0.573,
+        "recall": 0.2686,
+        "f1": 0.3658
+      },
+      "contextual": {
+        "tp": 4426,
+        "fp": 3541,
+        "fn": 31867,
+        "precision": 0.5555,
+        "recall": 0.122,
+        "f1": 0.2
+      }
+    },
+    "mandatory_protection": {
+      "note": "fraction of documents with EVERY mandatory character redacted (no leak) — a per-document DLP accuracy, distinct from precision/recall.",
+      "no_leak_document_rate": 0.14
+    }
+  },
+  "per_domain": {
+    "academic": {
+      "documents": 16,
+      "char_all": {
+        "char_tp": 1117,
+        "char_fp": 253,
+        "char_fn": 10216,
+        "char_tn": 79484,
+        "char_precision": 0.8153,
+        "char_recall": 0.0986,
+        "char_f1": 0.1759,
+        "char_accuracy": 0.885
+      },
+      "char_mandatory_recall": 0.2578,
+      "span_all": {
+        "tp": 63,
+        "fp": 5,
+        "fn": 2185,
+        "precision": 0.9265,
+        "recall": 0.028,
+        "f1": 0.0544
+      }
+    },
+    "code": {
+      "documents": 16,
+      "char_all": {
+        "char_tp": 8106,
+        "char_fp": 2369,
+        "char_fn": 4002,
+        "char_tn": 300922,
+        "char_precision": 0.7738,
+        "char_recall": 0.6695,
+        "char_f1": 0.7179,
+        "char_accuracy": 0.9798
+      },
+      "char_mandatory_recall": 0.7759,
+      "span_all": {
+        "tp": 210,
+        "fp": 103,
+        "fn": 335,
+        "precision": 0.6709,
+        "recall": 0.3853,
+        "f1": 0.4895
+      }
+    },
+    "emails": {
+      "documents": 16,
+      "char_all": {
+        "char_tp": 5301,
+        "char_fp": 350,
+        "char_fn": 8751,
+        "char_tn": 40303,
+        "char_precision": 0.9381,
+        "char_recall": 0.3772,
+        "char_f1": 0.5381,
+        "char_accuracy": 0.8336
+      },
+      "char_mandatory_recall": 0.4175,
+      "span_all": {
+        "tp": 206,
+        "fp": 11,
+        "fn": 2358,
+        "precision": 0.9493,
+        "recall": 0.0803,
+        "f1": 0.1481
+      }
+    },
+    "files": {
+      "documents": 36,
+      "char_all": {
+        "char_tp": 56926,
+        "char_fp": 24464,
+        "char_fn": 54088,
+        "char_tn": 490652,
+        "char_precision": 0.6994,
+        "char_recall": 0.5128,
+        "char_f1": 0.5917,
+        "char_accuracy": 0.8745
+      },
+      "char_mandatory_recall": 0.7179,
+      "span_all": {
+        "tp": 1548,
+        "fp": 744,
+        "fn": 9000,
+        "precision": 0.6754,
+        "recall": 0.1468,
+        "f1": 0.2411
+      }
+    },
+    "financial": {
+      "documents": 18,
+      "char_all": {
+        "char_tp": 2331,
+        "char_fp": 63,
+        "char_fn": 9877,
+        "char_tn": 84819,
+        "char_precision": 0.9737,
+        "char_recall": 0.1909,
+        "char_f1": 0.3193,
+        "char_accuracy": 0.8976
+      },
+      "char_mandatory_recall": 0.3806,
+      "span_all": {
+        "tp": 128,
+        "fp": 4,
+        "fn": 2837,
+        "precision": 0.9697,
+        "recall": 0.0432,
+        "f1": 0.0827
+      }
+    },
+    "government": {
+      "documents": 16,
+      "char_all": {
+        "char_tp": 2274,
+        "char_fp": 168,
+        "char_fn": 11469,
+        "char_tn": 82025,
+        "char_precision": 0.9312,
+        "char_recall": 0.1655,
+        "char_f1": 0.281,
+        "char_accuracy": 0.8787
+      },
+      "char_mandatory_recall": 0.3456,
+      "span_all": {
+        "tp": 140,
+        "fp": 6,
+        "fn": 4414,
+        "precision": 0.9589,
+        "recall": 0.0307,
+        "f1": 0.0596
+      }
+    },
+    "legal": {
+      "documents": 18,
+      "char_all": {
+        "char_tp": 2721,
+        "char_fp": 146,
+        "char_fn": 14848,
+        "char_tn": 319870,
+        "char_precision": 0.9491,
+        "char_recall": 0.1549,
+        "char_f1": 0.2663,
+        "char_accuracy": 0.9556
+      },
+      "char_mandatory_recall": 0.3399,
+      "span_all": {
+        "tp": 160,
+        "fp": 11,
+        "fn": 3282,
+        "precision": 0.9357,
+        "recall": 0.0465,
+        "f1": 0.0886
+      }
+    },
+    "logs": {
+      "documents": 17,
+      "char_all": {
+        "char_tp": 78086,
+        "char_fp": 19026,
+        "char_fn": 80912,
+        "char_tn": 535041,
+        "char_precision": 0.8041,
+        "char_recall": 0.4911,
+        "char_f1": 0.6098,
+        "char_accuracy": 0.8598
+      },
+      "char_mandatory_recall": 0.9069,
+      "span_all": {
+        "tp": 2816,
+        "fp": 1063,
+        "fn": 17757,
+        "precision": 0.726,
+        "recall": 0.1369,
+        "f1": 0.2303
+      }
+    },
+    "medical": {
+      "documents": 16,
+      "char_all": {
+        "char_tp": 1053,
+        "char_fp": 553,
+        "char_fn": 5113,
+        "char_tn": 150836,
+        "char_precision": 0.6557,
+        "char_recall": 0.1708,
+        "char_f1": 0.271,
+        "char_accuracy": 0.964
+      },
+      "char_mandatory_recall": 0.2443,
+      "span_all": {
+        "tp": 69,
+        "fp": 26,
+        "fn": 1823,
+        "precision": 0.7263,
+        "recall": 0.0365,
+        "f1": 0.0695
+      }
+    },
+    "operations": {
+      "documents": 15,
+      "char_all": {
+        "char_tp": 1638,
+        "char_fp": 73,
+        "char_fn": 4573,
+        "char_tn": 60120,
+        "char_precision": 0.9573,
+        "char_recall": 0.2637,
+        "char_f1": 0.4135,
+        "char_accuracy": 0.93
+      },
+      "char_mandatory_recall": 0.3608,
+      "span_all": {
+        "tp": 88,
+        "fp": 2,
+        "fn": 1286,
+        "precision": 0.9778,
+        "recall": 0.064,
+        "f1": 0.1202
+      }
+    },
+    "terminal": {
+      "documents": 16,
+      "char_all": {
+        "char_tp": 11951,
+        "char_fp": 4756,
+        "char_fn": 8109,
+        "char_tn": 83991,
+        "char_precision": 0.7153,
+        "char_recall": 0.5958,
+        "char_f1": 0.6501,
+        "char_accuracy": 0.8818
+      },
+      "char_mandatory_recall": 0.8304,
+      "span_all": {
+        "tp": 426,
+        "fp": 138,
+        "fn": 2155,
+        "precision": 0.7553,
+        "recall": 0.1651,
+        "f1": 0.2709
+      }
+    }
+  }
+}

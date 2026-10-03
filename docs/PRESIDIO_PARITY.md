@@ -13,6 +13,9 @@ overlooked. Numbers come from [`benchmarks/PRESIDIO_COMPARISON.md`](../benchmark
 | Checksum-validated: credit card (Luhn), SSN structure | **Have** | `deterministic.luhn_ok`, SSN area/group rules |
 | Checksum-validated: IBAN, UK NHS, India Aadhaar, Bitcoin (base58check, bech32/m) | **Added (opt-in)** | `detectors/regional.py` |
 | Shape-validated only: UK NINO, India PAN, Ethereum address | **Added (opt-in)** | no checksum exists / needs Keccak-256 (not in the stdlib) |
+| MAC address (Presidio reports it as `IP_ADDRESS`) | **Added** | `mac_address`, default on |
+| AWS account ID (ARN / endpoint / ECR framed) | **Added** | `aws_account_id`, default on. Presidio has no equivalent |
+| `DATE_TIME` | **Added (opt-in)** | `date`: `--dates` / `use_dates=True`. Off by default because log timestamps would be redacted |
 | Shannon-entropy secrets and tokens | **Have** | `detectors/entropy.py` (+ compound-secret tier) |
 | Context-aware scoring (boost/suppress by nearby words) | **Have** | `detectors/contextual.py` (48-character left window), `labeled_id.py` cue cascade |
 | Custom recognizers by config or plugin | **Have** | `--custom-regex`, TOML `[custom]`, entry-point plugins |

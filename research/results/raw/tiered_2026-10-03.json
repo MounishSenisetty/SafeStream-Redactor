@@ -1,0 +1,103 @@
+{
+  "platform": "win32",
+  "cpu_count": 16,
+  "configs": {
+    "t0": {
+      "recall": {
+        "structured": {
+          "recall": 0.9997,
+          "found": 3322,
+          "total": 3323,
+          "by_type": {
+            "anthropic_key": 1.0,
+            "api_key": 1.0,
+            "aws_key": 1.0,
+            "credit_card": 1.0,
+            "email": 1.0,
+            "github_token": 1.0,
+            "ipv4": 1.0,
+            "jwt": 1.0,
+            "phone": 1.0,
+            "private_key": 1.0,
+            "secret": 0.9964,
+            "ssn": 1.0
+          }
+        },
+        "person": {
+          "recall": 0.0,
+          "found": 0,
+          "total": 3227,
+          "by_type": {
+            "person": 0.0
+          }
+        }
+      },
+      "latency": {
+        "p50_ms": 3.56,
+        "p99_ms": 6.44,
+        "windows": 62
+      },
+      "throughput_mb_s": {
+        "1": 5.91,
+        "4": 31.79,
+        "8": 59.16,
+        "16": 57.99
+      },
+      "throughput_corpus_mb": {
+        "1": 256,
+        "4": 256,
+        "8": 256,
+        "16": 256
+      }
+    },
+    "t0_t2": {
+      "recall": {
+        "structured": {
+          "recall": 0.9997,
+          "found": 3322,
+          "total": 3323,
+          "by_type": {
+            "anthropic_key": 1.0,
+            "api_key": 1.0,
+            "aws_key": 1.0,
+            "credit_card": 1.0,
+            "email": 1.0,
+            "github_token": 1.0,
+            "ipv4": 1.0,
+            "jwt": 1.0,
+            "phone": 1.0,
+            "private_key": 1.0,
+            "secret": 0.9964,
+            "ssn": 1.0
+          }
+        },
+        "person": {
+          "recall": 0.99969,
+          "found": 3226,
+          "total": 3227,
+          "by_type": {
+            "person": 0.9997
+          }
+        }
+      },
+      "latency": {
+        "p50_ms": 2509.2,
+        "p99_ms": 3501.15,
+        "windows": 62
+      },
+      "throughput_mb_s": {
+        "1": 0.04,
+        "4": 0.11,
+        "8": 0.11,
+        "16": 0.11
+      },
+      "throughput_corpus_mb": {
+        "1": 2,
+        "4": 4.4040192,
+        "8": 8.8080384,
+        "16": 17.6160768
+      }
+    }
+  },
+  "model_input_fraction": 0.0629
+}

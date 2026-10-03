@@ -22,9 +22,9 @@ Python so it can be:
 Scope and honesty
 -----------------
 
-Six patterns convert cleanly (a lookaround-free candidate + a boundary check
+Seven patterns convert cleanly (a lookaround-free candidate + a boundary check
 reproduces ``re.finditer`` byte-for-byte): ``ssn``, ``ipv4``, ``ipv6``,
-``aws_secret``, ``anthropic_key``, ``openai_key``. Their equivalence is a required
+``mac_address``, ``aws_secret``, ``anthropic_key``, ``openai_key``. Their equivalence is a required
 gate in the test module.
 
 **``credit_card`` and ``phone`` are deliberately NOT here.** Their cores are
@@ -60,6 +60,8 @@ _C_DIGIT = re.compile(r"\d")  # ipv4 (?!\d) / (?!\.\d)
 _C_WORD_COLON_DOT = re.compile(r"[\w:.]")  # ipv6 (?<![\w:.])
 _C_WORD_COLON = re.compile(r"[\w:]")  # ipv6 (?![\w:])
 _C_AWS = re.compile(r"[A-Za-z0-9/+]")  # aws (?![A-Za-z0-9/+]) — ASCII by design
+_C_WORD_COLON_DOT_DASH = re.compile(r"[\w:.-]")  # mac (?<![\w:.-])
+_C_WORD_COLON_DASH = re.compile(r"[\w:-]")  # mac (?![\w:-])
 
 
 def _before_ok(text: str, start: int, cls: re.Pattern[str]) -> bool:
@@ -118,6 +120,17 @@ def _ipv6_boundary(text: str, s: int, e: int) -> bool:
     return _before_ok(text, s, _C_WORD_COLON_DOT) and _after_ok(text, e, _C_WORD_COLON)
 
 
+def _mac_boundary(text: str, s: int, e: int) -> bool:
+    return _before_ok(text, s, _C_WORD_COLON_DOT_DASH) and _after_ok(text, e, _C_WORD_COLON_DASH)
+
+
+def _mac_value_ok(value: str) -> bool:
+    # the ``([:-])…\1`` backreference: one separator throughout, 6..20 groups.
+    # A mixed or over-long run fails here exactly where the original fails: every
+    # shorter prefix ends before a separator, which its lookahead rejects.
+    return (":" in value) != ("-" in value) and 6 <= (len(value) + 1) // 3 <= 20
+
+
 def _aws_after_ok(text: str, s: int, e: int) -> bool:
     # (?![A-Za-z0-9/+]) on the captured 40-char value
     return _after_ok(text, e, _C_AWS)
@@ -147,6 +160,15 @@ LF_PATTERNS: tuple[LFPattern, ...] = (
         boundary=_ipv6_boundary,
         value_ok=ipv6_ok,
         anchors=(":",),
+    ),
+    # MAC: lookarounds and the separator backreference re-checked in code
+    LFPattern(
+        EntityType.MAC_ADDRESS,
+        re.compile(r"[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2})+"),
+        0.85,
+        boundary=_mac_boundary,
+        value_ok=_mac_value_ok,
+        anchors=(":", "-"),
     ),
     # AWS secret: label-anchored; lookahead removed and re-checked on the value.
     LFPattern(

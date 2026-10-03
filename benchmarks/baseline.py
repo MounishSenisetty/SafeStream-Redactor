@@ -41,13 +41,19 @@ import contextlib
 import json
 import os
 import random
-import resource
 import subprocess
 import sys
 import tempfile
 import time
 import tracemalloc
 from dataclasses import asdict, dataclass
+
+try:
+    import resource
+except ImportError:  # Windows: no getrusage
+    # ponytail: RSS reads 0 and CPU is parent-only (time.process_time) here;
+    # use psutil if per-worker memory on Windows ever matters.
+    resource = None  # type: ignore[assignment]
 
 # --- deterministic synthetic corpus generation -------------------------------
 #
@@ -133,7 +139,9 @@ class Result:
     fell_back: bool
 
 
-def _rss_mb(ru: resource.struct_rusage) -> float:
+def _rss_mb(ru: resource.struct_rusage | None) -> float:
+    if ru is None:
+        return 0.0
     # ru_maxrss is KB on Linux, bytes on macOS
     kb = ru.ru_maxrss if sys.platform.startswith("linux") else ru.ru_maxrss / 1024
     return kb / 1024
@@ -172,9 +180,13 @@ def run_one(path: str, workers: int, *, heap: bool = True, backend: str = "pytho
     wall = time.perf_counter() - t0
 
     # Capture RSS/CPU now, before the (untimed) heap pass inflates them.
-    self_ru = resource.getrusage(resource.RUSAGE_SELF)
-    child_ru = resource.getrusage(resource.RUSAGE_CHILDREN)
-    cpu = self_ru.ru_utime + self_ru.ru_stime + child_ru.ru_utime + child_ru.ru_stime
+    if resource is not None:
+        self_ru = resource.getrusage(resource.RUSAGE_SELF)
+        child_ru = resource.getrusage(resource.RUSAGE_CHILDREN)
+        cpu = self_ru.ru_utime + self_ru.ru_stime + child_ru.ru_utime + child_ru.ru_stime
+    else:
+        self_ru = child_ru = None
+        cpu = time.process_time()
 
     # Separate untimed pass to measure peak Python heap without skewing timing.
     peak_heap = 0

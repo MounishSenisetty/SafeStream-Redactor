@@ -9,12 +9,12 @@
 //! skips straight to candidate cues.
 
 use crate::error::{try_push, Error};
-use crate::patterns::compile;
-use regex::Regex;
+use crate::patterns::WordBounded;
 use std::sync::OnceLock;
 
 /// `labeled_id._SEP`.
-const SEP: &str = r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.]\s*)?";
+const SEP: &str =
+    r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.\u2013\u2014\u25ba|]\s*)?";
 
 /// `labeled_id._RULES`: (cue alternation, value pattern, entity type, confidence).
 pub const RULES: &[(&str, &str, &str, f64)] = &[
@@ -32,7 +32,7 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
     ),
     (
         r"phone|tel(?:ephone)?|mobile|cell|fax|contact\s*(?:no|number)",
-        r"(\+?\d[\d\s().-]{6,61}\d)",
+        r"(\+?\d[\d\s().\-\u2013\u25ba]{6,61}\d)",
         "phone",
         0.8,
     ),
@@ -44,7 +44,7 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
     ),
     (
         r"account|acct|routing|aba|iban|swift|bic|bank|sort\s*code",
-        r"([A-Z]{2}\d{2}[A-Z0-9]{6,30}|\d[\d\s-]{4,62}\d)",
+        r"([A-Z]{2}\d{2}[A-Z0-9]{6,30}|[A-Z]{1,6}-\d[A-Z0-9-]{3,56}|\d[\d\s-]{4,62}\d)",
         "id_number",
         0.8,
     ),
@@ -54,6 +54,12 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
             r"badge|tax|medical\s*record|mrn|npi|licen[cs]e|passport|",
             r"national\s*id|registration|enrol?lment"
         ),
+        r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
+        "id_number",
+        0.75,
+    ),
+    (
+        r"case\s*(?:no|number|num)|docket|policy|claim|visa|record",
         r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
         "id_number",
         0.75,
@@ -79,13 +85,13 @@ pub struct LabeledMatch {
     pub rule: u8,
 }
 
-fn engine() -> Result<&'static [Regex], Error> {
-    static ENGINE: OnceLock<Result<Vec<Regex>, Error>> = OnceLock::new();
+fn engine() -> Result<&'static [WordBounded], Error> {
+    static ENGINE: OnceLock<Result<Vec<WordBounded>, Error>> = OnceLock::new();
     ENGINE
         .get_or_init(|| {
             rule_sources()
                 .iter()
-                .map(|src| compile("labeled_identifier", &format!("(?i){src}")))
+                .map(|src| WordBounded::new("labeled_identifier", &format!("(?i){src}")))
                 .collect()
         })
         .as_ref()
@@ -98,18 +104,18 @@ fn engine() -> Result<&'static [Regex], Error> {
 /// characters, so the caller applies it after offset conversion.
 pub(crate) fn scan_labeled(text: &str, out: &mut Vec<LabeledMatch>) -> Result<(), Error> {
     for (rule, re) in engine()?.iter().enumerate() {
-        for caps in re.captures_iter(text) {
-            let (Some(whole), Some(value)) = (caps.get(0), caps.get(1)) else {
-                continue;
+        re.for_each(text, true, |(start, _end), value| {
+            let Some((value_start, value_end)) = value else {
+                return Ok(());
             };
             let m = LabeledMatch {
-                start: whole.start(),
-                value_start: value.start(),
-                value_end: value.end(),
+                start,
+                value_start,
+                value_end,
                 rule: rule as u8,
             };
-            try_push(out, m)?;
-        }
+            try_push(out, m)
+        })?;
     }
     Ok(())
 }

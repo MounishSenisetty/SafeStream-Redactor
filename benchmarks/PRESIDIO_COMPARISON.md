@@ -86,6 +86,39 @@ exists only without ML.
   (`docs/FORMAL_MODEL.md`, Theorem 3; `tests/test_memory.py`). Presidio documents no
   such bound; callers must chunk, and chunking can split entities.
 
+## Closing the entity-recall gap (2026-10-02)
+
+The table above predates the `mac_address`, `aws_account_id` and opt-in `date` detectors.
+A span-level diff of the gold spans that `presidio-sm` fully redacts and
+`safestream-*-ner` does not found three causes:
+
+1. **Dates and times (3,404 spans).** Presidio maps spaCy's `DATE` and `TIME` labels to
+   `DATE_TIME`. RedactionBench splits one date into about 5 gold spans, so every missed
+   date costs 5 entities.
+2. **MAC addresses (about 1,100 spans).** Presidio's `IP_ADDRESS` recognizer redacts them.
+   SafeStream had no MAC detector.
+3. **AWS account IDs** in ARNs and SQS URLs.
+
+What remained after the fix is mostly Presidio's weak patterns firing on noise that happens
+to overlap gold: `IN_PAN` on words like "Assessment", and `US_DRIVER_LICENSE` on any digit
+run. Copying those patterns would trade precision for score.
+
+Measured in one run on the full 200 documents. The tools ran in-process on Windows, so
+there is no throughput or RSS column, and Presidio was fed 100 k-character pieces, which
+shifts its numbers slightly from the 20 k-piece Linux table above. Each row uses the
+pure-Python tier (byte-identical detections to native).
+
+| Configuration | Entity recall | Char precision | Char recall | Mandatory span recall |
+| --- | --- | --- | --- | --- |
+| presidio-sm | 0.624 | 0.328 | 0.421 | 0.734 |
+| safestream (no NER) | 0.500 | **0.760** | 0.430 | 0.693 |
+| safestream + NER | 0.576 | 0.554 | 0.555 | 0.789 |
+| **safestream + NER + `--dates`** | **0.647** | 0.492 | **0.577** | **0.805** |
+
+With the date tier on, which matches the scope Presidio redacts by default, SafeStream
+leads on every column. Its precision is still 1.5× Presidio's. Regenerate the official
+table on Linux with the new `safestream-native-ner-dates` tool in `presidio_compare.py`.
+
 ## What the evidence does and does not support
 
 * **Structured PII in noisy logs.** SafeStream catches every gold email, phone, card,

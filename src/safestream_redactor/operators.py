@@ -215,7 +215,11 @@ _FAKE: dict[str, Callable[[bytes], str]] = {
     "person": lambda d: f"{_FIRST[d[0] % 8]} {_LAST[d[1] % 8]}",
     "org": lambda d: f"Example Organization {d[0] % 100}",
     "loc": lambda d: f"Exampleville {d[0] % 100}",
+    "address": lambda d: f"{100 + d[0] % 900} Example Street",
     "dob": lambda d: f"19{70 + d[0] % 30}-{1 + d[1] % 12:02d}-{1 + d[2] % 28:02d}",
+    "date": lambda d: f"19{70 + d[0] % 30}-{1 + d[1] % 12:02d}-{1 + d[2] % 28:02d}",
+    # 00:00:5E:00:53:xx is the IANA block reserved for documentation (RFC 7042)
+    "mac_address": lambda d: f"00:00:5e:00:53:{d[0]:02x}",
 }
 
 

@@ -91,6 +91,10 @@ class Redactor:
         Aadhaar/PAN; ``detectors/regional.py``). Off by default because it changes
         what existing deployments redact; naming one of its types in ``types``
         also enables it.
+    use_dates:
+        Enable the date/time tier (``EntityType.DATE``). Off by default because
+        logs carry a timestamp on every line; naming ``date`` in ``types`` also
+        enables it.
     calibrator:
         Optional trained :class:`~safestream_redactor.calibration.Calibrator`.
         When given, each detection's hand-set confidence is replaced by the
@@ -137,9 +141,10 @@ class Redactor:
         onnx_model: str | None = None,
         onnx_vocab: str | dict[str, int] | None = None,
         onnx_labels: str | dict[int | str, str] | None = None,
-        onnx_min_score: float = 0.5,
+        onnx_min_score: float = 0.35,
         use_entropy: bool = True,
         use_regional: bool = False,
+        use_dates: bool = False,
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
         load_plugins: bool = False,
@@ -221,6 +226,10 @@ class Redactor:
 
         if use_regional or (resolved_types is not None and REGIONAL_TYPES & set(resolved_types)):
             self._detectors.append(RegionalDetector())
+        if use_dates or (resolved_types is not None and EntityType.DATE in resolved_types):
+            from safestream_redactor.detectors.deterministic import DateDetector
+
+            self._detectors.append(DateDetector())
         self._detectors.extend(extra_detectors)
         # third-party detectors registered via entry points (opt-in)
         if load_plugins:

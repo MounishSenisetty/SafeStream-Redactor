@@ -455,6 +455,7 @@ dependencies = [
  "proptest",
  "pyo3",
  "regex",
+ "regex-automata",
  "regex-syntax",
 ]
 

@@ -32,6 +32,9 @@ python = ["dep:pyo3"]
 # matrix small). extension-module: link against the host interpreter at import.
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"], optional = true }
 regex = "1"
+# Already in the graph through `regex`; used directly for anchored searches
+# (`patterns::WordBounded`), which the `regex` API does not expose.
+regex-automata = "0.4"
 # The same crate `regex` uses for its Unicode classes; `is_word_character` is the
 # exact `\w` the compiled patterns use, so code-level boundary checks agree with them.
 regex-syntax = "0.8"

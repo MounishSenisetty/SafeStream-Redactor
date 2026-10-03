@@ -85,6 +85,12 @@ CORPUS = [
     "naïve10.20.30.40",
     "٠٩123-45-6789",  # arabic-indic digits adjacent
     "sk-ant-api03-Ab12Cd34Ef56Gh78Ij90Kl12文",
+    # MAC: consistent vs mixed separators, too few / too many groups, adjacency
+    "MAC=95:a8:88:cf:93:a8:6f:70:8a:9b:0c:1d:08:00 SRC",
+    "hw 00-1A-2B-3C-4D-5E and 00:1A-2B:3C-4D:5E and aa:bb:cc:dd:ee",
+    "x00:11:22:33:44:55 00:11:22:33:44:55x 00:11:22:33:44:55: .00:11:22:33:44:55",
+    ":".join(["ab"] * 20) + " " + ":".join(["ab"] * 21),
+    "aaa:bb:cc:dd:ee:ff 00:11:22:33:44:55-66 文00:11:22:33:44:55é",
 ]
 
 
@@ -123,6 +129,10 @@ _FRAGMENTS = [
     "٩",
     "abcdef",
     "999",
+    "a8",
+    "0c",
+    "00:11:22:33:44:55",
+    "aa-bb-cc-dd-ee-ff",
 ]
 
 fuzzed = st.lists(st.sampled_from(_FRAGMENTS), min_size=0, max_size=40).map("".join)

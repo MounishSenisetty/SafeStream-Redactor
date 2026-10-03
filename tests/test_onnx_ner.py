@@ -28,7 +28,7 @@ from safestream_redactor.detectors.onnx_ner import (
     decode_bio,
     split_label,
 )
-from safestream_redactor.entities import EntityType
+from safestream_redactor.entities import Detection, EntityType
 
 # The default CoNLL IOB2 scheme the detector ships.
 _ID2LABEL = {0: "O", 1: "B-PER", 2: "I-PER", 3: "B-ORG", 4: "I-ORG", 5: "B-LOC", 6: "I-LOC"}
@@ -58,7 +58,7 @@ def test_decode_merges_bio_run():
     tokens = _toks([(0, 4), (5, 10)])
     preds = [(1, 0.9), (2, 0.8)]
     out = decode_bio(tokens, preds, _ID2LABEL, _TAG_MAP, 0.5)
-    assert out == [(0, 10, EntityType.PERSON, 0.8, "PER")]  # conf = min over span
+    assert out == [(0, 10, EntityType.PERSON, pytest.approx(0.85), "PER")]  # mean over span
 
 
 def test_decode_b_starts_new_entity():
@@ -67,6 +67,15 @@ def test_decode_b_starts_new_entity():
     preds = [(1, 0.9), (1, 0.95)]
     out = decode_bio(tokens, preds, _ID2LABEL, _TAG_MAP, 0.5)
     assert [(s, e, t.value) for s, e, t, _c, _g in out] == [(0, 4, "person"), (5, 9, "person")]
+
+
+def test_decode_b_on_glued_subword_continues_the_word():
+    # "Olusegun Obasanjo" as O|lus|eg|un Obasanjo with every first-name piece B-PER:
+    # one span, or resolution keeps "Olusegun" and leaks the surname
+    tokens = _toks([(0, 1), (1, 4), (4, 6), (6, 8), (9, 17)])
+    preds = [(1, 0.99), (1, 0.99), (1, 0.99), (1, 0.99), (2, 0.98)]
+    out = decode_bio(tokens, preds, _ID2LABEL, _TAG_MAP, 0.5)
+    assert out == [(0, 17, EntityType.PERSON, pytest.approx(0.988), "PER")]
 
 
 def test_decode_tag_change_and_O_break():
@@ -89,8 +98,34 @@ def test_decode_special_token_breaks_entity():
 
 def test_decode_min_score_filters():
     tokens = _toks([(0, 4), (5, 10)])
-    preds = [(1, 0.9), (2, 0.3)]  # min = 0.3 < 0.5 -> dropped
+    preds = [(1, 0.4), (2, 0.3)]  # mean = 0.35 < 0.5 -> dropped
     assert decode_bio(tokens, preds, _ID2LABEL, _TAG_MAP, 0.5) == []
+
+
+def test_decode_one_weak_subword_does_not_veto_a_name():
+    # "Diego Watanabe" with one uncertain piece (0.19): the mean keeps the name
+    tokens = _toks([(0, 5), (6, 7), (7, 10), (10, 12), (12, 14)])
+    preds = [(2, 0.19), (2, 0.81), (2, 0.78), (2, 0.8), (2, 0.76)]
+    ((start, end, _t, conf, _g),) = decode_bio(tokens, preds, _ID2LABEL, _TAG_MAP, 0.35)
+    assert (start, end) == (0, 14) and conf == pytest.approx(0.668)
+
+
+def test_name_parts_tagged_separately_become_one_redaction():
+    from safestream_redactor.detectors.onnx_ner import _join_spaced
+
+    text = "Olusegun Tanaka approved"
+    parts = [
+        Detection(0, 8, "Olusegun", EntityType.PERSON, 0.9, "onnx"),
+        Detection(9, 15, "Tanaka", EntityType.PERSON, 0.8, "onnx"),
+    ]
+    (joined,) = _join_spaced(text, parts)
+    assert (joined.start, joined.end, joined.text) == (0, 15, "Olusegun Tanaka")
+    # a comma or newline between two names keeps them apart
+    apart = [
+        Detection(0, 4, "Anna", EntityType.PERSON, 0.9, "onnx"),
+        Detection(6, 9, "Bob", EntityType.PERSON, 0.9, "onnx"),
+    ]
+    assert len(_join_spaced("Anna, Bob", apart)) == 2
 
 
 def test_decode_unknown_tag_dropped():
@@ -224,5 +259,5 @@ def test_tag_map_accepts_names_and_enum():
         tag_map={"PER": "person"},
         min_score=0.5,
     )
-    dets = det.detect("John")
+    dets = det.detect("met John")  # mid-sentence: the gate passes it
     assert [d.entity_type for d in dets] == [EntityType.PERSON]
