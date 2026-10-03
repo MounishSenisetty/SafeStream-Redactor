@@ -69,7 +69,8 @@ def test_detect_mode_lists_findings_without_revealing_them(app: AppTest) -> None
     _no_errors(app)
     assert app.text_area(key="text").value == SAMPLE_TEXT
     metrics = {m.label: m.value for m in app.metric}
-    assert metrics["Findings"] == "8" and metrics["Highest severity"] == "critical"
+    # 9: the db URL's userinfo user ("app") is a username field since Phase 1
+    assert metrics["Findings"] == "9" and metrics["Highest severity"] == "critical"
     table = app.dataframe[0].value
     assert list(table["Line:Col"])[:2] == ["1:46", "1:85"]
     assert AWS not in table.to_string()  # hidden by default

@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
-from safestream_redactor.detectors.base import StreamingRequirements
+from safestream_redactor.detectors.base import StreamingRequirements, is_placeholder
 from safestream_redactor.entities import Detection, EntityType
 
 if TYPE_CHECKING:
@@ -589,7 +589,7 @@ _PATTERNS: tuple[Pattern, ...] = (
         EntityType.API_KEY,
         re.compile(
             r"(?i)\b(?:api[_-]?key|apikey|secret[_-]?key|secret|access[_-]?token|auth[_-]?token"
-            r"|token|password|passwd|pwd)\b\s*[:=]\s*[\"']?([A-Za-z0-9_@!#$%^&*./+\-]{12,128})[\"']?"
+            r"|token|password|passwd|pwd)\b\s*[:=]\s*[\"']?([A-Za-z0-9_@!#$%^&*./+\-]{12,128}={0,2})[\"']?"
         ),
         0.75,
         group=1,
@@ -905,6 +905,10 @@ class NativeBacked:
         self._native = _load_native(self._backend)
 
 
+# Rules that match the value after a label rather than a self-identifying format.
+_LABEL_GATED = frozenset({EntityType.API_KEY, EntityType.AWS_SECRET, EntityType.URL_CREDENTIALS})
+
+
 class DeterministicDetector(NativeBacked):
     """Runs the built-in regex+validator patterns, optionally a subset of types.
 
@@ -956,8 +960,13 @@ class DeterministicDetector(NativeBacked):
 
     def detect(self, text: str) -> list[Detection]:
         if self._native is None:
-            return self._detect_python(text, self._patterns)
-        return self._detect_hybrid(text)  # pragma: no cover - requires native extension
+            found = self._detect_python(text, self._patterns)
+        else:  # pragma: no cover - requires native extension
+            found = self._detect_hybrid(text)
+        # A label-gated credential rule matches whatever follows the label; a
+        # reference or placeholder there (process.env.KEY, ${DB_PASS}, ****) is not
+        # the secret. Shared Python post-filter, so both backends agree.
+        return [d for d in found if not (d.entity_type in _LABEL_GATED and is_placeholder(d.text))]
 
     def _detect_hybrid(self, text: str) -> list[Detection]:  # pragma: no cover - native only
         """Native core for the covered types, Python for the rest.

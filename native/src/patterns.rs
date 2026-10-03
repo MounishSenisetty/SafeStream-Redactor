@@ -227,7 +227,7 @@ pub const PATTERNS: &[PatternSpec] = &[
         confidence: 0.75,
         source: concat!(
             r"(?i)\b(?:api[_-]?key|apikey|secret[_-]?key|secret|access[_-]?token|auth[_-]?token",
-            r#"|token|password|passwd|pwd)\b\s*[:=]\s*[\"']?([A-Za-z0-9_@!#$%^&*./+\-]{12,128})[\"']?"#
+            r#"|token|password|passwd|pwd)\b\s*[:=]\s*[\"']?([A-Za-z0-9_@!#$%^&*./+\-]{12,128}={0,2})[\"']?"#
         ),
         kind: Kind::Captured,
     },

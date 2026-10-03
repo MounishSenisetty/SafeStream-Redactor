@@ -485,10 +485,11 @@ def test_stripe_key_not_mislabelled_as_openai():
     assert EntityType.OPENAI_KEY not in {d.entity_type for d in dets}
 
 
-def test_url_credentials_redacts_only_the_password():
+def test_url_credentials_redact_user_and_password_not_host():
+    # the password is url_credentials; the userinfo user is a username field
     r = Redactor()
     out = r.redact("dsn postgres://svc_user:S3cretPass@db.internal:5432/app up")
-    assert out == "dsn postgres://svc_user:[REDACTED]@db.internal:5432/app up"
+    assert out == "dsn postgres://[REDACTED]:[REDACTED]@db.internal:5432/app up"
     dets = r.detect("amqp://guest:changeit-1@mq.example.com/vhost")
     cred = [d for d in dets if d.entity_type is EntityType.URL_CREDENTIALS]
     assert [d.text for d in cred] == ["changeit-1"]
@@ -551,7 +552,8 @@ def test_entropy_keeps_the_same_shapes_after_a_secret_key(text):
 
 def test_identifier_check_reads_only_its_own_line():
     # a secret key on the previous line does not rescue a commit hash
-    assert EntityType.SECRET not in types_in(f"password: hunter2\ncommit {_HEX40}")
+    out = Redactor().redact(f"password: hunter2\ncommit {_HEX40}")
+    assert out == f"password: [REDACTED]\ncommit {_HEX40}"
 
 
 def test_entropy_ignores_low_entropy_and_words():
@@ -663,3 +665,15 @@ def test_international_phone_needs_an_assigned_country_code():
     # positive this rule removes)
     assert EntityType.PHONE not in types_in("Tue Nov 28 03:17:04 +0000 2023 root")
     assert phone_ok("(415) 555-2671")  # no '+': the country-code rule does not apply
+
+
+def test_entropy_key_value_token_redacts_the_value_not_the_key():
+    secret = "Zx9Kq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0Qw"
+    assert Redactor().redact(f"session={secret} ok") == "session=[REDACTED] ok"
+    # a value too short or plain on its own is not an entropy secret
+    assert Redactor().redact("ref=abc trace=on") == "ref=abc trace=on"
+
+
+def test_label_gated_key_keeps_base64_padding_inside_the_redaction():
+    out = Redactor().redact("secret: QmFzZTY0U2VjcmV0VmFsdWU== end")
+    assert out == "secret: [REDACTED] end"
