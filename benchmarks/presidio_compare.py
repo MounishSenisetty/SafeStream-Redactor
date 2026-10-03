@@ -55,7 +55,6 @@ from __future__ import annotations
 import argparse
 import json
 import platform
-import resource
 import subprocess
 import sys
 import time
@@ -116,8 +115,9 @@ def _pieces(text: str, size: int) -> list[tuple[int, str]]:
 
 
 def _rss_mb() -> float:
-    with open("/proc/self/statm") as f:
-        return int(f.read().split()[1]) * resource.getpagesize() / 2**20
+    from harness import _rss_mb as rss  # psutil: works on Linux, macOS and Windows
+
+    return rss()
 
 
 def _presidio_regex_analyzer(entities: list[str] | None):
@@ -211,15 +211,17 @@ def run_one(tool: str, dataset: str) -> dict[str, Any]:
     t1 = time.perf_counter()
     predictions = [analyze(text) for text, _gold in docs]
     analyze_s = time.perf_counter() - t1
-    ru = resource.getrusage(resource.RUSAGE_SELF)
+    from harness import _peak_rss_mb
+
+    peak = _peak_rss_mb()
     return {
         "tool": tool,
         "dataset": dataset,
         "load_s": load_s,
         "analyze_s": analyze_s,
         "bytes": sum(len(t.encode("utf-8")) for t, _ in docs),
-        "peak_rss_mb": ru.ru_maxrss / 1024,
-        "tool_rss_mb": ru.ru_maxrss / 1024 - rss_data,
+        "peak_rss_mb": peak,
+        "tool_rss_mb": peak - rss_data,
         "predictions": predictions,
     }
 
