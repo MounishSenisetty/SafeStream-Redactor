@@ -64,6 +64,7 @@ _SEVERITY: dict[EntityType, str] = {
     EntityType.SEX: LOW,
     EntityType.URL: LOW,
     EntityType.TITLE: LOW,
+    EntityType.NRP: LOW,
     EntityType.ORG: LOW,
     EntityType.LOC: LOW,
     EntityType.CUSTOM: MEDIUM,

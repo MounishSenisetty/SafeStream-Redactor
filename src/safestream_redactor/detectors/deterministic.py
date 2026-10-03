@@ -1227,6 +1227,35 @@ class UrlDetector(DeterministicDetector):
         self._patterns = self._py_patterns = list(_URL_PATTERNS)
 
 
+def _nrp_pattern() -> Pattern:
+    from safestream_redactor.detectors.name_data import (
+        NATIONALITIES,
+        NATIONALITY_PHRASES,
+        NRP_CAPITALISED_ONLY,
+        RELIGIOUS_GROUPS,
+    )
+
+    phrases = [p.replace(" ", r"\s+") for p in sorted(NATIONALITY_PHRASES)]
+    words = sorted(NATIONALITIES | RELIGIOUS_GROUPS, key=len, reverse=True)
+    regex = re.compile(rf"\b(?:{'|'.join(phrases + words)})s?\b", re.IGNORECASE)
+
+    def valid(text: str) -> bool:
+        return not (text.islower() and text.rstrip("s") in NRP_CAPITALISED_ONLY)
+
+    return Pattern(EntityType.NRP, regex, 0.7, validator=valid)
+
+
+class NrpDetector(DeterministicDetector):
+    """Prose-profile tier: nationality and religious-group words (``EntityType.NRP``,
+    Presidio's NRP) from the fixed lists in ``name_data``."""
+
+    name = "nrp"
+
+    def __init__(self) -> None:
+        super().__init__(types=())
+        self._patterns = self._py_patterns = [_nrp_pattern()]
+
+
 class DateDetector(DeterministicDetector):
     """Opt-in tier: calendar dates and times of day (``EntityType.DATE``).
 

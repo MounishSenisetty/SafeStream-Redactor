@@ -110,8 +110,9 @@ class Redactor:
         the values of sensitive query parameters are always redacted); on in the
         prose profile.
     use_prose_fields:
-        Also redact sex/gender and honorific/job-title fields (``"Gender": "F"``).
-        Off by default; on in the prose profile.
+        Also redact sex/gender and honorific/job-title fields (``"Gender": "F"``)
+        and nationality / religious-group words (``EntityType.NRP``). Off by
+        default; on in the prose profile.
     profile:
         ``"default"`` or ``"prose"`` (see :data:`PROFILES`). A profile only sets
         the tiers you leave unset (``None``): ``profile="prose", use_dates=False``
@@ -294,6 +295,10 @@ class Redactor:
             from safestream_redactor.detectors.deterministic import UrlDetector
 
             self._detectors.append(UrlDetector())
+        if use_prose_fields or (resolved_types is not None and EntityType.NRP in resolved_types):
+            from safestream_redactor.detectors.deterministic import NrpDetector
+
+            self._detectors.append(NrpDetector())
         if use_dates or (resolved_types is not None and EntityType.DATE in resolved_types):
             from safestream_redactor.detectors.deterministic import DateDetector
 

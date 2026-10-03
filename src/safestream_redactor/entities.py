@@ -63,6 +63,8 @@ class EntityType(str, Enum):
     # sex/gender and honorific/job-title fields (prose profile only)
     SEX = "sex"
     TITLE = "title"
+    # nationality / religious-group words (prose profile only)
+    NRP = "nrp"
     # generic sensitive identifier caught only via an adjacent label cue
     # (student/employee/member/patient/account/MRN/licence/passport/... numbers)
     ID_NUMBER = "id_number"

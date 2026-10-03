@@ -117,6 +117,7 @@ SAFESTREAM_TO_CANONICAL: dict[str, str] = {
     "url": "URL",
     "sex": "SEX",
     "title": "TITLE",
+    "nrp": "NRP",
 }
 _SECRET_TYPES = [
     "anthropic_key",
