@@ -276,13 +276,20 @@ class Redactor:
 
             self._detectors.append(EntropyDetector(backend=backend))
             self._detectors.append(CompoundSecretDetector(backend=backend))
-        from safestream_redactor.detectors.regional import IbanDetector, RegionalDetector
+        from safestream_redactor.detectors.regional import ChecksumIdDetector, RegionalDetector
 
+        _checksum_types = {
+            EntityType.IBAN,
+            EntityType.NHS_NUMBER,
+            EntityType.IN_AADHAAR,
+            EntityType.ID_NUMBER,
+        }
+        if resolved_types is None or _checksum_types.intersection(resolved_types):
+            # identifiers with a published checksum are on by default
+            self._detectors.append(ChecksumIdDetector())
         if use_regional or (resolved_types is not None and REGIONAL_TYPES & set(resolved_types)):
+            # the shape-only rest (NINO, PAN, crypto addresses) stays opt-in
             self._detectors.append(RegionalDetector())
-        elif resolved_types is None:
-            # IBAN (checksum-validated) is on by default; the rest is opt-in
-            self._detectors.append(IbanDetector())
         if use_urls or (resolved_types is not None and EntityType.URL in resolved_types):
             from safestream_redactor.detectors.deterministic import UrlDetector
 
