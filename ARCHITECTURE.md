@@ -282,6 +282,12 @@ SafeStream-Redactor/
 
 ## 4. Performance
 
+> **Not reproduced (2026-10-03).** The figures below come from an earlier harness and
+> environment and were not reproduced by the Phase 0 baseline (`benchmarks/harness.py`,
+> isolated per-tool virtualenvs, one thread per tool, dev splits). Treat them as
+> historical. Current measured numbers: the README's Evaluation section and
+> [`research/reports/gap-report.md`](research/reports/gap-report.md).
+
 Measured 2026-10-03 on an Intel i7-12650H (10 cores, 16 threads), Windows 11,
 Python 3.14, **on battery** with the Balanced power plan. Absolute numbers are
 pessimistic; the scaling shape is the useful part. Raw data:

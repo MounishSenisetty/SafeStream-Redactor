@@ -78,6 +78,7 @@ _SCHEMA: dict[str, dict[str, str]] = {
         "onnx_vocab": _STR,
         "onnx_labels": _STR,
         "onnx_min_score": _NUMBER,
+        "onnx_batch_size": _INT,
         "use_entropy": _BOOL,
         "use_regional": _BOOL,
         "use_dates": _BOOL,

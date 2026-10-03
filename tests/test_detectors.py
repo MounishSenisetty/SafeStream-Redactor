@@ -212,15 +212,34 @@ def test_private_key_block():
     assert EntityType.PRIVATE_KEY in types_in(f"cert:\n{pem}\ndone")
 
 
-def test_private_key_begin_without_end_is_bounded_and_fast():
+def test_private_key_begin_without_end_scans_in_linear_time():
+    """A BEGIN marker followed by megabytes of base64 and no END must not match
+    and must not scan pathologically (ReDoS).
+
+    Checked as a *ratio*, not a wall-clock limit: an absolute budget measures the
+    machine (it failed at 2.7 s against 2.0 s on a laptop on battery under load).
+    Quadrupling the input costs ~4x for a linear scan and ~16x for a quadratic
+    one; each size takes the best of three runs after a warm-up to shed noise.
+    """
     import time
 
-    # a BEGIN marker followed by megabytes of base64 with no END must not cause
-    # a pathological scan; it must simply not match, quickly
-    hostile = "-----BEGIN RSA PRIVATE KEY-----\n" + "A" * 4_000_000
-    start = time.perf_counter()
-    assert EntityType.PRIVATE_KEY not in types_in(hostile)
-    assert time.perf_counter() - start < 2.0
+    def hostile(n: int) -> str:
+        return "-----BEGIN RSA PRIVATE KEY-----\n" + "A" * n
+
+    def best_of_three(n: int) -> float:
+        times = []
+        for _ in range(3):
+            start = time.perf_counter()
+            assert EntityType.PRIVATE_KEY not in types_in(hostile(n))
+            times.append(time.perf_counter() - start)
+        return min(times)
+
+    types_in(hostile(1_000))  # warm-up: pattern compilation, native core load
+    small, large = best_of_three(500_000), best_of_three(2_000_000)
+    assert large / small < 8, (
+        f"4x the input took {large / small:.1f}x as long ({small:.3f}s -> {large:.3f}s): "
+        "super-linear scan (linear is ~4x, quadratic ~16x)"
+    )
 
 
 def test_custom_words_and_patterns():
