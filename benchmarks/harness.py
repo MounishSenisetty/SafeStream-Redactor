@@ -636,7 +636,7 @@ def markdown(report: dict[str, Any]) -> str:
         if has_neg:
             cell.append(_fmt_ci(s["point"]["fp_doc_rate"], s["ci95"].get("fp_doc_rate")))
         cell += [
-            f"{run['mb_s']:.3f}",
+            f"{run['mb_s']:.3g}",
             f"{run['p50_ms']:.1f} / {run['p99_ms']:.1f}",
             f"{run['load_s']:.1f}",
             f"{run['peak_rss_mb']:.0f} / {run['tool_rss_mb']:.0f}",
@@ -698,6 +698,11 @@ def main() -> None:
     )
     ap.add_argument("--md", type=Path, help="also write the markdown table here")
     ap.add_argument(
+        "--allow-battery",
+        action="store_true",
+        help="run on battery anyway (accuracy is valid; speed and latency are not)",
+    )
+    ap.add_argument(
         "--errors",
         type=int,
         default=0,
@@ -728,6 +733,12 @@ def main() -> None:
 
     corpus = corpora.load(args.corpus, args.split)
     env = environment()
+    if not env["power"].endswith("AC)") and env["power"] != "AC" and not args.allow_battery:
+        ap.error(
+            f"power is {env['power']}: throughput, latency and load time measured on "
+            "battery are not comparable. Plug in, or pass --allow-battery for an "
+            "accuracy-only run."
+        )
     runs: dict[str, dict[str, Any]] = {}
     preds: dict[str, list[list[Pred]]] = {}
     ckpt_dir = args.checkpoint_dir
@@ -759,7 +770,9 @@ def main() -> None:
             text=True,
             cwd=ROOT,
             encoding="utf-8",
-            env={**os.environ, **_THREAD_ENV},
+            errors="replace",  # a stray byte in a library warning must not kill the reader
+            # children write UTF-8 even where the console code page is cp1252 (Windows)
+            env={**os.environ, **_THREAD_ENV, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"},
         )
         if proc.returncode != 0:
             reason = (proc.stderr.strip().splitlines() or ["failed"])[-1]
