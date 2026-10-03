@@ -46,7 +46,7 @@ def test_validators_accept_valid_and_reject_one_digit_off() -> None:
         ("tax file number 123 456 782", "au_tfn"),
         ("ref 2123 45670 1", "au_medicare"),
         ("NRIC S1234567D", "sg_nric"),
-        ("ref 912-70-1234", "us_itin"),
+        ("ITIN: 912-70-1234", "us_itin"),
         ("ITIN 912701234", "us_itin"),
     ],
 )
@@ -62,7 +62,9 @@ def test_checksummed_ids_are_found(text: str, rule: str) -> None:
         "order 123456782",  # a valid TFN without a cue is just a number
         "acn 005499982",  # bad check digit
         "ref 912-93-1234",  # 93 is not an IRS ITIN group
-        "ref 912701234",  # a bare ITIN needs its cue
+        "ref 912701234",  # an ITIN needs its cue
+        "ref 912-70-1234",  # also in the separated form (fixtures use 9XX as a bad SSN)
+        "itin 912-701234",  # mixed separators
         "ref S1234567A",  # bad NRIC check letter
     ],
 )

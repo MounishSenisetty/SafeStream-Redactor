@@ -207,8 +207,8 @@ _NINE = re.compile(rf"{_B}(\d{{3}} \d{{3}} \d{{3}}|\d{{8,9}}){_E}")
 _MEDICARE = re.compile(rf"{_B}([2-6]\d{{3}} \d{{5}} \d(?:[ -]?\d)?|[2-6]\d{{9,10}}){_E}")
 _NRIC = re.compile(rf"{_B}[STFG]\d{{7}}[A-Z]{_E}")
 # US ITIN: 9XX-XX-XXXX with an IRS-assigned group (50-65, 70-88, 90-92, 94-99).
-_ITIN_SEP = re.compile(rf"{_B}9\d{{2}}-(?:5\d|6[0-5]|7\d|8[0-8]|9[0-24-9])-\d{{4}}{_E}")
-_ITIN_BARE = re.compile(rf"{_B}9\d{{2}}(?:5\d|6[0-5]|7\d|8[0-8]|9[0-24-9])\d{{4}}{_E}")
+# Always cued: test data uses 9XX-XX-XXXX as the "invalid SSN area" negative.
+_ITIN = re.compile(rf"{_B}9\d{{2}}(-?)(?:5\d|6[0-5]|7\d|8[0-8]|9[0-24-9])\1\d{{4}}{_E}")
 _ABN_CUE = re.compile(r"(?:\babn|business number)[^\n]{0,32}$", re.IGNORECASE)
 _ACN_CUE = re.compile(r"(?:\bacn|company number)[^\n]{0,32}$", re.IGNORECASE)
 _TFN_CUE = re.compile(r"(?:\btfn|tax file)[^\n]{0,32}$", re.IGNORECASE)
@@ -347,9 +347,7 @@ class ChecksumIdDetector(RegionalDetector):
         for m in _NRIC.finditer(text):
             if nric_ok(m.group()):
                 out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.85, "sg_nric"))
-        for m in _ITIN_SEP.finditer(text):
-            out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.8, "us_itin"))
-        for m in _ITIN_BARE.finditer(text):
+        for m in _ITIN.finditer(text):
             if cued(text, m.start(), _ITIN_CUE):
                 out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.8, "us_itin"))
         return out
