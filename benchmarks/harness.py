@@ -67,6 +67,11 @@ SYSTEMS: dict[str, tuple[str, dict[str, Any] | None]] = {
     "safestream-native": ("pattern", {"backend": "native"}),
     "safestream-native-dates": ("pattern", {"backend": "native", "use_dates": True}),
     "safestream-native-onnx": ("ner", {"backend": "native", **_ONNX}),
+    # opt-in batched inference: faster, but output depends on chunking (INT8)
+    "safestream-native-onnx-batched": (
+        "ner",
+        {"backend": "native", "onnx_batch_size": 32, **_ONNX},
+    ),
     "safestream-native-onnx-dates": ("ner", {"backend": "native", "use_dates": True, **_ONNX}),
     "safestream-native-spacy": ("ner", {"backend": "native", "use_ner": True}),
     "presidio-regex": ("pattern", None),
