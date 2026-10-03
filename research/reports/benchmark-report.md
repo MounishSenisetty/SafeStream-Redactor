@@ -1,5 +1,11 @@
 # SafeStream-Redactor — Benchmark Report
 
+> **Not reproduced (2026-10-03).** The figures below come from an earlier harness and
+> environment and were not reproduced by the Phase 0 baseline (`benchmarks/harness.py`,
+> isolated per-tool virtualenvs, one thread per tool, dev splits). Treat them as
+> historical. Current measured numbers: the README's Evaluation section and
+> [`research/reports/gap-report.md`](gap-report.md).
+
 **Measured** results for SafeStream-Redactor, with the environment and commands needed to
 reproduce them. This report quotes only numbers we actually produced; competitor
 characteristics live in [`competitive-analysis.md`](competitive-analysis.md) and are

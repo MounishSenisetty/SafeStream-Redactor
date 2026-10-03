@@ -43,7 +43,7 @@ that redacts a generated 1 GB file under a 16 MB allocation cap).
 - **Web playground** — `safestream ui` opens a local Streamlit page to try detection and redaction interactively: highlighted findings, side-by-side redaction, file upload; loopback-only with telemetry off ([Web Interface](#web-interface)).
 - **MCP server** — `safestream mcp-serve` exposes offline `scan`/`redact` tools to AI agents; metadata only, never the secret ([docs/MCP.md](docs/MCP.md)).
 - **CI/CD secret gate** — `detect --fail-on-detect`, SARIF output, a pre-commit hook, and a GitHub Action ([docs/CI_CD.md](docs/CI_CD.md)).
-- **Native core** — `--backend native` runs every default tier on a compiled Rust core with output byte-identical to the Python tier: 10–35 MB/s per core end to end (9–26× pure Python), 36–121 MB/s on 4 workers. Unicode `\b` stays on the fast DFA path even on non-ASCII text ([docs/NATIVE_CORE.md](docs/NATIVE_CORE.md)).
+- **Native core** — `--backend native` runs every default tier on a compiled Rust core with output byte-identical to the Python tier: 3–17 MB/s per core on the evaluation corpora, 3–12× pure Python ([Evaluation](#evaluation)). Unicode `` stays on the fast DFA path even on non-ASCII text ([docs/NATIVE_CORE.md](docs/NATIVE_CORE.md)).
 - **File-system DLP (Linux)** — `safestream fanotify --watch DIR --mode audit|redact|block` logs, redacts in place, or denies reads of files that contain secrets; falls back to inotify without `CAP_SYS_ADMIN` ([docs/FANOTIFY.md](docs/FANOTIFY.md)).
 - **More operators** — beyond replace/mask/pseudonymize: salted `hash`, reversible `encrypt` (AES-256-GCM, restored with `safestream deanonymize`) and `fictionalize` (synthetic values from reserved ranges). All are pure functions of the span, so streaming and parallel output stay byte-identical ([docs/PRESIDIO_PARITY.md](docs/PRESIDIO_PARITY.md)).
 - **Regional recognizers (opt-in)** — `--regional` adds checksum-validated IBAN, Bitcoin addresses, UK NHS numbers and India Aadhaar, plus UK NINO, India PAN and Ethereum addresses by shape.
@@ -501,118 +501,97 @@ identically to whole-text mode.
 
 ## Evaluation
 
-> **Read this before quoting any number below.** The corpora these numbers come from
-> are *synthetic and self-generated*: the gold positives are emitted in the same
-> canonical formats the detector targets, so a near-perfect score on them measures
-> **format coverage and false-positive resistance, not real-world recall**. They are a
-> regression fixture, not an accuracy claim, and a self-generated benchmark is not
-> evidence of accuracy on your data. For a defensible accuracy number, run
-> `benchmarks/evaluate.py` against an independent labeled corpus you control (see
-> [benchmarks/README.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/benchmarks/README.md) — the Presidio research dataset, CoNLL,
-> and the n2c2 de-identification set are the recommended targets). Expect recall on
-> free-form prose (names, addresses) to be substantially lower than on structured PII
-> unless the `[ner]` extra is enabled.
+> **Read this before quoting any number below.** These are **Phase 0 dev-split**
+> results: tuning happens on dev, and the held-out test splits are scored once, at the
+> end of the work. Every number comes from one run of `benchmarks/harness.py`
+> (commit `cebe741`, 2026-10-03) on an i7-12650H under Windows 11 on AC power in the
+> *Best power efficiency* power mode, with every tool in its own virtualenv and pinned
+> to **one thread**. Absolute speeds are therefore throttled; ratios between tools come
+> from the same run and the same conditions. Raw JSON and tables:
+> [`research/results/raw/`](research/results/raw/); analysis and error examples:
+> [`research/reports/gap-report.md`](research/reports/gap-report.md).
 
-**Like-for-like comparison with Presidio.** Compare within a tier, never across: the
-pattern tier pits SafeStream's rule-based tiers against Presidio's own pattern
-recognizers run directly (no NLP engine); the NER tier runs both on the same spaCy
-`en_core_web_sm` model. Measured with `benchmarks/presidio_compare.py` (one run, 4 vCPU
-container; full tables, environment and caveats in
-[benchmarks/PRESIDIO_COMPARISON.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/benchmarks/PRESIDIO_COMPARISON.md)):
+**Corpora.** The headline sets are independent of this repo: the
+[presidio-research](https://github.com/data-privacy-stack/presidio-research) synthetic
+dataset (750 dev documents), the English validation set of AI4Privacy
+pii-masking-300k (3,973 dev documents; academic licence, acknowledgement: AI4Privacy)
+and a secrets corpus of real-format credentials from
+[Nosey Parker](https://github.com/praetorian-inc/noseyparker)'s rule examples plus
+generated non-secrets (313 dev documents). RedactionBench is reported as **previously
+exposed**: all 200 documents were used to tune rules before the split existed. CoNLL-2003
+is **not independent for the ONNX tier**: its model was trained on CoNLL. 95% CIs are
+document bootstrap; P / R / F1 are character-level (did the sensitive characters get
+hidden?). "Full" is the share of gold entities with *every* character redacted.
 
-| Tier | Corpus | SafeStream | Presidio | Speed | Tool memory (SafeStream / Presidio) |
+**Pattern tier** (no ML on either side; SafeStream's rule tiers against Presidio's own
+pattern and checksum recognizers called directly):
+
+| Corpus | SafeStream (native) char F1 | Presidio-regex char F1 | SafeStream P / R | Presidio P / R | Speed |
 | --- | --- | --- | --- | --- | --- |
-| Pattern, native core | synthetic logs | P 0.999 / R 1.000 | `presidio-regex` P 0.741 / R 0.865 | **147×** | 29 MB / 103 MB |
-| Pattern, native core | RedactionBench (real prose) | P 0.754 / R 0.412 | `presidio-regex` P 0.422 / R 0.292 | **42×** | 25 MB / 67 MB |
-| Pattern, pure Python | synthetic logs / RedactionBench | same detections as native | `presidio-regex` | **33× / 15×** | 7–9 MB / 67–103 MB |
-| NER (`en_core_web_sm` both) | RedactionBench | P 0.547 / R 0.540 | `presidio-sm` P 0.364 / R 0.455 | **2.0×** | 644 MB / 237 MB |
+| presidio-research | 0.278 [0.243, 0.314] | 0.303 [0.267, 0.338] | 0.992 / 0.162 | 0.915 / 0.181 | 27× |
+| ai4privacy | 0.467 [0.453, 0.480] | **0.553** [0.542, 0.563] | 0.966 / 0.308 | 0.747 / 0.439 | 63× |
+| ai4privacy, `--dates` | **0.581** [0.570, 0.592] | 0.553 [0.542, 0.563] | 0.956 / 0.418 | 0.747 / 0.439 | 24× |
+| secrets | **0.637** [0.560, 0.706] | 0.215 [0.152, 0.287] | 0.524 / 0.814 | 0.292 / 0.171 | 80× |
+| RedactionBench (exposed) | **0.556** [0.479, 0.622] | 0.331 [0.289, 0.372] | 0.730 / 0.449 | 0.356 / 0.310 | 169× |
 
-P / R are character precision / recall. Three things this table does **not** say:
+SafeStream is far more precise and 24–169× faster per core, but **Presidio-regex has
+the higher F1 on ai4privacy** with the default configuration (it detects dates, URLs,
+IBANs and digit-run IDs that the default tier does not) and the two are level on
+presidio-research.
 
-* An earlier "250–450× faster than Presidio" figure compared the native core against
-  Presidio's *full* spaCy `en_core_web_lg` engine (regex vs regex-plus-NLP). It is
-  reproducible (281–543×) but not like-for-like; the defensible claim is **15–147× in the
-  pattern tier and about 2× in the NER tier**.
-* In the NER tier SafeStream uses about 2.5× *more* memory than Presidio, and
-  Presidio's entity recall is higher (0.659 vs 0.520): the trade-off is precision and
-  speed against entity recall, not a clean win. The memory advantage exists only
-  without an ML model.
-* The synthetic-logs corpus is generated by this repo in the formats SafeStream
-  targets, so its near-perfect recall measures **format coverage and false-positive
-  resistance, not real-world recall**. Real prose (RedactionBench) is the number to
-  trust: neither tool exceeds 0.54 character recall without more modelling.
+**NER tier** (SafeStream: native rules + gated on-device ONNX `dslim/distilbert-NER`,
+INT8; Presidio: its full engine on spaCy `en_core_web_sm` / `_lg` and on two
+transformers models). Best Presidio per corpus shown; all configurations are in the
+raw tables.
 
-**Throughput / memory / prose-recall trade-off (RedactionBench).** `safestream-native`
-is fastest and most precise with a *stated, tested* memory bound (peak working memory
-`≤ chunk_size + overlap + L_max`, independent of input size — Theorem 3); adding the NER
-tier buys the highest character recall (0.540) at 0.04 MB/s and a model-sized
-footprint; Presidio-on-spaCy has the highest entity recall (0.659) and no stated memory
-bound. Not measured here: Hyperscan/re2 (a re2 backend was prototyped and rejected, see
-[docs/PERFORMANCE_BACKENDS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PERFORMANCE_BACKENDS.md)),
-gitleaks. The ONNX tier is measured separately below.
+| Corpus | SafeStream + ONNX char F1 | Best Presidio char F1 | Full (SafeStream / Presidio) | Speed vs `presidio-sm` | Tool memory |
+| --- | --- | --- | --- | --- | --- |
+| presidio-research | **0.718** [0.693, 0.742] | 0.708 [0.686, 0.728] (trf-deid) | 0.500 / 0.545 | 1.9× | 151 / 127 MB |
+| ai4privacy | 0.576 [0.566, 0.586] | **0.733** [0.726, 0.740] (trf-deid) | 0.338 / **0.607** | 0.74× | invalid† |
+| secrets | 0.636 [0.560, 0.705] | 0.596 [0.526, 0.658] (trf-deid) | 0.542 / **0.735** | 4.7× | 153 / 127 MB |
+| RedactionBench (exposed) | **0.611** [0.531, 0.662] | 0.460 [0.394, 0.520] (trf-deid) | 0.608 / **0.727** | 1.4× | 150 / 205 MB |
+| CoNLL (not independent) | 0.796 [0.770, 0.818] | 0.652 [0.609, 0.691] (trf-bert) | 0.648 / 0.651 | 0.32× | 150 / 130 MB |
 
-**Throughput is a known limitation, not a strength.** ~2 MB/s single-core pure Python (about 5–8 MB/s with the native core; measured above) means a
-100 GB file takes hours to a day; compiled scanners (gitleaks, ripgrep-class) are expected to be far
-faster (not measured here). The value here is constant memory and credential coverage, not raw speed.
-A single large file can now be split across cores with `--workers N` /
-`redact_file(..., workers=N)` — measured ~3.7× on 4 cores, with **byte-identical**
-output to the single-core pass (a seam cross-check falls back to sequential rather
-than risk differing output). That narrows but does not close the gap to compiled
-scanners. A drop-in Vectorscan/re2 backend was **prototyped and measured** and
-**not adopted**: re2's ASCII-only `\b`/`\w`/`\d` change detection output on
-Unicode text (it under-detects), and it gives no end-to-end speedup because the
-anchor prefilter already captures its advantage and the throughput-dominating PII
-patterns use lookaround re2 cannot compile — full numbers in
-[docs/PERFORMANCE_BACKENDS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PERFORMANCE_BACKENDS.md).
-Closing the constant factor would require first rewriting those patterns to be
-lookaround-free and Unicode-boundary-consistent (on the
-[roadmap](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/ROADMAP.md)).
+† Each tool's process also parsed the whole ai4privacy file, and that transient peak
+dominates every system's RSS there.
 
-**Tiered native core + gated ONNX tier.** Measured 2026-10-03 with
-`benchmarks/tiered_bench.py` and the RedactionBench harness on an i7-12650H
-(10 cores / 16 threads), **on battery** (Balanced power plan), so absolute
-throughput is pessimistic. The ONNX model is `dslim/distilbert-NER` exported to INT8
-by `scripts/export_onnx.py`. Raw JSON is in
-[`research/results/raw/tiered_2026-10-03.json`](research/results/raw/tiered_2026-10-03.json).
+**Where SafeStream loses today:** Presidio's transformers engine redacts more entities
+*fully* on every headline corpus (it also flags every secret-free document in the
+secrets set), and wins ai4privacy outright: SafeStream misses values inside structured
+fields (`"LastName": "…"`, `<Phone>…</Phone>`, `Postcode: '…'`), unlabelled ID numbers,
+most international phone formats and many names. Presidio's transformers engine is
+also 13–86× *slower* per core than the ONNX tier on the prose corpora. Mandatory recall on RedactionBench is
+0.875 [0.761, 0.936] for SafeStream + ONNX and 0.908 [0.825, 0.958] for Presidio-trf-deid.
 
-| Config | 1 worker | 4 | 8 | 16 | p50 / p99 per 64 KiB |
-| --- | --: | --: | --: | --: | --: |
-| T0 (native, no model) | 5.9 MB/s | 31.8 | 59.2 | 58.0 | 3.6 / 6.4 ms |
-| T0 + gated ONNX | 0.04 MB/s | 0.11 | 0.11 | 0.11 | 2.5 / 3.5 s |
+**Secrets.** 54.2% [48.1, 60.6] of real-format secrets are fully redacted by the
+pattern tier (Presidio-regex: 13.1%); 119 of 260 dev secrets leak, mostly vendor keys
+without a detector, connection strings and `password = '…'` assignments, and the
+entropy tier flags 81% of generated UUIDs, hashes and base64 images. Both are the first
+targets of the current work.
 
-On the synthetic tiered corpus (80% logs, 20% prose / structured / names), strict
-full-span recall is 0.9997 for structured PII and secrets (3322/3323, both configs;
-the miss is a letters-only random secret) and 0.9997 for person names with ONNX
-(3226/3227; 0 without a model). The gate passes 6.3% of characters to the model;
-DistilBERT costs about 4 KB/s per core, so T0+ONNX throughput is model-bound and is
-for prose, not bulk logs.
+**Throughput.** One thread, per-document streaming detection, power-saving mode:
 
-RedactionBench (200 real documents). These are the repo's **internal
-character-level re-implementation**, not the official leaderboard R-Score (its
-scorer is unreleased):
+| Corpus | Pure Python | Native core | Native + ONNX |
+| --- | --: | --: | --: |
+| RedactionBench (long prose) | 1.23 MB/s | 10.9 MB/s | 0.032 MB/s |
+| ai4privacy (short records) | 1.39 MB/s | 9.54 MB/s | 0.020 MB/s |
+| CoNLL (news) | 1.40 MB/s | 16.6 MB/s | 0.0074 MB/s |
+| presidio-research (one sentence per document) | 1.10 MB/s | 3.02 MB/s | 0.013 MB/s |
 
-| Config | Char P | Char R | Char F1 | Mandatory recall | Contextual recall | No-leak docs |
-| --- | --: | --: | --: | --: | --: | --: |
-| T0 | 0.767 | 0.447 | 0.565 | 0.759 | 0.211 | 14.0% |
-| T0 + gated ONNX | 0.685 | 0.545 | 0.607 | 0.823 | 0.335 | 21.5% |
+The native core is 3–12× pure Python, and the ONNX tier is model-bound (it is for
+prose, not bulk logs). Multi-core scaling (`--workers N`) and the Best-performance
+power mode are measured separately; earlier single-file figures (10–35 MB/s per
+core, 36–121 MB/s on 4 workers, 5.9 → 59 MB/s on 1 → 8 workers) came from other
+machines or a battery run and are not quoted until re-measured. A Vectorscan/re2
+backend was prototyped and rejected
+([docs/PERFORMANCE_BACKENDS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PERFORMANCE_BACKENDS.md)).
 
-Mandatory recall by domain (T0 → T0+ONNX): structured text (logs 0.907 → 0.927,
-terminal 0.830 → 0.861, code 0.776 → 0.800, files 0.718 → 0.739) barely needs the
-model; prose gains most (academic 0.258 → 0.857, legal 0.340 → 0.782, medical
-0.244 → 0.752, operations 0.361 → 0.719, emails 0.418 → 0.700, government
-0.346 → 0.695, financial 0.381 → 0.690). Postal addresses, case/docket/policy/
-claim/visa numbers and form separators (`–`, `►`) are Tier 0 rules; ALLCAPS names
-after a form label (`AGENT: TONY PRIZE`) reach the model. Mandatory recall is
-**not** 100%: the remaining misses include identifiers with no label, `name=value`
-pairs merged into one entropy candidate, letters-only secrets, bcrypt hashes (the
-`.` leaks), keys containing `_test_` (suppressed as placeholders), lone
-sentence-initial first names, and non-US addresses.
-
-**Credentials & secrets** — the genuinely differentiating capability. On a corpus of
-AWS keys, GitHub/Slack/Stripe/Google/SendGrid/npm tokens, JWTs, and a random
-high-entropy secret, Presidio ships no recognizers and detects 0/9; SafeStream detects
-9/9. This is a capability difference (Presidio has no credential recognizers at all),
-not a tuned accuracy comparison.
+**ONNX inference is one window per call by default.** An INT8 model made by dynamic
+quantization scores a window differently depending on the other windows in its batch,
+which made output depend on chunking (and parallel differ from sequential).
+`--onnx-batch-size N` restores batching as an explicit, non-deterministic opt-in; on
+the dev corpora above it changed speed by −15% to +32% with no consistent direction and
+accuracy by under 0.01 F1, so nothing is lost by the deterministic default.
 
 > **Reproducible results & comparison.** Measured accuracy/throughput and a
 > constant-memory scaling curve — each recorded with full environment metadata and the

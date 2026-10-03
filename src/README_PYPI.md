@@ -42,7 +42,7 @@ python -m safestream_redactor --version
 | `ui` | `pip install 'safestream-redactor[ui]'` | Local web playground (`safestream ui`, Streamlit) |
 
 An optional compiled (Rust) core gives the same output as the pure-Python pattern and
-labeled-identifier tiers, about 4-8x faster end to end; enable it with
+labeled-identifier tiers, 3-12x faster on the project's evaluation corpora; enable it with
 `Redactor(backend="native")`. Its wheel is not on PyPI yet, so build
 it from source (needs a Rust toolchain):
 
