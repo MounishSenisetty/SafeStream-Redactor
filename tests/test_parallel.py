@@ -112,6 +112,75 @@ def test_seams_forced_through_entities(tmp_path, small_ranges):
         assert parl == seq
 
 
+_CONFIG_SPECIMENS = [
+    "iban GB82 WEST 1234 5698 7654 32 paid",
+    "nino: JG103759A on file",
+    "btc 1BoatSLRHtKNngkdXEeobR76b53LETtpyT sent",
+    "nhs 943 476 5919 ok",
+    "codename ProjectX launched",
+    "see ZQX-48213 now",
+    "due 2024-03-15 09:30 sharp",
+]
+
+
+def _native_available() -> bool:
+    import importlib.util
+
+    return importlib.util.find_spec("safestream_native") is not None
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        pytest.param({}, id="t0-python"),
+        pytest.param(
+            {"backend": "native"},
+            id="t0-native",
+            marks=pytest.mark.skipif(not _native_available(), reason="native core not built"),
+        ),
+        pytest.param({"use_regional": True}, id="regional"),
+        pytest.param(
+            {"custom_words": ["ProjectX"], "custom_patterns": [r"ZQX-\d{5}"]}, id="custom"
+        ),
+        pytest.param({"use_dates": True}, id="dates"),
+        pytest.param(
+            {
+                "use_regional": True,
+                "use_dates": True,
+                "custom_words": ["ProjectX"],
+                "custom_patterns": [r"ZQX-\d{5}"],
+            },
+            id="all-opt-in",
+        ),
+    ],
+)
+def test_every_config_parallel_equals_sequential_with_entities_on_seams(
+    tmp_path, small_ranges, config
+):
+    """Each configuration, with seams walked through every specimen kind.
+
+    ONNX has its own version of this in tests/test_onnx_determinism.py (it needs a
+    model file). Padding shifts every specimen across the ~equal range seams.
+    """
+    specimens = SPECIMENS + _CONFIG_SPECIMENS
+    for pad in (0, 29, 113):
+        text = ("x" * pad + "\n").join(s for s in specimens for _ in range(30))
+        seq, parl, seq_stats, outcome = run_both(tmp_path, text, workers=4, **config)
+        assert outcome.ranges > 1, "the file must really be split"
+        assert not outcome.fell_back
+        assert parl == seq
+        assert outcome.stats.counts == seq_stats.counts
+    # the config's own detectors really ran (not a vacuous pass)
+    expect_gone = {
+        "use_regional": b"GB82 WEST",
+        "custom_words": b"ProjectX",
+        "custom_patterns": b"ZQX-48213",
+        "use_dates": b"2024-03-15",
+    }
+    for key, value in expect_gone.items():
+        assert (value not in seq) == (key in config), key
+
+
 def test_pem_block_across_seams(tmp_path, small_ranges):
     # multi-line private keys are the longest entities; overlap must cover them
     text = ("log line ok\n" * 20 + PEM + "\n") * 60
