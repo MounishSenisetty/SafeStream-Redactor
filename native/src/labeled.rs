@@ -60,7 +60,7 @@ pub const RULES: &[(&str, &str, &str, f64)] = &[
     (
         concat!(
             r"student|employee|emp|staff|member|customer|client|patient|",
-            r"badge|tax|medical\s*record|mrn|npi|licen[cs]e|passport|",
+            r"badge|tax|medical\s*record|mrn|npi|licen[cs]e|passport|itin|voter|",
             r"national\s*id|registration|enrol?lment"
         ),
         r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
