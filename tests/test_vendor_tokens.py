@@ -45,7 +45,7 @@ HASHES = {
     "cisco8": "$8$" + _repeat("AbCdEf0123", 14) + "$" + _repeat("./AbCdEf0123", 43),
     "argon2": "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQxMg$" + _repeat("AbCd+/0123", 43),
     "pbkdf2_django": "pbkdf2_sha256$260000$abcdefgh$" + _repeat("AbCd+/0123", 44),
-    "kerberos": "$krb5asrep$23$user@CORP.LOCAL:" + _repeat(_HEX, 32) + "$" + _repeat(_HEX, 200),
+    "kerberos": "$krb5asrep$23$user@EXAMPLE.COM:" + _repeat(_HEX, 32) + "$" + _repeat(_HEX, 200),
 }
 
 

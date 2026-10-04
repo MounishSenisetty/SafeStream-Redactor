@@ -634,14 +634,14 @@ structured PII and credentials, with names and format-less identifiers handled b
 opt-in levers below. Treat it as high-recall for credentials and structured PII, and
 best-effort for free prose — not as a guarantee of catching everything.
 
-**Why a file labelled "TEST" under-detects.** The contextual tier deliberately
-*subtracts* confidence from any value sitting next to `test`, `sample`, `example`,
-`dummy`, `fake`, `placeholder`, or `lorem` (see `detectors/contextual.py`). This keeps
-documentation snippets and fixture data from being redacted. The side effect is that a
-file *saturated* with those marker words — e.g. a sample log full of `TEST DATA`,
-`fake`, `example`, `TestPass` — has most of its detections pushed below the default 0.5
-threshold and left untouched.That is working as designed: on real data (without the
-marker words) recall is substantially higher.If you *want* those suppressed values
+**Placeholder words near a value.** The contextual tier *subtracts* confidence from a
+value when the whole word `test`, `sample`, `example`, `dummy`, `fake`, `placeholder`,
+or `lorem` sits in or just before it (see `detectors/contextual.py`), so documentation
+snippets and fixture data are not redacted. Only shape-only matches are demoted (a bare
+SSN, phone, email, IP or high-entropy string). Vendor-prefixed keys (`sk_test_…`),
+checksum-validated numbers (cards, IBANs), field- or label-anchored values
+(`password: …`) and NER names are never demoted, and words that merely contain a
+trigger (`latest`, `protest`, `TestPass`) do not count. If you *want* the demoted values
 redacted anyway, lower `min_confidence` (below).
 
 **Three levers to raise recall**, in increasing order of effort:

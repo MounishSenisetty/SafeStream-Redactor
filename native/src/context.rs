@@ -92,6 +92,28 @@ fn back(text: &str, at: usize, chars: usize) -> usize {
         .map_or(0, |(b, _)| if chars == 0 { at } else { b })
 }
 
+/// `contextual._word_in`: a suppress trigger lies whole inside `text[lo..hi]` and
+/// is a word of the full text (neither neighbour, in or out of the range, is
+/// `[a-z0-9_]` once lower-cased). `lower_into` maps one char to one byte, so
+/// `scratch` indices are character indices.
+fn word_in(text: &str, lo: usize, hi: usize, scratch: &mut Vec<u8>) -> Result<bool, Error> {
+    let a = back(text, lo, 1);
+    let b = text[hi..].chars().next().map_or(hi, |c| hi + c.len_utf8());
+    lower_into(&text[a..b], scratch)?;
+    let first = usize::from(a < lo);
+    let limit = scratch.len() - usize::from(b > hi);
+    let word = |c: u8| c.is_ascii_alphanumeric() || c == b'_';
+    Ok(SUPPRESS_TRIGGERS.iter().any(|t| {
+        let n = t.len();
+        limit >= first + n
+            && (first..=limit - n).any(|i| {
+                scratch[i..i + n] == *t.as_bytes()
+                    && (i == 0 || !word(scratch[i - 1]))
+                    && (i + n == scratch.len() || !word(scratch[i + n]))
+            })
+    }))
+}
+
 /// `ContextualScorer.detect`: a maximal run of exactly nine digits with neither
 /// neighbour `-`, i.e. `(?<![\d-])\d{9}(?![\d-])`, preceded within `window`
 /// characters by an SSN trigger. Byte offsets.
@@ -164,17 +186,9 @@ pub(crate) fn adjust(
                 flags |= BOOSTED;
             }
         }
-        // `t in near or t in det.text.lower()`: two separate haystacks
-        lower_into(
-            &text[back(text, s.start, suppress_window)..s.start],
-            scratch,
-        )?;
-        let mut hit = SUPPRESS_TRIGGERS.iter().any(|t| contains(scratch, t));
-        if !hit {
-            lower_into(&text[s.start..s.end], scratch)?;
-            hit = SUPPRESS_TRIGGERS.iter().any(|t| contains(scratch, t));
-        }
-        if hit {
+        // the near window and the match itself: two separate ranges
+        let near = back(text, s.start, suppress_window);
+        if word_in(text, near, s.start, scratch)? || word_in(text, s.start, s.end, scratch)? {
             flags |= SUPPRESSED;
         }
         try_push(out, flags)?;
@@ -193,6 +207,21 @@ mod tests {
         assert_eq!(&t[back(t, at, 2)..at], "文字");
         assert_eq!(&t[back(t, at, 99)..at], "ab文字");
         assert_eq!(back(t, at, 0), at);
+    }
+
+    #[test]
+    fn suppress_triggers_are_whole_words_of_the_full_text() {
+        let mut s = Vec::new();
+        let hit = |t: &str, lo: usize, hi: usize, s: &mut Vec<u8>| word_in(t, lo, hi, s).unwrap();
+        assert!(hit("a TEST b", 0, 8, &mut s));
+        assert!(hit("x@EXAMPLE.com", 0, 13, &mut s));
+        assert!(!hit("latest", 0, 6, &mut s));
+        assert!(!hit("sk_test_abc", 0, 11, &mut s));
+        // the range cuts "latest" to "test": the neighbour outside still counts
+        assert!(!hit("latest", 2, 6, &mut s));
+        // a trigger straddling the range end is not inside it
+        assert!(!hit("test", 0, 3, &mut s));
+        assert!(hit("test", 0, 4, &mut s));
     }
 
     #[test]
