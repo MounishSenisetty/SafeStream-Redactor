@@ -835,8 +835,12 @@ def test_native_redactor_pickles_for_worker_processes():
 
     from safestream_redactor import Redactor
 
-    r = pickle.loads(pickle.dumps(Redactor(backend="native")))
-    assert all(d._native is not None for d in r._detectors if hasattr(d, "_native"))
+    def attached(r):  # Python-only tiers (postcode, URL, ...) never attach
+        return [d._native is not None for d in r._detectors if hasattr(d, "_native")]
+
+    fresh = Redactor(backend="native")
+    r = pickle.loads(pickle.dumps(fresh))
+    assert any(attached(fresh)) and attached(r) == attached(fresh)
     text = "key AKIAIOSFODNN7EXAMPLE token zX9kQ2mVp7Lw3Rt8Yn4Bc6Df ssn 123456789"
     assert r.redact(text) == Redactor(backend="python").redact(text)
 

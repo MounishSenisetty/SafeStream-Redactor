@@ -1227,6 +1227,29 @@ class UrlDetector(DeterministicDetector):
         self._patterns = self._py_patterns = list(_URL_PATTERNS)
 
 
+_POSTCODE_PATTERNS: tuple[Pattern, ...] = (
+    # a full UK postcode (outward + inward code, one space): the inward letters
+    # never use C I K M O V. The bare outward code ("OX12") is too ambiguous.
+    Pattern(
+        EntityType.ADDRESS,
+        re.compile(r"\b[A-Z]{1,2}\d[A-Z\d]? \d[ABD-HJLNP-UW-Z]{2}\b"),
+        0.8,
+        needs_digit=True,
+    ),
+)
+
+
+class PostcodeDetector(DeterministicDetector):
+    """Default tier: full UK postcodes (``EntityType.ADDRESS``). Python only; the
+    US street and city/ZIP patterns live in ``_PATTERNS``."""
+
+    name = "postcode"
+
+    def __init__(self) -> None:
+        super().__init__(types=())
+        self._patterns = self._py_patterns = list(_POSTCODE_PATTERNS)
+
+
 def _nrp_pattern() -> Pattern:
     from safestream_redactor.detectors.name_data import (
         NATIONALITIES,

@@ -295,6 +295,10 @@ class Redactor:
             from safestream_redactor.detectors.deterministic import UrlDetector
 
             self._detectors.append(UrlDetector())
+        if resolved_types is None or EntityType.ADDRESS in resolved_types:
+            from safestream_redactor.detectors.deterministic import PostcodeDetector
+
+            self._detectors.append(PostcodeDetector())
         if use_prose_fields or (resolved_types is not None and EntityType.NRP in resolved_types):
             from safestream_redactor.detectors.deterministic import NrpDetector
 
