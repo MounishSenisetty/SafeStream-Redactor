@@ -1,5 +1,5 @@
-Streamed redaction provably equals a whole-document pass under stated bounds
-Parallel output equals sequential output, or falls back to it on any seam mismatch
-Peak memory stays flat as input grows; whole-document redaction grows with input
-On held-out tests it covers more secrets than gitleaks and TruffleHog
-Test splits, paired bootstrap intervals and a contamination analysis are reported
+Chunked redaction can split a secret across a boundary and leak half of it
+Bounded overlap makes streamed output provably equal to whole-document output
+Parallel output is byte-identical to sequential, with a seam cross-check
+Added memory stays under 8.6 MB from 8 MiB to 2 GiB of input
+Pattern tiers cover more credentials than gitleaks and TruffleHog on test data

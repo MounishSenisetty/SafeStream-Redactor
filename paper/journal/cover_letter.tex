@@ -4,42 +4,32 @@
 \usepackage[a4paper,margin=2.5cm]{geometry}
 \usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
-\newcommand{\para}[1]{\par\medskip\noindent\textbf{#1}\ }
 \newcommand{\MISSING}[1]{\textcolor{red}{[MISSING: #1]}}
+\setlength{\parskip}{0.6em}
 
-\signature{Mounish Senisetty\\ on behalf of all authors\\ \MISSING{Department, Institution}\\ senisettymounish@gmail.com}
+\signature{Mounish Senisetty\\ \MISSING{affiliation}\\ senisettymounish@gmail.com}
 \address{\MISSING{Department, Institution}\\ \MISSING{City, Country}}
 \date{\today}
 
 \begin{document}
-\begin{letter}{The Editor-in-Chief\\ \emph{Computers \& Security}\\ Elsevier}
+\begin{letter}{The Editors\\ \emph{Computers \& Security}\\ Elsevier}
 
-\opening{Dear \MISSING{name of the Editor-in-Chief, or keep ``Editor''},}
+\opening{Dear Editors,}
 
-We submit the manuscript \emph{``Bounded-memory streaming redaction of personal data and credentials with a whole-document equivalence guarantee''} for consideration as a full research article in \emph{Computers \& Security}.
+Please consider the enclosed manuscript, ``Bounded-memory streaming redaction of personal data and credentials with a whole-document equivalence guarantee,'' for publication in \emph{Computers \& Security}.
 
-\para{The problem.} Organisations routinely share logs, database exports and incident captures that contain personal data and credentials, and these artefacts are often too large to process in memory. Chunked processing is the obvious remedy, but a value that straddles a chunk boundary can escape detection and be written out partly or wholly in the clear. To our knowledge, no redaction, de-identification or secret-scanning tool states when its chunked output equals its whole-document output.
+Tools that remove personal data and credentials from logs and exports are widely deployed, but the artefacts they process are routinely larger than memory, so they must be processed in chunks. We could find no system in the redaction, de-identification or secret-scanning literature that states any relationship between its chunked output and its whole-document output. The gap matters operationally: a value straddling a chunk boundary can be written out in the clear, and nothing in the output signals that it happened.
 
-\para{What the manuscript contributes.}
-\begin{itemize}
-\item A streaming redaction engine whose output is proven identical to a whole-document pass under two explicit assumptions (bounded span length and bounded context), with the assumption constants derived from each detector's declared requirements and enforced at run time and by regression tests.
-\item A multi-process mode whose output equals the sequential output byte for byte, with a seam cross-check that falls back to sequential processing on any disagreement, and a working-memory bound independent of input size.
-\item An evaluation on held-out test splits against Microsoft Presidio and two purpose-built secret scanners, gitleaks and TruffleHog, with paired bootstrap confidence intervals, a component ablation, a contamination analysis for a benchmark used during development, a peak-memory curve from 8\,MiB to 2\,GiB, and repeated throughput measurements.
-\end{itemize}
-On held-out data, the engine's pattern tiers fully redacted 43.7\% of test secrets against 31.1\% for gitleaks and 27.0\% for TruffleHog, at statistically indistinguishable precision; streaming memory stayed at or below 8.5\,MB up to 2\,GiB of input; and the parallel engine scaled 3.9-fold on four cores. The manuscript also reports where the approach loses, including low free-text recall without a named-entity model.
+The paper closes that gap. Given bounds on span length and context that each detector declares and that regression tests enforce, we prove the streamed output equals the whole-document output, the parallel output equals the sequential output byte for byte, and working memory is independent of input size. We then measure what this costs and what it buys, on held-out test splits against Microsoft Presidio in three configurations and against gitleaks and TruffleHog, with bootstrap confidence intervals, a component ablation, and a memory scaling curve from 8\,MiB to 2\,GiB.
 
-\para{Fit with the journal.} The work addresses data-loss prevention and the safe handling of sensitive operational data, an applied security problem for practitioners who must share logs and exports. Its contributions are an algorithmic guarantee and a systems design; the core engine uses validated patterns and entropy rules, not machine learning. A statistical named-entity model appears only as an optional tier and as part of the baseline comparison. \MISSING{confirm against the journal's current policy on submissions with an AI/ML component before submitting}
+We have tried to report the evaluation as a referee would want to see it. Where we lose, we say so: free-text recall without a named-entity model is low, and against Presidio's larger model our entity coverage is not significantly better. One corpus was inspected during rule development, and rather than drop it we report pre-exposure and post-exposure results side by side and bound the contamination. All code, split manifests, the evaluation harness and the raw results underlying every number are public.
 
-\para{Prior dissemination.} \MISSING{Choose one and delete the other.}
-\begin{itemize}
-\item[(a)] An earlier version of this system was presented at FTNCT'09 as ``SafeStream-Redactor: Provably-Equivalent Constant-Memory Streaming Redaction of PII and Credentials'' \MISSING{publication details}. The present manuscript extends it with new technical content not previously published: the held-out test-split evaluation; the secret-scanner baselines; the component ablation; the contamination analysis; the benign-shape suppression in the entropy tier, which reduced the false-alarm rate on generated non-secrets from 0.794 to 0.010 on the test split; the peak-memory curve to 2\,GiB; repeated throughput and parallel-scaling measurements; and Rust--Python backend parity results. \MISSING{state the estimated share of new content}
-\item[(b)] This manuscript has not been published previously, in whole or in part.
-\end{itemize}
-The manuscript is not under consideration elsewhere, and all authors have approved its submission.
+\MISSING{Keep the next paragraph unless the FTNCT'09 paper was never submitted anywhere; if it was submitted, accepted or published, complete it and attach a copy.}
+An earlier version of part of this work appeared as \MISSING{full citation} at \MISSING{venue, date}. A copy is enclosed. That paper presented the streaming architecture, the equivalence theorems, parallel seam safety and the calibrated ensemble. The present article adds: evaluation on held-out test splits, which the conference paper did not report; secret-scanner baselines (gitleaks, TruffleHog); a component ablation; a contamination analysis of RedactionBench; a peak-RSS memory curve across a 256-fold range of input sizes; benign-shape suppression in the entropy tier, which reduced the false-alarm rate on generated non-secrets from 0.794 to 0.010; and parity results for the native core. We estimate the new technical content at \MISSING{X}\% of the article.
 
-\para{Openness and declarations.} Source code, split manifests, the evaluation harness and all raw results are publicly available at \url{https://github.com/MounishSenisetty/SafeStream-Redactor}, and every number in the manuscript is generated from those files. The authors declare no competing interests \MISSING{confirm}. As required by Elsevier's policy, the manuscript declares the use of generative AI in preparing the evaluation scripts and the text, which the authors reviewed and take responsibility for.
+The manuscript is not under consideration elsewhere, and all authors have approved the submission. We disclose in the Methods section that an AI assistant was used to implement evaluation scripts and to draft the manuscript; the authors reviewed every result and every sentence and are accountable for the content.
 
-\closing{Thank you for considering our manuscript.\\ Yours sincerely,}
+\closing{Yours sincerely,}
 
 \end{letter}
 \end{document}
