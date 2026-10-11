@@ -53,6 +53,12 @@ _CUE_WINDOW = 96
 # (U+25BA) or a pipe between a label and its value: ``VISA NO \u2013 201512589001``.
 _SEP = r"(?:\s*(?:number|num|no|id|code|#|:|=|-|\.|is|of)\b)*\s*(?:[:=#\-.\u2013\u2014\u25ba|]\s*)?"
 
+# Month names for textual dates of birth (matched case-insensitively).
+_MONTH = (
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?"
+    r"|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+)
+
 # Each rule: (cue alternation, value pattern, entity type, confidence).
 # The value pattern must use a single capturing group around the emitted span,
 # and every value must be bounded to ``_MAX_VALUE`` characters: that bound is the
@@ -75,15 +81,20 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     # Dates of birth
     (
         r"dob|date\s*of\s*birth|birth\s*date|born(?:\s*on)?",
-        r"(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4})",
+        # numeric, day-month-year or month-day-year ("14 May 1988", "May 14,
+        # 1988"); gaps are 1-3 spaces/tabs so a value never crosses a line and
+        # stays within _MAX_VALUE
+        r"(\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}"
+        r"|\d{1,2}(?:st|nd|rd|th)?[ \t]{1,3}(?:of[ \t]{1,3})?" + _MONTH + r"\.?,?[ \t]{1,3}\d{2,4}"
+        r"|" + _MONTH + r"\.?[ \t]{1,3}\d{1,2}(?:st|nd|rd|th)?,?[ \t]{1,3}\d{2,4})",
         EntityType.DOB,
         0.8,
     ),
     # Phone / fax numbers named by a label
     (
-        r"phone|tel(?:ephone)?|mobile|cell|fax|contact\s*(?:no|number)",
+        r"phone|tel(?:ephone)?|mobile|cell|fax|call|contact\s*(?:no|number)",
         # a form may split the country code off with a dash or pointer
-        r"(\+?\d[\d\s().\-\u2013\u25ba]{6,61}\d)",
+        r"(\+?\d[\d \t().\-\u2013\u25ba]{6,61}\d)",
         EntityType.PHONE,
         0.8,
     ),
@@ -110,7 +121,7 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
     # precision). Value must contain a digit so plain words are not captured.
     (
         r"student|employee|emp|staff|member|customer|client|patient|"
-        r"badge|tax|medical\s*record|mrn|npi|licen[cs]e|passport|"
+        r"badge|tax|medical\s*record|mrn|npi|licen[cs]e|passport|itin|voter|"
         r"national\s*id|registration|enrol?lment",
         r"([A-Za-z]{0,6}[-/]?\d[A-Za-z0-9-]{2,56})",
         EntityType.ID_NUMBER,
@@ -125,6 +136,13 @@ _RULES: tuple[tuple[str, str, EntityType, float], ...] = (
         0.75,
     ),
 )
+
+
+def dob_value_pattern() -> str:
+    """The date-of-birth value pattern, non-capturing, for reuse by other tiers."""
+    value = next(v for _cue, v, etype, _conf in _RULES if etype is EntityType.DOB)
+    return "(?:" + value[1:-1] + ")"  # its one capturing group, made non-capturing
+
 
 # One compiled pattern per rule: cue, then a bounded gap, then the value group.
 _COMPILED: tuple[tuple[re.Pattern[str], EntityType, float], ...] = tuple(

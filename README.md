@@ -122,6 +122,11 @@ safestream deanonymize enc.txt -o restored.txt
 # synthetic stand-ins (example.com, TEST-NET IPs, 555-01xx phones) and regional IDs
 safestream redact input.txt -o demo.txt --mode fictionalize --hmac-key "$SECRET" --regional
 
+# documents rather than logs: the "prose" profile adds every date and time of day
+# (off by default because logs timestamp every line; labelled dates of birth are
+# always redacted). Also `profile = "prose"` under [detection] in a policy file
+safestream redact letter.txt -o letter_clean.txt --profile prose
+
 # deterministic pseudonyms (same input -> same token), streaming from stdin
 tail -f app.log | safestream redact - -o - --mode pseudonymize --hmac-key "$SECRET"
 
@@ -579,10 +584,26 @@ targets of the current work.
 | presidio-research (one sentence per document) | 1.10 MB/s | 3.02 MB/s | 0.013 MB/s |
 
 The native core is 3–12× pure Python, and the ONNX tier is model-bound (it is for
-prose, not bulk logs). Multi-core scaling (`--workers N`) and the Best-performance
-power mode are measured separately; earlier single-file figures (10–35 MB/s per
-core, 36–121 MB/s on 4 workers, 5.9 → 59 MB/s on 1 → 8 workers) came from other
-machines or a battery run and are not quoted until re-measured. A Vectorscan/re2
+prose, not bulk logs).
+
+**Throughput, Best performance mode, 1 thread / 16 threads** (`benchmarks/throughput.py`,
+a fixed ~2 MB dev sample per corpus, 120 s budget per run; raw data in
+[`research/results/raw/2026-10-03_throughput.json`](research/results/raw/2026-10-03_throughput.json)):
+
+| System | presidio-research | ai4privacy | RedactionBench | CoNLL |
+| --- | --: | --: | --: | --: |
+| SafeStream native | 6.61 / 6.55 MB/s | 14.0 / 13.3 | 17.2 / 18.1 | 27.2 / 27.4 |
+| SafeStream + ONNX | 0.013 / 0.020 | 0.015 / 0.051 | 0.023 / 0.096 | 0.0095 / 0.037 |
+| Presidio regex | 0.125 / 0.138 | 0.136 / 0.145 | 0.058 / 0.063 | 0.092 / 0.090 |
+| Presidio `sm` | 0.015 / 0.013 | 0.023 / 0.023 | 0.020 / 0.020 | 0.020 / 0.021 |
+| Presidio transformers (de-id model) | 0.0007 / 0.0024 | 0.0010 / 0.0047 | 0.0008 / 0.0039 | 0.0009 / 0.0032 |
+
+Threads help only the model runtimes: Presidio's transformers engine gains 3–5×, the
+ONNX tier 1.6–4×; at equal threads the ONNX tier stays 8–30× faster than it. SafeStream's
+own multi-core path is processes (`--workers N`), not threads; its scaling is not yet
+re-measured, and earlier single-file figures (10–35 MB/s per core, 36–121 MB/s on 4
+workers, 5.9 → 59 MB/s on 1 → 8 workers) came from other machines or a battery run and
+are not quoted until it is. A Vectorscan/re2
 backend was prototyped and rejected
 ([docs/PERFORMANCE_BACKENDS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/PERFORMANCE_BACKENDS.md)).
 
@@ -613,14 +634,14 @@ structured PII and credentials, with names and format-less identifiers handled b
 opt-in levers below. Treat it as high-recall for credentials and structured PII, and
 best-effort for free prose — not as a guarantee of catching everything.
 
-**Why a file labelled "TEST" under-detects.** The contextual tier deliberately
-*subtracts* confidence from any value sitting next to `test`, `sample`, `example`,
-`dummy`, `fake`, `placeholder`, or `lorem` (see `detectors/contextual.py`). This keeps
-documentation snippets and fixture data from being redacted. The side effect is that a
-file *saturated* with those marker words — e.g. a sample log full of `TEST DATA`,
-`fake`, `example`, `TestPass` — has most of its detections pushed below the default 0.5
-threshold and left untouched.That is working as designed: on real data (without the
-marker words) recall is substantially higher.If you *want* those suppressed values
+**Placeholder words near a value.** The contextual tier *subtracts* confidence from a
+value when the whole word `test`, `sample`, `example`, `dummy`, `fake`, `placeholder`,
+or `lorem` sits in or just before it (see `detectors/contextual.py`), so documentation
+snippets and fixture data are not redacted. Only shape-only matches are demoted (a bare
+SSN, phone, email, IP or high-entropy string). Vendor-prefixed keys (`sk_test_…`),
+checksum-validated numbers (cards, IBANs), field- or label-anchored values
+(`password: …`) and NER names are never demoted, and words that merely contain a
+trigger (`latest`, `protest`, `TestPass`) do not count. If you *want* the demoted values
 redacted anyway, lower `min_confidence` (below).
 
 **Three levers to raise recall**, in increasing order of effort:

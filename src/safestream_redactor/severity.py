@@ -37,6 +37,8 @@ _SEVERITY: dict[EntityType, str] = {
     EntityType.API_KEY: HIGH,
     EntityType.URL_CREDENTIALS: HIGH,
     EntityType.SECRET: HIGH,
+    EntityType.VENDOR_TOKEN: CRITICAL,
+    EntityType.PASSWORD_HASH: HIGH,
     # Regulated / directly identifying PII.
     EntityType.SSN: HIGH,
     EntityType.CREDIT_CARD: HIGH,
@@ -52,12 +54,17 @@ _SEVERITY: dict[EntityType, str] = {
     EntityType.PHONE: MEDIUM,
     EntityType.PERSON: MEDIUM,
     EntityType.ADDRESS: MEDIUM,
+    EntityType.USERNAME: MEDIUM,
     # Weakly identifying or ambiguous.
     EntityType.IPV4: LOW,
     EntityType.IPV6: LOW,
     EntityType.MAC_ADDRESS: LOW,
     EntityType.AWS_ACCOUNT_ID: LOW,  # an identifier, not a credential
     EntityType.DATE: LOW,
+    EntityType.SEX: LOW,
+    EntityType.URL: LOW,
+    EntityType.TITLE: LOW,
+    EntityType.NRP: LOW,
     EntityType.ORG: LOW,
     EntityType.LOC: LOW,
     EntityType.CUSTOM: MEDIUM,

@@ -82,6 +82,9 @@ _SCHEMA: dict[str, dict[str, str]] = {
         "use_entropy": _BOOL,
         "use_regional": _BOOL,
         "use_dates": _BOOL,
+        "profile": _STR,
+        "use_prose_fields": _BOOL,
+        "use_urls": _BOOL,
         "backend": _STR,
     },
     "redaction": {

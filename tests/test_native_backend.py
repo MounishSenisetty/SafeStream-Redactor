@@ -30,7 +30,11 @@ _TYPES = [EntityType.from_name(n) for n in _COVERED]
 
 
 def _python(text: str) -> list[tuple]:
-    dets = DeterministicDetector(types=_TYPES, prefilter=True).detect(text)
+    # the raw pattern scan, which the core reproduces; the shared Python
+    # post-steps (reference filter, phone shaping) run identically after either
+    # backend and are covered by _assert_backend_equiv on the full detector
+    det = DeterministicDetector(types=_TYPES, prefilter=True)
+    dets = det._detect_python(text, det._patterns)
     return sorted(
         (d.start, d.end, d.text, d.entity_type.value, round(d.confidence, 6)) for d in dets
     )
@@ -543,6 +547,8 @@ _LABELED_CORPUS = [
     "Student ID: 202184673 enrolled",
     "SSN 000-12-3456 and social security number #123456789",
     "DOB: 03/08/1996, born on 1990-01-02",
+    "Date of birth: 14 May 1988; born on 14th of May, 1988; DOB May 14, 1988",
+    "Birth date: Sept. 3rd 1990	dob 1 Jan 70 | born in May | DOB: May 14 shipped",
     "phone: +1 (415) 555-2671; Tel 0044 20 7946 0958",
     "card number 4111 1111 1111 1111 exp",
     "IBAN GB82WEST12345698765432 account 12-3456-7890",
@@ -599,6 +605,11 @@ _LABEL_PIECES = [
     "1234567",
     "12",
     "03/08/1996",
+    "May",
+    "14th",
+    "Sept.",
+    "of",
+    "1988",
     "GB82",
     "WEST",
     "x",
@@ -824,8 +835,12 @@ def test_native_redactor_pickles_for_worker_processes():
 
     from safestream_redactor import Redactor
 
-    r = pickle.loads(pickle.dumps(Redactor(backend="native")))
-    assert all(d._native is not None for d in r._detectors if hasattr(d, "_native"))
+    def attached(r):  # Python-only tiers (postcode, URL, ...) never attach
+        return [d._native is not None for d in r._detectors if hasattr(d, "_native")]
+
+    fresh = Redactor(backend="native")
+    r = pickle.loads(pickle.dumps(fresh))
+    assert any(attached(fresh)) and attached(r) == attached(fresh)
     text = "key AKIAIOSFODNN7EXAMPLE token zX9kQ2mVp7Lw3Rt8Yn4Bc6Df ssn 123456789"
     assert r.redact(text) == Redactor(backend="python").redact(text)
 
@@ -834,3 +849,12 @@ def test_e164_table_matches_python():
     from safestream_redactor.detectors.deterministic import E164_COUNTRY_CODES
 
     assert frozenset(sn.e164_country_codes()) == E164_COUNTRY_CODES
+
+
+def test_vendor_tokens_and_password_hashes_match_python():
+    from test_vendor_tokens import HASHES, VENDOR
+
+    for spec in [*VENDOR.values(), *HASHES.values()]:
+        for text in (spec, f"x {spec} y", f"é{spec}é", f"文{spec}", f"{spec}\u0301", spec[:-3]):
+            _assert_equiv(text)
+            _assert_backend_equiv(text)

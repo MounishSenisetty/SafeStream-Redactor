@@ -120,6 +120,8 @@ _CONFIG_SPECIMENS = [
     "codename ProjectX launched",
     "see ZQX-48213 now",
     "due 2024-03-15 09:30 sharp",
+    '{"LastName": "Arap", "Phone": "+44 20 7946 0958", "username": "midhat25"}',
+    "<GivenName2>Vick</GivenName2> Passport Number: X1234567 issued",
 ]
 
 
@@ -172,7 +174,7 @@ def test_every_config_parallel_equals_sequential_with_entities_on_seams(
         assert outcome.stats.counts == seq_stats.counts
     # the config's own detectors really ran (not a vacuous pass)
     expect_gone = {
-        "use_regional": b"GB82 WEST",
+        "use_regional": b"JG103759A",  # a NINO: regional-only (IBAN is on by default)
         "custom_words": b"ProjectX",
         "custom_patterns": b"ZQX-48213",
         "use_dates": b"2024-03-15",

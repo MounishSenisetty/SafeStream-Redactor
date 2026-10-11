@@ -25,8 +25,10 @@ import argparse
 import datetime as dt
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -80,8 +82,12 @@ def _analyzer(system: str, threads: int) -> Any:
     return analyze
 
 
-def run_one(system: str, corpus: str, threads: int, mb: float, max_s: float) -> dict[str, Any]:
-    texts = sample(corpus, mb)
+def run_one(
+    system: str, corpus: str, threads: int, texts_path: str, max_s: float
+) -> dict[str, Any]:
+    # the parent built the sample: loading a corpus here would put the loader's
+    # memory into this tool's peak RSS
+    texts: list[str] = json.loads(Path(texts_path).read_text(encoding="utf-8"))
     t0 = time.perf_counter()
     analyze = _analyzer(system, threads)
     analyze("Warm up: John Smith, john@example.com, 4111 1111 1111 1111.")
@@ -142,8 +148,8 @@ def main() -> None:
     ap.add_argument("--allow-battery", action="store_true")
     args = ap.parse_args()
     if args.run_one:
-        system, corpus, threads, mb, max_s = args.run_one
-        json.dump(run_one(system, corpus, int(threads), float(mb), float(max_s)), sys.stdout)
+        system, corpus, threads, texts_path, max_s = args.run_one
+        json.dump(run_one(system, corpus, int(threads), texts_path, float(max_s)), sys.stdout)
         return
 
     env = harness.environment()
@@ -151,7 +157,10 @@ def main() -> None:
         ap.error(f"power is {env['power']}: throughput on battery is not comparable")
     args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
     rows: list[dict[str, Any]] = []
+    texts_dir = Path(tempfile.mkdtemp(prefix="safestream-throughput-"))
     for corpus in args.corpora:
+        texts_path = texts_dir / f"{corpus}.json"
+        texts_path.write_text(json.dumps(sample(corpus, args.sample_mb)), encoding="utf-8")
         for system in args.systems:
             for threads in sorted({1, args.all_threads}):
                 ckpt = args.checkpoint_dir / f"{corpus}_{system}_t{threads}.json"
@@ -175,7 +184,7 @@ def main() -> None:
                         system,
                         corpus,
                         str(threads),
-                        str(args.sample_mb),
+                        str(texts_path),
                         str(args.max_seconds),
                     ],
                     capture_output=True,
@@ -196,6 +205,7 @@ def main() -> None:
                 rows.append(row)
                 ckpt.write_text(json.dumps({"commit": env["commit"], "row": row}), encoding="utf-8")
 
+    shutil.rmtree(texts_dir, ignore_errors=True)
     out = args.json or ROOT / "research" / "results" / "raw" / (
         f"{dt.date.today().isoformat()}_throughput.json"
     )

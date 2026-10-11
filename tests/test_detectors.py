@@ -38,9 +38,11 @@ def test_phone_rejects_date_and_ssn_shapes():
 
 
 def test_bare_phone_needs_context():
-    # a bare grouped number is ambiguous with ids -> only fires with a phone cue
-    assert EntityType.PHONE not in types_in("row 415 555 0132 end")
-    assert EntityType.PHONE in types_in("call 415 555 0132 now")
+    # a bare grouped number that is not phone-shaped (123 is no NANP area code)
+    # is ambiguous with ids -> only fires with a phone cue. A valid separated
+    # NANP number needs no cue (test_phone_shaped_numbers_need_no_cue).
+    assert EntityType.PHONE not in types_in("row 123 456 7890 end")
+    assert EntityType.PHONE in types_in("call 123 456 7890 now")
 
 
 def test_credit_card_luhn():
@@ -154,6 +156,17 @@ def test_dates_are_opt_in():
     assert EntityType.DATE in types_in(text, types=["date"])
     for benign in ["version 1.12.20", "ratio 16:9", "ports 3000:3000", "13/13/2020", "May I"]:
         assert EntityType.DATE not in types_in(benign, use_dates=True), benign
+
+
+def test_prose_profile_enables_dates_and_explicit_flags_win():
+    text = "Signed Aug 19, 2024"
+    assert EntityType.DATE not in types_in(text)
+    assert EntityType.DATE not in types_in(text, profile="default")
+    assert EntityType.DATE in types_in(text, profile="prose")
+    assert EntityType.DATE not in types_in(text, profile="prose", use_dates=False)
+    assert Redactor(profile="prose").profile == "prose"
+    with pytest.raises(ValueError, match="unknown profile"):
+        Redactor(profile="poetry")
 
 
 def test_aws_key():
@@ -474,10 +487,11 @@ def test_stripe_key_not_mislabelled_as_openai():
     assert EntityType.OPENAI_KEY not in {d.entity_type for d in dets}
 
 
-def test_url_credentials_redacts_only_the_password():
+def test_url_credentials_redact_user_and_password_not_host():
+    # the password is url_credentials; the userinfo user is a username field
     r = Redactor()
     out = r.redact("dsn postgres://svc_user:S3cretPass@db.internal:5432/app up")
-    assert out == "dsn postgres://svc_user:[REDACTED]@db.internal:5432/app up"
+    assert out == "dsn postgres://[REDACTED]:[REDACTED]@db.internal:5432/app up"
     dets = r.detect("amqp://guest:changeit-1@mq.example.com/vhost")
     cred = [d for d in dets if d.entity_type is EntityType.URL_CREDENTIALS]
     assert [d.text for d in cred] == ["changeit-1"]
@@ -497,8 +511,51 @@ def test_url_without_password_is_not_flagged():
 
 def test_entropy_detects_high_entropy_secret():
     assert EntityType.SECRET in types_in("secret Zx9Kq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0")
-    # 32-char high-entropy hex
-    assert EntityType.SECRET in types_in("digest a3f5e8d9c2b1046789abcdef01234567")
+    # 32-char high-entropy hex (after a hash word it would be a digest: see below)
+    assert EntityType.SECRET in types_in("token a3f5e8d9c2b1046789abcdef01234567")
+
+
+_HEX40 = "91957296ca119fc6aab8a682b3e5dcf9bdedd74a"
+_HEX64 = "61415f82180df828e3b8d638ae5bb3913a26ff9b" + "0c1d2e3f4a5b6c7d8e9f0a1b"
+_UUID = "2ba5949a-ea6e-40a0-8f4b-9d659c2a7e11"
+_PNG = "iVBORw0KGgozzUwp7S2FxlITmFp2FeknRE7xQfrX0aB9cD8eF7gH6iJ5"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"request_id={_UUID} status=200",
+        f"commit {_HEX40}\nMerge branch 'main'",
+        f"sha256:{_HEX64}  image.tar",
+        f"FROM app@sha256:{_HEX64}",
+        f"checksum (md5): {_HEX64[:32]}",
+        f'<img src="data:image/png;base64,{_PNG}">',
+    ],
+)
+def test_entropy_skips_identifiers_that_are_not_secrets(text):
+    assert EntityType.SECRET not in types_in(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"API_KEY={_UUID}",  # a key is a key whatever its shape
+        f"auth token: {_HEX40}",
+        f"secret = {_HEX64}",
+        f"password {_PNG}",
+        f"blob {_HEX40}",  # hex with no hash word stays a candidate secret
+    ],
+)
+def test_entropy_keeps_the_same_shapes_after_a_secret_key(text):
+    # redacted in full, by whichever tier labels it (api_key wins some overlaps)
+    value = text.split()[-1].split("=")[-1]
+    assert value not in Redactor().redact(text)
+
+
+def test_identifier_check_reads_only_its_own_line():
+    # a secret key on the previous line does not rescue a commit hash
+    out = Redactor().redact(f"password: hunter2\ncommit {_HEX40}")
+    assert out == f"password: [REDACTED]\ncommit {_HEX40}"
 
 
 def test_entropy_ignores_low_entropy_and_words():
@@ -612,6 +669,59 @@ def test_international_phone_needs_an_assigned_country_code():
     assert phone_ok("(415) 555-2671")  # no '+': the country-code rule does not apply
 
 
+def test_entropy_key_value_token_redacts_the_value_not_the_key():
+    secret = "Zx9Kq2mVp7Lw3Rt8Yn4Bc6Df1Gh5Jk0Qw"
+    assert Redactor().redact(f"session={secret} ok") == "session=[REDACTED] ok"
+    # a value too short or plain on its own is not an entropy secret
+    assert Redactor().redact("ref=abc trace=on") == "ref=abc trace=on"
+
+
+def test_label_gated_key_keeps_base64_padding_inside_the_redaction():
+    out = Redactor().redact("secret: QmFzZTY0U2VjcmV0VmFsdWU== end")
+    assert out == "secret: [REDACTED] end"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "to stop receiving messages to 618-226-1460",  # separated NANP, no cue
+        "fax 415.555.0134 today",
+        "ring 079 0442 1744 after six",  # national format with a 0 trunk prefix
+        "0680 298 70 63",
+    ],
+)
+def test_phone_shaped_numbers_need_no_cue(text):
+    assert EntityType.PHONE in types_in(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "order 123-456-7890 shipped",  # 123 is not a NANP area code
+        "ref 930.167.3943",  # exchange 167 starts with 1
+        "ts 1696345200 ok",  # bare 10-digit run: an epoch, needs a cue
+        "batch 4155552671 done",
+        "id 123 456 789",
+        "on 2024-03-15",
+        "version 10.2.33",
+        "in 2019 we had 412 555 users",
+    ],
+)
+def test_unlabelled_digit_runs_that_are_not_phone_shaped_stay(text):
+    assert EntityType.PHONE not in types_in(text)
+
+
+def test_bare_ten_digits_count_with_a_cue_or_a_phone_field():
+    assert EntityType.PHONE in types_in("call 4155552671 now")
+    assert Redactor().redact('{"phone": "4155552671"}') == '{"phone": "[REDACTED]"}'
+
+
+def test_country_code_prefix_is_redacted_with_the_number():
+    # "+144" is not an assigned code, so the + pattern rejects the number; the
+    # bare match must still take the prefix with it rather than leave it in clear
+    assert Redactor().redact("call +144 65 989-0865") == "call [REDACTED]"
+
+
 def test_entropy_skips_benign_shapes_but_keyed_values_still_redact():
     from safestream_redactor import Redactor
     from safestream_redactor.detectors.entropy import EntropyDetector
@@ -621,13 +731,12 @@ def test_entropy_skips_benign_shapes_but_keyed_values_still_redact():
     png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
     benign = f'request_id={uuid} commit {sha1} <img src="data:image/png;base64,{png}">'
     assert EntropyDetector().detect(benign) == []
-    assert len(EntropyDetector(suppress_benign=False).detect(benign)) == 3
     # a credential in a benign shape is still caught when a secret key names it
     keyed = Redactor().redact(f"api_key={uuid}\ntoken: {sha1}")
     assert uuid not in keyed and sha1 not in keyed
 
 
-def test_entropy_keeps_uuid_shaped_secret_named_by_a_key():
-    from safestream_redactor.detectors.entropy import EntropyDetector
-
-    assert EntropyDetector().detect("SAUCE_ACCESS_KEY=2397f603-c2c4-4897-a8ca-587ace5dc8dd")
+def test_uuid_shaped_secret_named_by_a_key_is_redacted():
+    # the identifier rule must not let a key-named UUID through (some tier redacts it)
+    out = Redactor().redact("SAUCE_ACCESS_KEY=2397f603-c2c4-4897-a8ca-587ace5dc8dd")
+    assert out == "SAUCE_ACCESS_KEY=[REDACTED]"

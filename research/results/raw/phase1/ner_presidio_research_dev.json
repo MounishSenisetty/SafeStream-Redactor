@@ -1,0 +1,668 @@
+{
+ "corpus": "presidio_research",
+ "split": "dev",
+ "n_docs": 750,
+ "source_revision": "0cb365021884d849c5bc21957de67c91943c1662",
+ "previously_exposed": null,
+ "corpus_notes": "",
+ "corpus_skipped": [],
+ "has_necessity": false,
+ "has_negatives": true,
+ "has_scope": true,
+ "environment": {
+  "date": "2026-10-04T18:04:21+05:30",
+  "cpu": "12th Gen Intel(R) Core(TM) i7-12650H",
+  "physical_cores": 10,
+  "logical_cores": 16,
+  "power": "BATTERY (23%)",
+  "power_plan": "Balanced; AC power mode: Best performance",
+  "os": "Windows-11-10.0.26200-SP0",
+  "multiprocessing_start_method": "spawn",
+  "python": "3.14.0",
+  "versions": {
+   "safestream-redactor": "0.4.0",
+   "safestream-redactor-native": "0.4.0",
+   "presidio-analyzer": "2.2.355",
+   "spacy": "3.8.13",
+   "spacy-huggingface-pipelines": "0.0.4",
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": "3.8.0",
+   "onnxruntime": "1.24.4",
+   "tokenizers": "0.22.2",
+   "transformers": "4.57.6",
+   "torch": "2.11.0",
+   "numpy": "2.3.5"
+  },
+  "commit": "c6a1548f5226695ff15824914ae3c6a43698e199",
+  "dirty": false
+ },
+ "isolated_venvs": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs",
+ "systems": {
+  "safestream-native-onnx": "ner",
+  "safestream-native-onnx-prose": "ner"
+ },
+ "runs": {
+  "safestream-native-onnx": {
+   "system": "safestream-native-onnx",
+   "load_s": 1.7614334000027156,
+   "bytes": 63818,
+   "peak_rss_mb": 184.7265625,
+   "tool_rss_mb": 159.12109375,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\safestream\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.30.0",
+    "tokenizers": "0.23.2",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "BATTERY (23%)",
+   "analyze_s": 5.288061800067226,
+   "mb_s": 0.012068315842902725,
+   "p50_ms": 7.37210000079358,
+   "p99_ms": 28.642400000535417
+  },
+  "safestream-native-onnx-prose": {
+   "system": "safestream-native-onnx-prose",
+   "load_s": 0.5848963999997068,
+   "bytes": 63818,
+   "peak_rss_mb": 184.8671875,
+   "tool_rss_mb": 159.52734375,
+   "python": "C:\\Users\\MOUNISH\\.safestream-bench\\venvs\\safestream\\Scripts\\python.exe",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.30.0",
+    "tokenizers": "0.23.2",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.3"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "BATTERY (23%)",
+   "analyze_s": 5.246692799897573,
+   "mb_s": 0.012163471816235527,
+   "p50_ms": 7.2856000006140675,
+   "p99_ms": 29.813299999659648
+  }
+ },
+ "scores": {
+  "systems": {
+   "safestream-native-onnx": {
+    "point": {
+     "char_p": 0.9512504224400136,
+     "char_r": 0.5883367298949679,
+     "char_f1": 0.7270203080102023,
+     "entity_recall_covered": 0.5112321307011573,
+     "ent_p_partial": 0.8127572016460906,
+     "ent_r_partial": 0.537780803267529,
+     "ent_f1_partial": 0.6472757066775913,
+     "ent_p_strict": 0.7088477366255144,
+     "ent_r_strict": 0.4690265486725664,
+     "ent_f1_strict": 0.5645227365833675,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.08,
+     "scope_char_p": 0.9509437170549226,
+     "scope_char_r": 0.5982243140610793,
+     "scope_char_f1": 0.7344298893594668,
+     "scope_fully_redacted": 0.5377358490566038
+    },
+    "ci95": {
+     "char_p": [
+      0.9384627812073141,
+      0.9637016293668484
+     ],
+     "char_r": [
+      0.5573519072438151,
+      0.6200480482589955
+     ],
+     "char_f1": [
+      0.7028843973611981,
+      0.7508305321937977
+     ],
+     "entity_recall_covered": [
+      0.4764167618122307,
+      0.5453318653664675
+     ],
+     "ent_p_partial": [
+      0.7787498353294271,
+      0.8445139096713052
+     ],
+     "ent_r_partial": [
+      0.5038719124413109,
+      0.5715335541301051
+     ],
+     "ent_f1_partial": [
+      0.6172466922152852,
+      0.6760253644143753
+     ],
+     "ent_p_strict": [
+      0.6723257632419936,
+      0.7429712871266739
+     ],
+     "ent_r_strict": [
+      0.435172114143463,
+      0.5037816536629997
+     ],
+     "ent_f1_strict": [
+      0.5316440120040291,
+      0.596635794821874
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.018173701298701297,
+      0.16666666666666666
+     ],
+     "scope_char_p": [
+      0.9380407524780315,
+      0.9634605667563925
+     ],
+     "scope_char_r": [
+      0.5672015122208546,
+      0.6301031865855415
+     ],
+     "scope_char_f1": [
+      0.7102015736355021,
+      0.7579571527379989
+     ],
+     "scope_fully_redacted": [
+      0.500723520185558,
+      0.5753237815884475
+     ]
+    },
+    "per_type": {
+     "AGE": {
+      "gold": 42,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CREDIT_CARD": {
+      "gold": 71,
+      "pred": 67,
+      "p_partial": 0.9850746268656716,
+      "r_partial": 0.9295774647887324,
+      "f1_partial": 0.9565217391304348,
+      "p_strict": 0.9850746268656716,
+      "r_strict": 0.9295774647887324,
+      "f1_strict": 0.9565217391304348
+     },
+     "DATE_TIME": {
+      "gold": 59,
+      "pred": 3,
+      "p_partial": 1.0,
+      "r_partial": 0.05084745762711865,
+      "f1_partial": 0.0967741935483871,
+      "p_strict": 1.0,
+      "r_strict": 0.05084745762711865,
+      "f1_strict": 0.0967741935483871
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 28,
+      "pred": 28,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     },
+     "IBAN_CODE": {
+      "gold": 7,
+      "pred": 7,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     },
+     "ID": {
+      "gold": 2,
+      "pred": 1,
+      "p_partial": 1.0,
+      "r_partial": 0.5,
+      "f1_partial": 0.6666666666666666,
+      "p_strict": 1.0,
+      "r_strict": 0.5,
+      "f1_strict": 0.6666666666666666
+     },
+     "IP_ADDRESS": {
+      "gold": 12,
+      "pred": 12,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     },
+     "LOCATION": {
+      "gold": 564,
+      "pred": 267,
+      "p_partial": 0.5880149812734082,
+      "r_partial": 0.2783687943262411,
+      "f1_partial": 0.3778580024067389,
+      "p_strict": 0.40823970037453183,
+      "r_strict": 0.19326241134751773,
+      "f1_strict": 0.26233453670276774
+     },
+     "NRP": {
+      "gold": 27,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 122,
+      "pred": 149,
+      "p_partial": 0.5167785234899329,
+      "r_partial": 0.6311475409836066,
+      "f1_partial": 0.5682656826568266,
+      "p_strict": 0.44966442953020136,
+      "r_strict": 0.5491803278688525,
+      "f1_strict": 0.4944649446494465
+     },
+     "PERSON": {
+      "gold": 418,
+      "pred": 400,
+      "p_partial": 0.8775,
+      "r_partial": 0.8397129186602871,
+      "f1_partial": 0.8581907090464548,
+      "p_strict": 0.83,
+      "r_strict": 0.7942583732057417,
+      "f1_strict": 0.8117359413202934
+     },
+     "PHONE_NUMBER": {
+      "gold": 39,
+      "pred": 28,
+      "p_partial": 1.0,
+      "r_partial": 0.717948717948718,
+      "f1_partial": 0.835820895522388,
+      "p_strict": 0.9642857142857143,
+      "r_strict": 0.6923076923076923,
+      "f1_strict": 0.8059701492537313
+     },
+     "TITLE": {
+      "gold": 49,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 19,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 10,
+      "pred": 10,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     }
+    }
+   },
+   "safestream-native-onnx-prose": {
+    "point": {
+     "char_p": 0.9531116794543905,
+     "char_r": 0.64262946125307,
+     "char_f1": 0.7676654182272159,
+     "entity_recall_covered": 0.5568413886997958,
+     "ent_p_partial": 0.8154138915318744,
+     "ent_r_partial": 0.5833900612661674,
+     "ent_f1_partial": 0.6801587301587302,
+     "ent_p_strict": 0.7193149381541389,
+     "ent_r_strict": 0.5146358066712049,
+     "ent_f1_strict": 0.6,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.08,
+     "scope_char_p": 0.9528412191129473,
+     "scope_char_r": 0.6537947264266994,
+     "scope_char_f1": 0.7754868997018334,
+     "scope_fully_redacted": 0.5863570391872278
+    },
+    "ci95": {
+     "char_p": [
+      0.9405639705923727,
+      0.9653097987628078
+     ],
+     "char_r": [
+      0.6131227851790244,
+      0.6732494449974994
+     ],
+     "char_f1": [
+      0.7457094952427402,
+      0.7896652361583018
+     ],
+     "entity_recall_covered": [
+      0.5214764071313871,
+      0.591047439083653
+     ],
+     "ent_p_partial": [
+      0.783427173763263,
+      0.8460074350847724
+     ],
+     "ent_r_partial": [
+      0.5495106733881006,
+      0.6175835351089588
+     ],
+     "ent_f1_partial": [
+      0.6525942393283696,
+      0.7091477716966379
+     ],
+     "ent_p_strict": [
+      0.6846211292732362,
+      0.7523290768821495
+     ],
+     "ent_r_strict": [
+      0.48077884159483425,
+      0.5496898412973791
+     ],
+     "ent_f1_strict": [
+      0.5691699604743083,
+      0.6305284415417072
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.018173701298701297,
+      0.16666666666666666
+     ],
+     "scope_char_p": [
+      0.9401608254696983,
+      0.9650969907842442
+     ],
+     "scope_char_r": [
+      0.6232649906300671,
+      0.6851552552285524
+     ],
+     "scope_char_f1": [
+      0.7531074275615417,
+      0.797786978964228
+     ],
+     "scope_fully_redacted": [
+      0.5492748744337965,
+      0.6246065821228747
+     ]
+    },
+    "per_type": {
+     "AGE": {
+      "gold": 42,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CREDIT_CARD": {
+      "gold": 71,
+      "pred": 67,
+      "p_partial": 0.9850746268656716,
+      "r_partial": 0.9295774647887324,
+      "f1_partial": 0.9565217391304348,
+      "p_strict": 0.9850746268656716,
+      "r_strict": 0.9295774647887324,
+      "f1_strict": 0.9565217391304348
+     },
+     "DATE_TIME": {
+      "gold": 59,
+      "pred": 22,
+      "p_partial": 1.0,
+      "r_partial": 0.3728813559322034,
+      "f1_partial": 0.54320987654321,
+      "p_strict": 1.0,
+      "r_strict": 0.3728813559322034,
+      "f1_strict": 0.54320987654321
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 28,
+      "pred": 28,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     },
+     "IBAN_CODE": {
+      "gold": 7,
+      "pred": 7,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     },
+     "ID": {
+      "gold": 2,
+      "pred": 1,
+      "p_partial": 1.0,
+      "r_partial": 0.5,
+      "f1_partial": 0.6666666666666666,
+      "p_strict": 1.0,
+      "r_strict": 0.5,
+      "f1_strict": 0.6666666666666666
+     },
+     "IP_ADDRESS": {
+      "gold": 12,
+      "pred": 12,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     },
+     "LOCATION": {
+      "gold": 564,
+      "pred": 262,
+      "p_partial": 0.583969465648855,
+      "r_partial": 0.2712765957446808,
+      "f1_partial": 0.3704600484261501,
+      "p_strict": 0.40076335877862596,
+      "r_strict": 0.18617021276595744,
+      "f1_strict": 0.2542372881355932
+     },
+     "NRP": {
+      "gold": 27,
+      "pred": 49,
+      "p_partial": 0.5102040816326531,
+      "r_partial": 0.9259259259259259,
+      "f1_partial": 0.6578947368421053,
+      "p_strict": 0.4897959183673469,
+      "r_strict": 0.8888888888888888,
+      "f1_strict": 0.631578947368421
+     },
+     "ORGANIZATION": {
+      "gold": 122,
+      "pred": 147,
+      "p_partial": 0.5238095238095238,
+      "r_partial": 0.6311475409836066,
+      "f1_partial": 0.5724907063197027,
+      "p_strict": 0.4557823129251701,
+      "r_strict": 0.5491803278688525,
+      "f1_strict": 0.4981412639405205
+     },
+     "PERSON": {
+      "gold": 418,
+      "pred": 399,
+      "p_partial": 0.8796992481203008,
+      "r_partial": 0.8397129186602871,
+      "f1_partial": 0.8592411260709915,
+      "p_strict": 0.8320802005012531,
+      "r_strict": 0.7942583732057417,
+      "f1_strict": 0.8127294981640146
+     },
+     "PHONE_NUMBER": {
+      "gold": 39,
+      "pred": 28,
+      "p_partial": 1.0,
+      "r_partial": 0.717948717948718,
+      "f1_partial": 0.835820895522388,
+      "p_strict": 0.9642857142857143,
+      "r_strict": 0.6923076923076923,
+      "f1_strict": 0.8059701492537313
+     },
+     "TITLE": {
+      "gold": 49,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 19,
+      "pred": 19,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     },
+     "US_SSN": {
+      "gold": 10,
+      "pred": 10,
+      "p_partial": 1.0,
+      "r_partial": 1.0,
+      "f1_partial": 1.0,
+      "p_strict": 1.0,
+      "r_strict": 1.0,
+      "f1_strict": 1.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {
+   "safestream-native-onnx - safestream-native-onnx-prose": {
+    "char_p": [
+     -0.004025499984520733,
+     -0.0019254618959493874,
+     0.00043403620993264934
+    ],
+    "char_r": [
+     -0.06844643776662675,
+     -0.05414073333165259,
+     -0.04080975768652567
+    ],
+    "char_f1": [
+     -0.05194690753498521,
+     -0.04052792674637229,
+     -0.030050875641397218
+    ],
+    "entity_recall_covered": [
+     -0.056942644669658087,
+     -0.045640368709794266,
+     -0.03494338495168439
+    ],
+    "ent_p_partial": [
+     -0.008738594669376954,
+     -0.0029295060853053445,
+     0.0038590230213888486
+    ],
+    "ent_r_partial": [
+     -0.05694264466965809,
+     -0.045640368709794266,
+     -0.03494338495168439
+    ],
+    "ent_f1_partial": [
+     -0.042293928404977005,
+     -0.03289040552238992,
+     -0.024059893244267484
+    ],
+    "ent_f1_strict": [
+     -0.04545884866234338,
+     -0.03551274888561412,
+     -0.02623427270349685
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.052439154199674834,
+     -0.04093530286324021,
+     -0.030339837319679316
+    ],
+    "scope_fully_redacted": [
+     -0.06100242180205409,
+     -0.04865829213156292,
+     -0.03712045454545454
+    ]
+   }
+  }
+ },
+ "command": "python.exe -m benchmarks.harness --corpus presidio_research --split dev --systems safestream-native-onnx safestream-native-onnx-prose --venv-root C:/Users/MOUNISH/.safestream-bench/venvs --checkpoint-dir benchmarks/data/external/checkpoints/phase1-ner --bootstrap 2000 --allow-battery --json research/results/raw/phase1/ner_presidio_research_dev.json --md research/results/raw/phase1/ner_presidio_research_dev.md"
+}

@@ -106,11 +106,13 @@ def test_identifiers_embedded_in_longer_tokens_are_ignored() -> None:
 # --- integration -------------------------------------------------------------
 
 
-def test_regional_tier_is_opt_in() -> None:
-    text = "iban GB82 WEST 1234 5698 7654 32"
-    assert "GB82" in Redactor().redact(text)
-    assert "GB82" not in Redactor(use_regional=True).redact(text)
-    assert "GB82" not in Redactor(types=["iban"]).redact(text)  # asking for the type enables it
+def test_regional_tier_is_opt_in_except_checksummed_ids() -> None:
+    text = "nino: JG103759A"
+    assert "JG103759A" in Redactor().redact(text)
+    assert "JG103759A" not in Redactor(use_regional=True).redact(text)
+    assert "JG103759A" not in Redactor(types=["uk_nino"]).redact(text)  # naming it enables it
+    # checksummed IDs (IBAN, NHS, ...) are on by default since Phase 1
+    assert "GB82" not in Redactor().redact("iban GB82 WEST 1234 5698 7654 32")
 
 
 def test_regional_tier_streams_identically_across_chunk_boundaries() -> None:

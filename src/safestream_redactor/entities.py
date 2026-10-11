@@ -38,6 +38,11 @@ class EntityType(str, Enum):
     ANTHROPIC_KEY = "anthropic_key"
     # password embedded in a connection-string / URL userinfo section
     URL_CREDENTIALS = "url_credentials"
+    # a prefixed token from a vendor without its own type (Atlassian, Doppler,
+    # Dropbox, Vault, Mapbox, Teams webhooks, Salesforce, Telegram, New Relic, Mailgun)
+    VENDOR_TOKEN = "vendor_token"
+    # a password hash (bcrypt, sha-crypt, md5-crypt, argon2, scrypt, PBKDF2, Kerberos)
+    PASSWORD_HASH = "password_hash"
     # generic high-entropy secret (no published format)
     SECRET = "secret"
     # NER tier
@@ -50,6 +55,16 @@ class EntityType(str, Enum):
     DOB = "dob"
     # any calendar date / time of day (opt-in: logs are full of timestamps)
     DATE = "date"
+    # the value of a username/login field (field-anchored only)
+    USERNAME = "username"
+    # every URL (prose profile); by default only credentialed/webhook URLs and
+    # the values of sensitive query parameters are redacted
+    URL = "url"
+    # sex/gender and honorific/job-title fields (prose profile only)
+    SEX = "sex"
+    TITLE = "title"
+    # nationality / religious-group words (prose profile only)
+    NRP = "nrp"
     # generic sensitive identifier caught only via an adjacent label cue
     # (student/employee/member/patient/account/MRN/licence/passport/... numbers)
     ID_NUMBER = "id_number"

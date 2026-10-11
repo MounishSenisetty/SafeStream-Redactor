@@ -69,9 +69,11 @@ def test_detect_mode_lists_findings_without_revealing_them(app: AppTest) -> None
     _no_errors(app)
     assert app.text_area(key="text").value == SAMPLE_TEXT
     metrics = {m.label: m.value for m in app.metric}
-    assert metrics["Findings"] == "8" and metrics["Highest severity"] == "critical"
+    # 9: the db URL's userinfo user ("app") is a username field since Phase 1
+    assert metrics["Findings"] == "9" and metrics["Highest severity"] == "critical"
     table = app.dataframe[0].value
-    assert list(table["Line:Col"])[:2] == ["1:46", "1:85"]
+    # the phone finding starts at its "+1" (col 82): the country code is redacted too
+    assert list(table["Line:Col"])[:2] == ["1:46", "1:82"]
     assert AWS not in table.to_string()  # hidden by default
     app.toggle(key="reveal").set_value(True).run()
     assert AWS in app.dataframe[0].value.to_string()

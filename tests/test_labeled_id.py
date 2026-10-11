@@ -54,6 +54,26 @@ def test_dob_label_anchored() -> None:
     assert EntityType.DOB.value in _types("date of birth is 1996-03-08")
 
 
+@pytest.mark.parametrize(
+    ("text", "value"),
+    [
+        ("Date of birth: 14 May 1988", "14 May 1988"),
+        ("born on 14th of May, 1988 in Leeds", "14th of May, 1988"),
+        ("DOB May 14, 1988.", "May 14, 1988"),
+        ("Birth date: Sept. 3rd 1990", "Sept. 3rd 1990"),
+        ("dob 1 JAN 70", "1 JAN 70"),
+    ],
+)
+def test_dob_textual_dates_are_fully_redacted(text: str, value: str) -> None:
+    # the whole date, and only the date, is replaced: no part of it leaks
+    assert Redactor().redact(text) == text.replace(value, "[REDACTED]")
+
+
+@pytest.mark.parametrize("text", ["born in May", "date of birth: May", "DOB: May 14 shipped"])
+def test_dob_needs_a_full_date(text: str) -> None:
+    assert EntityType.DOB.value not in _types(text)
+
+
 def test_bare_number_without_cue_is_not_redacted() -> None:
     # precision guard: numbers with no sensitivity cue must be left alone
     assert _types("The build produced 202184673 artifacts in 12345 ms") == set()
@@ -118,3 +138,12 @@ def test_detector_declares_streaming_requirements() -> None:
     # boundary is still seen whole
     assert req.required_overlap >= req.left_context
     assert req.max_span >= 32
+
+
+def test_labeled_phone_value_never_crosses_a_line() -> None:
+    text = "phone=+1 415 555 0134\n2026-09-30T10:14:03Z DEBUG next line"
+    assert Redactor().redact(text) == "phone=[REDACTED]\n2026-09-30T10:14:03Z DEBUG next line"
+
+
+def test_call_is_a_phone_cue_for_a_bare_number() -> None:
+    assert Redactor().redact("call 4155552671 now") == "call [REDACTED] now"

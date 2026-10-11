@@ -40,6 +40,11 @@ def table(report: dict) -> str:
         extra += [("mandatory_recall", "Mandatory R"), ("no_leak_doc_rate", "No-leak docs")]
     if report.get("has_negatives"):
         extra += [("fp_doc_rate", "FP doc rate")]
+    if report.get("has_scope"):
+        extra += [
+            ("scope_char_f1", "Char F1 (Presidio-scope)"),
+            ("scope_fully_redacted", "Fully redacted (Presidio-scope)"),
+        ]
     cols = list(METRICS) + extra
     lines = [
         f"#### {report['corpus']} (dev, {report['n_docs']} documents)",

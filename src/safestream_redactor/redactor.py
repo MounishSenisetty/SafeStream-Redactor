@@ -62,6 +62,16 @@ def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence
         raise ValueError(f"min_confidence must be a number in [0, 1], got {min_confidence!r}")
 
 
+# Named detection profiles: defaults for the opt-in tiers, resolved before
+# construction. An explicit argument always wins over the profile. "default"
+# suits logs and machine text; "prose" adds tiers whose matches are common
+# noise in logs (every date and time of day) but sensitive in documents.
+PROFILES: dict[str, dict[str, bool]] = {
+    "default": {},
+    "prose": {"use_dates": True, "use_prose_fields": True, "use_urls": True},
+}
+
+
 class Redactor:
     """Detects and redacts sensitive entities in strings, streams, and files.
 
@@ -94,7 +104,19 @@ class Redactor:
     use_dates:
         Enable the date/time tier (``EntityType.DATE``). Off by default because
         logs carry a timestamp on every line; naming ``date`` in ``types`` also
-        enables it.
+        enables it. Labelled dates of birth (``DOB: …``) are always detected.
+    use_urls:
+        Redact every URL. Off by default (URLs with credentials, webhook URLs and
+        the values of sensitive query parameters are always redacted); on in the
+        prose profile.
+    use_prose_fields:
+        Also redact sex/gender and honorific/job-title fields (``"Gender": "F"``)
+        and nationality / religious-group words (``EntityType.NRP``). Off by
+        default; on in the prose profile.
+    profile:
+        ``"default"`` or ``"prose"`` (see :data:`PROFILES`). A profile only sets
+        the tiers you leave unset (``None``): ``profile="prose", use_dates=False``
+        keeps dates off. Unknown names raise ``ValueError``.
     calibrator:
         Optional trained :class:`~safestream_redactor.calibration.Calibrator`.
         When given, each detection's hand-set confidence is replaced by the
@@ -145,7 +167,10 @@ class Redactor:
         onnx_batch_size: int = 1,
         use_entropy: bool = True,
         use_regional: bool = False,
-        use_dates: bool = False,
+        use_dates: bool | None = None,
+        use_prose_fields: bool | None = None,
+        use_urls: bool | None = None,
+        profile: str = "default",
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
         load_plugins: bool = False,
@@ -159,6 +184,15 @@ class Redactor:
             if types is None
             else [t if isinstance(t, EntityType) else EntityType.from_name(t) for t in types]
         )
+        if profile not in PROFILES:
+            raise ValueError(f"unknown profile {profile!r}; choose from {sorted(PROFILES)}")
+        if use_dates is None:
+            use_dates = PROFILES[profile].get("use_dates", False)
+        if use_prose_fields is None:
+            use_prose_fields = PROFILES[profile].get("use_prose_fields", False)
+        if use_urls is None:
+            use_urls = PROFILES[profile].get("use_urls", False)
+        self.profile = profile
         _validate_streaming_args(chunk_size, overlap, min_confidence)
         self.policy = policy or RedactionPolicy()
         self.min_confidence = min_confidence
@@ -185,6 +219,22 @@ class Redactor:
         }
         if resolved_types is None or _labeled_types.intersection(resolved_types):
             self._detectors.append(LabeledIdentifierDetector(backend=backend))
+        # values of structured fields (JSON/XML/YAML/form labels) typed by the field
+        # name; sex/gender and honorific fields only in the prose profile
+        from safestream_redactor.detectors.structured import StructuredFieldDetector
+
+        _field_types = {
+            EntityType.PERSON,
+            EntityType.ADDRESS,
+            EntityType.PHONE,
+            EntityType.DOB,
+            EntityType.ID_NUMBER,
+            EntityType.USERNAME,
+            EntityType.SEX,
+            EntityType.TITLE,
+        }
+        if resolved_types is None or _field_types.intersection(resolved_types):
+            self._detectors.append(StructuredFieldDetector(prose=use_prose_fields))
         custom_words = list(custom_words)
         custom_patterns = list(custom_patterns)
         if custom_words or custom_patterns:
@@ -227,10 +277,32 @@ class Redactor:
 
             self._detectors.append(EntropyDetector(backend=backend))
             self._detectors.append(CompoundSecretDetector(backend=backend))
-        from safestream_redactor.detectors.regional import RegionalDetector
+        from safestream_redactor.detectors.regional import ChecksumIdDetector, RegionalDetector
 
+        _checksum_types = {
+            EntityType.IBAN,
+            EntityType.NHS_NUMBER,
+            EntityType.IN_AADHAAR,
+            EntityType.ID_NUMBER,
+        }
+        if resolved_types is None or _checksum_types.intersection(resolved_types):
+            # identifiers with a published checksum are on by default
+            self._detectors.append(ChecksumIdDetector())
         if use_regional or (resolved_types is not None and REGIONAL_TYPES & set(resolved_types)):
+            # the shape-only rest (NINO, PAN, crypto addresses) stays opt-in
             self._detectors.append(RegionalDetector())
+        if use_urls or (resolved_types is not None and EntityType.URL in resolved_types):
+            from safestream_redactor.detectors.deterministic import UrlDetector
+
+            self._detectors.append(UrlDetector())
+        if resolved_types is None or EntityType.ADDRESS in resolved_types:
+            from safestream_redactor.detectors.deterministic import PostcodeDetector
+
+            self._detectors.append(PostcodeDetector())
+        if use_prose_fields or (resolved_types is not None and EntityType.NRP in resolved_types):
+            from safestream_redactor.detectors.deterministic import NrpDetector
+
+            self._detectors.append(NrpDetector())
         if use_dates or (resolved_types is not None and EntityType.DATE in resolved_types):
             from safestream_redactor.detectors.deterministic import DateDetector
 

@@ -92,6 +92,53 @@ def verhoeff_ok(digits: str) -> bool:
     return c == 0
 
 
+def abn_ok(digits: str) -> bool:
+    """Australian Business Number: subtract 1 from the first digit, weighted sum mod 89."""
+    if len(digits) != 11 or not digits.isdigit():
+        return False
+    weights = (10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19)
+    values = [int(digits[0]) - 1, *map(int, digits[1:])]
+    return sum(v * w for v, w in zip(values, weights, strict=True)) % 89 == 0
+
+
+def acn_ok(digits: str) -> bool:
+    """Australian Company Number: weights 8..1, check digit (10 - sum mod 10) mod 10."""
+    if len(digits) != 9 or not digits.isdigit():
+        return False
+    total = sum(int(d) * w for d, w in zip(digits[:8], range(8, 0, -1), strict=True))
+    return (10 - total % 10) % 10 == int(digits[8])
+
+
+def tfn_ok(digits: str) -> bool:
+    """Australian Tax File Number (8 or 9 digits), weighted sum mod 11."""
+    weights = {9: (1, 4, 3, 7, 5, 8, 6, 9, 10), 8: (10, 7, 8, 4, 6, 3, 5, 1)}.get(len(digits))
+    if weights is None or not digits.isdigit():
+        return False
+    return sum(int(d) * w for d, w in zip(digits, weights, strict=True)) % 11 == 0
+
+
+def medicare_ok(digits: str) -> bool:
+    """Australian Medicare card number (10 digits, or 11 with the issue number)."""
+    if len(digits) not in (10, 11) or not digits.isdigit() or digits[0] not in "23456":
+        return False
+    total = sum(int(d) * w for d, w in zip(digits[:8], (1, 3, 7, 9, 1, 3, 7, 9), strict=True))
+    return total % 10 == int(digits[8])
+
+
+_NRIC_TABLE = {"S": "JZIHGFEDCBA", "T": "JZIHGFEDCBA", "F": "XWUTRQPNMLK", "G": "XWUTRQPNMLK"}
+
+
+def nric_ok(value: str) -> bool:
+    """Singapore NRIC (S/T) or FIN (F/G): weighted digits, +4 for the T/G series,
+    mod 11, mapped to the series' check letter. (The M series' table is not
+    implemented, so M numbers are not claimed.)"""
+    if len(value) != 9 or value[0] not in _NRIC_TABLE or not value[1:8].isdigit():
+        return False
+    total = sum(int(d) * w for d, w in zip(value[1:8], (2, 7, 6, 5, 4, 3, 2), strict=True))
+    total += 4 if value[0] in "TG" else 0
+    return _NRIC_TABLE[value[0]][total % 11] == value[8]
+
+
 _B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 
@@ -150,6 +197,23 @@ _NINO_BAD_PREFIX = frozenset({"BG", "GB", "KN", "NK", "NT", "TN", "ZZ"})
 _NHS = re.compile(rf"{_B}(\d{{3}}[ -]\d{{3}}[ -]\d{{4}}|\d{{10}}){_E}")
 _AADHAAR = re.compile(rf"{_B}([2-9]\d{{3}} \d{{4}} \d{{4}}|[2-9]\d{{11}}){_E}")
 _PAN = re.compile(rf"{_B}[A-Z]{{3}}[ABCFGHLJPT][A-Z]\d{{4}}[A-Z]{_E}")
+
+# Checksummed national identifiers (default-on through ChecksumIdDetector). A
+# plain digit run is ambiguous, so it needs a cue; the conventional spaced form is
+# accepted alone only where it is distinctive (ABN 2-3-3-3, Medicare 4-5-1).
+# ACN and TFN are 9 digits like many other numbers, so they always need a cue.
+_ABN = re.compile(rf"{_B}(\d{{2}} \d{{3}} \d{{3}} \d{{3}}|\d{{11}}){_E}")
+_NINE = re.compile(rf"{_B}(\d{{3}} \d{{3}} \d{{3}}|\d{{8,9}}){_E}")
+_MEDICARE = re.compile(rf"{_B}([2-6]\d{{3}} \d{{5}} \d(?:[ -]?\d)?|[2-6]\d{{9,10}}){_E}")
+_NRIC = re.compile(rf"{_B}[STFG]\d{{7}}[A-Z]{_E}")
+# US ITIN: 9XX-XX-XXXX with an IRS-assigned group (50-65, 70-88, 90-92, 94-99).
+# Always cued: test data uses 9XX-XX-XXXX as the "invalid SSN area" negative.
+_ITIN = re.compile(rf"{_B}9\d{{2}}(-?)(?:5\d|6[0-5]|7\d|8[0-8]|9[0-24-9])\1\d{{4}}{_E}")
+_ABN_CUE = re.compile(r"(?:\babn|business number)[^\n]{0,32}$", re.IGNORECASE)
+_ACN_CUE = re.compile(r"(?:\bacn|company number)[^\n]{0,32}$", re.IGNORECASE)
+_TFN_CUE = re.compile(r"(?:\btfn|tax file)[^\n]{0,32}$", re.IGNORECASE)
+_MEDICARE_CUE = re.compile(r"medicare[^\n]{0,32}$", re.IGNORECASE)
+_ITIN_CUE = re.compile(r"(?:\bitin|taxpayer id)[^\n]{0,32}$", re.IGNORECASE)
 
 _NHS_CUE = re.compile(r"nhs[^\n]{0,32}$", re.IGNORECASE)
 _AADHAAR_CUE = re.compile(r"(?:aadhaar|aadhar|uidai|uid)[^\n]{0,32}$", re.IGNORECASE)
@@ -233,4 +297,57 @@ class RegionalDetector:
                 out.append(emit(text, m.start(), m.end(), EntityType.IN_AADHAAR, 0.85, "aadhaar"))
         for m in _PAN.finditer(text):
             out.append(emit(text, m.start(), m.end(), EntityType.IN_PAN, 0.75, "pan"))
+        return out
+
+
+class ChecksumIdDetector(RegionalDetector):
+    """Identifiers with a published checksum, on by default: IBAN, UK NHS, India
+    Aadhaar, Australian ABN/ACN/TFN/Medicare, Singapore NRIC/FIN, and the US ITIN
+    (IRS-assigned group ranges). Shape-only identifiers (NINO, PAN, crypto
+    addresses) stay in the opt-in regional tier."""
+
+    name = "checksum_id"
+
+    def detect(self, text: str) -> list[Detection]:
+        out: list[Detection] = []
+        emit, cued = self._emit, self._cued
+        for m in _IBAN_START.finditer(text):
+            end = _iban_at(text, m.start())
+            if end is not None:
+                out.append(emit(text, m.start(), end, EntityType.IBAN, 0.9, "iban"))
+        for m in _NHS.finditer(text):
+            spaced = not m.group(1).isdigit()
+            if nhs_ok(re.sub(r"\D", "", m.group(1))) and (
+                spaced or cued(text, m.start(), _NHS_CUE)
+            ):
+                out.append(emit(text, m.start(), m.end(), EntityType.NHS_NUMBER, 0.85, "nhs"))
+        for m in _AADHAAR.finditer(text):
+            spaced = " " in m.group(1)
+            if verhoeff_ok(m.group(1).replace(" ", "")) and (
+                spaced or cued(text, m.start(), _AADHAAR_CUE)
+            ):
+                out.append(emit(text, m.start(), m.end(), EntityType.IN_AADHAAR, 0.85, "aadhaar"))
+        for m in _ABN.finditer(text):
+            spaced = " " in m.group(1)
+            if abn_ok(m.group(1).replace(" ", "")) and (spaced or cued(text, m.start(), _ABN_CUE)):
+                out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.85, "au_abn"))
+        for m in _NINE.finditer(text):
+            digits = m.group(1).replace(" ", "")
+            if acn_ok(digits) and cued(text, m.start(), _ACN_CUE):
+                out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.85, "au_acn"))
+            elif tfn_ok(digits) and cued(text, m.start(), _TFN_CUE):
+                out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.85, "au_tfn"))
+        for m in _MEDICARE.finditer(text):
+            spaced = " " in m.group(1)
+            if medicare_ok(re.sub(r"\D", "", m.group(1))) and (
+                spaced or cued(text, m.start(), _MEDICARE_CUE)
+            ):
+                rule = "au_medicare"
+                out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.85, rule))
+        for m in _NRIC.finditer(text):
+            if nric_ok(m.group()):
+                out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.85, "sg_nric"))
+        for m in _ITIN.finditer(text):
+            if cued(text, m.start(), _ITIN_CUE):
+                out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.8, "us_itin"))
         return out

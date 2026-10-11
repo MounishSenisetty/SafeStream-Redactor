@@ -44,6 +44,29 @@ def test_fp_doc_rate_counts_flagged_gold_free_documents():
     assert out["systems"]["s"]["point"]["fp_doc_rate"] == 0.5  # one of two negatives flagged
 
 
+def test_presidio_scope_ignores_types_presidio_lacks():
+    #            0123456789012345678901
+    doc = Doc(
+        "d",
+        "user bob42 mail a@b.io",
+        [
+            Gold(5, 10, "USERNAME"),  # Presidio has no USERNAME: out of scope
+            Gold(16, 22, "EMAIL_ADDRESS"),
+        ],
+    )
+    # redacting the username neither helps nor hurts the Presidio-scope score
+    with_user = harness.evaluate(
+        [doc], {"s": [[(5, 10, "USERNAME"), (16, 22, "EMAIL")]]}, resamples=0
+    )["systems"]["s"]["point"]
+    without = harness.evaluate([doc], {"s": [[(16, 22, "EMAIL")]]}, resamples=0)["systems"]["s"][
+        "point"
+    ]
+    for k in ("scope_char_p", "scope_char_r", "scope_fully_redacted"):
+        assert with_user[k] == without[k] == 1.0, k
+    # while the all-gold metric does reward it
+    assert with_user["entity_recall_covered"] == 1.0 > without["entity_recall_covered"]
+
+
 def test_partial_match_is_one_to_one():
     golds = [(0, 4), (5, 9)]
     # one prediction covering both golds matches only one of them

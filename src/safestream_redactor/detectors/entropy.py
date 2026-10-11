@@ -39,41 +39,46 @@ _CANDIDATE = re.compile(rf"[A-Za-z0-9+/=_-]{{20,{MAX_SPAN}}}")
 _HEX = re.compile(r"\A[0-9a-fA-F]+\Z")
 _ALPHA_ONLY = re.compile(r"\A[A-Za-z]+\Z")
 
-# High-entropy shapes that are identifiers or content, not credentials: a canonical
-# UUID, a SHA-1/SHA-256 digest named as one, and the payload of a ``data:`` URI.
-# A credential in one of these shapes after a secret-like key (``api_key=<uuid>``)
-# is still caught by the deterministic tier's key-assignment rule; a bare
-# UUID-shaped token with no key (some vendor API keys) is the cost.
-_UUID = re.compile(r"\A[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\Z")
-# the candidate alphabet includes ``=`` and ``_``, so ``request_id=<uuid>`` is one
-# token: the shape checks apply to the value after its last ``=``
-_VALUE = re.compile(r"(?:\A|=)([^=]+)\Z")
-_DIGEST_CUE = re.compile(
-    r"(?i)(?:\bcommit|\bsha-?(?:1|256|512)|\bdigest|\bchecksum|\bhash|\bmd5)\W{0,3}\Z"
+# High-entropy shapes that are identifiers, not secrets (a UUID, a commit or
+# content digest, an inline image). Dropped unless a secret-like key precedes
+# the value on its line: ``API_KEY=6f1c…-…`` is a key whatever its shape.
+# The checks read at most ``_CONTEXT`` characters to the left of a token, which
+# the tier declares to the streaming engine, so streaming output still equals
+# whole-text output.
+_CONTEXT = 80
+_UUID = re.compile(
+    r"\A[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\Z"
 )
-_DATA_URI_CUE = re.compile(r"(?i)\bdata:[\w.+-]+/[\w.+-]+(?:;[\w=.-]+)*;base64,\Z")
-# a value named by a secret-like key is never benign (``SAUCE_ACCESS_KEY=<uuid>``)
-_SECRET_KEY_CUE = re.compile(
-    r"(?i)(?:key|token|secret|passw|pwd|auth|credential)[\w.-]{0,16}[\"']?\s*[:=]>?\s*[\"']?\Z"
+_DIGEST_LENGTHS = frozenset({32, 40, 56, 64, 96, 128})  # md5, sha1, sha224 ... sha512
+_HASH_CONTEXT = re.compile(
+    r"(?i)\b(?:commit|sha(?:1|224|256|384|512)?|md5|digest|checksum|hash|integrity|etag"
+    r"|rev(?:ision)?)\b[^\n]{0,16}\Z"
 )
-# characters of left context the benign-shape check reads (inside C_left = 96)
-BENIGN_LEFT_CONTEXT = 32
+_IDENT_KEY = re.compile(r"\A[A-Za-z_][A-Za-z0-9_.-]*\Z")
+_DATA_URI = re.compile(r"(?i)\bdata:[\w.+-]+/[\w.+-]+;base64,\Z")
+_SECRET_KEY = re.compile(
+    r"(?i)(?:pass(?:word|wd)?|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|auth"
+    r"|credential|private[_-]?key)[^\n]{0,40}\Z"
+)
 
 
-def benign_shape(text: str, start: int, end: int) -> bool:
-    """True when ``text[start:end]`` is a UUID, a named digest, or data-URI content."""
-    m = _VALUE.search(text[start:end].rstrip("="))  # base64 padding is not a separator
-    if m is None:
+def _identifier_not_secret(text: str, start: int, token: str) -> bool:
+    """True for a UUID, a digest after a hash word, or a data-URI payload,
+    unless a secret-like key precedes the token on its line."""
+    left = text[max(0, start - _CONTEXT) : start]
+    left = left[left.rfind("\n") + 1 :]  # this line only
+    # ``=`` is in the candidate alphabet (base64 padding), so ``request_id=<uuid>``
+    # arrives as one token: judge the value, with the key as context
+    key, eq, value = token.partition("=")
+    if eq and value and not value.startswith("=") and _IDENT_KEY.match(key):
+        left, token = left + key + eq, value
+    if _SECRET_KEY.search(left):
         return False
-    value, vstart = m.group(1), start + m.start(1)
-    before = text[max(0, vstart - BENIGN_LEFT_CONTEXT) : vstart]
-    if _SECRET_KEY_CUE.search(before):
-        return False
-    if _UUID.match(value):
+    if _UUID.match(token):
         return True
-    if _HEX.match(value) and len(value) in (40, 64) and _DIGEST_CUE.search(before):
+    if len(token) in _DIGEST_LENGTHS and _HEX.match(token) and _HASH_CONTEXT.search(left):
         return True
-    return vstart == start and bool(_DATA_URI_CUE.search(before))
+    return bool(_DATA_URI.search(left))
 
 
 def shannon_entropy(text: str) -> float:
@@ -95,8 +100,9 @@ class EntropyDetector(NativeBacked):
 
     name = "entropy"
     # A candidate run is capped at MAX_SPAN characters (see _CANDIDATE), so that
-    # is the longest span this tier can emit.
-    requirements = StreamingRequirements(max_span=MAX_SPAN, left_context=BENIGN_LEFT_CONTEXT)
+    # is the longest span this tier can emit; the identifier check reads
+    # _CONTEXT characters before each candidate.
+    requirements = StreamingRequirements(max_span=MAX_SPAN, left_context=_CONTEXT)
 
     def __init__(
         self,
@@ -105,9 +111,7 @@ class EntropyDetector(NativeBacked):
         hex_entropy: float = 3.0,
         confidence: float = 0.6,
         backend: str = "python",
-        suppress_benign: bool = True,
     ) -> None:
-        self.suppress_benign = suppress_benign
         self.min_length = min_length
         self.base64_entropy = base64_entropy
         self.hex_entropy = hex_entropy
@@ -135,12 +139,6 @@ class EntropyDetector(NativeBacked):
         return entropy if entropy >= self.base64_entropy else None
 
     def detect(self, text: str) -> list[Detection]:
-        found = self._detect_raw(text)
-        if self.suppress_benign:  # one filter for both backends keeps them identical
-            found = [d for d in found if not benign_shape(text, d.start, d.end)]
-        return found
-
-    def _detect_raw(self, text: str) -> list[Detection]:
         if self._native is not None:  # pragma: no cover - requires native extension
             native = self._detect_native(text)
             if native is not None:
@@ -149,9 +147,28 @@ class EntropyDetector(NativeBacked):
         for m in _CANDIDATE.finditer(text):
             token = m.group()
             entropy = self._secret_entropy(token)
-            if entropy is not None:
-                found.append(self._detection(m.start(), m.end(), token, entropy))
+            if entropy is not None and not _identifier_not_secret(text, m.start(), token):
+                self._emit(found, m.start(), m.end(), token, entropy)
         return found
+
+    def _emit(
+        self, found: list[Detection], start: int, end: int, token: str, entropy: float
+    ) -> None:
+        """Append the detection; a ``key=value`` token is the value alone.
+
+        ``=`` is in the candidate alphabet (base64 padding), so ``session=x9…``
+        arrives as one token. The key is not the secret: the value is re-judged on
+        its own and emitted without the key. A value too short or too plain on its
+        own is left to the tiers that read field names (structured, label rules).
+        Shared Python step, so both backends agree.
+        """
+        key, eq, value = token.partition("=")
+        if eq and value and not value.startswith("=") and _IDENT_KEY.match(key):
+            value_entropy = self._secret_entropy(value)
+            if value_entropy is None:
+                return
+            start, token, entropy = start + len(key) + 1, value, value_entropy
+        found.append(self._detection(start, end, token, entropy))
 
     def _detection(self, start: int, end: int, token: str, entropy: float) -> Detection:
         return Detection(
@@ -178,8 +195,9 @@ class EntropyDetector(NativeBacked):
         for start, end, native_entropy, decided in runs:
             token = text[start:end]
             entropy = native_entropy if decided else self._secret_entropy(token)
-            if entropy is not None:
-                found.append(self._detection(start, end, token, entropy))
+            # the identifier check is shared Python code, so both backends agree
+            if entropy is not None and not _identifier_not_secret(text, start, token):
+                self._emit(found, start, end, token, entropy)
         return found
 
 

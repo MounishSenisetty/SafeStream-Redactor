@@ -63,6 +63,21 @@ def test_cli_uses_config_and_flags_override(config_file, tmp_path, capsys):
     assert capsys.readouterr().out == "# and <SSN>"
 
 
+def test_profile_from_cli_and_policy_file(tmp_path, capsys):
+    src = tmp_path / "in.txt"
+    src.write_text("Signed Aug 19, 2024")
+    assert main(["redact", str(src), "-o", "-"]) == 0
+    assert capsys.readouterr().out == "Signed Aug 19, 2024"
+    assert main(["redact", str(src), "-o", "-", "--profile", "prose"]) == 0
+    assert capsys.readouterr().out == "Signed [REDACTED]"
+    policy = tmp_path / "p.toml"
+    policy.write_text('[detection]\nprofile = "prose"\n')
+    assert redactor_from_config(policy).profile == "prose"
+    policy.write_text('[detection]\nprofile = "poetry"\n')
+    with pytest.raises(ValueError, match="unknown profile"):
+        redactor_from_config(policy)
+
+
 def test_cli_detection_flags_override_config(config_file, tmp_path, capsys):
     src = tmp_path / "in.txt"
     src.write_text("bob@x.io and 123-45-6789 codename ProjectY chunk sk-ant-" + "Ab12Cd34" * 5)

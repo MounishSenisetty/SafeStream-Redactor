@@ -113,6 +113,11 @@ SAFESTREAM_TO_CANONICAL: dict[str, str] = {
     "nhs_number": "ID",
     "uk_nino": "ID",
     "custom": "CUSTOM",
+    "username": "USERNAME",
+    "url": "URL",
+    "sex": "SEX",
+    "title": "TITLE",
+    "nrp": "NRP",
 }
 _SECRET_TYPES = [
     "anthropic_key",
@@ -132,6 +137,8 @@ _SECRET_TYPES = [
     "stripe_key",
     "twilio_key",
     "url_credentials",
+    "vendor_token",
+    "password_hash",
 ]
 SAFESTREAM_TO_CANONICAL.update(dict.fromkeys(_SECRET_TYPES, "SECRET"))
 
@@ -165,6 +172,31 @@ _PRESIDIO_ID = [
     "PL_PESEL",
     "FI_PERSONAL_IDENTITY_CODE",
 ]
+
+
+# Canonical types Presidio (its recognizers + its spaCy/transformers NER) can
+# emit. "Presidio-scope" metrics score only gold of these types, so adding a type
+# Presidio lacks (SECRET, USERNAME, MAC_ADDRESS, ...) can never raise them. Types
+# only Presidio detects (URL, NRP, ...) stay in scope: a stricter test for
+# SafeStream than "types both tools detect".
+PRESIDIO_SCOPE = frozenset(
+    {
+        "PERSON",
+        "LOCATION",
+        "ORGANIZATION",
+        "NRP",
+        "DATE_TIME",
+        "EMAIL_ADDRESS",
+        "PHONE_NUMBER",
+        "CREDIT_CARD",
+        "US_SSN",
+        "IP_ADDRESS",
+        "IBAN_CODE",
+        "URL",
+        "CRYPTO",
+        "ID",
+    }
+)
 
 
 def presidio_to_canonical(entity: str) -> str:

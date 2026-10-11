@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
-from safestream_redactor.detectors.base import StreamingRequirements
+from safestream_redactor.detectors.base import StreamingRequirements, is_placeholder
 from safestream_redactor.entities import Detection, EntityType
 
 if TYPE_CHECKING:
@@ -536,6 +536,125 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.98,
         anchors=("npm_",),
     ),
+    # --- vendor tokens with a distinctive prefix, matched over their WHOLE span
+    # (a prefix or a tail left in the clear is a leak). Phase 1, target 5.
+    Pattern(  # Atlassian API token
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bATATT3[A-Za-z0-9_=-]{150,220}"),
+        0.95,
+        anchors=("ATATT3",),
+    ),
+    Pattern(  # Doppler service, personal, CLI, SCIM and audit tokens
+        EntityType.VENDOR_TOKEN,
+        re.compile(
+            r"\bdp\.(?:ct|pt|st|sa|scim|audit)(?:\.[A-Za-z0-9_-]{2,35})?\.[A-Za-z0-9]{40,44}\b"
+        ),
+        0.95,
+        anchors=("dp.",),
+    ),
+    Pattern(  # Dropbox short-lived access token
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bsl\.[A-Za-z0-9_-]{130,152}"),
+        0.95,
+        anchors=("sl.",),
+    ),
+    Pattern(  # HashiCorp Vault service, batch and recovery tokens
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bhv[sbr]\.[A-Za-z0-9_-]{24,250}"),
+        0.95,
+        anchors=("hvs.", "hvb.", "hvr."),
+    ),
+    Pattern(  # Mapbox public/secret token (pk.eyJ... / sk.eyJ...)
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\b[ps]k\.eyJ[A-Za-z0-9_-]{20,400}\.[A-Za-z0-9_-]{20,100}"),
+        0.95,
+        anchors=("k.eyJ",),
+    ),
+    Pattern(  # Microsoft Teams incoming webhook URL
+        EntityType.VENDOR_TOKEN,
+        re.compile(
+            r"https://(?:[A-Za-z0-9-]{1,40}\.webhook\.office\.com/webhookb2"
+            r"|outlook\.office(?:365)?\.com/webhook)/[^\s\"'<>]{40,300}"
+        ),
+        0.95,
+        anchors=("webhook",),
+    ),
+    Pattern(  # Salesforce access token: org id ! session
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\b00D[A-Za-z0-9]{12,15}![A-Za-z0-9._]{80,120}"),
+        0.95,
+        anchors=("00D",),
+    ),
+    Pattern(  # Telegram bot token
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\b\d{8,10}:AA[A-Za-z0-9_-]{33}\b"),
+        0.95,
+        anchors=(":AA",),
+    ),
+    Pattern(  # New Relic user, ingest, browser and insights keys
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bNR(?:AA|AK|II|JS|AL|IQ)-[A-Za-z0-9]{20,40}\b"),
+        0.95,
+        anchors=("NRAA-", "NRAK-", "NRII-", "NRJS-", "NRAL-", "NRIQ-"),
+    ),
+    Pattern(  # Mailgun private API key
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bkey-[0-9a-f]{32}\b"),
+        0.95,
+        anchors=("key-",),
+    ),
+    # --- password hashes, whole span including the $, . and / they contain
+    Pattern(  # bcrypt
+        EntityType.PASSWORD_HASH,
+        re.compile(r"\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}"),
+        0.95,
+        anchors=("$2",),
+    ),
+    Pattern(  # sha256-crypt / sha512-crypt
+        EntityType.PASSWORD_HASH,
+        re.compile(r"\$[56]\$(?:rounds=\d{1,9}\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{43,86}"),
+        0.95,
+        anchors=("$5$", "$6$"),
+    ),
+    Pattern(  # md5-crypt / Apache apr1
+        EntityType.PASSWORD_HASH,
+        re.compile(r"\$(?:1|apr1)\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}"),
+        0.95,
+        anchors=("$1$", "$apr1$"),
+    ),
+    Pattern(  # Cisco type 8/9, scrypt ($7$) and yescrypt ($y$)
+        EntityType.PASSWORD_HASH,
+        re.compile(
+            r"\$(?:[89]\$[./A-Za-z0-9]{14}|7\$[./A-Za-z0-9]{11,64}"
+            r"|y\$[./A-Za-z0-9]{1,32}\$[./A-Za-z0-9]{1,64})\$[./A-Za-z0-9]{43,86}"
+        ),
+        0.95,
+        anchors=("$8$", "$9$", "$7$", "$y$"),
+    ),
+    Pattern(  # argon2
+        EntityType.PASSWORD_HASH,
+        re.compile(
+            r"\$argon2(?:id|i|d)\$v=\d{1,3}\$m=\d{1,10},t=\d{1,10},p=\d{1,3}"
+            r"\$[A-Za-z0-9+/]{8,128}\$[A-Za-z0-9+/]{16,128}"
+        ),
+        0.95,
+        anchors=("$argon2",),
+    ),
+    Pattern(  # PBKDF2 (Django pbkdf2_sha256$..., passlib $pbkdf2-sha256$...)
+        EntityType.PASSWORD_HASH,
+        re.compile(
+            r"(?:\bpbkdf2_sha(?:1|256|512)|\$pbkdf2(?:-sha(?:1|256|512))?)"
+            r"\$\d{1,10}\$[./A-Za-z0-9+=]{4,64}\$[./A-Za-z0-9+=]{16,128}"
+        ),
+        0.95,
+        anchors=("pbkdf2",),
+    ),
+    Pattern(  # Kerberos AS-REP / TGS hashes (crackable offline)
+        EntityType.PASSWORD_HASH,
+        re.compile(r"\$krb5(?:asrep|tgs|pa)\$\d{1,2}\$[A-Za-z0-9$@.:_*/-]{40,8000}"),
+        0.95,
+        anchors=("$krb5",),
+    ),
     Pattern(
         EntityType.ANTHROPIC_KEY,
         re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}(?<=[A-Za-z0-9_])\b"),
@@ -589,7 +708,7 @@ _PATTERNS: tuple[Pattern, ...] = (
         EntityType.API_KEY,
         re.compile(
             r"(?i)\b(?:api[_-]?key|apikey|secret[_-]?key|secret|access[_-]?token|auth[_-]?token"
-            r"|token|password|passwd|pwd)\b\s*[:=]\s*[\"']?([A-Za-z0-9_@!#$%^&*./+\-]{12,128})[\"']?"
+            r"|token|password|passwd|pwd)\b\s*[:=]\s*[\"']?([A-Za-z0-9_@!#$%^&*./+\-]{12,128}={0,2})[\"']?"
         ),
         0.75,
         group=1,
@@ -905,6 +1024,41 @@ class NativeBacked:
         self._native = _load_native(self._backend)
 
 
+# Rules that match the value after a label rather than a self-identifying format.
+_LABEL_GATED = frozenset({EntityType.API_KEY, EntityType.AWS_SECRET, EntityType.URL_CREDENTIALS})
+_NEXT_PARAM = re.compile(r"&[A-Za-z_][A-Za-z0-9_.-]{0,40}=")
+
+# Bare phone candidates (no + and no parentheses) score below the default
+# threshold and need a cue word, because digit groups are also dates and ids.
+# Two shapes are phone numbers on their own: a separated NANP number (area code
+# and exchange start 2-9: 415-555-0134, 930.167.3943) and a national number
+# with a 0 trunk prefix and 9-12 digits (079 0442 1744, 0680 298 70 63). Bare
+# unseparated digit runs (epochs, order numbers) are untouched.
+_BARE_PHONE_CONFIDENCE = 0.45
+_SHAPED_PHONE_CONFIDENCE = 0.55
+_NANP_SHAPED = re.compile(r"[2-9]\d{2}[ .-][2-9]\d{2}[ .-]\d{4}\Z")
+_TRUNK_SHAPED = re.compile(r"0[1-9]\d{0,3}(?:[ .-]\d{2,4}){2,4}\Z")
+# a "+<country code>" just before a bare match the + pattern rejected: redact it
+# with the number rather than leave it in the clear
+_PHONE_PREFIX = re.compile(r"(?<![\w+])\+\d{1,4}[ .-]?\Z")
+_PHONE_PREFIX_CONTEXT = 6
+
+
+def _shape_phones(text: str, found: list[Detection]) -> None:
+    for d in found:
+        if d.entity_type is not EntityType.PHONE or d.confidence != _BARE_PHONE_CONFIDENCE:
+            continue
+        if _NANP_SHAPED.match(d.text) or (
+            _TRUNK_SHAPED.match(d.text) and 9 <= sum(c.isdigit() for c in d.text) <= 12
+        ):
+            d.confidence = _SHAPED_PHONE_CONFIDENCE
+            d.meta["phone_shape"] = "formatted"
+        prefix = _PHONE_PREFIX.search(text, max(0, d.start - _PHONE_PREFIX_CONTEXT), d.start)
+        if prefix:
+            d.start = prefix.start()
+            d.text = text[d.start : d.end]
+
+
 class DeterministicDetector(NativeBacked):
     """Runs the built-in regex+validator patterns, optionally a subset of types.
 
@@ -924,7 +1078,10 @@ class DeterministicDetector(NativeBacked):
     """
 
     name = "deterministic"
-    requirements = StreamingRequirements(max_span=DETERMINISTIC_MAX_SPAN)
+    # left context: the phone-prefix check reads a few characters before a match
+    requirements = StreamingRequirements(
+        max_span=DETERMINISTIC_MAX_SPAN, left_context=_PHONE_PREFIX_CONTEXT + 2
+    )
 
     def __init__(
         self,
@@ -956,8 +1113,19 @@ class DeterministicDetector(NativeBacked):
 
     def detect(self, text: str) -> list[Detection]:
         if self._native is None:
-            return self._detect_python(text, self._patterns)
-        return self._detect_hybrid(text)  # pragma: no cover - requires native extension
+            found = self._detect_python(text, self._patterns)
+        else:  # pragma: no cover - requires native extension
+            found = self._detect_hybrid(text)
+        # A label-gated credential rule matches whatever follows the label; a
+        # reference or placeholder there (process.env.KEY, ${DB_PASS}, ****) is not
+        # the secret. Shared Python post-filter, so both backends agree.
+        found = [d for d in found if not (d.entity_type in _LABEL_GATED and is_placeholder(d.text))]
+        for d in found:  # in a URL, "&name=" starts the next query parameter
+            if d.entity_type in _LABEL_GATED and (cut := _NEXT_PARAM.search(d.text)):
+                d.end = d.start + cut.start()
+                d.text = d.text[: cut.start()]
+        _shape_phones(text, found)  # shared Python step as well
+        return found
 
     def _detect_hybrid(self, text: str) -> list[Detection]:  # pragma: no cover - native only
         """Native core for the covered types, Python for the rest.
@@ -1033,6 +1201,82 @@ class DeterministicDetector(NativeBacked):
                     )
                 )
         return found
+
+
+# Every URL (prose profile). Ends on a character that cannot be sentence
+# punctuation, so "see https://x.example/a." keeps its full stop; bounded below
+# the streaming overlap.
+_URL_PATTERNS: tuple[Pattern, ...] = (
+    Pattern(
+        EntityType.URL,
+        re.compile(r"(?:\b(?:https?|ftp)://|\bwww\.)[^\s<>\"'`]{0,2000}[^\s<>\"'`.,;:!?)\]}]"),
+        0.8,
+        anchors=("://", "www."),
+    ),
+)
+
+
+class UrlDetector(DeterministicDetector):
+    """Prose-profile tier: every URL (``EntityType.URL``). By default only URLs
+    with credentials, webhook paths, and sensitive query values are redacted."""
+
+    name = "url"
+
+    def __init__(self) -> None:
+        super().__init__(types=())
+        self._patterns = self._py_patterns = list(_URL_PATTERNS)
+
+
+_POSTCODE_PATTERNS: tuple[Pattern, ...] = (
+    # a full UK postcode (outward + inward code, one space): the inward letters
+    # never use C I K M O V. The bare outward code ("OX12") is too ambiguous.
+    Pattern(
+        EntityType.ADDRESS,
+        re.compile(r"\b[A-Z]{1,2}\d[A-Z\d]? \d[ABD-HJLNP-UW-Z]{2}\b"),
+        0.8,
+        needs_digit=True,
+    ),
+)
+
+
+class PostcodeDetector(DeterministicDetector):
+    """Default tier: full UK postcodes (``EntityType.ADDRESS``). Python only; the
+    US street and city/ZIP patterns live in ``_PATTERNS``."""
+
+    name = "postcode"
+
+    def __init__(self) -> None:
+        super().__init__(types=())
+        self._patterns = self._py_patterns = list(_POSTCODE_PATTERNS)
+
+
+def _nrp_pattern() -> Pattern:
+    from safestream_redactor.detectors.name_data import (
+        NATIONALITIES,
+        NATIONALITY_PHRASES,
+        NRP_CAPITALISED_ONLY,
+        RELIGIOUS_GROUPS,
+    )
+
+    phrases = [p.replace(" ", r"\s+") for p in sorted(NATIONALITY_PHRASES)]
+    words = sorted(NATIONALITIES | RELIGIOUS_GROUPS, key=len, reverse=True)
+    regex = re.compile(rf"\b(?:{'|'.join(phrases + words)})s?\b", re.IGNORECASE)
+
+    def valid(text: str) -> bool:
+        return not (text.islower() and text.rstrip("s") in NRP_CAPITALISED_ONLY)
+
+    return Pattern(EntityType.NRP, regex, 0.7, validator=valid)
+
+
+class NrpDetector(DeterministicDetector):
+    """Prose-profile tier: nationality and religious-group words (``EntityType.NRP``,
+    Presidio's NRP) from the fixed lists in ``name_data``."""
+
+    name = "nrp"
+
+    def __init__(self) -> None:
+        super().__init__(types=())
+        self._patterns = self._py_patterns = [_nrp_pattern()]
 
 
 class DateDetector(DeterministicDetector):
