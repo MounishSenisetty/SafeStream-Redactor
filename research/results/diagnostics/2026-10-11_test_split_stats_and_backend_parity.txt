@@ -1,0 +1,12 @@
+Test-split statistics (benchmarks/corpora, split manifests in benchmarks/corpora/splits)
+presidio_research  dev  docs= 750 gold_spans= 1469 gold_free_docs= 50 bytes=63818
+presidio_research  test docs= 750 gold_spans= 1394 gold_free_docs= 63 bytes=63678
+secrets            dev  docs= 313 gold_spans=  260 gold_free_docs=103 bytes=42039
+secrets            test docs= 313 gold_spans=  293 gold_free_docs= 97 bytes=46595
+redactionbench     dev  docs= 100 gold_spans=27694 gold_free_docs=  0 bytes=1319567
+redactionbench     test docs= 100 gold_spans=25592 gold_free_docs=  0 bytes=1378267
+
+Native vs pure-Python predictions, test split, commit 0765dae checkpoints
+presidio_research  docs=750 spans=178 identical=True
+secrets            docs=313 spans=298 identical=True
+redactionbench     docs=100 spans=3167 identical=True

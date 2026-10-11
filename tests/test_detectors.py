@@ -720,3 +720,23 @@ def test_country_code_prefix_is_redacted_with_the_number():
     # "+144" is not an assigned code, so the + pattern rejects the number; the
     # bare match must still take the prefix with it rather than leave it in clear
     assert Redactor().redact("call +144 65 989-0865") == "call [REDACTED]"
+
+
+def test_entropy_skips_benign_shapes_but_keyed_values_still_redact():
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors.entropy import EntropyDetector
+
+    uuid = "2ba5c0de-4f1e-4b6a-9c3d-7e8f90a1b2c3"
+    sha1 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b"
+    png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+    benign = f'request_id={uuid} commit {sha1} <img src="data:image/png;base64,{png}">'
+    assert EntropyDetector().detect(benign) == []
+    # a credential in a benign shape is still caught when a secret key names it
+    keyed = Redactor().redact(f"api_key={uuid}\ntoken: {sha1}")
+    assert uuid not in keyed and sha1 not in keyed
+
+
+def test_uuid_shaped_secret_named_by_a_key_is_redacted():
+    # the identifier rule must not let a key-named UUID through (some tier redacts it)
+    out = Redactor().redact("SAUCE_ACCESS_KEY=2397f603-c2c4-4897-a8ca-587ace5dc8dd")
+    assert out == "SAUCE_ACCESS_KEY=[REDACTED]"

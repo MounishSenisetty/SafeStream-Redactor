@@ -1,0 +1,1963 @@
+{
+ "corpus": "redactionbench",
+ "split": "test",
+ "n_docs": 100,
+ "source_revision": "d45e9cec89bc49c69355e252fec29cc0229982f6",
+ "previously_exposed": "all 200 documents were used for error analysis and rule tuning before 2026-10-03; its test half is reported as 'previously exposed', not held out",
+ "corpus_notes": "binary redaction gold (necessity only, no PII types); tuned on before the split",
+ "corpus_skipped": [],
+ "has_necessity": true,
+ "has_negatives": false,
+ "environment": {
+  "date": "2026-10-11T09:13:19+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.16",
+  "versions": {
+   "safestream-redactor": "0.4.0",
+   "safestream-redactor-native": "0.4.0",
+   "presidio-analyzer": null,
+   "spacy": "3.8.13",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": null,
+   "onnxruntime": "1.31.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.5.4"
+  },
+  "commit": "f10b9588a9c2ae5f49c79cc41fa0dcc8a0fd3502",
+  "dirty": false
+ },
+ "isolated_venvs": "/root/bench-venvs",
+ "systems": {
+  "safestream-native": "pattern",
+  "safestream-native-spacy": "ner",
+  "gitleaks": "pattern",
+  "trufflehog": "pattern",
+  "presidio-lg": "ner"
+ },
+ "runs": {
+  "safestream-native": {
+   "system": "safestream-native",
+   "load_s": 0.15426158000013857,
+   "bytes": 1378267,
+   "peak_rss_mb": 171.3671875,
+   "tool_rss_mb": 35.08984375,
+   "python": "/root/bench-venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.31.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.11781847500060394,
+   "mb_s": 11.698224747798976,
+   "p50_ms": 0.7830170000033831,
+   "p99_ms": 12.647911000158274
+  },
+  "safestream-native-spacy": {
+   "system": "safestream-native-spacy",
+   "load_s": 1.2355663800001366,
+   "bytes": 1378267,
+   "peak_rss_mb": 777.02734375,
+   "tool_rss_mb": 639.859375,
+   "python": "/root/bench-venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.31.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 26.10641447399962,
+   "mb_s": 0.05279418977173862,
+   "p50_ms": 120.01974800000426,
+   "p99_ms": 4939.8534209999525
+  },
+  "gitleaks": {
+   "system": "gitleaks",
+   "load_s": 0.0,
+   "bytes": 1378267,
+   "peak_rss_mb": null,
+   "tool_rss_mb": null,
+   "timing": "one batch run including process start-up, divided evenly",
+   "unplaced_findings": 0,
+   "tool_version": "gitleaks version v8.28.0",
+   "threads": null,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.7092239579999386,
+   "mb_s": 1.943345235948895,
+   "p50_ms": 7.0922395799993865,
+   "p99_ms": 7.0922395799993865
+  },
+  "trufflehog": {
+   "system": "trufflehog",
+   "load_s": 0.0,
+   "bytes": 1378267,
+   "peak_rss_mb": null,
+   "tool_rss_mb": null,
+   "timing": "one batch run including process start-up, divided evenly",
+   "unplaced_findings": 4,
+   "tool_version": "trufflehog v3.90.8",
+   "threads": null,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 2.4961739209998086,
+   "mb_s": 0.552151830609605,
+   "p50_ms": 24.961739209998086,
+   "p99_ms": 24.961739209998086
+  },
+  "presidio-lg": {
+   "system": "presidio-lg",
+   "load_s": 4.703096983000023,
+   "bytes": 1378267,
+   "peak_rss_mb": 946.8125,
+   "tool_rss_mb": 809.63671875,
+   "python": "/root/bench-venvs/presidio/bin/python",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 69.00998598799924,
+   "mb_s": 0.01997199362190392,
+   "p50_ms": 305.62681099991096,
+   "p99_ms": 9691.742082000019
+  }
+ },
+ "scores": {
+  "systems": {
+   "safestream-native": {
+    "point": {
+     "char_p": 0.8307919270058515,
+     "char_r": 0.44422864036803067,
+     "char_f1": 0.5789107683536268,
+     "entity_recall_covered": 0.5160987808690216,
+     "ent_p_partial": 0.8262792166771952,
+     "ent_r_partial": 0.10221944357611754,
+     "ent_f1_partial": 0.18193198414354267,
+     "ent_p_strict": 0.21162349968414404,
+     "ent_r_strict": 0.02618005626758362,
+     "ent_f1_strict": 0.0465957298838584,
+     "mandatory_recall": 0.6821511798278052,
+     "no_leak_doc_rate": 0.08421052631578947,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.7700622967027857,
+      0.8842953710683725
+     ],
+     "char_r": [
+      0.3502098177985527,
+      0.5470211745504383
+     ],
+     "char_f1": [
+      0.4900951840406443,
+      0.662326906466684
+     ],
+     "entity_recall_covered": [
+      0.3077152094190658,
+      0.6747090095775757
+     ],
+     "ent_p_partial": [
+      0.742179868086131,
+      0.8914231031115206
+     ],
+     "ent_r_partial": [
+      0.07914223330750561,
+      0.12713021962201926
+     ],
+     "ent_f1_partial": [
+      0.14446116705575374,
+      0.22090303847958379
+     ],
+     "ent_p_strict": [
+      0.13419493919053632,
+      0.3061379642205052
+     ],
+     "ent_r_strict": [
+      0.014532791974187137,
+      0.044131868881772895
+     ],
+     "ent_f1_strict": [
+      0.026205618054080924,
+      0.07675320411983022
+     ],
+     "mandatory_recall": [
+      0.5784597643067619,
+      0.7869827182267404
+     ],
+     "no_leak_doc_rate": [
+      0.031578947368421054,
+      0.14432989690721648
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 28,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 14,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 318,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 268,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1167,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 151,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 91,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 121,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 990,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 18,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-spacy": {
+    "point": {
+     "char_p": 0.48543614216943465,
+     "char_r": 0.5407703984568167,
+     "char_f1": 0.5116114264212474,
+     "entity_recall_covered": 0.5821350422006877,
+     "ent_p_partial": 0.31642075202284625,
+     "ent_r_partial": 0.12988433885589246,
+     "ent_f1_partial": 0.1841704296755963,
+     "ent_p_strict": 0.09148024750118991,
+     "ent_r_strict": 0.03755079712410128,
+     "ent_f1_strict": 0.053245422057234676,
+     "mandatory_recall": 0.7610761480819949,
+     "no_leak_doc_rate": 0.17894736842105263,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.3781146548514548,
+      0.5950364961927271
+     ],
+     "char_r": [
+      0.44738424506465996,
+      0.6401817273438207
+     ],
+     "char_f1": [
+      0.42884403090730333,
+      0.5899297734833003
+     ],
+     "entity_recall_covered": [
+      0.39524854566129863,
+      0.7266150088378984
+     ],
+     "ent_p_partial": [
+      0.22478920129085941,
+      0.43658757093499106
+     ],
+     "ent_r_partial": [
+      0.10426717836916534,
+      0.16353882660630673
+     ],
+     "ent_f1_partial": [
+      0.15166311274587022,
+      0.22335523623950412
+     ],
+     "ent_p_strict": [
+      0.06041302918012082,
+      0.13714637161194843
+     ],
+     "ent_r_strict": [
+      0.023824236861856578,
+      0.0590209684041501
+     ],
+     "ent_f1_strict": [
+      0.035589715427297615,
+      0.07911946020517467
+     ],
+     "mandatory_recall": [
+      0.6572001161610264,
+      0.8601055727472847
+     ],
+     "no_leak_doc_rate": [
+      0.10526315789473684,
+      0.26262626262626265
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 28,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 14,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 318,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 268,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1132,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 1250,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 76,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 4037,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 2262,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 121,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 981,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 18,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "gitleaks": {
+    "point": {
+     "char_p": 0.991735989492119,
+     "char_r": 0.12012037890187396,
+     "char_f1": 0.21428613661761142,
+     "entity_recall_covered": 0.009846827133479213,
+     "ent_p_partial": 0.9745762711864406,
+     "ent_r_partial": 0.008987183494842139,
+     "ent_f1_partial": 0.017810128542666875,
+     "ent_p_strict": 0.9279661016949152,
+     "ent_r_strict": 0.008557361675523602,
+     "ent_f1_strict": 0.01695833978627846,
+     "mandatory_recall": 0.24659866318741888,
+     "no_leak_doc_rate": 0.021052631578947368,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.9813310533959332,
+      0.9981349948593611
+     ],
+     "char_r": [
+      0.06962393528575041,
+      0.18653364603821035
+     ],
+     "char_f1": [
+      0.1301093565801355,
+      0.31423088863503323
+     ],
+     "entity_recall_covered": [
+      0.005179689429709918,
+      0.01767898469262416
+     ],
+     "ent_p_partial": [
+      0.9428539962240403,
+      0.9948979591836735
+     ],
+     "ent_r_partial": [
+      0.0047133767056734156,
+      0.01626247349913476
+     ],
+     "ent_f1_partial": [
+      0.00938028931486252,
+      0.03199603978769686
+     ],
+     "ent_p_strict": [
+      0.8770005037588158,
+      0.9657794676806084
+     ],
+     "ent_r_strict": [
+      0.004497347301979005,
+      0.015474036656379675
+     ],
+     "ent_f1_strict": [
+      0.008950707054519367,
+      0.030457786016639773
+     ],
+     "mandatory_recall": [
+      0.1403222786976138,
+      0.3724542654907643
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.05264557670772668
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 236,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "trufflehog": {
+    "point": {
+     "char_p": 0.9185720016044926,
+     "char_r": 0.015179938617366115,
+     "char_f1": 0.029866318878382786,
+     "entity_recall_covered": 0.0021100343857455455,
+     "ent_p_partial": 0.6666666666666666,
+     "ent_r_partial": 0.001875586120662707,
+     "ent_f1_partial": 0.003740648379052369,
+     "ent_p_strict": 0.4444444444444444,
+     "ent_r_strict": 0.0012503907471084713,
+     "ent_f1_strict": 0.0024937655860349122,
+     "mandatory_recall": 0.02441985403904386,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.7986238534039695,
+      1.0
+     ],
+     "char_r": [
+      0.008599497270237566,
+      0.024529703062149626
+     ],
+     "char_f1": [
+      0.017033692783340236,
+      0.04778424931107577
+     ],
+     "entity_recall_covered": [
+      0.0009769539956981192,
+      0.004267124544757805
+     ],
+     "ent_p_partial": [
+      0.5466627906976744,
+      0.8243302513039354
+     ],
+     "ent_r_partial": [
+      0.0009045888447782286,
+      0.00358942021644371
+     ],
+     "ent_f1_partial": [
+      0.0018058707203742724,
+      0.007141535279114254
+     ],
+     "ent_p_strict": [
+      0.34480064655172415,
+      0.5469017551369861
+     ],
+     "ent_r_strict": [
+      0.0005606892258966356,
+      0.0024596077235728483
+     ],
+     "ent_f1_strict": [
+      0.001119511011991207,
+      0.004895005693771092
+     ],
+     "mandatory_recall": [
+      0.012912525870176546,
+      0.040254615811063515
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 72,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-lg": {
+    "point": {
+     "char_p": 0.2906517520830955,
+     "char_r": 0.4219890359744659,
+     "char_f1": 0.3442178857040894,
+     "entity_recall_covered": 0.6035089090340732,
+     "ent_p_partial": 0.2252217673149096,
+     "ent_r_partial": 0.20635354798374492,
+     "ent_f1_partial": 0.2153752039151713,
+     "ent_p_strict": 0.06793756397134083,
+     "ent_r_strict": 0.06224601437949359,
+     "ent_f1_strict": 0.06496737357259379,
+     "mandatory_recall": 0.41965868021154573,
+     "no_leak_doc_rate": 0.10526315789473684,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.21293033122264837,
+      0.3790332378233598
+     ],
+     "char_r": [
+      0.3638832024652875,
+      0.47905414886640274
+     ],
+     "char_f1": [
+      0.27694934233913243,
+      0.40917635128264274
+     ],
+     "entity_recall_covered": [
+      0.49716372367719286,
+      0.6737005266298003
+     ],
+     "ent_p_partial": [
+      0.1584699507110484,
+      0.30706499293818923
+     ],
+     "ent_r_partial": [
+      0.16922731180911763,
+      0.24740769873533533
+     ],
+     "ent_f1_partial": [
+      0.1749936313709913,
+      0.2589265618557052
+     ],
+     "ent_p_strict": [
+      0.0411707787363592,
+      0.10380672933806953
+     ],
+     "ent_r_strict": [
+      0.03958866747894352,
+      0.09256813369858614
+     ],
+     "ent_f1_strict": [
+      0.04180495101361597,
+      0.09462104089894435
+     ],
+     "mandatory_recall": [
+      0.33301731044872845,
+      0.49907454577959287
+     ],
+     "no_leak_doc_rate": [
+      0.051533242162844516,
+      0.17394666069027323
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 8,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 3296,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 306,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 1,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 10815,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1508,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 717,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 535,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 1196,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 804,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4191,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 58,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {
+   "safestream-native - safestream-native-spacy": {
+    "char_p": [
+     0.23500166666388284,
+     0.3430864828086492,
+     0.4549088759611985
+    ],
+    "char_r": [
+     -0.12467383286651296,
+     -0.09654773334577338,
+     -0.07377022646100971
+    ],
+    "char_f1": [
+     0.007628566882755284,
+     0.06666102151423561,
+     0.13543230586119928
+    ],
+    "entity_recall_covered": [
+     -0.10052182176798138,
+     -0.0663713517240799,
+     -0.0434697125114995
+    ],
+    "ent_p_partial": [
+     0.3852985494199821,
+     0.5051193229608324,
+     0.6041694955591541
+    ],
+    "ent_r_partial": [
+     -0.04756051973849361,
+     -0.028021522844769838,
+     -0.014774962520433435
+    ],
+    "ent_f1_partial": [
+     -0.02655349073694904,
+     -0.0022898005271241445,
+     0.017447065557262588
+    ],
+    "ent_f1_strict": [
+     -0.016534944453415558,
+     -0.006508662174119981,
+     0.00394453566379778
+    ],
+    "mandatory_recall": [
+     -0.11293503854562652,
+     -0.07840284532374003,
+     -0.055609084573842414
+    ],
+    "no_leak_doc_rate": [
+     -0.16129032258064516,
+     -0.09375,
+     -0.04166666666666666
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - gitleaks": {
+    "char_p": [
+     -0.2237303488266973,
+     -0.15999809608178367,
+     -0.10466704063030123
+    ],
+    "char_r": [
+     0.24211882349435168,
+     0.3239109032786438,
+     0.41448286184922434
+    ],
+    "char_f1": [
+     0.2694191838172385,
+     0.3634663690623652,
+     0.46387376662740265
+    ],
+    "entity_recall_covered": [
+     0.2951590329258289,
+     0.5028019908854563,
+     0.6671834568038292
+    ],
+    "ent_p_partial": [
+     -0.24024104600862495,
+     -0.14785466823385712,
+     -0.07028614753287185
+    ],
+    "ent_r_partial": [
+     0.07113274249733408,
+     0.09300201767927957,
+     0.11578890327771306
+    ],
+    "ent_f1_partial": [
+     0.12844028045424805,
+     0.1638452299098847,
+     0.19821996016945448
+    ],
+    "ent_f1_strict": [
+     0.013268827253642645,
+     0.028804153093137226,
+     0.05423344157680193
+    ],
+    "mandatory_recall": [
+     0.338175319731761,
+     0.43495432495364045,
+     0.5351573944242479
+    ],
+    "no_leak_doc_rate": [
+     0.020613296865137805,
+     0.06315789473684211,
+     0.11458333333333333
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - trufflehog": {
+    "char_p": [
+     -0.18490909437022274,
+     -0.09742577330583468,
+     0.0414281699751739
+    ],
+    "char_r": [
+     0.3373352686525582,
+     0.4306070505554972,
+     0.529311475046481
+    ],
+    "char_f1": [
+     0.4624840769528897,
+     0.5496077551196114,
+     0.631583918565309
+    ],
+    "entity_recall_covered": [
+     0.3047245009014807,
+     0.5107203144074729,
+     0.672578752004505
+    ],
+    "ent_p_partial": [
+     -0.001286989648486996,
+     0.14990021628203776,
+     0.2924281725449201
+    ],
+    "ent_r_partial": [
+     0.07733437856411933,
+     0.10030664248223035,
+     0.12495795519622852
+    ],
+    "ent_f1_partial": [
+     0.1407410525431323,
+     0.17824252961920656,
+     0.21593977057595407
+    ],
+    "ent_f1_strict": [
+     0.024705369392343805,
+     0.043733664745035136,
+     0.07315510179606614
+    ],
+    "mandatory_recall": [
+     0.5545879661114399,
+     0.6637720841600018,
+     0.7605893945815722
+    ],
+    "no_leak_doc_rate": [
+     0.031578947368421054,
+     0.08333333333333333,
+     0.14432989690721648
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-lg": {
+    "char_p": [
+     0.448739592328481,
+     0.539362844947354,
+     0.6189830355311973
+    ],
+    "char_r": [
+     -0.08238192283807064,
+     0.0239886404442759,
+     0.1332600744303013
+    ],
+    "char_f1": [
+     0.11669739791732692,
+     0.2380135883804578,
+     0.3449658955815082
+    ],
+    "entity_recall_covered": [
+     -0.21914860422776172,
+     -0.09080333585831796,
+     0.03452555768166633
+    ],
+    "ent_p_partial": [
+     0.510074840612884,
+     0.5964987418284049,
+     0.677499831712983
+    ],
+    "ent_r_partial": [
+     -0.1446229569924348,
+     -0.1030554716656067,
+     -0.07195390186589751
+    ],
+    "ent_f1_partial": [
+     -0.09196503790612928,
+     -0.03140334923654822,
+     0.01861607221414451
+    ],
+    "ent_f1_strict": [
+     -0.04406681907706535,
+     -0.017979015301962758,
+     0.009110256055722833
+    ],
+    "mandatory_recall": [
+     0.1145551333114971,
+     0.26855696290337283,
+     0.42052038318397966
+    ],
+    "no_leak_doc_rate": [
+     -0.10526315789473684,
+     -0.021052631578947364,
+     0.05319148936170213
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - gitleaks": {
+    "char_p": [
+     -0.6132607010527306,
+     -0.5050027095913034,
+     -0.3955182156256241
+    ],
+    "char_r": [
+     0.3362720416948961,
+     0.42233137414533395,
+     0.50708486697858
+    ],
+    "char_f1": [
+     0.18439384091176148,
+     0.2979489867637104,
+     0.3979888418649537
+    ],
+    "entity_recall_covered": [
+     0.3807307429286326,
+     0.5692858732672458,
+     0.7191368258915268
+    ],
+    "ent_p_partial": [
+     -0.7565660404849275,
+     -0.6557740125193009,
+     -0.534797298961182
+    ],
+    "ent_r_partial": [
+     0.09699074135505077,
+     0.12145021539036205,
+     0.15101560696778257
+    ],
+    "ent_f1_partial": [
+     0.1346971708111817,
+     0.16577007975045327,
+     0.20140108144856964
+    ],
+    "ent_f1_strict": [
+     0.021494306034208568,
+     0.03570064785524189,
+     0.0561730211289715
+    ],
+    "mandatory_recall": [
+     0.4185305392986658,
+     0.5143503143722691,
+     0.6184879791510741
+    ],
+    "no_leak_doc_rate": [
+     0.08788819875776396,
+     0.15625,
+     0.23913043478260868
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - trufflehog": {
+    "char_p": [
+     -0.5742716434840786,
+     -0.4335035469333406,
+     -0.2809836527735907
+    ],
+    "char_r": [
+     0.43436895833344114,
+     0.5285654808710321,
+     0.6203866116707409
+    ],
+    "char_f1": [
+     0.40034548661051733,
+     0.4810083530383893,
+     0.560783978528307
+    ],
+    "entity_recall_covered": [
+     0.39181829913927346,
+     0.5771607371392429,
+     0.7252896351282192
+    ],
+    "ent_p_partial": [
+     -0.5375124225712511,
+     -0.35071855301499183,
+     -0.18958357366151812
+    ],
+    "ent_r_partial": [
+     0.10299028011114861,
+     0.128617508712546,
+     0.1611327724163743
+    ],
+    "ent_f1_partial": [
+     0.1480994053868349,
+     0.1797076055964263,
+     0.21827216730184132
+    ],
+    "ent_f1_strict": [
+     0.03402210841023415,
+     0.05089138651028576,
+     0.07512821048967154
+    ],
+    "mandatory_recall": [
+     0.6369758472762744,
+     0.7435337979403759,
+     0.8321013519038463
+    ],
+    "no_leak_doc_rate": [
+     0.10526315789473684,
+     0.17894736842105263,
+     0.26262626262626265
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - presidio-lg": {
+    "char_p": [
+     0.09904187820473681,
+     0.19447117318764354,
+     0.29131506762031056
+    ],
+    "char_r": [
+     0.012448244589368367,
+     0.12262551170500241,
+     0.23076070565381415
+    ],
+    "char_f1": [
+     0.07438028510953079,
+     0.16919612690081012,
+     0.25860959463601174
+    ],
+    "entity_recall_covered": [
+     -0.13560722285063348,
+     -0.02295402686492104,
+     0.08118799645787143
+    ],
+    "ent_p_partial": [
+     0.008442024981771492,
+     0.09292921758737137,
+     0.18600204402458786
+    ],
+    "ent_r_partial": [
+     -0.11147068870884193,
+     -0.07445161311270973,
+     -0.046312982927710356
+    ],
+    "ent_f1_partial": [
+     -0.07790100602043357,
+     -0.029229864362346633,
+     0.015211231762265387
+    ],
+    "ent_f1_strict": [
+     -0.03474957613511457,
+     -0.011196860139530956,
+     0.014121962870607347
+    ],
+    "mandatory_recall": [
+     0.19391760490542237,
+     0.3498923213641302,
+     0.4951801133478461
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.07368421052631578,
+     0.14583333333333337
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "gitleaks - trufflehog": {
+    "char_p": [
+     -0.009301097954878237,
+     0.0660664515009054,
+     0.19444351251454134
+    ],
+    "char_r": [
+     0.05725251361818332,
+     0.10530838734497999,
+     0.1667338707141451
+    ],
+    "char_f1": [
+     0.10548865233890015,
+     0.18488693000426598,
+     0.27616138340220364
+    ],
+    "entity_recall_covered": [
+     0.003945171759699201,
+     0.007643274896891748,
+     0.014192974047640063
+    ],
+    "ent_p_partial": [
+     0.14393265417120504,
+     0.3022519740767981,
+     0.43685310346930056
+    ],
+    "ent_r_partial": [
+     0.003625430892102844,
+     0.0070215772526281035,
+     0.013024227953371015
+    ],
+    "ent_f1_partial": [
+     0.007204448109223518,
+     0.013889796295414616,
+     0.025623958858587096
+    ],
+    "ent_f1_strict": [
+     0.007594177076785479,
+     0.014265654785691358,
+     0.025812707421384133
+    ],
+    "mandatory_recall": [
+     0.12418841563750802,
+     0.22407589151679125,
+     0.34148015203058374
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.020833333333333332,
+     0.05264557670772668
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "gitleaks - presidio-lg": {
+    "char_p": [
+     0.6103541236481677,
+     0.7003298049998669,
+     0.7792127698772395
+    ],
+    "char_r": [
+     -0.3988976311632435,
+     -0.3001960878408678,
+     -0.19348901110321717
+    ],
+    "char_f1": [
+     -0.2594372395335861,
+     -0.13075935501657415,
+     0.014326776160796343
+    ],
+    "entity_recall_covered": [
+     -0.6651445273439951,
+     -0.591509387664698,
+     -0.4850332569395289
+    ],
+    "ent_p_partial": [
+     0.6568651632748497,
+     0.7469779176411484,
+     0.82123192061505
+    ],
+    "ent_r_partial": [
+     -0.23631947740132203,
+     -0.19765153023972593,
+     -0.16106220176261665
+    ],
+    "ent_f1_partial": [
+     -0.24279715398563168,
+     -0.19669930613733028,
+     -0.15105812192827173
+    ],
+    "ent_f1_strict": [
+     -0.07848512321257833,
+     -0.04713870962436368,
+     -0.021952141288626416
+    ],
+    "mandatory_recall": [
+     -0.34666267082048774,
+     -0.1744967491466789,
+     0.026952003731432778
+    ],
+    "no_leak_doc_rate": [
+     -0.16129032258064516,
+     -0.08421052631578947,
+     -0.02061855670103093
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "trufflehog - presidio-lg": {
+    "char_p": [
+     0.4801857998918414,
+     0.6311533271211911,
+     0.7523848130934307
+    ],
+    "char_r": [
+     -0.4655242046346258,
+     -0.4065062429912999,
+     -0.345957418655717
+    ],
+    "char_f1": [
+     -0.386538701112031,
+     -0.3136253628971033,
+     -0.23637404485940772
+    ],
+    "entity_recall_covered": [
+     -0.6722217022082746,
+     -0.5987733182486088,
+     -0.4950029986007433
+    ],
+    "ent_p_partial": [
+     0.30200369535593063,
+     0.4435384927503632,
+     0.5986153593230946
+    ],
+    "ent_r_partial": [
+     -0.24485027485624342,
+     -0.20480836102637548,
+     -0.16750571584325402
+    ],
+    "ent_f1_partial": [
+     -0.2546412821739492,
+     -0.21073357109122295,
+     -0.17041816398395548
+    ],
+    "ent_f1_strict": [
+     -0.09240537338885284,
+     -0.06181355050223021,
+     -0.039379340864887966
+    ],
+    "mandatory_recall": [
+     -0.47816535197818505,
+     -0.3950773486219292,
+     -0.2977624152917064
+    ],
+    "no_leak_doc_rate": [
+     -0.17394666069027342,
+     -0.10416666666666667,
+     -0.051533242162844585
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  }
+ },
+ "command": "python -m benchmarks.harness --corpus redactionbench --split test --systems safestream-native safestream-native-spacy gitleaks trufflehog presidio-lg --venv-root /root/bench-venvs --bootstrap 2000 --json research/results/raw/2026-10-11_redactionbench_test_postfix_vs_scanners.json --md research/results/raw/2026-10-11_redactionbench_test_postfix_vs_scanners.md"
+}

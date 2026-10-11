@@ -1,0 +1,8 @@
+{"mode": "stream", "backend": "native", "size_mb": 8, "base_rss_mb": 48.16015625, "peak_rss_mb": 56.56640625, "seconds": 2.6623240369990526, "delta_mb": 8.40625}
+{"mode": "stream", "backend": "native", "size_mb": 32, "base_rss_mb": 48.24609375, "peak_rss_mb": 56.78125, "seconds": 11.95480048400168, "delta_mb": 8.53515625}
+{"mode": "stream", "backend": "native", "size_mb": 128, "base_rss_mb": 48.1328125, "peak_rss_mb": 56.671875, "seconds": 47.561649070001295, "delta_mb": 8.5390625}
+{"mode": "stream", "backend": "native", "size_mb": 512, "base_rss_mb": 48.15234375, "peak_rss_mb": 56.69140625, "seconds": 194.69800085600036, "delta_mb": 8.5390625}
+{"mode": "stream", "backend": "native", "size_mb": 1024, "base_rss_mb": 48.203125, "peak_rss_mb": 56.73828125, "seconds": 381.60364609300086, "delta_mb": 8.53515625}
+{"mode": "stream", "backend": "native", "size_mb": 2048, "base_rss_mb": 48.19921875, "peak_rss_mb": 56.7265625, "seconds": 779.3164410599984, "delta_mb": 8.52734375}
+{"mode": "whole", "backend": "native", "size_mb": 8, "base_rss_mb": 48.26171875, "peak_rss_mb": 283.73828125, "seconds": 6.634568653000315, "delta_mb": 235.4765625}
+{"mode": "whole", "backend": "native", "size_mb": 32, "base_rss_mb": 48.16015625, "peak_rss_mb": 952.7265625, "seconds": 97.09608535099869, "delta_mb": 904.56640625}
