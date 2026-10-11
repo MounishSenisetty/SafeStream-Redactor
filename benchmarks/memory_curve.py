@@ -76,10 +76,16 @@ def main() -> None:
                 for backend in args.backends:
                     proc = subprocess.run(
                         [sys.executable, __file__, "--child", mode, backend, str(src)],
-                        capture_output=True, text=True, check=True,
+                        capture_output=True,
+                        text=True,
+                        check=True,
                     )
-                    row = {"mode": mode, "backend": backend, "size_mb": size,
-                           **json.loads(proc.stdout.strip().splitlines()[-1])}
+                    row = {
+                        "mode": mode,
+                        "backend": backend,
+                        "size_mb": size,
+                        **json.loads(proc.stdout.strip().splitlines()[-1]),
+                    }
                     row["delta_mb"] = row["peak_rss_mb"] - row["base_rss_mb"]
                     points.append(row)
                     print(row, flush=True)
@@ -88,11 +94,20 @@ def main() -> None:
                     Path(str(src) + ".out").unlink(missing_ok=True)
                 src.unlink()
     commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout
-    args.out.write_text(json.dumps({
-        "instrument": "ru_maxrss of a fresh process per point; base = RSS after imports",
-        "python": platform.python_version(), "platform": platform.platform(),
-        "cpu_count": os.cpu_count(), "commit": commit.strip(), "points": points,
-    }, indent=1) + "\n")
+    args.out.write_text(
+        json.dumps(
+            {
+                "instrument": "ru_maxrss of a fresh process per point; base = RSS after imports",
+                "python": platform.python_version(),
+                "platform": platform.platform(),
+                "cpu_count": os.cpu_count(),
+                "commit": commit.strip(),
+                "points": points,
+            },
+            indent=1,
+        )
+        + "\n"
+    )
 
 
 if __name__ == "__main__":

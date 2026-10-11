@@ -619,7 +619,7 @@ def test_entropy_skips_benign_shapes_but_keyed_values_still_redact():
     uuid = "2ba5c0de-4f1e-4b6a-9c3d-7e8f90a1b2c3"
     sha1 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b"
     png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
-    benign = f"request_id={uuid} commit {sha1} <img src=\"data:image/png;base64,{png}\">"
+    benign = f'request_id={uuid} commit {sha1} <img src="data:image/png;base64,{png}">'
     assert EntropyDetector().detect(benign) == []
     assert len(EntropyDetector(suppress_benign=False).detect(benign)) == 3
     # a credential in a benign shape is still caught when a secret key names it

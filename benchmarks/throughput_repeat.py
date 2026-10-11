@@ -33,15 +33,24 @@ if str(ROOT) not in sys.path:
 from benchmarks import harness  # noqa: E402
 
 SYSTEMS_A = [
-    "safestream-native", "safestream-python", "safestream-native-spacy",
-    "presidio-regex", "presidio-sm", "presidio-lg", "gitleaks", "trufflehog",
+    "safestream-native",
+    "safestream-python",
+    "safestream-native-spacy",
+    "presidio-regex",
+    "presidio-sm",
+    "presidio-lg",
+    "gitleaks",
+    "trufflehog",
 ]
 CORPORA_A = ["presidio_research", "secrets", "redactionbench"]
 
 
 def _summary(xs: list[float]) -> dict[str, float | list[float]]:
-    return {"mean": statistics.mean(xs), "sd": statistics.stdev(xs) if len(xs) > 1 else 0.0,
-            "runs": xs}
+    return {
+        "mean": statistics.mean(xs),
+        "sd": statistics.stdev(xs) if len(xs) > 1 else 0.0,
+        "runs": xs,
+    }
 
 
 def _large_file(workers: int, backend: str, path: Path) -> float:
@@ -72,9 +81,20 @@ def main() -> None:
             rates = []
             for _ in range(args.runs):
                 proc = subprocess.run(
-                    [harness._interpreter(system, args.venv_root), "-m", "benchmarks.harness",
-                     "--run-one", system, corpus, "test"],
-                    capture_output=True, text=True, cwd=ROOT, env=env, check=True,
+                    [
+                        harness._interpreter(system, args.venv_root),
+                        "-m",
+                        "benchmarks.harness",
+                        "--run-one",
+                        system,
+                        corpus,
+                        "test",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    cwd=ROOT,
+                    env=env,
+                    check=True,
                 )
                 run = json.loads(proc.stdout)
                 rates.append(run["bytes"] / 1e6 / sum(run["per_doc_s"]))
@@ -90,16 +110,28 @@ def main() -> None:
             generate(path, size)
             for w in args.workers:
                 rates = [_large_file(w, backend, path) for _ in range(args.runs)]
-                part_b[f"{backend}/workers={w}"] = {"file_mb": path.stat().st_size / 1e6,
-                                                    **_summary(rates)}
+                part_b[f"{backend}/workers={w}"] = {
+                    "file_mb": path.stat().st_size / 1e6,
+                    **_summary(rates),
+                }
                 print(backend, w, part_b[f"{backend}/workers={w}"], flush=True)
 
     env_block = harness.environment()
-    args.out.write_text(json.dumps({
-        "runs": args.runs, "environment": env_block, "load_avg_at_end": os.getloadavg(),
-        "python": platform.python_version(), "part_a_test_splits_1_thread": part_a,
-        "part_b_large_file": part_b, "date": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-    }, indent=1) + "\n")
+    args.out.write_text(
+        json.dumps(
+            {
+                "runs": args.runs,
+                "environment": env_block,
+                "load_avg_at_end": os.getloadavg(),
+                "python": platform.python_version(),
+                "part_a_test_splits_1_thread": part_a,
+                "part_b_large_file": part_b,
+                "date": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+            },
+            indent=1,
+        )
+        + "\n"
+    )
 
 
 if __name__ == "__main__":

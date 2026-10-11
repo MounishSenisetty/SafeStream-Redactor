@@ -114,11 +114,29 @@ for _name, _kw in _ABLATIONS.items():
 # (their CLIs are batch tools; per-document process start-up would dominate).
 # TruffleHog runs with --no-verification: no example secret is ever sent to an API.
 SCANNERS = {
-    "gitleaks": [os.environ.get("GITLEAKS", "gitleaks"), "dir", "{dir}", "--report-format",
-                 "json", "--report-path", "{out}", "--no-banner", "--log-level", "error",
-                 "--exit-code", "0"],
-    "trufflehog": [os.environ.get("TRUFFLEHOG", "trufflehog"), "filesystem", "{dir}",
-                   "--json", "--no-verification", "--no-update", "--log-level=-1"],
+    "gitleaks": [
+        os.environ.get("GITLEAKS", "gitleaks"),
+        "dir",
+        "{dir}",
+        "--report-format",
+        "json",
+        "--report-path",
+        "{out}",
+        "--no-banner",
+        "--log-level",
+        "error",
+        "--exit-code",
+        "0",
+    ],
+    "trufflehog": [
+        os.environ.get("TRUFFLEHOG", "trufflehog"),
+        "filesystem",
+        "{dir}",
+        "--json",
+        "--no-verification",
+        "--no-update",
+        "--log-level=-1",
+    ],
 }
 SYSTEMS |= {name: ("pattern", None) for name in SCANNERS}
 
@@ -132,7 +150,8 @@ def _safestream(kwargs: dict[str, Any]) -> Callable[[str], list[Pred]]:
     kwargs = dict(kwargs)
     drop = set(kwargs.pop("_drop", ()))
     if kwargs.pop("_greedy", False):
-        from safestream_redactor import entities, redactor as redactor_mod
+        from safestream_redactor import entities
+        from safestream_redactor import redactor as redactor_mod
 
         redactor_mod.resolve_overlaps = entities._greedy  # ablation: no NER union rule
     redactor = Redactor(load_plugins=False, **kwargs)
@@ -347,7 +366,8 @@ def run_one(system: str, corpus: str, split: str) -> dict[str, Any]:
             "unplaced_findings": unplaced,
             "tool_version": subprocess.run(
                 [SCANNERS[system][0], "--version"], capture_output=True, text=True, check=False
-            ).stdout.strip() or subprocess.run(
+            ).stdout.strip()
+            or subprocess.run(
                 [SCANNERS[system][0], "version"], capture_output=True, text=True, check=False
             ).stdout.strip(),
             "threads": None,

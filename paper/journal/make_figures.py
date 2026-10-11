@@ -1,6 +1,6 @@
 """Build the paper's figures from the raw result files (run from the repo root).
 
-    python paper/journal/make_figures.py
+python paper/journal/make_figures.py
 """
 
 import json
@@ -9,7 +9,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 RAW = Path("research/results/raw")
 OUT = Path(__file__).resolve().parent
@@ -24,14 +24,25 @@ def memory() -> None:
     fig, ax = plt.subplots(figsize=(6.0, 3.6))
     for mode, style, marker in (("stream", "-", "o"), ("whole", "--", "s")):
         for backend in ("native", "python"):
-            pts = sorted((r["size_mb"], r["delta_mb"]) for r in rows
-                         if r["mode"] == mode and r["backend"] == backend)
+            pts = sorted(
+                (r["size_mb"], r["delta_mb"])
+                for r in rows
+                if r["mode"] == mode and r["backend"] == backend
+            )
             if not pts:
                 continue
-            xs, ys = zip(*pts)
+            xs, ys = zip(*pts, strict=True)
             name = "streaming redact_file" if mode == "stream" else "whole-document redact()"
-            ax.plot(xs, ys, style, marker=marker, ms=5, lw=1.6, color=COLOR[backend],
-                    label=f"{name}, {LABEL[backend]}")
+            ax.plot(
+                xs,
+                ys,
+                style,
+                marker=marker,
+                ms=5,
+                lw=1.6,
+                color=COLOR[backend],
+                label=f"{name}, {LABEL[backend]}",
+            )
     ax.set_xscale("log", base=2)
     ax.set_yscale("log")
     ax.set_xlabel("Input size (MB)")
