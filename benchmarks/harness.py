@@ -90,6 +90,38 @@ SYSTEMS: dict[str, tuple[str, dict[str, Any] | None]] = {
     "presidio-trf-bert": ("ner", None),
 }
 
+# Ablations (pure-Python backend: byte-identical to native, but its tiers are
+# separate detectors that can be dropped one at a time). "_drop" removes detectors
+# by name; "_greedy" replaces the NER union rule with plain best-first selection.
+_ALL_T0 = ("deterministic", "labeled_identifier", "entropy", "compound_secret", "contextual")
+_ABLATIONS: dict[str, dict[str, Any]] = {
+    "abl-full": {},
+    "abl-no-entropy": {"use_entropy": False},
+    "abl-no-labeled": {"_drop": ("labeled_identifier",)},
+    "abl-no-contextual": {"_drop": ("contextual",)},
+    "abl-only-deterministic": {"_drop": tuple(n for n in _ALL_T0 if n != "deterministic")},
+    "abl-only-labeled": {"_drop": tuple(n for n in _ALL_T0 if n != "labeled_identifier")},
+    "abl-only-entropy": {"_drop": ("deterministic", "labeled_identifier", "contextual")},
+    "abl-only-contextual": {"_drop": tuple(n for n in _ALL_T0 if n != "contextual")},
+    "abl-only-spacy": {"use_ner": True, "_drop": _ALL_T0},
+    "abl-full-spacy": {"use_ner": True},
+    "abl-full-spacy-greedy": {"use_ner": True, "_greedy": True},
+}
+for _name, _kw in _ABLATIONS.items():
+    SYSTEMS[_name] = ("ner" if _kw.get("use_ner") else "pattern", {"backend": "python", **_kw})
+
+# Purpose-built secret scanners, run once over a folder with one file per document
+# (their CLIs are batch tools; per-document process start-up would dominate).
+# TruffleHog runs with --no-verification: no example secret is ever sent to an API.
+SCANNERS = {
+    "gitleaks": [os.environ.get("GITLEAKS", "gitleaks"), "dir", "{dir}", "--report-format",
+                 "json", "--report-path", "{out}", "--no-banner", "--log-level", "error",
+                 "--exit-code", "0"],
+    "trufflehog": [os.environ.get("TRUFFLEHOG", "trufflehog"), "filesystem", "{dir}",
+                   "--json", "--no-verification", "--no-update", "--log-level=-1"],
+}
+SYSTEMS |= {name: ("pattern", None) for name in SCANNERS}
+
 
 # --- systems (run inside the child process) ------------------------------------
 
@@ -97,7 +129,17 @@ SYSTEMS: dict[str, tuple[str, dict[str, Any] | None]] = {
 def _safestream(kwargs: dict[str, Any]) -> Callable[[str], list[Pred]]:
     from safestream_redactor import Redactor
 
+    kwargs = dict(kwargs)
+    drop = set(kwargs.pop("_drop", ()))
+    if kwargs.pop("_greedy", False):
+        from safestream_redactor import entities, redactor as redactor_mod
+
+        redactor_mod.resolve_overlaps = entities._greedy  # ablation: no NER union rule
     redactor = Redactor(load_plugins=False, **kwargs)
+    if drop:
+        missing = drop - {d.name for d in redactor._detectors}
+        assert not missing, f"ablation names unknown detectors: {missing}"
+        redactor._detectors = [d for d in redactor._detectors if d.name not in drop]
     to_canon = corpora.SAFESTREAM_TO_CANONICAL
 
     def analyze(text: str) -> list[Pred]:
@@ -186,6 +228,90 @@ def _presidio(name: str) -> Callable[[str], list[Pred]]:
     return analyze
 
 
+def _place(text: str, secret: str, line: int | None, col: int | None) -> tuple[int, int] | None:
+    """Character span of a scanner's reported secret: on its line, nearest its column."""
+    if not secret:
+        return None
+    if line:
+        starts = [0] + [i + 1 for i, ch in enumerate(text) if ch == "\n"]
+        if line <= len(starts):
+            lo = starts[line - 1]
+            hits = [m for m in _find_all(text, secret) if m >= lo]
+            near = lo + max(0, (col or 1) - 1)
+            if hits:
+                s = min(hits, key=lambda m: abs(m - near))
+                return s, s + len(secret)
+    hits = _find_all(text, secret)
+    return (hits[0], hits[0] + len(secret)) if hits else None
+
+
+def _find_all(text: str, sub: str) -> list[int]:
+    out, i = [], text.find(sub)
+    while i >= 0:
+        out.append(i)
+        i = text.find(sub, i + 1)
+    return out
+
+
+def _scan_batch(name: str, docs: list[corpora.Doc]) -> tuple[list[list[Pred]], float, int]:
+    """(predictions per doc, wall seconds for the whole run, findings left unplaced)."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "docs"
+        root.mkdir()
+        for i, d in enumerate(docs):
+            (root / f"{i:06d}.txt").write_text(d.text, encoding="utf-8", newline="")
+        out = Path(tmp) / "report.json"
+        cmd = [a.format(dir=root, out=out) for a in SCANNERS[name]]
+        t = time.perf_counter()
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
+        wall = time.perf_counter() - t
+        if name == "gitleaks":
+            if proc.returncode != 0:
+                raise RuntimeError(proc.stderr[-500:])
+            findings = [
+                (Path(f["File"]).name, f["Secret"], f["StartLine"], f["StartColumn"])
+                for f in json.loads(out.read_text(encoding="utf-8") or "[]")
+            ]
+        else:
+            import re
+
+            def docs_text(fname: str) -> str:
+                return docs[int(Path(fname).stem)].text
+
+            findings = []
+            for line in proc.stdout.splitlines():
+                if not line.startswith("{"):
+                    continue
+                f = json.loads(line)
+                fs = f.get("SourceMetadata", {}).get("Data", {}).get("Filesystem", {})
+                if "file" not in fs:
+                    continue
+                raw = f.get("Raw") or ""
+                findings.append((Path(fs["file"]).name, raw, fs.get("line"), None))
+                # RawV2 is TruffleHog's own composite (``user:token``, a rebuilt
+                # connection URI), usually not literal text: credit each component
+                # of 8+ characters that does appear in the document
+                v2 = f.get("RawV2") or ""
+                parts = [v2] if v2 in docs_text(fs["file"]) else re.split(r"[:@;/?&=]", v2)
+                findings += [
+                    (Path(fs["file"]).name, p, fs.get("line"), None)
+                    for p in parts
+                    if len(p) >= 8 and p != raw and p in docs_text(fs["file"])
+                ]
+    preds: list[list[Pred]] = [[] for _ in docs]
+    unplaced = 0
+    for fname, secret, line, col in findings:
+        i = int(Path(fname).stem)
+        span = _place(docs[i].text, secret, line, col)
+        if span is None:
+            unplaced += 1
+        else:
+            preds[i].append((*span, "SECRET"))
+    return preds, wall, unplaced
+
+
 def _peak_rss_mb() -> float:
     if sys.platform == "win32":
         import psutil
@@ -206,6 +332,28 @@ def _rss_mb() -> float:
 def run_one(system: str, corpus: str, split: str) -> dict[str, Any]:
     docs = corpora.load(corpus, split).docs
     base_rss = _rss_mb()  # the data alone: subtracted to get the tool's own memory
+    if system in SCANNERS:
+        # external binary: its memory is not this process's, so RSS is not reported;
+        # time is one wall-clock run (start-up included) spread evenly over documents
+        preds, wall, unplaced = _scan_batch(system, docs)
+        return {
+            "system": system,
+            "load_s": 0.0,
+            "per_doc_s": [wall / max(1, len(docs))] * len(docs),
+            "bytes": sum(len(d.text.encode("utf-8")) for d in docs),
+            "peak_rss_mb": None,
+            "tool_rss_mb": None,
+            "timing": "one batch run including process start-up, divided evenly",
+            "unplaced_findings": unplaced,
+            "tool_version": subprocess.run(
+                [SCANNERS[system][0], "--version"], capture_output=True, text=True, check=False
+            ).stdout.strip() or subprocess.run(
+                [SCANNERS[system][0], "version"], capture_output=True, text=True, check=False
+            ).stdout.strip(),
+            "threads": None,
+            "power_at_end": _power(),
+            "preds": preds,
+        }
     t0 = time.perf_counter()
     _tier, kwargs = SYSTEMS[system]
     analyze = _safestream(kwargs) if kwargs is not None else _presidio(system)
@@ -639,7 +787,9 @@ def markdown(report: dict[str, Any]) -> str:
             f"{run['mb_s']:.3g}",
             f"{run['p50_ms']:.1f} / {run['p99_ms']:.1f}",
             f"{run['load_s']:.1f}",
-            f"{run['peak_rss_mb']:.0f} / {run['tool_rss_mb']:.0f}",
+            "n/a (external binary)"
+            if run["peak_rss_mb"] is None
+            else f"{run['peak_rss_mb']:.0f} / {run['tool_rss_mb']:.0f}",
         ]
         lines.append(f"| {name} | {SYSTEMS[name][0]} | " + " | ".join(cell) + " |")
     lines += ["", "Per type (partial-match entity P / R, gold count):", ""]
