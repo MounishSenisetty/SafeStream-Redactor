@@ -1,0 +1,3166 @@
+{
+ "corpus": "redactionbench",
+ "split": "test",
+ "n_docs": 100,
+ "source_revision": "d45e9cec89bc49c69355e252fec29cc0229982f6",
+ "previously_exposed": "all 200 documents were used for error analysis and rule tuning before 2026-10-03; its test half is reported as 'previously exposed', not held out",
+ "corpus_notes": "binary redaction gold (necessity only, no PII types); tuned on before the split",
+ "corpus_skipped": [],
+ "has_necessity": true,
+ "has_negatives": false,
+ "environment": {
+  "date": "2026-10-11T08:55:45+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.16",
+  "versions": {
+   "safestream-redactor": "0.4.0",
+   "safestream-redactor-native": "0.4.0",
+   "presidio-analyzer": null,
+   "spacy": "3.8.13",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": null,
+   "onnxruntime": "1.31.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.5.4"
+  },
+  "commit": "0765daeddd50f85a38c627922c4148ee62f3a79d",
+  "dirty": false
+ },
+ "isolated_venvs": "/root/bench-venvs",
+ "systems": {
+  "safestream-python": "pattern",
+  "safestream-native": "pattern",
+  "safestream-native-dates": "pattern",
+  "safestream-native-spacy": "ner",
+  "presidio-regex": "pattern",
+  "presidio-sm": "ner",
+  "presidio-lg": "ner"
+ },
+ "runs": {
+  "safestream-python": {
+   "system": "safestream-python",
+   "load_s": 0.04025526700002047,
+   "bytes": 1378267,
+   "peak_rss_mb": 157.01953125,
+   "tool_rss_mb": 19.0390625,
+   "python": "/root/bench-venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.31.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.9984259749998046,
+   "mb_s": 1.3804398468301766,
+   "p50_ms": 4.734063000000788,
+   "p99_ms": 131.6760869999598
+  },
+  "safestream-native": {
+   "system": "safestream-native",
+   "load_s": 0.15751462999992327,
+   "bytes": 1378267,
+   "peak_rss_mb": 173.0078125,
+   "tool_rss_mb": 34.953125,
+   "python": "/root/bench-venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.31.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.10148707299958915,
+   "mb_s": 13.580714856221931,
+   "p50_ms": 0.6778109999459048,
+   "p99_ms": 11.325634999934664
+  },
+  "safestream-native-dates": {
+   "system": "safestream-native-dates",
+   "load_s": 0.1349199790000739,
+   "bytes": 1378267,
+   "peak_rss_mb": 172.16015625,
+   "tool_rss_mb": 35.0703125,
+   "python": "/root/bench-venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.31.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.29847900900074364,
+   "mb_s": 4.617634602226135,
+   "p50_ms": 1.6656669999974838,
+   "p99_ms": 25.930902999903083
+  },
+  "safestream-native-spacy": {
+   "system": "safestream-native-spacy",
+   "load_s": 1.0749926370000367,
+   "bytes": 1378267,
+   "peak_rss_mb": 776.71484375,
+   "tool_rss_mb": 639.6171875,
+   "python": "/root/bench-venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.31.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 27.071875426000247,
+   "mb_s": 0.05091139709797464,
+   "p50_ms": 103.47716700005094,
+   "p99_ms": 5122.563385000035
+  },
+  "presidio-regex": {
+   "system": "presidio-regex",
+   "load_s": 0.7906654209999715,
+   "bytes": 1378267,
+   "peak_rss_mb": 191.9453125,
+   "tool_rss_mb": 54.86328125,
+   "python": "/root/bench-venvs/presidio/bin/python",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 19.79781044200024,
+   "mb_s": 0.06961714296829831,
+   "p50_ms": 53.08200900003612,
+   "p99_ms": 4958.810564000032
+  },
+  "presidio-sm": {
+   "system": "presidio-sm",
+   "load_s": 1.19275535700001,
+   "bytes": 1378267,
+   "peak_rss_mb": 341.76953125,
+   "tool_rss_mb": 204.73046875,
+   "python": "/root/bench-venvs/presidio/bin/python",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 64.401411209,
+   "mb_s": 0.021401192522430147,
+   "p50_ms": 268.1046719999358,
+   "p99_ms": 9158.144905000085
+  },
+  "presidio-lg": {
+   "system": "presidio-lg",
+   "load_s": 4.93697544500003,
+   "bytes": 1378267,
+   "peak_rss_mb": 946.47265625,
+   "tool_rss_mb": 808.5078125,
+   "python": "/root/bench-venvs/presidio/bin/python",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 66.99850935900076,
+   "mb_s": 0.02057160693851825,
+   "p50_ms": 273.7732580000056,
+   "p99_ms": 9255.609433000018
+  }
+ },
+ "scores": {
+  "systems": {
+   "safestream-python": {
+    "point": {
+     "char_p": 0.8309260727380834,
+     "char_r": 0.4446528831940182,
+     "char_f1": 0.5793034954768228,
+     "entity_recall_covered": 0.5161378555798687,
+     "ent_p_partial": 0.8263340700978844,
+     "ent_r_partial": 0.10225851828696468,
+     "ent_f1_partial": 0.18199520150213847,
+     "ent_p_strict": 0.211872434480581,
+     "ent_r_strict": 0.02621913097843076,
+     "ent_f1_strict": 0.04666365311728502,
+     "mandatory_recall": 0.6830442487755187,
+     "no_leak_doc_rate": 0.08421052631578947,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.77025533481868,
+      0.8843889427353585
+     ],
+     "char_r": [
+      0.3502098177985527,
+      0.5472698527922338
+     ],
+     "char_f1": [
+      0.49047379729127405,
+      0.662326906466684
+     ],
+     "entity_recall_covered": [
+      0.30776270587512405,
+      0.674768404449549
+     ],
+     "ent_p_partial": [
+      0.7422889210958924,
+      0.8914236524088514
+     ],
+     "ent_r_partial": [
+      0.07914223330750561,
+      0.12717609333990768
+     ],
+     "ent_f1_partial": [
+      0.14446116705575374,
+      0.2209609194474504
+     ],
+     "ent_p_strict": [
+      0.13419493919053632,
+      0.30643923228707776
+     ],
+     "ent_r_strict": [
+      0.014559066766811922,
+      0.044193521078288514
+     ],
+     "ent_f1_strict": [
+      0.026216537255104682,
+      0.0768367768458146
+     ],
+     "mandatory_recall": [
+      0.5792540497745041,
+      0.7873413998734592
+     ],
+     "no_leak_doc_rate": [
+      0.031578947368421054,
+      0.14432989690721648
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 28,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 14,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 318,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 268,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1167,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 151,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 91,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 121,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 991,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 18,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native": {
+    "point": {
+     "char_p": 0.8309260727380834,
+     "char_r": 0.4446528831940182,
+     "char_f1": 0.5793034954768228,
+     "entity_recall_covered": 0.5161378555798687,
+     "ent_p_partial": 0.8263340700978844,
+     "ent_r_partial": 0.10225851828696468,
+     "ent_f1_partial": 0.18199520150213847,
+     "ent_p_strict": 0.211872434480581,
+     "ent_r_strict": 0.02621913097843076,
+     "ent_f1_strict": 0.04666365311728502,
+     "mandatory_recall": 0.6830442487755187,
+     "no_leak_doc_rate": 0.08421052631578947,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.77025533481868,
+      0.8843889427353585
+     ],
+     "char_r": [
+      0.3502098177985527,
+      0.5472698527922338
+     ],
+     "char_f1": [
+      0.49047379729127405,
+      0.662326906466684
+     ],
+     "entity_recall_covered": [
+      0.30776270587512405,
+      0.674768404449549
+     ],
+     "ent_p_partial": [
+      0.7422889210958924,
+      0.8914236524088514
+     ],
+     "ent_r_partial": [
+      0.07914223330750561,
+      0.12717609333990768
+     ],
+     "ent_f1_partial": [
+      0.14446116705575374,
+      0.2209609194474504
+     ],
+     "ent_p_strict": [
+      0.13419493919053632,
+      0.30643923228707776
+     ],
+     "ent_r_strict": [
+      0.014559066766811922,
+      0.044193521078288514
+     ],
+     "ent_f1_strict": [
+      0.026216537255104682,
+      0.0768367768458146
+     ],
+     "mandatory_recall": [
+      0.5792540497745041,
+      0.7873413998734592
+     ],
+     "no_leak_doc_rate": [
+      0.031578947368421054,
+      0.14432989690721648
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 28,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 14,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 318,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 268,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1167,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 151,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 91,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 121,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 991,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 18,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-dates": {
+    "point": {
+     "char_p": 0.6141888072357264,
+     "char_r": 0.47534420013655315,
+     "char_f1": 0.5359196744528438,
+     "entity_recall_covered": 0.591708346358237,
+     "ent_p_partial": 0.5480594849474066,
+     "ent_r_partial": 0.11808377618005626,
+     "ent_f1_partial": 0.1943033498360445,
+     "ent_p_strict": 0.12694958287994196,
+     "ent_r_strict": 0.02735229759299781,
+     "ent_f1_strict": 0.045007394071883235,
+     "mandatory_recall": 0.6862676695086726,
+     "no_leak_doc_rate": 0.08421052631578947,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.5174717082000005,
+      0.7196787842202623
+     ],
+     "char_r": [
+      0.39319852166717933,
+      0.5689422580989568
+     ],
+     "char_f1": [
+      0.4729511652471528,
+      0.6072553322570452
+     ],
+     "entity_recall_covered": [
+      0.4244286654869046,
+      0.7202799223966416
+     ],
+     "ent_p_partial": [
+      0.46094728628425,
+      0.6535654043957043
+     ],
+     "ent_r_partial": [
+      0.09891288038720272,
+      0.14114741487601565
+     ],
+     "ent_f1_partial": [
+      0.1682620474158567,
+      0.22464758993211506
+     ],
+     "ent_p_strict": [
+      0.07895128236288411,
+      0.19433114935239257
+     ],
+     "ent_r_strict": [
+      0.015517394156765615,
+      0.04561242836653687
+     ],
+     "ent_f1_strict": [
+      0.026010025757265746,
+      0.07275780932091444
+     ],
+     "mandatory_recall": [
+      0.5817088302005236,
+      0.7909172488512402
+     ],
+     "no_leak_doc_rate": [
+      0.031578947368421054,
+      0.14432989690721648
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 28,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 2371,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 318,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 268,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1167,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 151,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 91,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 116,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 986,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 18,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-spacy": {
+    "point": {
+     "char_p": 0.4856320300742935,
+     "char_r": 0.5411946412828043,
+     "char_f1": 0.5119100616351177,
+     "entity_recall_covered": 0.5821741169115349,
+     "ent_p_partial": 0.3164858176280221,
+     "ent_r_partial": 0.12992341356673962,
+     "ent_f1_partial": 0.18422073245055126,
+     "ent_p_strict": 0.0915667237768894,
+     "ent_r_strict": 0.03758987183494842,
+     "ent_f1_strict": 0.0532993517646407,
+     "mandatory_recall": 0.7619692170297085,
+     "no_leak_doc_rate": 0.17894736842105263,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.3785614696182619,
+      0.5952422997991546
+     ],
+     "char_r": [
+      0.44775408355595064,
+      0.6406633962257603
+     ],
+     "char_f1": [
+      0.42918373821649175,
+      0.5901490305219216
+     ],
+     "entity_recall_covered": [
+      0.39529454339593456,
+      0.7267241068481747
+     ],
+     "ent_p_partial": [
+      0.22479068467800709,
+      0.43671944984246586
+     ],
+     "ent_r_partial": [
+      0.10429944650418682,
+      0.16371113813847182
+     ],
+     "ent_f1_partial": [
+      0.15175950700466923,
+      0.22335697219720585
+     ],
+     "ent_p_strict": [
+      0.06047475028995922,
+      0.1371689821305754
+     ],
+     "ent_r_strict": [
+      0.023879178349409846,
+      0.05906668362585739
+     ],
+     "ent_f1_strict": [
+      0.03559338896223731,
+      0.07914972396371243
+     ],
+     "mandatory_recall": [
+      0.657203933637717,
+      0.861098236088095
+     ],
+     "no_leak_doc_rate": [
+      0.10526315789473684,
+      0.26262626262626265
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 28,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 14,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 318,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 268,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1132,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 1250,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 76,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 4037,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 2262,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 121,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 982,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 18,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-regex": {
+    "point": {
+     "char_p": 0.3089847617667657,
+     "char_r": 0.33925505611274254,
+     "char_f1": 0.323413156057164,
+     "entity_recall_covered": 0.5115661144107534,
+     "ent_p_partial": 0.23018867924528302,
+     "ent_r_partial": 0.16684901531728666,
+     "ent_f1_partial": 0.1934665398033619,
+     "ent_p_strict": 0.06285714285714286,
+     "ent_r_strict": 0.04556111284776493,
+     "ent_f1_strict": 0.05282950478002809,
+     "mandatory_recall": 0.33114717497174273,
+     "no_leak_doc_rate": 0.010526315789473684,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.21668119897664131,
+      0.4160203978568287
+     ],
+     "char_r": [
+      0.2743245475234571,
+      0.40265909555673596
+     ],
+     "char_f1": [
+      0.2499061406274876,
+      0.3925927729598168
+     ],
+     "entity_recall_covered": [
+      0.3711254958062979,
+      0.604617170983135
+     ],
+     "ent_p_partial": [
+      0.148863841713166,
+      0.33326155012661873
+     ],
+     "ent_r_partial": [
+      0.1317713623801538,
+      0.2021161132155918
+     ],
+     "ent_f1_partial": [
+      0.14980529826285321,
+      0.2363924153386399
+     ],
+     "ent_p_strict": [
+      0.03121950430109032,
+      0.10522544610103067
+     ],
+     "ent_r_strict": [
+      0.02489422235921239,
+      0.07321583458042302
+     ],
+     "ent_f1_strict": [
+      0.028629718570981642,
+      0.08342902965355545
+     ],
+     "mandatory_recall": [
+      0.22727006088090665,
+      0.4218629086728019
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.03296703296703297
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 8,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 846,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 306,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 1,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 10815,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1508,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 804,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4191,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 58,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-sm": {
+    "point": {
+     "char_p": 0.27842211143182016,
+     "char_r": 0.42201555115109013,
+     "char_f1": 0.33550012252415573,
+     "entity_recall_covered": 0.6062832135042201,
+     "ent_p_partial": 0.20948507344811246,
+     "ent_r_partial": 0.20729134104407626,
+     "ent_f1_partial": 0.208382433812554,
+     "ent_p_strict": 0.0631811720107408,
+     "ent_r_strict": 0.06251953735542357,
+     "ent_f1_strict": 0.06284861340246681,
+     "mandatory_recall": 0.4155142821260623,
+     "no_leak_doc_rate": 0.08421052631578947,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.20031275857271083,
+      0.36930353115990555
+     ],
+     "char_r": [
+      0.3623076405113576,
+      0.4822187452415394
+     ],
+     "char_f1": [
+      0.2650920302887514,
+      0.4019437711786539
+     ],
+     "entity_recall_covered": [
+      0.48757300856429975,
+      0.6836289205987034
+     ],
+     "ent_p_partial": [
+      0.14397950171614132,
+      0.2918812831844712
+     ],
+     "ent_r_partial": [
+      0.17350410757494958,
+      0.24523942465986132
+     ],
+     "ent_f1_partial": [
+      0.16669559950296464,
+      0.2503033003951192
+     ],
+     "ent_p_strict": [
+      0.037584206742854114,
+      0.09801622545908044
+     ],
+     "ent_r_strict": [
+      0.03981114893442414,
+      0.09365631316879569
+     ],
+     "ent_f1_strict": [
+      0.04059039361994553,
+      0.09141190997755849
+     ],
+     "mandatory_recall": [
+      0.32566572520620773,
+      0.5000807732211716
+     ],
+     "no_leak_doc_rate": [
+      0.031914893617021274,
+      0.1458717105263156
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 8,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 3554,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 306,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 1,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 10815,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1508,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 1165,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 467,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 2434,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 804,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4191,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 58,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-lg": {
+    "point": {
+     "char_p": 0.2906517520830955,
+     "char_r": 0.4219890359744659,
+     "char_f1": 0.3442178857040894,
+     "entity_recall_covered": 0.6035089090340732,
+     "ent_p_partial": 0.2252217673149096,
+     "ent_r_partial": 0.20635354798374492,
+     "ent_f1_partial": 0.2153752039151713,
+     "ent_p_strict": 0.06793756397134083,
+     "ent_r_strict": 0.06224601437949359,
+     "ent_f1_strict": 0.06496737357259379,
+     "mandatory_recall": 0.41965868021154573,
+     "no_leak_doc_rate": 0.10526315789473684,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.21293033122264837,
+      0.3790332378233598
+     ],
+     "char_r": [
+      0.3638832024652875,
+      0.47905414886640274
+     ],
+     "char_f1": [
+      0.27694934233913243,
+      0.40917635128264274
+     ],
+     "entity_recall_covered": [
+      0.49716372367719286,
+      0.6737005266298003
+     ],
+     "ent_p_partial": [
+      0.1584699507110484,
+      0.30706499293818923
+     ],
+     "ent_r_partial": [
+      0.16922731180911763,
+      0.24740769873533533
+     ],
+     "ent_f1_partial": [
+      0.1749936313709913,
+      0.2589265618557052
+     ],
+     "ent_p_strict": [
+      0.0411707787363592,
+      0.10380672933806953
+     ],
+     "ent_r_strict": [
+      0.03958866747894352,
+      0.09256813369858614
+     ],
+     "ent_f1_strict": [
+      0.04180495101361597,
+      0.09462104089894435
+     ],
+     "mandatory_recall": [
+      0.33301731044872845,
+      0.49907454577959287
+     ],
+     "no_leak_doc_rate": [
+      0.051533242162844516,
+      0.17394666069027323
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 13,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "CRYPTO": {
+      "gold": 0,
+      "pred": 8,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 3296,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 306,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IBAN_CODE": {
+      "gold": 0,
+      "pred": 1,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 10815,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1508,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 717,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MAC_ADDRESS": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 535,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 1196,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 804,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 4191,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 58,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {
+   "safestream-python - safestream-native": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-python - safestream-native-dates": {
+    "char_p": [
+     0.1213625502383458,
+     0.2143305738460617,
+     0.30008013998202193
+    ],
+    "char_r": [
+     -0.04799379071869343,
+     -0.030246624921364734,
+     -0.017192209873168416
+    ],
+    "char_f1": [
+     -0.003403894908204627,
+     0.04294728457205499,
+     0.09076591768890024
+    ],
+    "entity_recall_covered": [
+     -0.13696824602063562,
+     -0.07378673071649539,
+     -0.03745152506156782
+    ],
+    "ent_p_partial": [
+     0.1595766302606104,
+     0.2753283270720466,
+     0.37062611760065733
+    ],
+    "ent_r_partial": [
+     -0.028291573971461235,
+     -0.015526297901541232,
+     -0.00803752357831185
+    ],
+    "ent_f1_partial": [
+     -0.036262917412957535,
+     -0.011690686015945181,
+     0.0035916057319334044
+    ],
+    "ent_f1_strict": [
+     -0.0008472191728464202,
+     0.0015698205990647002,
+     0.004975421802081716
+    ],
+    "mandatory_recall": [
+     -0.006628300606318735,
+     -0.0031584028815044296,
+     -0.001182415659345743
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-python - safestream-native-spacy": {
+    "char_p": [
+     0.23499948885419414,
+     0.34297937468761014,
+     0.4549088759611985
+    ],
+    "char_r": [
+     -0.12467383286651296,
+     -0.0965477333457734,
+     -0.07377022646100971
+    ],
+    "char_f1": [
+     0.007663130082689052,
+     0.06681400562314121,
+     0.13560471691332987
+    ],
+    "entity_recall_covered": [
+     -0.10052182176798138,
+     -0.06637135172407987,
+     -0.0434697125114995
+    ],
+    "ent_p_partial": [
+     0.38529845047426164,
+     0.5050965891766563,
+     0.6041699310195018
+    ],
+    "ent_r_partial": [
+     -0.04756051973849361,
+     -0.028021522844769838,
+     -0.014774962520433421
+    ],
+    "ent_f1_partial": [
+     -0.026553189731884124,
+     -0.002280046119039994,
+     0.017493911419116468
+    ],
+    "ent_f1_strict": [
+     -0.016523203813305166,
+     -0.006496491172517001,
+     0.00395956097432942
+    ],
+    "mandatory_recall": [
+     -0.11293503854562652,
+     -0.07840284532373998,
+     -0.055609084573842414
+    ],
+    "no_leak_doc_rate": [
+     -0.16129032258064516,
+     -0.09375,
+     -0.04166666666666666
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-python - presidio-regex": {
+    "char_p": [
+     0.4172920749151627,
+     0.5211735352016513,
+     0.6128216764095011
+    ],
+    "char_r": [
+     0.00533323571468584,
+     0.10696387459495363,
+     0.2151746013486534
+    ],
+    "char_f1": [
+     0.14769040240489592,
+     0.25935916109631807,
+     0.363238950611913
+    ],
+    "entity_recall_covered": [
+     -0.10362447760352479,
+     0.002404468338762983,
+     0.1014072978719736
+    ],
+    "ent_p_partial": [
+     0.5011270082699028,
+     0.5920832785247682,
+     0.6773826632334428
+    ],
+    "ent_r_partial": [
+     -0.09944774904784709,
+     -0.06240132841688583,
+     -0.0335149774858105
+    ],
+    "ent_f1_partial": [
+     -0.06615033855902201,
+     -0.009856811107807131,
+     0.04362253403100117
+    ],
+    "ent_f1_strict": [
+     -0.03225953106689661,
+     -0.005356091174507371,
+     0.024412157647475227
+    ],
+    "mandatory_recall": [
+     0.19774748613663232,
+     0.36121204318770117,
+     0.5170566371035763
+    ],
+    "no_leak_doc_rate": [
+     0.021505376344086023,
+     0.07291666666666667,
+     0.1276938915579957
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-python - presidio-sm": {
+    "char_p": [
+     0.45892837232976513,
+     0.5519186610808952,
+     0.6335328618924071
+    ],
+    "char_r": [
+     -0.08122402149001406,
+     0.024683304629957742,
+     0.13186640676622977
+    ],
+    "char_f1": [
+     0.12853255684872497,
+     0.2468193923861396,
+     0.35199832599816877
+    ],
+    "entity_recall_covered": [
+     -0.21098451003845706,
+     -0.09124371507425777,
+     0.013467183784398267
+    ],
+    "ent_p_partial": [
+     0.5275282225924706,
+     0.6119858075685621,
+     0.6893589802304534
+    ],
+    "ent_r_partial": [
+     -0.14373978906732848,
+     -0.1034787788730274,
+     -0.074069416498994
+    ],
+    "ent_f1_partial": [
+     -0.08340102971188994,
+     -0.02560093693366415,
+     0.027530598053532435
+    ],
+    "ent_f1_strict": [
+     -0.04204057052203356,
+     -0.015729673466476694,
+     0.011821865583715972
+    ],
+    "mandatory_recall": [
+     0.11973414550814895,
+     0.2742777087473046,
+     0.4245563325359714
+    ],
+    "no_leak_doc_rate": [
+     -0.07787414965986394,
+     0.0,
+     0.0736842105263158
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-python - presidio-lg": {
+    "char_p": [
+     0.448739592328481,
+     0.5394886716539913,
+     0.6189830355311973
+    ],
+    "char_r": [
+     -0.08233150467532896,
+     0.024401174266241804,
+     0.13326423680784666
+    ],
+    "char_f1": [
+     0.11730244228077252,
+     0.2385845398217657,
+     0.34536275667230487
+    ],
+    "entity_recall_covered": [
+     -0.21910792980833332,
+     -0.09074919016237254,
+     0.03456048987492557
+    ],
+    "ent_p_partial": [
+     0.5101976276204918,
+     0.5965368039703989,
+     0.6775369355262415
+    ],
+    "ent_r_partial": [
+     -0.1446229569924348,
+     -0.10302305847027529,
+     -0.0719251823159844
+    ],
+    "ent_f1_partial": [
+     -0.09190091141812112,
+     -0.03133327964441607,
+     0.018773445633573367
+    ],
+    "ent_f1_strict": [
+     -0.04392751472369702,
+     -0.017889374601334822,
+     0.009218328958828728
+    ],
+    "mandatory_recall": [
+     0.11569405484137753,
+     0.2698555110898661,
+     0.42162073009310136
+    ],
+    "no_leak_doc_rate": [
+     -0.10526315789473684,
+     -0.021052631578947364,
+     0.05319148936170213
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-dates": {
+    "char_p": [
+     0.1213625502383458,
+     0.2143305738460617,
+     0.30008013998202193
+    ],
+    "char_r": [
+     -0.04799379071869343,
+     -0.030246624921364734,
+     -0.017192209873168416
+    ],
+    "char_f1": [
+     -0.003403894908204627,
+     0.04294728457205499,
+     0.09076591768890024
+    ],
+    "entity_recall_covered": [
+     -0.13696824602063562,
+     -0.07378673071649539,
+     -0.03745152506156782
+    ],
+    "ent_p_partial": [
+     0.1595766302606104,
+     0.2753283270720466,
+     0.37062611760065733
+    ],
+    "ent_r_partial": [
+     -0.028291573971461235,
+     -0.015526297901541232,
+     -0.00803752357831185
+    ],
+    "ent_f1_partial": [
+     -0.036262917412957535,
+     -0.011690686015945181,
+     0.0035916057319334044
+    ],
+    "ent_f1_strict": [
+     -0.0008472191728464202,
+     0.0015698205990647002,
+     0.004975421802081716
+    ],
+    "mandatory_recall": [
+     -0.006628300606318735,
+     -0.0031584028815044296,
+     -0.001182415659345743
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-spacy": {
+    "char_p": [
+     0.23499948885419414,
+     0.34297937468761014,
+     0.4549088759611985
+    ],
+    "char_r": [
+     -0.12467383286651296,
+     -0.0965477333457734,
+     -0.07377022646100971
+    ],
+    "char_f1": [
+     0.007663130082689052,
+     0.06681400562314121,
+     0.13560471691332987
+    ],
+    "entity_recall_covered": [
+     -0.10052182176798138,
+     -0.06637135172407987,
+     -0.0434697125114995
+    ],
+    "ent_p_partial": [
+     0.38529845047426164,
+     0.5050965891766563,
+     0.6041699310195018
+    ],
+    "ent_r_partial": [
+     -0.04756051973849361,
+     -0.028021522844769838,
+     -0.014774962520433421
+    ],
+    "ent_f1_partial": [
+     -0.026553189731884124,
+     -0.002280046119039994,
+     0.017493911419116468
+    ],
+    "ent_f1_strict": [
+     -0.016523203813305166,
+     -0.006496491172517001,
+     0.00395956097432942
+    ],
+    "mandatory_recall": [
+     -0.11293503854562652,
+     -0.07840284532373998,
+     -0.055609084573842414
+    ],
+    "no_leak_doc_rate": [
+     -0.16129032258064516,
+     -0.09375,
+     -0.04166666666666666
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-regex": {
+    "char_p": [
+     0.4172920749151627,
+     0.5211735352016513,
+     0.6128216764095011
+    ],
+    "char_r": [
+     0.00533323571468584,
+     0.10696387459495363,
+     0.2151746013486534
+    ],
+    "char_f1": [
+     0.14769040240489592,
+     0.25935916109631807,
+     0.363238950611913
+    ],
+    "entity_recall_covered": [
+     -0.10362447760352479,
+     0.002404468338762983,
+     0.1014072978719736
+    ],
+    "ent_p_partial": [
+     0.5011270082699028,
+     0.5920832785247682,
+     0.6773826632334428
+    ],
+    "ent_r_partial": [
+     -0.09944774904784709,
+     -0.06240132841688583,
+     -0.0335149774858105
+    ],
+    "ent_f1_partial": [
+     -0.06615033855902201,
+     -0.009856811107807131,
+     0.04362253403100117
+    ],
+    "ent_f1_strict": [
+     -0.03225953106689661,
+     -0.005356091174507371,
+     0.024412157647475227
+    ],
+    "mandatory_recall": [
+     0.19774748613663232,
+     0.36121204318770117,
+     0.5170566371035763
+    ],
+    "no_leak_doc_rate": [
+     0.021505376344086023,
+     0.07291666666666667,
+     0.1276938915579957
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-sm": {
+    "char_p": [
+     0.45892837232976513,
+     0.5519186610808952,
+     0.6335328618924071
+    ],
+    "char_r": [
+     -0.08122402149001406,
+     0.024683304629957742,
+     0.13186640676622977
+    ],
+    "char_f1": [
+     0.12853255684872497,
+     0.2468193923861396,
+     0.35199832599816877
+    ],
+    "entity_recall_covered": [
+     -0.21098451003845706,
+     -0.09124371507425777,
+     0.013467183784398267
+    ],
+    "ent_p_partial": [
+     0.5275282225924706,
+     0.6119858075685621,
+     0.6893589802304534
+    ],
+    "ent_r_partial": [
+     -0.14373978906732848,
+     -0.1034787788730274,
+     -0.074069416498994
+    ],
+    "ent_f1_partial": [
+     -0.08340102971188994,
+     -0.02560093693366415,
+     0.027530598053532435
+    ],
+    "ent_f1_strict": [
+     -0.04204057052203356,
+     -0.015729673466476694,
+     0.011821865583715972
+    ],
+    "mandatory_recall": [
+     0.11973414550814895,
+     0.2742777087473046,
+     0.4245563325359714
+    ],
+    "no_leak_doc_rate": [
+     -0.07787414965986394,
+     0.0,
+     0.0736842105263158
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-lg": {
+    "char_p": [
+     0.448739592328481,
+     0.5394886716539913,
+     0.6189830355311973
+    ],
+    "char_r": [
+     -0.08233150467532896,
+     0.024401174266241804,
+     0.13326423680784666
+    ],
+    "char_f1": [
+     0.11730244228077252,
+     0.2385845398217657,
+     0.34536275667230487
+    ],
+    "entity_recall_covered": [
+     -0.21910792980833332,
+     -0.09074919016237254,
+     0.03456048987492557
+    ],
+    "ent_p_partial": [
+     0.5101976276204918,
+     0.5965368039703989,
+     0.6775369355262415
+    ],
+    "ent_r_partial": [
+     -0.1446229569924348,
+     -0.10302305847027529,
+     -0.0719251823159844
+    ],
+    "ent_f1_partial": [
+     -0.09190091141812112,
+     -0.03133327964441607,
+     0.018773445633573367
+    ],
+    "ent_f1_strict": [
+     -0.04392751472369702,
+     -0.017889374601334822,
+     0.009218328958828728
+    ],
+    "mandatory_recall": [
+     0.11569405484137753,
+     0.2698555110898661,
+     0.42162073009310136
+    ],
+    "no_leak_doc_rate": [
+     -0.10526315789473684,
+     -0.021052631578947364,
+     0.05319148936170213
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-dates - safestream-native-spacy": {
+    "char_p": [
+     0.0018165350983937489,
+     0.1307191852593132,
+     0.264618616497259
+    ],
+    "char_r": [
+     -0.0954070004651533,
+     -0.06630831519945765,
+     -0.03996101632499308
+    ],
+    "char_f1": [
+     -0.03495714487160788,
+     0.02386752663676031,
+     0.09113252654007811
+    ],
+    "entity_recall_covered": [
+     -0.027502942727517687,
+     0.00696989009429122,
+     0.06204802981978857
+    ],
+    "ent_p_partial": [
+     0.10211019449194497,
+     0.23194844243160193,
+     0.3601724360073472
+    ],
+    "ent_r_partial": [
+     -0.029301404620847495,
+     -0.012283791229512071,
+     0.00015161172904206273
+    ],
+    "ent_f1_partial": [
+     -0.009803729100397719,
+     0.010196096227594154,
+     0.029796092435165095
+    ],
+    "ent_f1_strict": [
+     -0.016924081492680175,
+     -0.008105961213031358,
+     0.0003102510546761217
+    ],
+    "mandatory_recall": [
+     -0.10880256170776778,
+     -0.0750948323675717,
+     -0.05300163281636953
+    ],
+    "no_leak_doc_rate": [
+     -0.16129032258064516,
+     -0.09375,
+     -0.04166666666666666
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-dates - presidio-regex": {
+    "char_p": [
+     0.19594071957127854,
+     0.3064608070318551,
+     0.42256766935897877
+    ],
+    "char_r": [
+     0.04405550627265425,
+     0.1374164210141338,
+     0.2395821215054991
+    ],
+    "char_f1": [
+     0.12277915758299673,
+     0.21470825436557,
+     0.3026941145333659
+    ],
+    "entity_recall_covered": [
+     0.02020551758704622,
+     0.07756976860243592,
+     0.15033011517589517
+    ],
+    "ent_p_partial": [
+     0.2073779509057073,
+     0.3170533803848434,
+     0.4376612640308811
+    ],
+    "ent_r_partial": [
+     -0.0755867540759313,
+     -0.047394681652972656,
+     -0.018872651375994733
+    ],
+    "ent_f1_partial": [
+     -0.042691856735994835,
+     0.0019245097259433103,
+     0.0533713400662326
+    ],
+    "ent_f1_strict": [
+     -0.03330048292380833,
+     -0.007159909381140436,
+     0.021340776359058174
+    ],
+    "mandatory_recall": [
+     0.20075672540805475,
+     0.3647067323126082,
+     0.5195795762752503
+    ],
+    "no_leak_doc_rate": [
+     0.021505376344086023,
+     0.07291666666666667,
+     0.1276938915579957
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-dates - presidio-sm": {
+    "char_p": [
+     0.24081194192662442,
+     0.33666555997458036,
+     0.44126168079348893
+    ],
+    "char_r": [
+     -0.04090816692367825,
+     0.054024580474586636,
+     0.15478988048101172
+    ],
+    "char_f1": [
+     0.10984093724273111,
+     0.20225645452130792,
+     0.29154635467643286
+    ],
+    "entity_recall_covered": [
+     -0.07952119789215975,
+     -0.016675291067016818,
+     0.05682713569725039
+    ],
+    "ent_p_partial": [
+     0.24522391050868048,
+     0.3370596456862188,
+     0.4440456984314912
+    ],
+    "ent_r_partial": [
+     -0.11808089169324314,
+     -0.08823063016022664,
+     -0.06360052057580477
+    ],
+    "ent_f1_partial": [
+     -0.05547939957023922,
+     -0.013522301634762535,
+     0.0340669228679456
+    ],
+    "ent_f1_strict": [
+     -0.0423303434007019,
+     -0.017287632702762845,
+     0.0084492142086693
+    ],
+    "mandatory_recall": [
+     0.12329352310194125,
+     0.2779194414610317,
+     0.4283922737222506
+    ],
+    "no_leak_doc_rate": [
+     -0.07787414965986394,
+     0.0,
+     0.0736842105263158
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-dates - presidio-lg": {
+    "char_p": [
+     0.2313869473080765,
+     0.32429112801818627,
+     0.4241803838118792
+    ],
+    "char_r": [
+     -0.04309825981795997,
+     0.05485989610363787,
+     0.1571550608722201
+    ],
+    "char_f1": [
+     0.1017985270294841,
+     0.1938635911045498,
+     0.28117161462283335
+    ],
+    "entity_recall_covered": [
+     -0.08849710374529675,
+     -0.013861519142364276,
+     0.07721756230265141
+    ],
+    "ent_p_partial": [
+     0.23321469957573054,
+     0.3217987128068275,
+     0.428025435744461
+    ],
+    "ent_r_partial": [
+     -0.11966448593396568,
+     -0.08747655202610777,
+     -0.0614527338520662
+    ],
+    "ent_f1_partial": [
+     -0.061813129722185105,
+     -0.02065530411787181,
+     0.02563799998589511
+    ],
+    "ent_f1_strict": [
+     -0.04465839743587666,
+     -0.019381244936054517,
+     0.0062945601848618474
+    ],
+    "mandatory_recall": [
+     0.11758024861950307,
+     0.2744441953855785,
+     0.4247875065681305
+    ],
+    "no_leak_doc_rate": [
+     -0.10526315789473684,
+     -0.021052631578947364,
+     0.05319148936170213
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - presidio-regex": {
+    "char_p": [
+     0.07398889769428135,
+     0.17583814195399372,
+     0.27919745387406125
+    ],
+    "char_r": [
+     0.09959151779133774,
+     0.20449636647509223,
+     0.3169615883210944
+    ],
+    "char_f1": [
+     0.09762660101646707,
+     0.1904850628691716,
+     0.283064878639425
+    ],
+    "entity_recall_covered": [
+     -0.025679824531448955,
+     0.07197480895142716,
+     0.15552526513991802
+    ],
+    "ent_p_partial": [
+     -0.00964239430289256,
+     0.087796626911681,
+     0.18941024638656545
+    ],
+    "ent_r_partial": [
+     -0.07226370882400471,
+     -0.03491290782903381,
+     0.0047053166358420355
+    ],
+    "ent_f1_partial": [
+     -0.055803658219608886,
+     -0.007659665676814947,
+     0.04455620972900648
+    ],
+    "ent_f1_strict": [
+     -0.02505682333647514,
+     0.0011342946419241814,
+     0.029631794999704843
+    ],
+    "mandatory_recall": [
+     0.2754377475819852,
+     0.44040988902049694,
+     0.5937310556742688
+    ],
+    "no_leak_doc_rate": [
+     0.09674845573095402,
+     0.16666666666666666,
+     0.25252525252525254
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - presidio-sm": {
+    "char_p": [
+     0.12524715768735603,
+     0.20635722725347438,
+     0.2927159649346047
+    ],
+    "char_r": [
+     0.014724476266458507,
+     0.12188906162534108,
+     0.22972169233413328
+    ],
+    "char_f1": [
+     0.08881010663089539,
+     0.17800631965948394,
+     0.2632785476288711
+    ],
+    "entity_recall_covered": [
+     -0.13073959562530243,
+     -0.02362350933351237,
+     0.06253905934464486
+    ],
+    "ent_p_partial": [
+     0.0362058185701204,
+     0.10763349883681586,
+     0.19489849731347425
+    ],
+    "ent_r_partial": [
+     -0.11052505788294989,
+     -0.07520422070391365,
+     -0.046776983307069975
+    ],
+    "ent_f1_partial": [
+     -0.06992600688135,
+     -0.022643309419298402,
+     0.023900598107022598
+    ],
+    "ent_f1_strict": [
+     -0.032167929620696034,
+     -0.008700493225957229,
+     0.01469910653296995
+    ],
+    "mandatory_recall": [
+     0.19682768283928997,
+     0.35561567644217307,
+     0.5007838906562074
+    ],
+    "no_leak_doc_rate": [
+     0.031578947368421054,
+     0.09375,
+     0.15960809488872568
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - presidio-lg": {
+    "char_p": [
+     0.099436639609483,
+     0.19469135266960222,
+     0.29204891990976967
+    ],
+    "char_r": [
+     0.012448244589368367,
+     0.12315433397193445,
+     0.2309584781759723
+    ],
+    "char_f1": [
+     0.07461004525513154,
+     0.16959502989317266,
+     0.25861766026313077
+    ],
+    "entity_recall_covered": [
+     -0.13556796848232686,
+     -0.022937021219046616,
+     0.08123802981344186
+    ],
+    "ent_p_partial": [
+     0.008442024981771492,
+     0.0929693073288042,
+     0.18604665244722693
+    ],
+    "ent_r_partial": [
+     -0.11143093659892224,
+     -0.07437293210026322,
+     -0.04621096272364962
+    ],
+    "ent_f1_partial": [
+     -0.07789373577453779,
+     -0.029171418690762743,
+     0.015212620490198654
+    ],
+    "ent_f1_strict": [
+     -0.03472183267974954,
+     -0.011162604817037299,
+     0.014228311065828154
+    ],
+    "mandatory_recall": [
+     0.1953533507595447,
+     0.35024093714745086,
+     0.49607800223640003
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.07368421052631578,
+     0.14583333333333337
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "presidio-regex - presidio-sm": {
+    "char_p": [
+     0.001141531626345763,
+     0.029400974012153094,
+     0.06497775985184445
+    ],
+    "char_r": [
+     -0.10599881631043043,
+     -0.08258548985742514,
+     -0.06521892103509783
+    ],
+    "char_f1": [
+     -0.03669425297087177,
+     -0.01248535656733861,
+     0.011419830294845008
+    ],
+    "entity_recall_covered": [
+     -0.13474378559739247,
+     -0.09473467086741635,
+     -0.06762038344164664
+    ],
+    "ent_p_partial": [
+     -0.006554453671528664,
+     0.019377508598230425,
+     0.05811060367514675
+    ],
+    "ent_r_partial": [
+     -0.06004990878230964,
+     -0.04073002103669328,
+     -0.028346926808737783
+    ],
+    "ent_f1_partial": [
+     -0.03268815095488295,
+     -0.015388600349475534,
+     -0.0014356536950480133
+    ],
+    "ent_f1_strict": [
+     -0.018714692344505356,
+     -0.01006488000641811,
+     -0.003665725827059049
+    ],
+    "mandatory_recall": [
+     -0.11933549722255021,
+     -0.08462320002321816,
+     -0.06161872254508043
+    ],
+    "no_leak_doc_rate": [
+     -0.1326872501577951,
+     -0.07291666666666667,
+     -0.03092783505154639
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "presidio-regex - presidio-lg": {
+    "char_p": [
+     -0.008761569900494598,
+     0.017404300754954083,
+     0.048655948328019664
+    ],
+    "char_r": [
+     -0.10722299354654359,
+     -0.08274276988086526,
+     -0.06473945826387556
+    ],
+    "char_f1": [
+     -0.04506218697115489,
+     -0.021148374697656153,
+     0.0013006696575020827
+    ],
+    "entity_recall_covered": [
+     -0.14313752912039243,
+     -0.09228239839532526,
+     -0.05936249233934446
+    ],
+    "ent_p_partial": [
+     -0.01899546862948594,
+     0.004741151513139502,
+     0.03568090582942222
+    ],
+    "ent_r_partial": [
+     -0.06237091920212786,
+     -0.03995969485033232,
+     -0.025128483466943158
+    ],
+    "ent_f1_partial": [
+     -0.04129542158723281,
+     -0.022104954372887314,
+     -0.00910197091794327
+    ],
+    "ent_f1_strict": [
+     -0.020859587265027124,
+     -0.012267210037650446,
+     -0.006405146648753324
+    ],
+    "mandatory_recall": [
+     -0.12674421610738082,
+     -0.08839073107772225,
+     -0.0634552840931303
+    ],
+    "no_leak_doc_rate": [
+     -0.1595744680851064,
+     -0.09375,
+     -0.04165592783505161
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "presidio-sm - presidio-lg": {
+    "char_p": [
+     -0.030087889194149994,
+     -0.011526724037300262,
+     0.002260971464612536
+    ],
+    "char_r": [
+     -0.007229807816601527,
+     -0.00011571644320101937,
+     0.007592830017925428
+    ],
+    "char_f1": [
+     -0.021490441707059417,
+     -0.008378547489833327,
+     0.002358412123142254
+    ],
+    "entity_recall_covered": [
+     -0.014458548427311965,
+     0.00235211204479574,
+     0.021133812903373995
+    ],
+    "ent_p_partial": [
+     -0.03321617096114273,
+     -0.014691404932867441,
+     -0.004580074073622684
+    ],
+    "ent_r_partial": [
+     -0.005411432475630059,
+     0.0007068983242383836,
+     0.006720016296727293
+    ],
+    "ent_f1_partial": [
+     -0.018185867995852773,
+     -0.006670819210383594,
+     0.0015813415288005515
+    ],
+    "ent_f1_strict": [
+     -0.00629382906527366,
+     -0.0020246424358344346,
+     0.0013923226035796072
+    ],
+    "mandatory_recall": [
+     -0.016755015949469446,
+     -0.004183425342854541,
+     0.008524282731664057
+    ],
+    "no_leak_doc_rate": [
+     -0.06315789473684211,
+     -0.020833333333333336,
+     0.020623926116838467
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  }
+ },
+ "command": "python -m benchmarks.harness --corpus redactionbench --split test --systems safestream-python safestream-native safestream-native-dates safestream-native-spacy presidio-regex presidio-sm presidio-lg --venv-root /root/bench-venvs --bootstrap 2000 --json /home/user/SafeStream-Redactor/research/results/raw/2026-10-11_redactionbench_test.json --md /home/user/SafeStream-Redactor/research/results/raw/2026-10-11_redactionbench_test.md"
+}
