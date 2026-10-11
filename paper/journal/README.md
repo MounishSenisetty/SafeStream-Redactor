@@ -6,13 +6,16 @@
    (no subfolders):
    - `main.tex`
    - `refs.bib`
-   - `fig_memory.pdf`
+   - `fig_memory.pdf`, `fig_accuracy.pdf`, `fig_scaling.pdf`
 2. Menu → Compiler: **pdfLaTeX**. Main document: `main.tex`.
 3. Recompile. `elsarticle.cls` and `elsarticle-num.bst` ship with Overleaf's TeX
-   Live, so nothing else is needed. The pipeline figure and Algorithm 1 are drawn in
-   LaTeX (TikZ, algpseudocode) and need no image files.
+   Live, so nothing else is needed. The pipeline figure, the streaming-window figure and Algorithm 1 are
+   drawn in LaTeX (TikZ, algpseudocode) and need no image files.
 
 `highlights.txt` is uploaded separately at submission, not compiled.
+
+`cover_letter.tex` is a separate document (pdfLaTeX); `author_biographies.md` holds
+the biography templates.
 
 ## Placeholders
 

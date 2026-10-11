@@ -32,10 +32,10 @@
 
 \title{Bounded-memory streaming redaction of personal data and credentials with a whole-document equivalence guarantee}
 
-\author[aff1]{\MISSING{Author 1 full name}\corref{cor1}}
-\ead{\MISSING{corresponding e-mail}}
-\author[aff1]{\MISSING{Author 2 full name}}
-\author[aff1]{\MISSING{Author 3 full name}}
+\author[aff1]{Mounish Senisetty\corref{cor1}}
+\ead{senisettymounish@gmail.com}
+\author[aff1]{\MISSING{co-author full name, or delete this line}}
+\author[aff1]{\MISSING{co-author full name, or delete this line}}
 \cortext[cor1]{Corresponding author.}
 \affiliation[aff1]{organization={\MISSING{Department, Institution}},
             city={\MISSING{City}},
@@ -81,7 +81,7 @@ Rule-based de-identification of clinical text dates back to lookup tables and re
 Meli et al.\ measured secret leakage across public GitHub repositories and showed that leaked keys appear daily \cite{meli2019git}. Detection approaches range from vendor-specific regular expressions \cite{sinha2015secretkey} to machine-learned filters that reduce false positives \cite{saha2020secrets} and neural detectors for free-form passwords \cite{feng2022passfinder}. SecretBench provides a labelled corpus of candidate secrets \cite{basak2023secretbench}, and a comparison of nine detection tools found false positives from generic patterns and entropy heuristics and false negatives from missing rules \cite{basak2023comparative}. Developers' own strategies for handling leaked secrets are studied by Krause et al.\ \cite{krause2023pushed}. Shannon entropy \cite{shannon1948} is the usual signal for undocumented high-entropy secrets. The rule set of Nosey Parker \cite{noseyparker} supplies the labelled examples we evaluate on.
 
 \paragraph{Streaming and matching}
-Processing unbounded input in sub-linear memory is the setting of the data-stream model \cite{muthukrishnan2005streams}. Linear-time regular-expression matching goes back to Thompson's construction \cite{thompson1968regex}. Our contribution is not a new matching algorithm; it is an overlap and seam protocol that makes a windowed detection pipeline provably equal to its whole-document form, together with an engineering discipline that keeps the required constants true as detectors change. We did not find prior redaction or secret-scanning work that states such an equivalence \NEEDSCITE{prior work on boundary-safe chunked entity detection, if any exists}.
+Processing unbounded input in sub-linear memory is the setting of the data-stream model \cite{muthukrishnan2005streams}. Linear-time regular-expression matching goes back to Thompson's construction \cite{thompson1968regex}. Our contribution is not a new matching algorithm; it is an overlap and seam protocol that makes a windowed detection pipeline provably equal to its whole-document form, together with an engineering discipline that keeps the required constants true as detectors change. Among the redaction, de-identification and secret-scanning systems cited above, we found none that states such an equivalence or bounds the overlap it needs; the closest practice is ad hoc overlapping of windows, whose correctness depends on how long the longest entity and its context are, which is exactly what our assumptions make explicit.
 
 %% ===================================================================
 \section{Problem and threat model}\label{sec:problem}
@@ -157,7 +157,32 @@ Pattern detections that overlap are resolved best-first by confidence, then by l
 \end{algorithmic}
 \end{algorithm}
 
-Algorithm~\ref{alg:stream} keeps a buffer of unemitted text and the last $w$ characters already emitted. Each pass detects over the concatenation, so detectors see real left context rather than an artificial edge, and emits only the part of the buffer that lies at least $w$ characters before its end. If a detection crosses the planned emit boundary, the boundary retreats to the detection's start and the detection is carried into the next pass. Small chunks are coalesced until at least $m$ characters can be emitted, so the cost of rescanning the overlap is bounded per emitted character regardless of how the input is chunked. The defaults are $w = 8192$ characters and $m = 65{,}536$ characters.
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[every node/.style={font=\small}]
+\fill[gray!15] (0,0) rectangle (3,1.2);
+\fill[blue!8] (3,0) rectangle (10.5,1.2);
+\fill[orange!15] (10.5,0) rectangle (14,1.2);
+\draw (0,0) rectangle (14,1.2);
+\draw (3,0) -- (3,1.2);
+\draw[dashed, thick] (10.5,-0.1) -- (10.5,1.3);
+\node at (1.5,0.6) {$P$};
+\node at (5.5,0.6) {$B$ (unemitted buffer)};
+\fill[red!40] (9,0.35) rectangle (12,0.85);
+\node at (10.5,0.6) {\scriptsize span $s$};
+\node[above, align=center] at (1.5,1.25) {last $w$ emitted chars\\(read-only context)};
+\node[above, align=center] at (12.25,1.25) {last $w$ chars of $B$\\(not emitted this pass)};
+\node[above, align=center] at (7.2,1.25) {planned boundary $|B|-w$ $\rightarrow$};
+\draw[-{Stealth[length=2mm]}, thick] (10.5,-0.35) -- (9,-0.35);
+\node[below] at (9.75,-0.4) {retreat};
+\draw[|-|] (3,-0.35) -- (8.95,-0.35);
+\node[below] at (6,-0.4) {emitted in this pass};
+\end{tikzpicture}}
+\caption{One pass of Algorithm~\ref{alg:stream}. The detector reads $P \cdot B$; only text before the planned boundary may be emitted, and the boundary retreats out of any span that crosses it, so $s$ is carried to the next pass and detected whole.}\label{fig:window}
+\end{figure}
+
+Algorithm~\ref{alg:stream} (illustrated in Figure~\ref{fig:window}) keeps a buffer of unemitted text and the last $w$ characters already emitted. Each pass detects over the concatenation, so detectors see real left context rather than an artificial edge, and emits only the part of the buffer that lies at least $w$ characters before its end. If a detection crosses the planned emit boundary, the boundary retreats to the detection's start and the detection is carried into the next pass. Small chunks are coalesced until at least $m$ characters can be emitted, so the cost of rescanning the overlap is bounded per emitted character regardless of how the input is chunked. The defaults are $w = 8192$ characters and $m = 65{,}536$ characters.
 
 \subsection{Parallel engine}
 For large files, the parallel engine splits the input into character-aligned byte ranges, one per worker process. Each worker reads $w$ characters of scanned padding and a further $w$ characters of context-only prefix around its interior boundaries (seams). A span that crosses a seam belongs to the left worker, and the right worker begins emitting at that span's end. Neighbouring workers compute the seam position independently, and the coordinator compares their reports. On any disagreement it discards the parallel result and redacts the file sequentially.
@@ -190,7 +215,7 @@ Under \ref{as:span} with $w \ge L_{\max}$, $P_{w,k}(T)$ equals the sequential ou
 The working buffer of $S_w$ never exceeds $m + w + L_{\max}$ characters, independent of $|T|$; the parallel engine uses at most $k$ times that.
 \end{theorem}
 
-Full proofs, with each step mapped to the implementation, are in the repository's formal-model document \MISSING{repository URL and commit hash for the formal-model document}. Because redaction is a pure function of $T$ and the detection set, Theorem~\ref{thm:stream} implies byte-identical redacted output.
+Full proofs, with each step mapped to the implementation, are in the repository's formal-model document (\url{https://github.com/MounishSenisetty/SafeStream-Redactor/blob/0765dae/docs/FORMAL_MODEL.md}). Because redaction is a pure function of $T$ and the detection set, Theorem~\ref{thm:stream} implies byte-identical redacted output.
 
 \paragraph{Where the constants come from}
 Each detector declares its maximum span and the left and right context it reads. The engine computes the required overlap as the maximum over active detectors and refuses to start with a smaller overlap unless the caller explicitly overrides it. For the default pipeline, $C_{\mathrm{left}} = 96$ (the label-anchored cue window), $C_{\mathrm{right}} = 8$, and $L_{\max} = 8192$ (bounds on private-key blocks and entropy candidates), so $w = 8192$ satisfies Theorem~\ref{thm:stream}. A regression test fails if any detector's declaration changes these values, and a differential test probes each detector to check that its real context dependency does not exceed its declaration.
@@ -274,7 +299,13 @@ Presidio lg & .308 [.238,.381] & .131 [.082,.214] & .184 [.124,.262] & .164 [.11
 \end{tabular}}
 \end{table}
 
-Table~\ref{tab:main} gives the test-split results.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_accuracy.pdf}
+\caption{Test-split accuracy with 95\% bootstrap intervals. (a) Share of secrets fully redacted on the secrets test split. (b) Character F1 on the presidio-research test split. SafeStream configurations in blue, baselines in grey.}\label{fig:accuracy}
+\end{figure}
+
+Table~\ref{tab:main} gives the test-split results and Figure~\ref{fig:accuracy} the headline comparisons.
 
 \paragraph{Personal data}
 On presidio-research, SafeStream's pattern tiers were precise (character precision 0.995) but recalled only 0.154 of sensitive characters, because most gold spans are names, locations and organisations that patterns cannot capture. Against Presidio's pattern recognisers, the paired difference in character recall was $-0.021$ [$-0.041$, $-0.002$] and in precision $+0.047$ [$+0.021$, $+0.076$]. With the same spaCy model, SafeStream +spaCy exceeded Presidio sm in character F1 by $+0.051$ [$+0.027$, $+0.076$] and in fully redacted rate by $+0.031$ [$+0.004$, $+0.060$]. Against Presidio lg, which uses a larger model, SafeStream +spaCy had higher character F1 ($+0.036$ [$+0.011$, $+0.064$]), but the difference in fully redacted rate, $-0.025$ [$-0.053$, $+0.004$], was not significant.
@@ -384,13 +415,22 @@ TruffleHog$^{a}$ & 0.0269 $\pm$ 0.0016 & 0.0188 $\pm$ 0.0007 & 0.594 $\pm$ 0.02 
 
 Table~\ref{tab:throughput} reports throughput on the test splits. Per-document overhead dominates on presidio-research and secrets, whose documents average 85 and 149 bytes; RedactionBench's documents are larger (13.8\,kB on average) and are closer to the files SafeStream targets. There, the Rust core processed 10.4 $\pm$ 1.3\,MB/s, the pure-Python reference 1.23 $\pm$ 0.15\,MB/s and Presidio's pattern recognisers 0.069\,MB/s. With a statistical model in the loop, every system ran below 0.05\,MB/s: SafeStream +spaCy at 0.047\,MB/s and Presidio sm and lg at 0.020 and 0.020\,MB/s.
 
-On a single 256\,MB generated log file (mostly benign log lines and prose with personal data and credentials mixed in), \texttt{redact\_file} with the Rust core ran at 10.5 $\pm$ 0.5, 20.6 $\pm$ 0.5 and 41.1 $\pm$ 1.4\,MB/s with 1, 2 and 4 worker processes, a 3.9-fold speed-up on 4 vCPUs. The pure-Python backend on a 32\,MB file of the same kind ran at 0.99, 1.90 and 2.67\,MB/s. These figures come from one virtual machine and should be read as relative rather than absolute.
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.62\textwidth]{fig_scaling.pdf}
+\caption{Throughput of \texttt{redact\_file} against worker processes on a 4-vCPU machine, mean and standard deviation over 5 runs (log scale). Dotted lines show linear scaling from one worker. The parallel output is byte-identical to the sequential output (Theorem~\ref{thm:par}).}\label{fig:scaling}
+\end{figure}
+
+On a single 256\,MB generated log file (mostly benign log lines and prose with personal data and credentials mixed in), \texttt{redact\_file} with the Rust core ran at 10.5 $\pm$ 0.5, 20.6 $\pm$ 0.5 and 41.1 $\pm$ 1.4\,MB/s with 1, 2 and 4 worker processes, a 3.9-fold speed-up on 4 vCPUs (Figure~\ref{fig:scaling}). The pure-Python backend on a 32\,MB file of the same kind ran at 0.99, 1.90 and 2.67\,MB/s. These figures come from one virtual machine and should be read as relative rather than absolute.
 
 %% ===================================================================
 \section{Discussion and limitations}\label{sec:limits}
 
 \paragraph{What the results support}
 The equivalence and memory properties are proven for the pattern tiers and corroborated by tests and by the memory curve. The pattern tiers are fast enough for large files, and the parallel engine scaled almost linearly to the four available cores; adding a statistical model reduced throughput by two orders of magnitude, for SafeStream and Presidio alike. On credentials, the pattern tiers covered more secrets than two widely used scanners at similar precision. On personal data, SafeStream with a spaCy model was more accurate than Presidio with the same model on one synthetic corpus. Without a named-entity model, its free-text recall is low.
+
+\paragraph{Practical implications}
+For operators, the results suggest a two-stage deployment. The pattern tiers can run on every byte of a log or export, at 10.5\,MB/s per worker and 41.1\,MB/s on four workers in our measurements, with bounded memory and a guarantee that chunking introduces no leak, and they cover credentials better than the two scanners we tested. A named-entity tier closes much of the free-text gap but costs two orders of magnitude in throughput, so it is best applied where names are expected (tickets, e-mail, free-text fields) rather than to whole machine logs. Because the guarantee is tied to declared context bounds, adding a custom detector is safe exactly when its declaration is truthful; the engine refuses overlaps smaller than the declarations require.
 
 \paragraph{What was not evaluated}
 The ONNX DistilBERT tier, its triage gate, Presidio's transformer configurations, the ai4privacy corpus \cite{ai4privacy300k} and CoNLL-2003 were not run, because their models and data are hosted on a service that the evaluation environment could not reach. We make no claim about them. No large-language-model baseline was evaluated.
@@ -416,7 +456,7 @@ SafeStream-Redactor shows that chunked redaction of personal data and credential
 \MISSING{funding sources, or: This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.}
 
 \section*{Data availability}
-Source code, split manifests, evaluation harness and raw results are available at \MISSING{repository URL, commit hash or archived DOI}. presidio-research and Nosey Parker are public; RedactionBench is available from its authors under CC BY 4.0. Generated non-secrets are produced by the released code with a fixed seed.
+Source code, split manifests, evaluation harness and raw results are available at \url{https://github.com/MounishSenisetty/SafeStream-Redactor} (branch \texttt{phase2-evaluation-and-paper}; every number in this article is generated from files under \texttt{research/results/}). \MISSING{archive a tagged release (e.g.\ on Zenodo) and give its DOI here} presidio-research and Nosey Parker are public; RedactionBench is available from its authors under CC BY 4.0. Generated non-secrets are produced by the released code with a fixed seed.
 
 \section*{Declaration of generative AI and AI-assisted technologies in the writing process}
 During the preparation of this work the authors used Claude (Anthropic) to implement evaluation scripts and to draft the manuscript text. After using this tool, the authors reviewed and edited the content as needed and take full responsibility for the content of the publication.
