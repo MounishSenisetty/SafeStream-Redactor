@@ -1,0 +1,327 @@
+{
+ "corpus": "redactionbench",
+ "split": "test",
+ "n_docs": 100,
+ "source_revision": "d45e9cec89bc49c69355e252fec29cc0229982f6",
+ "previously_exposed": "all 200 documents were used for error analysis and rule tuning before 2026-10-03; its test half is reported as 'previously exposed', not held out",
+ "corpus_notes": "binary redaction gold (necessity only, no PII types); tuned on before the split",
+ "corpus_skipped": [],
+ "has_necessity": true,
+ "has_negatives": false,
+ "environment": {
+  "date": "2026-10-11T09:01:05+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.16",
+  "versions": {
+   "safestream-redactor": "0.4.0",
+   "safestream-redactor-native": "0.4.0",
+   "presidio-analyzer": null,
+   "spacy": "3.8.13",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": null,
+   "onnxruntime": "1.31.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.5.4"
+  },
+  "commit": "0765daeddd50f85a38c627922c4148ee62f3a79d",
+  "dirty": true
+ },
+ "isolated_venvs": null,
+ "systems": {
+  "gitleaks": "pattern",
+  "trufflehog": "pattern"
+ },
+ "runs": {
+  "gitleaks": {
+   "system": "gitleaks",
+   "load_s": 0.0,
+   "bytes": 1378267,
+   "peak_rss_mb": null,
+   "tool_rss_mb": null,
+   "timing": "one batch run including process start-up, divided evenly",
+   "unplaced_findings": 0,
+   "tool_version": "gitleaks version v8.28.0",
+   "threads": null,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.42236473000002667,
+   "mb_s": 3.263215183710801,
+   "p50_ms": 4.223647300000266,
+   "p99_ms": 4.223647300000266
+  },
+  "trufflehog": {
+   "system": "trufflehog",
+   "load_s": 0.0,
+   "bytes": 1378267,
+   "peak_rss_mb": null,
+   "tool_rss_mb": null,
+   "timing": "one batch run including process start-up, divided evenly",
+   "unplaced_findings": 4,
+   "tool_version": "trufflehog v3.90.8",
+   "threads": null,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 2.242850300999976,
+   "mb_s": 0.6145158236309837,
+   "p50_ms": 22.42850300999976,
+   "p99_ms": 22.42850300999976
+  }
+ },
+ "scores": {
+  "systems": {
+   "gitleaks": {
+    "point": {
+     "char_p": 0.991735989492119,
+     "char_r": 0.12012037890187396,
+     "char_f1": 0.21428613661761142,
+     "entity_recall_covered": 0.009846827133479213,
+     "ent_p_partial": 0.9745762711864406,
+     "ent_r_partial": 0.008987183494842139,
+     "ent_f1_partial": 0.017810128542666875,
+     "ent_p_strict": 0.9279661016949152,
+     "ent_r_strict": 0.008557361675523602,
+     "ent_f1_strict": 0.01695833978627846,
+     "mandatory_recall": 0.24659866318741888,
+     "no_leak_doc_rate": 0.021052631578947368,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.9813310533959332,
+      0.9981349948593611
+     ],
+     "char_r": [
+      0.06962393528575041,
+      0.18653364603821035
+     ],
+     "char_f1": [
+      0.1301093565801355,
+      0.31423088863503323
+     ],
+     "entity_recall_covered": [
+      0.005179689429709918,
+      0.01767898469262416
+     ],
+     "ent_p_partial": [
+      0.9428539962240403,
+      0.9948979591836735
+     ],
+     "ent_r_partial": [
+      0.0047133767056734156,
+      0.01626247349913476
+     ],
+     "ent_f1_partial": [
+      0.00938028931486252,
+      0.03199603978769686
+     ],
+     "ent_p_strict": [
+      0.8770005037588158,
+      0.9657794676806084
+     ],
+     "ent_r_strict": [
+      0.004497347301979005,
+      0.015474036656379675
+     ],
+     "ent_f1_strict": [
+      0.008950707054519367,
+      0.030457786016639773
+     ],
+     "mandatory_recall": [
+      0.1403222786976138,
+      0.3724542654907643
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.05264557670772668
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "SECRET": {
+      "gold": 0,
+      "pred": 236,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "trufflehog": {
+    "point": {
+     "char_p": 0.9185720016044926,
+     "char_r": 0.015179938617366115,
+     "char_f1": 0.029866318878382786,
+     "entity_recall_covered": 0.0021100343857455455,
+     "ent_p_partial": 0.6666666666666666,
+     "ent_r_partial": 0.001875586120662707,
+     "ent_f1_partial": 0.003740648379052369,
+     "ent_p_strict": 0.4444444444444444,
+     "ent_r_strict": 0.0012503907471084713,
+     "ent_f1_strict": 0.0024937655860349122,
+     "mandatory_recall": 0.02441985403904386,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.7986238534039695,
+      1.0
+     ],
+     "char_r": [
+      0.008599497270237566,
+      0.024529703062149626
+     ],
+     "char_f1": [
+      0.017033692783340236,
+      0.04778424931107577
+     ],
+     "entity_recall_covered": [
+      0.0009769539956981192,
+      0.004267124544757805
+     ],
+     "ent_p_partial": [
+      0.5466627906976744,
+      0.8243302513039354
+     ],
+     "ent_r_partial": [
+      0.0009045888447782286,
+      0.00358942021644371
+     ],
+     "ent_f1_partial": [
+      0.0018058707203742724,
+      0.007141535279114254
+     ],
+     "ent_p_strict": [
+      0.34480064655172415,
+      0.5469017551369861
+     ],
+     "ent_r_strict": [
+      0.0005606892258966356,
+      0.0024596077235728483
+     ],
+     "ent_f1_strict": [
+      0.001119511011991207,
+      0.004895005693771092
+     ],
+     "mandatory_recall": [
+      0.012912525870176546,
+      0.040254615811063515
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "SECRET": {
+      "gold": 0,
+      "pred": 72,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {
+   "gitleaks - trufflehog": {
+    "char_p": [
+     -0.009301097954878237,
+     0.0660664515009054,
+     0.19444351251454134
+    ],
+    "char_r": [
+     0.05725251361818332,
+     0.10530838734497999,
+     0.1667338707141451
+    ],
+    "char_f1": [
+     0.10548865233890015,
+     0.18488693000426598,
+     0.27616138340220364
+    ],
+    "entity_recall_covered": [
+     0.003945171759699201,
+     0.007643274896891748,
+     0.014192974047640063
+    ],
+    "ent_p_partial": [
+     0.14393265417120504,
+     0.3022519740767981,
+     0.43685310346930056
+    ],
+    "ent_r_partial": [
+     0.003625430892102844,
+     0.0070215772526281035,
+     0.013024227953371015
+    ],
+    "ent_f1_partial": [
+     0.007204448109223518,
+     0.013889796295414616,
+     0.025623958858587096
+    ],
+    "ent_f1_strict": [
+     0.007594177076785479,
+     0.014265654785691358,
+     0.025812707421384133
+    ],
+    "mandatory_recall": [
+     0.12418841563750802,
+     0.22407589151679125,
+     0.34148015203058374
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.020833333333333332,
+     0.05264557670772668
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  }
+ },
+ "command": "python -m benchmarks.harness --corpus redactionbench --split test --systems gitleaks trufflehog --bootstrap 2000 --json research/results/raw/2026-10-11_redactionbench_test_scanners.json --md research/results/raw/2026-10-11_redactionbench_test_scanners.md"
+}

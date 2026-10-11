@@ -39,6 +39,42 @@ _CANDIDATE = re.compile(rf"[A-Za-z0-9+/=_-]{{20,{MAX_SPAN}}}")
 _HEX = re.compile(r"\A[0-9a-fA-F]+\Z")
 _ALPHA_ONLY = re.compile(r"\A[A-Za-z]+\Z")
 
+# High-entropy shapes that are identifiers or content, not credentials: a canonical
+# UUID, a SHA-1/SHA-256 digest named as one, and the payload of a ``data:`` URI.
+# A credential in one of these shapes after a secret-like key (``api_key=<uuid>``)
+# is still caught by the deterministic tier's key-assignment rule; a bare
+# UUID-shaped token with no key (some vendor API keys) is the cost.
+_UUID = re.compile(r"\A[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}\Z")
+# the candidate alphabet includes ``=`` and ``_``, so ``request_id=<uuid>`` is one
+# token: the shape checks apply to the value after its last ``=``
+_VALUE = re.compile(r"(?:\A|=)([^=]+)\Z")
+_DIGEST_CUE = re.compile(
+    r"(?i)(?:\bcommit|\bsha-?(?:1|256|512)|\bdigest|\bchecksum|\bhash|\bmd5)\W{0,3}\Z"
+)
+_DATA_URI_CUE = re.compile(r"(?i)\bdata:[\w.+-]+/[\w.+-]+(?:;[\w=.-]+)*;base64,\Z")
+# a value named by a secret-like key is never benign (``SAUCE_ACCESS_KEY=<uuid>``)
+_SECRET_KEY_CUE = re.compile(
+    r"(?i)(?:key|token|secret|passw|pwd|auth|credential)[\w.-]{0,16}[\"']?\s*[:=]>?\s*[\"']?\Z"
+)
+# characters of left context the benign-shape check reads (inside C_left = 96)
+BENIGN_LEFT_CONTEXT = 32
+
+
+def benign_shape(text: str, start: int, end: int) -> bool:
+    """True when ``text[start:end]`` is a UUID, a named digest, or data-URI content."""
+    m = _VALUE.search(text[start:end].rstrip("="))  # base64 padding is not a separator
+    if m is None:
+        return False
+    value, vstart = m.group(1), start + m.start(1)
+    before = text[max(0, vstart - BENIGN_LEFT_CONTEXT) : vstart]
+    if _SECRET_KEY_CUE.search(before):
+        return False
+    if _UUID.match(value):
+        return True
+    if _HEX.match(value) and len(value) in (40, 64) and _DIGEST_CUE.search(before):
+        return True
+    return vstart == start and bool(_DATA_URI_CUE.search(before))
+
 
 def shannon_entropy(text: str) -> float:
     """Shannon entropy in bits per character (0 for uniform, up to log2(alphabet))."""
@@ -60,7 +96,7 @@ class EntropyDetector(NativeBacked):
     name = "entropy"
     # A candidate run is capped at MAX_SPAN characters (see _CANDIDATE), so that
     # is the longest span this tier can emit.
-    requirements = StreamingRequirements(max_span=MAX_SPAN)
+    requirements = StreamingRequirements(max_span=MAX_SPAN, left_context=BENIGN_LEFT_CONTEXT)
 
     def __init__(
         self,
@@ -69,7 +105,9 @@ class EntropyDetector(NativeBacked):
         hex_entropy: float = 3.0,
         confidence: float = 0.6,
         backend: str = "python",
+        suppress_benign: bool = True,
     ) -> None:
+        self.suppress_benign = suppress_benign
         self.min_length = min_length
         self.base64_entropy = base64_entropy
         self.hex_entropy = hex_entropy
@@ -97,6 +135,12 @@ class EntropyDetector(NativeBacked):
         return entropy if entropy >= self.base64_entropy else None
 
     def detect(self, text: str) -> list[Detection]:
+        found = self._detect_raw(text)
+        if self.suppress_benign:  # one filter for both backends keeps them identical
+            found = [d for d in found if not benign_shape(text, d.start, d.end)]
+        return found
+
+    def _detect_raw(self, text: str) -> list[Detection]:
         if self._native is not None:  # pragma: no cover - requires native extension
             native = self._detect_native(text)
             if native is not None:

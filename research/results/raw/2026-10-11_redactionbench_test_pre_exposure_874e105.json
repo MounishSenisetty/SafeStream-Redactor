@@ -1,0 +1,520 @@
+{
+ "corpus": "redactionbench",
+ "split": "test",
+ "n_docs": 100,
+ "source_revision": "d45e9cec89bc49c69355e252fec29cc0229982f6",
+ "previously_exposed": "all 200 documents were used for error analysis and rule tuning before 2026-10-03; its test half is reported as 'previously exposed', not held out",
+ "corpus_notes": "binary redaction gold (necessity only, no PII types); tuned on before the split",
+ "corpus_skipped": [],
+ "has_necessity": true,
+ "has_negatives": false,
+ "environment": {
+  "date": "2026-10-11T09:06:10+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.16",
+  "versions": {
+   "safestream-redactor": "0.4.0",
+   "safestream-redactor-native": "0.4.0",
+   "presidio-analyzer": null,
+   "spacy": "3.8.13",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": null,
+   "onnxruntime": "1.31.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.5.4"
+  },
+  "commit": "b8eccd9998fea5656bbc9da616cdfc8a0c04ae13",
+  "dirty": false
+ },
+ "isolated_venvs": "/root/bench-venvs",
+ "systems": {
+  "safestream-python": "pattern",
+  "safestream-native-spacy": "ner"
+ },
+ "runs": {
+  "safestream-python": {
+   "system": "safestream-python",
+   "load_s": 0.01850109999986671,
+   "bytes": 1378267,
+   "peak_rss_mb": 148.86328125,
+   "tool_rss_mb": 12.69140625,
+   "python": "/root/bench-venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.31.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.7888629030007905,
+   "mb_s": 1.7471565651739345,
+   "p50_ms": 2.3652639999909297,
+   "p99_ms": 61.435996999989584
+  },
+  "safestream-native-spacy": {
+   "system": "safestream-native-spacy",
+   "load_s": 1.1448647830000027,
+   "bytes": 1378267,
+   "peak_rss_mb": 589.171875,
+   "tool_rss_mb": 452.88671875,
+   "python": "/root/bench-venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": "0.4.0",
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": "1.31.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 35.45462623399999,
+   "mb_s": 0.03887410886532716,
+   "p50_ms": 105.58136200006629,
+   "p99_ms": 4553.761017999932
+  }
+ },
+ "scores": {
+  "systems": {
+   "safestream-python": {
+    "point": {
+     "char_p": 0.8191014621687162,
+     "char_r": 0.37839808560424776,
+     "char_f1": 0.5176560204581315,
+     "entity_recall_covered": 0.38371366051891215,
+     "ent_p_partial": 0.8268199233716476,
+     "ent_r_partial": 0.08432322600812754,
+     "ent_f1_partial": 0.15303879157506559,
+     "ent_p_strict": 0.1781609195402299,
+     "ent_r_strict": 0.018169740543919975,
+     "ent_f1_strict": 0.03297638465357067,
+     "mandatory_recall": 0.5890208336240459,
+     "no_leak_doc_rate": 0.07368421052631578,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.7575476881080604,
+      0.8748325055099426
+     ],
+     "char_r": [
+      0.2966012685909629,
+      0.4610694890543193
+     ],
+     "char_f1": [
+      0.4338183192669262,
+      0.5932433897732632
+     ],
+     "entity_recall_covered": [
+      0.24320837744279425,
+      0.5079841361928512
+     ],
+     "ent_p_partial": [
+      0.7371486168959804,
+      0.8905175029486706
+     ],
+     "ent_r_partial": [
+      0.06272149276583187,
+      0.10719473061018314
+     ],
+     "ent_f1_partial": [
+      0.11639024002345054,
+      0.19026252064968086
+     ],
+     "ent_p_strict": [
+      0.11679663393921892,
+      0.26534627831208163
+     ],
+     "ent_r_strict": [
+      0.010724302559365947,
+      0.029983770445345427
+     ],
+     "ent_f1_strict": [
+      0.01970997099078759,
+      0.053961859931610796
+     ],
+     "mandatory_recall": [
+      0.475615839774921,
+      0.6962804246081451
+     ],
+     "no_leak_doc_rate": [
+      0.021505376344086023,
+      0.12903225806451613
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 27,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 316,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1167,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 117,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 965,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 18,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-spacy": {
+    "point": {
+     "char_p": 0.46398105781844945,
+     "char_r": 0.48061409149061696,
+     "char_f1": 0.47215113212339077,
+     "entity_recall_covered": 0.46030009377930603,
+     "ent_p_partial": 0.302827965435978,
+     "ent_r_partial": 0.12050640825257893,
+     "ent_f1_partial": 0.17240608228980323,
+     "ent_p_strict": 0.08601728201099765,
+     "ent_r_strict": 0.03422944670209441,
+     "ent_f1_strict": 0.04897137745974956,
+     "mandatory_recall": 0.6744205517491593,
+     "no_leak_doc_rate": 0.1368421052631579,
+     "fp_doc_rate": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.35616003210950603,
+      0.580245110262288
+     ],
+     "char_r": [
+      0.40025294761729086,
+      0.56317998748722
+     ],
+     "char_f1": [
+      0.39480259733084583,
+      0.5465250275514699
+     ],
+     "entity_recall_covered": [
+      0.3357452249826913,
+      0.5729854108806562
+     ],
+     "ent_p_partial": [
+      0.21220626294814784,
+      0.42135492524925394
+     ],
+     "ent_r_partial": [
+      0.09658665647664542,
+      0.15145411602665493
+     ],
+     "ent_f1_partial": [
+      0.1416235543953118,
+      0.20833345430263617
+     ],
+     "ent_p_strict": [
+      0.06003766087909604,
+      0.12958567488141884
+     ],
+     "ent_r_strict": [
+      0.022436219010993286,
+      0.0528432781438687
+     ],
+     "ent_f1_strict": [
+      0.03381364485956063,
+      0.07158962926211475
+     ],
+     "mandatory_recall": [
+      0.5661479564989993,
+      0.7792358238980691
+     ],
+     "no_leak_doc_rate": [
+      0.07291666666666667,
+      0.20833333333333334
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "CREDIT_CARD": {
+      "gold": 0,
+      "pred": 27,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "EMAIL_ADDRESS": {
+      "gold": 0,
+      "pred": 316,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1167,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 1190,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 4124,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 2317,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PHONE_NUMBER": {
+      "gold": 0,
+      "pred": 113,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SECRET": {
+      "gold": 0,
+      "pred": 912,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "SENSITIVE": {
+      "gold": 25592,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "US_SSN": {
+      "gold": 0,
+      "pred": 18,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {
+   "safestream-python - safestream-native-spacy": {
+    "char_p": [
+     0.23902993810577924,
+     0.3529731376772553,
+     0.46840520173102507
+    ],
+    "char_r": [
+     -0.13279508931148934,
+     -0.1025622695123356,
+     -0.07857785219036899
+    ],
+    "char_f1": [
+     -0.010863257048893234,
+     0.04380610904305943,
+     0.10845405902780503
+    ],
+    "entity_recall_covered": [
+     -0.10982131762258845,
+     -0.07706145330041816,
+     -0.05394211438146441
+    ],
+    "ent_p_partial": [
+     0.39903478420885546,
+     0.517787815848004,
+     0.6122621215923358
+    ],
+    "ent_r_partial": [
+     -0.056442763945549375,
+     -0.03648434554318927,
+     -0.02369055572911016
+    ],
+    "ent_f1_partial": [
+     -0.04349504568503804,
+     -0.019743589867547498,
+     0.0010157731569989488
+    ],
+    "ent_f1_strict": [
+     -0.026084445858375018,
+     -0.01567478728895247,
+     -0.008078755518218966
+    ],
+    "mandatory_recall": [
+     -0.12191456268948324,
+     -0.08484927804447184,
+     -0.06183233651949817
+    ],
+    "no_leak_doc_rate": [
+     -0.11578947368421053,
+     -0.06250000000000001,
+     -0.020833333333333343
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  }
+ },
+ "command": "python -m benchmarks.harness --corpus redactionbench --split test --systems safestream-python safestream-native-spacy --venv-root /root/bench-venvs --bootstrap 2000 --json research/results/raw/2026-10-11_redactionbench_test_pre_exposure_874e105.json",
+ "code_under_test": {
+  "commit": "874e105",
+  "how": "PYTHONPATH=/root/pre-rb/src (git worktree at 7386f66^, the last commit before RedactionBench entered the repo); harness from the commit recorded in environment.commit",
+  "note": "safestream-native-spacy: the 0.4.0 native wheel does not match this commit's pattern spec, so the spec guard falls back to the Python tiers; read it as pre-exposure Python tiers + spaCy"
+ }
+}

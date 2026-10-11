@@ -610,3 +610,24 @@ def test_international_phone_needs_an_assigned_country_code():
     # positive this rule removes)
     assert EntityType.PHONE not in types_in("Tue Nov 28 03:17:04 +0000 2023 root")
     assert phone_ok("(415) 555-2671")  # no '+': the country-code rule does not apply
+
+
+def test_entropy_skips_benign_shapes_but_keyed_values_still_redact():
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors.entropy import EntropyDetector
+
+    uuid = "2ba5c0de-4f1e-4b6a-9c3d-7e8f90a1b2c3"
+    sha1 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b"
+    png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+    benign = f'request_id={uuid} commit {sha1} <img src="data:image/png;base64,{png}">'
+    assert EntropyDetector().detect(benign) == []
+    assert len(EntropyDetector(suppress_benign=False).detect(benign)) == 3
+    # a credential in a benign shape is still caught when a secret key names it
+    keyed = Redactor().redact(f"api_key={uuid}\ntoken: {sha1}")
+    assert uuid not in keyed and sha1 not in keyed
+
+
+def test_entropy_keeps_uuid_shaped_secret_named_by_a_key():
+    from safestream_redactor.detectors.entropy import EntropyDetector
+
+    assert EntropyDetector().detect("SAUCE_ACCESS_KEY=2397f603-c2c4-4897-a8ca-587ace5dc8dd")

@@ -1,0 +1,4 @@
+{"mode": "stream", "backend": "python", "size_mb": 8, "base_rss_mb": 22.46875, "peak_rss_mb": 26.875, "seconds": 11.535629497000627, "delta_mb": 4.40625}
+{"mode": "stream", "backend": "python", "size_mb": 32, "base_rss_mb": 22.43359375, "peak_rss_mb": 26.76953125, "seconds": 45.8393301849992, "delta_mb": 4.3359375}
+{"mode": "stream", "backend": "python", "size_mb": 128, "base_rss_mb": 22.48828125, "peak_rss_mb": 26.828125, "seconds": 186.4226941449997, "delta_mb": 4.33984375}
+{"mode": "stream", "backend": "python", "size_mb": 512, "base_rss_mb": 22.48828125, "peak_rss_mb": 26.82421875, "seconds": 726.266319530001, "delta_mb": 4.3359375}
