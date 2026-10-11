@@ -14,8 +14,6 @@
 \usepackage{xurl}
 \usepackage[hidelinks]{hyperref}
 \emergencystretch=3em
-\usepackage{lineno}
-\linenumbers
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{assumption}{Assumption}
@@ -91,29 +89,13 @@ The input is a text $T$, possibly larger than memory, arriving as an arbitrary s
 %% ===================================================================
 \section{Method}\label{sec:method}
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[node distance=5mm and 7mm, every node/.style={font=\small},
-  box/.style={draw, rounded corners=2pt, align=center, minimum height=8mm, inner sep=3pt},
-  arr/.style={-{Stealth[length=2mm]}}]
-\node[box] (in) {Text chunks\\(any size)};
-\node[box, right=of in] (eng) {Streaming engine\\buffer + overlap $w$};
-\node[box, right=of eng, minimum width=36mm] (t0) {Pattern tiers\\deterministic + validators\\label-anchored IDs\\entropy, contextual};
-\node[box, below=of t0, minimum width=36mm] (ner) {Optional NER tier\\(spaCy)};
-\node[box, right=of t0] (res) {Confidence filter\\+ overlap resolver};
-\node[box, right=of res] (out) {Redaction\\policy};
-\draw[arr] (in) -- (eng);
-\draw[arr] (eng) -- (t0);
-\draw[arr] (eng.south) |- (ner.west);
-\draw[arr] (t0) -- (res);
-\draw[arr] (ner.east) -| (res.south);
-\draw[arr] (res) -- (out);
-\end{tikzpicture}}
-\caption{Pipeline. Every window passes through the pattern tiers; the named-entity tier is optional. The resolver merges overlapping detections so no value is left partly exposed.}\label{fig:pipeline}
-\end{figure}
+\includegraphics[width=\textwidth]{fig_architecture.pdf}
+\caption{System architecture. Every interface feeds text to the streaming engine, or, for a large file, to the parallel engine, whose workers each run a streaming engine and whose seams are cross-checked. Each window passes through the detection pipeline $\Pi$: the pattern tiers run on every character, on the Rust core or the identical Python reference; a named-entity tier is optional (dashed). The resolver produces disjoint spans, which the redaction policy rewrites and an atomic write commits. The overlap $w$ is checked against the maximum span and context that the active detectors declare.}\label{fig:pipeline}
+\end{figure*}
 
-Figure~\ref{fig:pipeline} shows the pipeline. A detector maps a string to a list of detections $(i, j, \tau, c)$: a half-open character span, an entity type and a confidence. The \emph{reference pipeline} $\Pi$ runs every configured detector on a text, adjusts confidences with a bounded contextual scorer, drops detections below a threshold (0.5 by default) and resolves overlaps into a disjoint set. Redaction is a deterministic rewrite of $T$ given $\Pi(T)$.
+Figure~\ref{fig:pipeline} shows the architecture. A detector maps a string to a list of detections $(i, j, \tau, c)$: a half-open character span, an entity type and a confidence. The \emph{reference pipeline} $\Pi$ runs every configured detector on a text, adjusts confidences with a bounded contextual scorer, drops detections below a threshold (0.5 by default) and resolves overlaps into a disjoint set. Redaction is a deterministic rewrite of $T$ given $\Pi(T)$.
 
 \subsection{Detection tiers}
 

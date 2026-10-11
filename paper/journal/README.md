@@ -6,10 +6,10 @@
    (no subfolders):
    - `main.tex`
    - `refs.bib`
-   - `fig_memory.pdf`, `fig_accuracy.pdf`, `fig_scaling.pdf`
+   - `fig_architecture.pdf`, `fig_memory.pdf`, `fig_accuracy.pdf`, `fig_scaling.pdf`
 2. Menu → Compiler: **pdfLaTeX**. Main document: `main.tex`.
 3. Recompile. `elsarticle.cls` and `elsarticle-num.bst` ship with Overleaf's TeX
-   Live, so nothing else is needed. The pipeline figure, the streaming-window figure and Algorithm 1 are
+   Live, so nothing else is needed. The streaming-window figure and Algorithm 1 are
    drawn in LaTeX (TikZ, algpseudocode) and need no image files.
 
 `highlights.txt` is uploaded separately at submission, not compiled.
@@ -31,3 +31,4 @@ From the repository root, after the result files exist:
 
 Every number in the text comes from a file under `research/results/raw/` or
 `research/results/diagnostics/`.
+`fig_architecture.pdf` is built from `fig_architecture.tex` (pdfLaTeX).
