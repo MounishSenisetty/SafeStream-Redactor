@@ -83,6 +83,8 @@ def main() -> None:
                     row["delta_mb"] = row["peak_rss_mb"] - row["base_rss_mb"]
                     points.append(row)
                     print(row, flush=True)
+                    with args.out.with_suffix(".jsonl").open("a") as f:  # survives a kill
+                        f.write(json.dumps(row) + "\n")
                     Path(str(src) + ".out").unlink(missing_ok=True)
                 src.unlink()
     commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout
