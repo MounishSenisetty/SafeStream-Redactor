@@ -1,0 +1,5 @@
+Streamed redaction provably equals a whole-document pass under stated bounds
+Parallel output equals sequential output, or falls back to it on any seam mismatch
+Peak memory stays flat as input grows; whole-document redaction grows with input
+On held-out tests it covers more secrets than gitleaks and TruffleHog
+Test splits, paired bootstrap intervals and a contamination analysis are reported
