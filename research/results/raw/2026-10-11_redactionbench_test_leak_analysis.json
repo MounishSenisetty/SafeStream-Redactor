@@ -1,0 +1,475 @@
+{
+ "corpus": "redactionbench",
+ "split": "test",
+ "systems": {
+  "gitleaks": {
+   "docs_with_mandatory": 95,
+   "no_leak_docs": 2,
+   "docs_leaking_le": {
+    "0": 2,
+    "1": 3,
+    "2": 3,
+    "5": 11,
+    "10": 19
+   },
+   "docs_leaking_le_frac_spans": {
+    "0.01": 2,
+    "0.05": 2,
+    "0.1": 2,
+    "0.25": 2
+   },
+   "leaked_spans_per_doc_min_q1_med_q3_max": [
+    0,
+    12,
+    25,
+    42,
+    2068
+   ],
+   "leaked_span_fraction_per_doc_min_q1_med_q3_max": [
+    0.0,
+    0.9814550641940085,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "mandatory_spans_per_doc_median": 25,
+   "spans": {
+    "total": 8002,
+    "fully_redacted": 232,
+    "partially_redacted": 0,
+    "missed": 7770
+   },
+   "leaked_chars": {
+    "total": 53991,
+    "from_partial_spans": 0,
+    "from_missed_spans": 53991,
+    "top_10pct_docs_share": 0.6104165509066326
+   },
+   "leaked_span_length_median": 3.0,
+   "redacted_span_length_median": 40.0,
+   "shape_heuristic": {
+    "numeric (digits/punct)": {
+     "spans": 4604,
+     "leaked": 4604,
+     "leak_rate": 1.0
+    },
+    "alphanumeric token": {
+     "spans": 1619,
+     "leaked": 1387,
+     "leak_rate": 0.8567016676961087
+    },
+    "capitalised word(s)": {
+     "spans": 1044,
+     "leaked": 1044,
+     "leak_rate": 1.0
+    },
+    "other single token": {
+     "spans": 689,
+     "leaked": 689,
+     "leak_rate": 1.0
+    },
+    "contains @ (mostly passwords)": {
+     "spans": 38,
+     "leaked": 38,
+     "leak_rate": 1.0
+    },
+    "multi-word phrase": {
+     "spans": 8,
+     "leaked": 8,
+     "leak_rate": 1.0
+    }
+   }
+  },
+  "presidio-lg": {
+   "docs_with_mandatory": 95,
+   "no_leak_docs": 10,
+   "docs_leaking_le": {
+    "0": 10,
+    "1": 11,
+    "2": 19,
+    "5": 35,
+    "10": 53
+   },
+   "docs_leaking_le_frac_spans": {
+    "0.01": 10,
+    "0.05": 11,
+    "0.1": 16,
+    "0.25": 36
+   },
+   "leaked_spans_per_doc_min_q1_med_q3_max": [
+    0,
+    3,
+    8,
+    21,
+    534
+   ],
+   "leaked_span_fraction_per_doc_min_q1_med_q3_max": [
+    0.0,
+    0.13333333333333333,
+    0.3333333333333333,
+    0.6666666666666666,
+    1.0
+   ],
+   "mandatory_spans_per_doc_median": 25,
+   "spans": {
+    "total": 8002,
+    "fully_redacted": 5614,
+    "partially_redacted": 395,
+    "missed": 1993
+   },
+   "leaked_chars": {
+    "total": 41589,
+    "from_partial_spans": 7354,
+    "from_missed_spans": 34235,
+    "top_10pct_docs_share": 0.5369448652287865
+   },
+   "leaked_span_length_median": 9.0,
+   "redacted_span_length_median": 3.0,
+   "shape_heuristic": {
+    "numeric (digits/punct)": {
+     "spans": 4604,
+     "leaked": 527,
+     "leak_rate": 0.11446568201563857
+    },
+    "alphanumeric token": {
+     "spans": 1619,
+     "leaked": 1160,
+     "leak_rate": 0.7164916615194564
+    },
+    "capitalised word(s)": {
+     "spans": 1044,
+     "leaked": 277,
+     "leak_rate": 0.2653256704980843
+    },
+    "other single token": {
+     "spans": 689,
+     "leaked": 383,
+     "leak_rate": 0.555878084179971
+    },
+    "contains @ (mostly passwords)": {
+     "spans": 38,
+     "leaked": 35,
+     "leak_rate": 0.9210526315789473
+    },
+    "multi-word phrase": {
+     "spans": 8,
+     "leaked": 6,
+     "leak_rate": 0.75
+    }
+   }
+  },
+  "safestream-native-spacy": {
+   "docs_with_mandatory": 95,
+   "no_leak_docs": 17,
+   "docs_leaking_le": {
+    "0": 17,
+    "1": 22,
+    "2": 29,
+    "5": 47,
+    "10": 61
+   },
+   "docs_leaking_le_frac_spans": {
+    "0.01": 17,
+    "0.05": 20,
+    "0.1": 25,
+    "0.25": 52
+   },
+   "leaked_spans_per_doc_min_q1_med_q3_max": [
+    0,
+    2,
+    6,
+    16,
+    313
+   ],
+   "leaked_span_fraction_per_doc_min_q1_med_q3_max": [
+    0.0,
+    0.09090909090909091,
+    0.22727272727272727,
+    0.3939393939393939,
+    1.0
+   ],
+   "mandatory_spans_per_doc_median": 25,
+   "spans": {
+    "total": 8002,
+    "fully_redacted": 6441,
+    "partially_redacted": 64,
+    "missed": 1497
+   },
+   "leaked_chars": {
+    "total": 17122,
+    "from_partial_spans": 826,
+    "from_missed_spans": 16296,
+    "top_10pct_docs_share": 0.6680294358135732
+   },
+   "leaked_span_length_median": 9,
+   "redacted_span_length_median": 3,
+   "shape_heuristic": {
+    "numeric (digits/punct)": {
+     "spans": 4604,
+     "leaked": 597,
+     "leak_rate": 0.1296698523023458
+    },
+    "alphanumeric token": {
+     "spans": 1619,
+     "leaked": 286,
+     "leak_rate": 0.1766522544780729
+    },
+    "capitalised word(s)": {
+     "spans": 1044,
+     "leaked": 279,
+     "leak_rate": 0.2672413793103448
+    },
+    "other single token": {
+     "spans": 689,
+     "leaked": 359,
+     "leak_rate": 0.521044992743106
+    },
+    "contains @ (mostly passwords)": {
+     "spans": 38,
+     "leaked": 36,
+     "leak_rate": 0.9473684210526315
+    },
+    "multi-word phrase": {
+     "spans": 8,
+     "leaked": 4,
+     "leak_rate": 0.5
+    }
+   }
+  },
+  "safestream-native": {
+   "docs_with_mandatory": 95,
+   "no_leak_docs": 8,
+   "docs_leaking_le": {
+    "0": 8,
+    "1": 9,
+    "2": 10,
+    "5": 22,
+    "10": 45
+   },
+   "docs_leaking_le_frac_spans": {
+    "0.01": 8,
+    "0.05": 9,
+    "0.1": 11,
+    "0.25": 21
+   },
+   "leaked_spans_per_doc_min_q1_med_q3_max": [
+    0,
+    6,
+    11,
+    25,
+    333
+   ],
+   "leaked_span_fraction_per_doc_min_q1_med_q3_max": [
+    0.0,
+    0.3076923076923077,
+    0.5238095238095238,
+    0.7241379310344828,
+    1.0
+   ],
+   "mandatory_spans_per_doc_median": 25,
+   "spans": {
+    "total": 8002,
+    "fully_redacted": 5688,
+    "partially_redacted": 68,
+    "missed": 2246
+   },
+   "leaked_chars": {
+    "total": 22778,
+    "from_partial_spans": 854,
+    "from_missed_spans": 21924,
+    "top_10pct_docs_share": 0.5925893405917991
+   },
+   "leaked_span_length_median": 7.0,
+   "redacted_span_length_median": 3.0,
+   "shape_heuristic": {
+    "numeric (digits/punct)": {
+     "spans": 4604,
+     "leaked": 630,
+     "leak_rate": 0.1368375325803649
+    },
+    "alphanumeric token": {
+     "spans": 1619,
+     "leaked": 303,
+     "leak_rate": 0.1871525633106856
+    },
+    "capitalised word(s)": {
+     "spans": 1044,
+     "leaked": 939,
+     "leak_rate": 0.8994252873563219
+    },
+    "other single token": {
+     "spans": 689,
+     "leaked": 397,
+     "leak_rate": 0.5761973875181422
+    },
+    "contains @ (mostly passwords)": {
+     "spans": 38,
+     "leaked": 37,
+     "leak_rate": 0.9736842105263158
+    },
+    "multi-word phrase": {
+     "spans": 8,
+     "leaked": 8,
+     "leak_rate": 1.0
+    }
+   }
+  },
+  "trufflehog": {
+   "docs_with_mandatory": 95,
+   "no_leak_docs": 0,
+   "docs_leaking_le": {
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "5": 8,
+    "10": 15
+   },
+   "docs_leaking_le_frac_spans": {
+    "0.01": 0,
+    "0.05": 0,
+    "0.1": 0,
+    "0.25": 0
+   },
+   "leaked_spans_per_doc_min_q1_med_q3_max": [
+    1,
+    14,
+    25,
+    49,
+    2068
+   ],
+   "leaked_span_fraction_per_doc_min_q1_med_q3_max": [
+    0.631578947368421,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "mandatory_spans_per_doc_median": 25,
+   "spans": {
+    "total": 8002,
+    "fully_redacted": 43,
+    "partially_redacted": 1,
+    "missed": 7958
+   },
+   "leaked_chars": {
+    "total": 69913,
+    "from_partial_spans": 9,
+    "from_missed_spans": 69904,
+    "top_10pct_docs_share": 0.529572468639595
+   },
+   "leaked_span_length_median": 3,
+   "redacted_span_length_median": 42,
+   "shape_heuristic": {
+    "numeric (digits/punct)": {
+     "spans": 4604,
+     "leaked": 4604,
+     "leak_rate": 1.0
+    },
+    "alphanumeric token": {
+     "spans": 1619,
+     "leaked": 1577,
+     "leak_rate": 0.9740580605311921
+    },
+    "capitalised word(s)": {
+     "spans": 1044,
+     "leaked": 1044,
+     "leak_rate": 1.0
+    },
+    "other single token": {
+     "spans": 689,
+     "leaked": 689,
+     "leak_rate": 1.0
+    },
+    "contains @ (mostly passwords)": {
+     "spans": 38,
+     "leaked": 37,
+     "leak_rate": 0.9736842105263158
+    },
+    "multi-word phrase": {
+     "spans": 8,
+     "leaked": 8,
+     "leak_rate": 1.0
+    }
+   }
+  },
+  "union-of-all": {
+   "docs_with_mandatory": 95,
+   "no_leak_docs": 26,
+   "docs_leaking_le": {
+    "0": 26,
+    "1": 35,
+    "2": 47,
+    "5": 62,
+    "10": 75
+   },
+   "docs_leaking_le_frac_spans": {
+    "0.01": 26,
+    "0.05": 33,
+    "0.1": 47,
+    "0.25": 73
+   },
+   "leaked_spans_per_doc_min_q1_med_q3_max": [
+    0,
+    0,
+    3,
+    9,
+    183
+   ],
+   "leaked_span_fraction_per_doc_min_q1_med_q3_max": [
+    0.0,
+    0.0,
+    0.10344827586206896,
+    0.25,
+    0.8
+   ],
+   "mandatory_spans_per_doc_median": 25,
+   "spans": {
+    "total": 8002,
+    "fully_redacted": 7048,
+    "partially_redacted": 295,
+    "missed": 659
+   },
+   "leaked_chars": {
+    "total": 9214,
+    "from_partial_spans": 2971,
+    "from_missed_spans": 6243,
+    "top_10pct_docs_share": 0.7012155415671804
+   },
+   "leaked_span_length_median": 9.0,
+   "redacted_span_length_median": 3.0,
+   "shape_heuristic": {
+    "numeric (digits/punct)": {
+     "spans": 4604,
+     "leaked": 221,
+     "leak_rate": 0.04800173761946134
+    },
+    "alphanumeric token": {
+     "spans": 1619,
+     "leaked": 232,
+     "leak_rate": 0.1432983323038913
+    },
+    "capitalised word(s)": {
+     "spans": 1044,
+     "leaked": 142,
+     "leak_rate": 0.1360153256704981
+    },
+    "other single token": {
+     "spans": 689,
+     "leaked": 323,
+     "leak_rate": 0.46879535558780844
+    },
+    "contains @ (mostly passwords)": {
+     "spans": 38,
+     "leaked": 33,
+     "leak_rate": 0.868421052631579
+    },
+    "multi-word phrase": {
+     "spans": 8,
+     "leaked": 3,
+     "leak_rate": 0.375
+    }
+   }
+  }
+ },
+ "commit": "f10b9588a9c2ae5f49c79cc41fa0dcc8a0fd3502"
+}
