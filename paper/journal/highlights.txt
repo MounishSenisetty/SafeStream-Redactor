@@ -1,5 +1,5 @@
 Chunked redaction can split a secret across a boundary and leak half of it
 Bounded overlap makes streamed output provably equal to whole-document output
 Parallel output is byte-identical to sequential, with a seam cross-check
-Added memory stays under 8.6 MB from 8 MiB to 2 GiB of input
+Added streaming memory stays below 8.6 MiB from 8 MiB to 2 GiB of input
 Pattern tiers cover more credentials than gitleaks and TruffleHog on test data
