@@ -825,7 +825,7 @@ def _interpreter(system: str, venv_root: Path | None) -> str:
         return sys.executable
     family = (
         "safestream"
-        if system.startswith("safestream")
+        if SYSTEMS[system][1] is not None or system in SCANNERS
         else ("presidio-trf" if system in TRANSFORMERS_MODELS else "presidio")
     )
     sub = "Scripts/python.exe" if sys.platform == "win32" else "bin/python"
