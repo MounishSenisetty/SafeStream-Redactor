@@ -530,6 +530,12 @@ _PNG = "iVBORw0KGgozzUwp7S2FxlITmFp2FeknRE7xQfrX0aB9cD8eF7gH6iJ5"
         f"FROM app@sha256:{_HEX64}",
         f"checksum (md5): {_HEX64[:32]}",
         f'<img src="data:image/png;base64,{_PNG}">',
+        # word-structured names: every -/_ segment a plain word or number
+        "provider Microsoft-Windows-Security-Auditing started",
+        "source=Microsoft-Windows-TerminalServices-LocalSessionManager",
+        "node kube-controller-manager-ip-10-0-1-23 ready",
+        "X-MS-Exchange-Organization-AuthSource: mail.corp.example",
+        "export GF_SECURITY_ADMIN_PASSWORD_FILE",
     ],
 )
 def test_entropy_skips_identifiers_that_are_not_secrets(text):
@@ -544,12 +550,20 @@ def test_entropy_skips_identifiers_that_are_not_secrets(text):
         f"secret = {_HEX64}",
         f"password {_PNG}",
         f"blob {_HEX40}",  # hex with no hash word stays a candidate secret
+        # a word-structured passphrase is still a secret when a key names it
+        "password: Correct-Horse-Battery-Staple-Rocket",
     ],
 )
 def test_entropy_keeps_the_same_shapes_after_a_secret_key(text):
     # redacted in full, by whichever tier labels it (api_key wins some overlaps)
     value = text.split()[-1].split("=")[-1]
     assert value not in Redactor().redact(text)
+
+
+def test_word_segment_rule_keeps_generated_keys():
+    # letters and digits mixed *within* a segment is the shape of a generated key
+    for key in ("a1B2-c3D4-e5F6-g7H8-i9J0k1L2m3N4", "Xk3_9fQzLm2-Wp8RtY0vBn4_Hs7JdK1q"):
+        assert EntityType.SECRET in types_in(f"value {key}")
 
 
 def test_identifier_check_reads_only_its_own_line():

@@ -60,11 +60,19 @@ _SECRET_KEY = re.compile(
     r"(?i)(?:pass(?:word|wd)?|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|auth"
     r"|credential|private[_-]?key)[^\n]{0,40}\Z"
 )
+# Word-structured names: every ``-``/``_``-separated segment is a plain word or a
+# plain number. Windows event providers (``Microsoft-Windows-Security-Auditing``),
+# Kubernetes node/pod names (``kube-controller-manager-ip-10-0-1-23``), header and
+# environment-variable names. Their entropy clears the floor only because of the
+# separators and case changes. This extends the letters-only exemption in
+# ``_secret_entropy`` to the same runs written with separators. Generated keys
+# mix letters and digits *within* a segment (``a1B2-c3D4``), so they still match.
+_WORD_SEGMENTS = re.compile(r"\A(?:[A-Za-z]+|[0-9]+)(?:[-_](?:[A-Za-z]+|[0-9]+))+\Z")
 
 
 def _identifier_not_secret(text: str, start: int, token: str) -> bool:
-    """True for a UUID, a digest after a hash word, or a data-URI payload,
-    unless a secret-like key precedes the token on its line."""
+    """True for a UUID, a digest after a hash word, a data-URI payload, or a
+    word-structured name, unless a secret-like key precedes the token on its line."""
     left = text[max(0, start - _CONTEXT) : start]
     left = left[left.rfind("\n") + 1 :]  # this line only
     # ``=`` is in the candidate alphabet (base64 padding), so ``request_id=<uuid>``
@@ -74,7 +82,7 @@ def _identifier_not_secret(text: str, start: int, token: str) -> bool:
         left, token = left + key + eq, value
     if _SECRET_KEY.search(left):
         return False
-    if _UUID.match(token):
+    if _UUID.match(token) or _WORD_SEGMENTS.match(token):
         return True
     if len(token) in _DIGEST_LENGTHS and _HEX.match(token) and _HASH_CONTEXT.search(left):
         return True
