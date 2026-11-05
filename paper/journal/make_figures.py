@@ -46,7 +46,7 @@ def memory() -> None:
     ax.set_xscale("log", base=2)
     ax.set_yscale("log")
     ax.set_xlabel("Input size (MiB)")
-    ax.set_ylabel("Peak RSS added by redaction (MB)")
+    ax.set_ylabel("Peak RSS added by redaction (MiB)")
     ax.grid(True, which="major", color="#e4e4e4", lw=0.6)
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
