@@ -6,6 +6,8 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-05
+
 ### Added
 
 - **Closing the RedactionBench gap to Presidio.** A span-level diff of the gold spans Presidio
