@@ -62,7 +62,7 @@ onnx = ["onnxruntime>=1.16", "numpy>=1.21", "tokenizers>=0.15"]
 # a runtime spec-guard falls back to Python if a version-skewed wheel is paired.
 # Bounded to the lockstep minor series: a newer native minor may carry a different
 # pattern spec (the runtime spec-guard would then silently fall back to Python).
-native = ["safestream-redactor-native>=0.4.0,<0.5"]
+native = ["safestream-redactor-native>=0.5.0,<0.6"]
 # ruff is pinned to a minor series: its formatter output changes between minors,
 # and an unpinned CI once failed `ruff format --check` on code that was clean
 # locally. Bump it together with the ruff rev in .pre-commit-config.yaml.
