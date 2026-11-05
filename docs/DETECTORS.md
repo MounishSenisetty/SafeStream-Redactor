@@ -9,7 +9,7 @@ tier; overlaps are resolved most-specific/highest-confidence wins.
 | Tier | Module | What it does |
 | --- | --- | --- |
 | 1. Deterministic | `detectors/deterministic.py` | Anchored regexes + validators (Luhn, `ipaddress`, SSN rules). Highest precision. |
-| 2. Statistical | `detectors/entropy.py` | High-entropy tokens with no published format (bespoke keys, session tokens). |
+| 2. Statistical | `detectors/entropy.py` | High-entropy tokens with no published format (bespoke keys, session tokens). Identifier shapes are exempt unless a secret-like key precedes them on the line: UUIDs, digests after a hash word, data-URI payloads, letters-only runs, and word-structured names whose every `-`/`_` segment is a plain word or number. |
 | 2b. Compound secret | `detectors/entropy.py` (`CompoundSecretDetector`) | High-entropy runs carrying an *embedded strong special* (`! # $ % ^ & * ~`) the base64 entropy candidate splits on — symbol-containing passwords/blobs. Precision-gated (embedded special + class diversity + entropy floor); emits `secret`. |
 | 3. NER (optional) | `detectors/ner.py` | spaCy PERSON/ORG/LOC. Requires the `ner` extra + a model. |
 | 3b. ONNX NER (optional) | `detectors/onnx_ner.py` | Local ONNX INT8 token-classifier for PERSON/ORG/LOC, run only on micro-windows around name-shaped text; on-device, no data egress. Requires the `onnx` extra + a model. |

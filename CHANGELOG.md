@@ -38,6 +38,18 @@ Notable changes to this project. The format follows
 
 ### Security / correctness
 
+- **Entropy tier: word-structured names are no longer flagged as secrets.** A token whose
+  every `-`/`_` segment is a plain word or number (`Microsoft-Windows-Security-Auditing`,
+  `kube-controller-manager-ip-10-0-1-23`, `X-MS-Exchange-Organization-AuthSource`,
+  `GF_SECURITY_ADMIN_PASSWORD`) cleared the entropy floor only because of its separators and
+  case changes. Such tokens are now treated as identifiers, which extends the existing
+  letters-only exemption. A secret-like key before the token (`password: Correct-Horse-…`)
+  still makes it a secret, and generated keys, which mix letters and digits within a segment,
+  are unaffected. Secrets corpus: recall and the set of missed positives are identical on both
+  the dev and test splits, with 0 negatives flagged. RedactionBench: 16 entropy detections
+  removed, 14 of them false positives; gold character recall 0.4636 → 0.4634 (two word-shaped
+  spans, a message ID and a path segment). The rule is shared Python code, so the native
+  backend stays byte-identical.
 - **Key material no longer appears in `repr()`** of a `RedactionPolicy` (`hmac_key`,
   `hash_salt`, `encrypt_key`), so a traceback or log line cannot leak it.
 - **A missing `cryptography` is now a clear, early error.** Building an `encrypt` policy or
