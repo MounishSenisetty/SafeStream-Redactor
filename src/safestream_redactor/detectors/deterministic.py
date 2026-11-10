@@ -891,8 +891,8 @@ def _load_native(backend: str) -> ModuleType | None:
     ``backend`` is one of ``"python"`` (never load native), ``"native"`` (load
     it; warn and fall back to Python if the extension is not installed), or
     ``"auto"`` (load it when present, silently fall back otherwise). Falling back
-    keeps the package dependency-free: the native extra is build-from-source and
-    optional, and the Python tier is the byte-identical oracle either way.
+    keeps the package dependency-free: the native extra is a separate, optional
+    wheel, and the Python tier is the byte-identical oracle either way.
     """
     if backend == "python":
         return None
@@ -902,12 +902,14 @@ def _load_native(backend: str) -> ModuleType | None:
         import safestream_native
     except Exception:  # ImportError, or a RuntimeError from a pattern that failed to compile
         if backend == "native":
+            # stacklevel=1: every tier attributes the warning to this one line, so
+            # Python's default once-per-location filter shows it once, not per tier
             warnings.warn(
                 "backend='native' requested but the safestream_native extension is not "
-                "installed; falling back to the pure-Python tier. Build it from native/ "
-                "with maturin to enable the native core.",
+                "installed; falling back to the pure-Python tier. Install it with: "
+                "pip install 'safestream-redactor[native]'",
                 RuntimeWarning,
-                stacklevel=3,
+                stacklevel=1,
             )
         return None
     if not _native_matches_spec(safestream_native):  # pragma: no cover - requires native
@@ -920,7 +922,7 @@ def _load_native(backend: str) -> ModuleType | None:
             "pure-Python tier. Install matching versions (the [native] extra pins a "
             "compatible floor).",
             RuntimeWarning,
-            stacklevel=3,
+            stacklevel=1,
         )
         return None
     return cast("ModuleType", safestream_native)  # pragma: no cover - requires native extension

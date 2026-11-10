@@ -6,6 +6,29 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Packaging
+
+- **`pip install 'safestream-redactor[native]'` now works.** The Rust core
+  (`safestream-redactor-native`) is published in the same release as the package,
+  native first, at the same version. The extra pins that version exactly. Wheels
+  cover Linux x86_64/aarch64 (glibc and musl), macOS Intel/Apple Silicon and Windows
+  x64. The crate was at 0.4.0 while the extra required 0.5.x.
+- `scripts/set_version.py` sets the version of both distributions in one step, and
+  `tests/test_packaging.py` fails if they drift.
+- New `all` extra (`native`, `ui`, `crypto`).
+- New `safestream-redactor` command (same as `safestream`), so
+  `pipx run safestream-redactor` and `uvx safestream-redactor` work without `--from`.
+- Classifiers: Beta, Console, IT and sysadmin audiences, `Topic :: System :: Logging`.
+- CI (`package.yml`) installs the built wheel, not an editable checkout, on Linux,
+  macOS and Windows at Python 3.10 and 3.14, plus the sdist, pipx and Alpine. Every
+  native wheel is installed and imported on its own platform before release.
+  `publish.yml` gains a `check` target and a repeatable TestPyPI dry run that
+  installs the upload back on three OSes.
+- `backend="native"` without the extension warns once instead of once per tier (five
+  times), and names the pip extra instead of a source build.
+- Removed the coursework files (code-review diaries, viva Q&A, redundant-files
+  audit). They are kept on the `archive-coursework` branch.
+
 ## [0.5.0] - 2026-11-05
 
 ### Added
