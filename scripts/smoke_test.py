@@ -16,6 +16,7 @@ import os
 import signal
 import subprocess
 import sys
+import sysconfig
 import time
 import urllib.request
 import warnings
@@ -30,7 +31,16 @@ MIXED = (
     "jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0."
     "dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U\n"
 )
-BIN = Path(sys.executable).parent  # the console scripts sit next to the interpreter
+# where pip put the console scripts: next to the interpreter in a venv, but
+# <prefix>\Scripts for a system Python on Windows
+BIN = Path(sysconfig.get_path("scripts"))
+
+
+def script(name: str) -> str:
+    """The installed console script ``name`` (``name.exe`` on Windows)."""
+    exe = next((p for p in BIN.glob(f"{name}*") if p.stem == name), None)
+    check(f"console script {name}", exe is not None, f"not in {BIN}")
+    return str(exe)
 
 
 def check(name: str, ok: bool, detail: object = "") -> None:
@@ -52,12 +62,10 @@ def base() -> None:
 
     check("import from site-packages", "site-packages" in pkg.__file__, pkg.__file__)
     check("library redact", Redactor().redact(SAMPLE) == EXPECTED, Redactor().redact(SAMPLE))
-    for script in ("safestream", "safestream-redactor"):
-        exe = next((p for p in BIN.glob(f"{script}*") if p.stem == script), None)
-        check(f"console script {script}", exe is not None, BIN)
-        version = run(str(exe), "--version")
-        check(f"{script} --version", pkg.__version__ in version, version)
-    out = run(str(BIN / "safestream"), "redact", "-", "-o", "-", stdin=SAMPLE)
+    for name in ("safestream", "safestream-redactor"):
+        version = run(script(name), "--version")
+        check(f"{name} --version", pkg.__version__ in version, version)
+    out = run(script("safestream"), "redact", "-", "-o", "-", stdin=SAMPLE)
     check("CLI redact stdin -> stdout", out.replace("\r\n", "\n") == EXPECTED, repr(out))
 
 
@@ -97,7 +105,7 @@ def _kill_tree(proc: subprocess.Popen[bytes]) -> None:
 
 def ui(port: int = 8597) -> None:
     server = subprocess.Popen(
-        [str(BIN / "safestream"), "ui", "--headless", "--port", str(port)],
+        [script("safestream"), "ui", "--headless", "--port", str(port)],
         env={**os.environ, "PYTHONUNBUFFERED": "1"},
         start_new_session=sys.platform != "win32",  # its own process group, for killpg
     )
