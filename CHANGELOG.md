@@ -6,6 +6,14 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **`--types` / `types=` now scopes every tier.** The labeled-identifier, structured-field
+  and checksum-ID tiers each emit several types and ran when any one of them was
+  requested, so `--types email,ssn` still redacted a labelled card number
+  (`card=4111 ...`). Their output is now limited to the requested types. Runs without
+  `--types` are unchanged.
+
 ### Packaging
 
 - **`pip install 'safestream-redactor[native]'` now works.** The Rust core

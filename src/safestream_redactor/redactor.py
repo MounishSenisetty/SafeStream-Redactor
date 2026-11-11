@@ -203,6 +203,10 @@ class Redactor:
         self._scorer = ContextualScorer(backend=backend)
 
         self._detectors: list[Detector] = [DeterministicDetector(resolved_types, backend=backend)]
+        # The requested types, and the tiers that emit several of them: each runs when
+        # any one of its types is requested, so detect() drops the others it emits.
+        self._types = None if resolved_types is None else frozenset(resolved_types)
+        multi_type: list[Detector] = []
         # Label-anchored identifier cascade: a high-precision contextual tier that
         # promotes otherwise-ambiguous values (bare id/account/DOB numbers) to
         # redactions only when a cue word names them. On by default; it emits its
@@ -218,7 +222,8 @@ class Redactor:
             EntityType.ID_NUMBER,
         }
         if resolved_types is None or _labeled_types.intersection(resolved_types):
-            self._detectors.append(LabeledIdentifierDetector(backend=backend))
+            multi_type.append(LabeledIdentifierDetector(backend=backend))
+            self._detectors.append(multi_type[-1])
         # values of structured fields (JSON/XML/YAML/form labels) typed by the field
         # name; sex/gender and honorific fields only in the prose profile
         from safestream_redactor.detectors.structured import StructuredFieldDetector
@@ -234,7 +239,8 @@ class Redactor:
             EntityType.TITLE,
         }
         if resolved_types is None or _field_types.intersection(resolved_types):
-            self._detectors.append(StructuredFieldDetector(prose=use_prose_fields))
+            multi_type.append(StructuredFieldDetector(prose=use_prose_fields))
+            self._detectors.append(multi_type[-1])
         custom_words = list(custom_words)
         custom_patterns = list(custom_patterns)
         if custom_words or custom_patterns:
@@ -287,7 +293,8 @@ class Redactor:
         }
         if resolved_types is None or _checksum_types.intersection(resolved_types):
             # identifiers with a published checksum are on by default
-            self._detectors.append(ChecksumIdDetector())
+            multi_type.append(ChecksumIdDetector())
+            self._detectors.append(multi_type[-1])
         if use_regional or (resolved_types is not None and REGIONAL_TYPES & set(resolved_types)):
             # the shape-only rest (NINO, PAN, crypto addresses) stays opt-in
             self._detectors.append(RegionalDetector())
@@ -307,6 +314,7 @@ class Redactor:
             from safestream_redactor.detectors.deterministic import DateDetector
 
             self._detectors.append(DateDetector())
+        self._multi_type = tuple(multi_type)
         self._detectors.extend(extra_detectors)
         # third-party detectors registered via entry points (opt-in)
         if load_plugins:
@@ -407,7 +415,10 @@ class Redactor:
         """All detections in ``text``, scored, filtered, and non-overlapping."""
         raw: list[Detection] = []
         for detector in self._detectors:
-            raw.extend(detector.detect(text))
+            found = detector.detect(text)
+            if self._types is not None and detector in self._multi_type:
+                found = [d for d in found if d.entity_type in self._types]
+            raw.extend(found)
         self._scorer.adjust(text, raw)
         if self.calibrator is not None:
             for det in raw:
