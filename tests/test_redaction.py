@@ -140,3 +140,20 @@ def test_chunk_size_one_is_still_correct(tmp_path):
     out = tmp_path / "out.txt"
     Redactor(chunk_size=1).redact_file(src, out)
     assert out.read_text() == Redactor().redact(TEXT)
+
+
+def test_types_scope_multi_type_tiers() -> None:
+    """A tier switched on by one requested type must not emit the others.
+
+    The labeled-identifier tier runs for ``ssn`` but also emits ``credit_card``
+    (and structured fields / checksum IDs likewise), so ``types=["ssn"]`` used to
+    redact a labelled card number the caller had excluded.
+    """
+    text = "payment card=4111 1111 1111 1111 ssn=123-45-6789 mail bob@corp.example"
+    found = {d.entity_type for d in Redactor(types=["email", "ssn"]).detect(text)}
+    assert found == {EntityType.EMAIL, EntityType.SSN}
+    # the card is still found when it is in scope, and with no filter at all
+    assert EntityType.CREDIT_CARD in {
+        d.entity_type for d in Redactor(types=["credit_card"]).detect(text)
+    }
+    assert EntityType.CREDIT_CARD in {d.entity_type for d in Redactor().detect(text)}

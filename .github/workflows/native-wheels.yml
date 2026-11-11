@@ -1,60 +1,67 @@
-# Builds the optional native (Rust) detection core, `safestream-redactor-native`,
-# as wheels across platforms and (on a `native-v*` tag) publishes them to PyPI.
+# Builds and tests the optional native (Rust) detection core,
+# `safestream-redactor-native`: one abi3 wheel per platform plus an sdist.
 #
 # The wheel is abi3 (`abi3-py310` in native/Cargo.toml), so ONE wheel covers every
-# CPython >= 3.10 on a given platform — the matrix is over OS/arch only, not Python
-# version, which keeps it small. `safestream-redactor-native` is a SEPARATE PyPI
-# project from `safestream-redactor`; publishing is via Trusted Publishing (OIDC),
-# so one-time setup is required on https://pypi.org for that project: Settings ->
-# Publishing -> add a "GitHub" trusted publisher with this repo, workflow file
-# "native-wheels.yml", and environment "pypi-native" (and the same on
-# https://test.pypi.org with environment "testpypi-native" for dry runs).
+# CPython >= 3.10 on a platform, and the build matrix is over OS/arch only. Every
+# wheel is then installed and imported ON ITS OWN PLATFORM before it can ship. A
+# wheel that only builds is not trusted.
 #
-# Release flow: bump the version in native/Cargo.toml (kept in lockstep with
-# src/safestream_redactor/__init__.py), then push a tag `native-v<version>`.
+# Publishing is not done here. publish.yml calls this workflow and uploads its
+# wheels in the same release as safestream-redactor, native first, so the
+# `[native]` extra (pinned to the exact version) can always be resolved. The
+# versions are kept in lockstep by scripts/set_version.py.
 name: Native wheels
 
 permissions:
   contents: read
 
-# a new push to a PR supersedes its in-flight build; tag/release runs never cancel
 concurrency:
-  group: native-wheels-${{ github.ref }}
+  # a literal prefix: under workflow_call, github.workflow is the caller's name
+  group: native-wheels-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
-  push:
-    tags: ["native-v*"]
-  # Build-only (no publish) when the crate or this workflow changes, so a broken
-  # build is caught in PRs rather than at release time.
+  # build and test (no publish) when the crate or its packaging changes, so a
+  # broken wheel is caught in the PR rather than at release time
   pull_request:
     paths:
       - "native/**"
+      - "scripts/smoke_test.py"
+      - "scripts/set_version.py"
       - ".github/workflows/native-wheels.yml"
   workflow_dispatch:
+  workflow_call:
     inputs:
-      publish_testpypi:
-        description: "Publish the built wheels to TestPyPI"
-        type: boolean
-        default: false
+      version:
+        description: "Stamp this version before building (TestPyPI dry runs); empty keeps the checkout's"
+        type: string
+        default: ""
 
 jobs:
   wheels:
-    name: wheel (${{ matrix.runner }} ${{ matrix.target }})
+    name: wheel (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { runner: ubuntu-latest, target: x86_64 }
-          - { runner: ubuntu-latest, target: aarch64 }
-          # GitHub retired the Intel `macos-13` runners (jobs on that label queue
-          # forever), so the Intel wheel is cross-compiled on Apple Silicon.
-          - { runner: macos-14, target: x86_64 } # Intel
-          - { runner: macos-14, target: aarch64 } # Apple Silicon
-          - { runner: windows-latest, target: x64 }
+          - { name: linux-x86_64, runner: ubuntu-latest, target: x86_64, manylinux: auto }
+          # built on a native Arm runner rather than cross-compiled
+          - { name: linux-aarch64, runner: ubuntu-24.04-arm, target: aarch64, manylinux: auto }
+          - { name: musllinux-x86_64, runner: ubuntu-latest, target: x86_64, manylinux: musllinux_1_2 }
+          - { name: musllinux-aarch64, runner: ubuntu-24.04-arm, target: aarch64, manylinux: musllinux_1_2 }
+          # cross-compiled on Apple Silicon; tested on an Intel runner below
+          - { name: macos-x86_64, runner: macos-latest, target: x86_64 }
+          - { name: macos-arm64, runner: macos-latest, target: aarch64 }
+          - { name: windows-x64, runner: windows-latest, target: x64 }
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - if: inputs.version != ''
+        shell: bash
+        run: python scripts/set_version.py "${{ inputs.version }}"
       - name: Build wheel
         uses: PyO3/maturin-action@v1
         with:
@@ -62,16 +69,58 @@ jobs:
           args: --release --out dist
           working-directory: native
           target: ${{ matrix.target }}
-          # applies to the Linux builds only (maturin-action ignores it elsewhere);
-          # `auto` picks the manylinux image / cross toolchain for the target.
-          manylinux: auto
+          # Linux only (ignored elsewhere): the manylinux/musllinux build image
+          manylinux: ${{ matrix.manylinux || 'auto' }}
           sccache: "true"
       - uses: actions/upload-artifact@v7
         with:
-          name: wheels-${{ matrix.runner }}-${{ matrix.target }}
+          name: wheels-${{ matrix.name }}
           path: native/dist/*.whl
 
-  # The native wheel is only publishable if it is byte-identical to the pure-Python
+  # Install each wheel next to the safestream-redactor built from the same commit,
+  # on the platform it was built for, at the abi3 floor (3.10), and prove the
+  # native core is active (any fallback warning fails) and matches Python output.
+  test-wheels:
+    name: install wheel (${{ matrix.name }})
+    needs: wheels
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x86_64, runner: ubuntu-latest }
+          - { name: linux-aarch64, runner: ubuntu-24.04-arm }
+          - { name: musllinux-x86_64, runner: ubuntu-latest, alpine: true }
+          - { name: musllinux-aarch64, runner: ubuntu-24.04-arm, alpine: true }
+          - { name: macos-x86_64, runner: macos-15-intel }
+          - { name: macos-arm64, runner: macos-latest }
+          - { name: windows-x64, runner: windows-latest }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      # the abi3 floor; on the Alpine rows it only runs the version stamp
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+      - if: inputs.version != ''
+        run: python scripts/set_version.py "${{ inputs.version }}"
+      - uses: actions/download-artifact@v8
+        with:
+          name: wheels-${{ matrix.name }}
+          path: wheelhouse/
+      - if: ${{ !matrix.alpine }}
+        run: |
+          python -m pip install . wheelhouse/*.whl
+          python scripts/smoke_test.py --native
+      # setup-python has no musl builds: test inside the official Alpine image
+      - if: ${{ matrix.alpine }}
+        run: >
+          docker run --rm -v "$PWD:/w" -w /w python:3.10-alpine
+          sh -c 'pip install -q . wheelhouse/*.whl && python scripts/smoke_test.py --native'
+
+  # The native wheel is only shippable if it is byte-identical to the pure-Python
   # oracle. The differential tests skip when the extension is absent, so the
   # import is asserted first: a broken install must fail here, not skip green.
   # Every supported CPython: each ships its own Unicode version, and the core's
@@ -90,9 +139,11 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+      - if: inputs.version != ''
+        run: python scripts/set_version.py "${{ inputs.version }}"
       - uses: actions/download-artifact@v8
         with:
-          name: wheels-ubuntu-latest-x86_64
+          name: wheels-linux-x86_64
           path: wheelhouse/
       - run: pip install -e .[dev] wheelhouse/*.whl
       - run: python -c "import safestream_native as n; print(n.__version__, len(n.patterns()))"
@@ -117,51 +168,28 @@ jobs:
       - run: cargo test --release --no-default-features
       - run: cargo bench --no-default-features --no-run
 
+  # The sdist is what pip builds on a platform with no wheel: prove it compiles
+  # from a clean environment and yields a working native core.
   sdist:
-    name: sdist
+    name: sdist (build + install from source)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - if: inputs.version != ''
+        run: python scripts/set_version.py "${{ inputs.version }}"
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
           command: sdist
           args: --out dist
           working-directory: native
+      - run: |
+          python -m pip install . native/dist/*.tar.gz
+          python scripts/smoke_test.py --native
       - uses: actions/upload-artifact@v7
         with:
           name: wheels-sdist
           path: native/dist/*.tar.gz
-
-  # Manual dry run: gh workflow run native-wheels.yml -f publish_testpypi=true
-  publish-testpypi:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_testpypi
-    needs: [wheels, byte-identity, rust, sdist]
-    runs-on: ubuntu-latest
-    environment: testpypi-native
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: wheels-*
-          merge-multiple: true
-          path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
-  publish-pypi:
-    if: startsWith(github.ref, 'refs/tags/native-v')
-    needs: [wheels, byte-identity, rust, sdist]
-    runs-on: ubuntu-latest
-    environment: pypi-native
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: wheels-*
-          merge-multiple: true
-          path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1

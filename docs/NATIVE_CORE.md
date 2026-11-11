@@ -586,10 +586,13 @@ the differential tests plus glued-Unicode corpus lines and a 1,500-example fuzz)
 - Sub-step (c) — packaging: **done**. `pyproject.toml` gains a `[native]` extra
   (`pip install safestream-redactor[native]`) depending on the separately-published
   `safestream-redactor-native` wheel; `.github/workflows/native-wheels.yml` builds
-  abi3 wheels across Linux (x86_64, aarch64), macOS (Intel, Apple Silicon) and
-  Windows (one wheel per platform, since abi3 spans CPython ≥ 3.10) plus an sdist,
-  and publishes them to PyPI via Trusted Publishing on a `native-v*` tag. The native
-  crate is version-locked to the package (`native/Cargo.toml` → 0.4.0), and a
+  abi3 wheels across Linux (x86_64, aarch64, glibc and musl), macOS (Intel, Apple
+  Silicon) and Windows (one wheel per platform, since abi3 spans CPython ≥ 3.10) plus
+  an sdist, and installs each wheel on its own platform before it can ship.
+  `publish.yml` uploads them in the same release as the main package, native first.
+  The two are released in lockstep from one commit: `scripts/set_version.py` writes
+  the version to `__init__.py`, `native/Cargo.toml` and the exact `==` pin of the
+  `[native]` extra, and `tests/test_packaging.py` fails if they disagree. A
   runtime **spec-guard** (`_native_matches_spec`) falls back to pure Python with a
   warning if a version-skewed wheel is ever paired — so a mismatched wheel degrades
   safely instead of diverging.
@@ -597,7 +600,7 @@ the differential tests plus glued-Unicode corpus lines and a 1,500-example fuzz)
   the label-gated credentials and the labeled-identifier tier; a Unicode parity bug
   (Rust vs CPython `\w`) was found and fixed exactly; see the 0.5 section above.
   The entropy tier stays in Python (the float `log2` hazard above still holds).
-- Maintainer to-do before the first publish (one-time, external to the repo): create
-  the `safestream-redactor-native` project on PyPI (and TestPyPI) and add a GitHub
-  Trusted Publisher for workflow `native-wheels.yml` with environment `pypi-native`
-  (`testpypi-native` on TestPyPI) — as documented in the workflow header.
+- Maintainer to-do before the first publish (one-time, external to the repo): add a
+  *pending* Trusted Publisher for `safestream-redactor-native` on PyPI and TestPyPI,
+  with workflow `publish.yml` and environment `pypi` (`testpypi` on TestPyPI). See
+  [RELEASING.md](RELEASING.md).

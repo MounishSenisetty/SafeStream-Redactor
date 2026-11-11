@@ -4,7 +4,7 @@ name = "safestream_native"
 # published native wheel must match the Python pattern spec it accelerates. A
 # runtime spec-guard (deterministic.py::_native_matches_spec) falls back to pure
 # Python if a skewed wheel is ever paired, so this is coordination, not a hard gate.
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 rust-version = "1.80"
 description = "Native (Rust) detection core for SafeStream-Redactor — optional, byte-identical fast lane"

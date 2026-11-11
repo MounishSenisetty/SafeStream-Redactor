@@ -6,6 +6,50 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **`--types` / `types=` now scopes every tier.** The labeled-identifier, structured-field
+  and checksum-ID tiers each emit several types and ran when any one of them was
+  requested, so `--types email,ssn` still redacted a labelled card number
+  (`card=4111 ...`). Their output is now limited to the requested types. Runs without
+  `--types` are unchanged.
+
+### Documentation
+
+- **One README for GitHub and PyPI.** `README.md` is now the PyPI project page, and
+  `src/README_PYPI.md` is gone (the two had drifted: the PyPI page listed six of nine
+  subcommands, version 0.4.0, and no `crypto` extra or 0.5.0 modes). It is restructured
+  around a "choose your path" table with a quickstart for each interface: CLI, Python,
+  REST API, MCP server, web playground, CI gate and Docker.
+- `tests/test_readme.py` runs every console and Python example in the README and checks
+  the output shown, and rejects relative links and Mermaid, which break on PyPI.
+- Reference material moved out of the README into `docs/CLI.md` (every option, exit codes,
+  network isolation, policy files, plugins), `docs/EVALUATION.md` (the benchmark tables
+  and accuracy limits) and `docs/WEB_UI.md` (the playground in detail).
+
+### Packaging
+
+- **`pip install 'safestream-redactor[native]'` now works.** The Rust core
+  (`safestream-redactor-native`) is published in the same release as the package,
+  native first, at the same version. The extra pins that version exactly. Wheels
+  cover Linux x86_64/aarch64 (glibc and musl), macOS Intel/Apple Silicon and Windows
+  x64. The crate was at 0.4.0 while the extra required 0.5.x.
+- `scripts/set_version.py` sets the version of both distributions in one step, and
+  `tests/test_packaging.py` fails if they drift.
+- New `all` extra (`native`, `ui`, `crypto`).
+- New `safestream-redactor` command (same as `safestream`), so
+  `pipx run safestream-redactor` and `uvx safestream-redactor` work without `--from`.
+- Classifiers: Beta, Console, IT and sysadmin audiences, `Topic :: System :: Logging`.
+- CI (`package.yml`) installs the built wheel, not an editable checkout, on Linux,
+  macOS and Windows at Python 3.10 and 3.14, plus the sdist, pipx and Alpine. Every
+  native wheel is installed and imported on its own platform before release.
+  `publish.yml` gains a `check` target and a repeatable TestPyPI dry run that
+  installs the upload back on three OSes.
+- `backend="native"` without the extension warns once instead of once per tier (five
+  times), and names the pip extra instead of a source build.
+- Removed the coursework files (code-review diaries, viva Q&A, redundant-files
+  audit). They are kept on the `archive-coursework` branch.
+
 ## [0.5.0] - 2026-11-05
 
 ### Added

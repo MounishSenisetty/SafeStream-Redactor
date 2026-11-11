@@ -1,8 +1,0 @@
-### Group 2- Diaries 
-
-
-Ashrith Reddy Nemali - AM.AI.U4AID23014
-
-Sandhiya Kennedy     - AM.AI.U4AID23056
-
-Mounish Senisetty    - AM.AI.U4AID23058

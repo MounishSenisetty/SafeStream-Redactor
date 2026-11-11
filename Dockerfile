@@ -34,7 +34,7 @@ COPY docker/build-requirements.txt /tmp/
 RUN python -m venv /opt/build \
  && /opt/build/bin/pip install --require-hashes --no-deps -r /tmp/build-requirements.txt
 # Sources last: editing code does not invalidate the dependency layer above.
-COPY pyproject.toml LICENSE ./
+COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 RUN /opt/build/bin/pip wheel --no-build-isolation --no-deps -w /dist . \
  && python -m venv --without-pip /opt/venv \

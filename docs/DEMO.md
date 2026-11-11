@@ -32,7 +32,7 @@ individually.
 
 | Method | Get it | Entry point | Key files |
 |---|---|---|---|
-| **PyPI** | `pip install safestream-redactor` | `safestream` CLI + `import safestream_redactor` | [`src/README_PYPI.md`](../src/README_PYPI.md) |
+| **PyPI** | `pip install safestream-redactor` | `safestream` CLI + `import safestream_redactor` | [`README.md`](../README.md) |
 | **Clone (dev)** | `pip install -e '.[dev]'` | `safestream`, `pytest`, `benchmarks/*.py` | [`pyproject.toml`](../pyproject.toml), [`tests/`](../tests), [`benchmarks/`](../benchmarks) |
 | **Docker** | `docker build -t safestream-redactor .` or pull GHCR | `docker run … safestream …` | [`Dockerfile`](../Dockerfile) |
 | **REST API** | `safestream serve` | `http://127.0.0.1:8000` | [`src/safestream_redactor/api.py`](../src/safestream_redactor/api.py), [`docs/rest-api.md`](rest-api.md) |
@@ -104,7 +104,7 @@ Redactor().redact_file("huge.log", "huge_redacted.log", workers=8)
 
 Public API: `Redactor`, `RedactionPolicy`, `RedactionMode`, `EntityType`,
 `Detection`, `RedactionStats`, `Calibrator` — see
-[`src/README_PYPI.md`](../src/README_PYPI.md).
+the [Python quickstart](../README.md#python).
 
 ---
 

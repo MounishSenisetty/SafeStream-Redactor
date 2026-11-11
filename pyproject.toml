@@ -8,10 +8,9 @@ build-backend = "hatchling.build"
 name = "safestream-redactor"
 dynamic = ["version"]
 description = "Streaming PII & credential detection/redaction for very large text files with constant memory usage."
-# PyPI-specific description: prose only, no Mermaid diagram source and no
-# repo-relative file links (those render as broken paths on the PyPI page).
-# The rich GitHub README (diagrams + deep links) stays at ./README.md.
-readme = "src/README_PYPI.md"
+# One README for GitHub and PyPI: tests/test_readme.py runs its examples and rejects
+# relative links and Mermaid, which do not render on the PyPI page.
+readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 # All three names carry no email so they render together in a single PyPI
@@ -26,10 +25,16 @@ maintainers = [
     { name = "Mounish Senisetty", email = "senisettymounish@gmail.com" },
 ]
 requires-python = ">=3.10"
-keywords = ["pii", "redaction", "privacy", "security", "streaming", "secrets", "dlp"]
+keywords = [
+  "pii", "redaction", "privacy", "security", "streaming", "secrets", "dlp",
+  "data-loss-prevention", "log-sanitization", "gdpr", "hipaa", "mcp",
+]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
   "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: System Administrators",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -38,6 +43,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Topic :: Security",
+  "Topic :: System :: Logging",
   "Topic :: Text Processing :: Filters",
   "Typing :: Typed",
 ]
@@ -58,11 +64,13 @@ onnx = ["onnxruntime>=1.16", "numpy>=1.21", "tokenizers>=0.15"]
 # docs/NATIVE_CORE.md). A byte-identical accelerator for the deterministic tier,
 # selected with Redactor(backend="native"); the base install stays pure-Python and
 # dependency-free, and backend="native" falls back to Python when this is absent.
-# The wheel is a separate distribution published by .github/workflows/native-wheels.yml;
-# a runtime spec-guard falls back to Python if a version-skewed wheel is paired.
-# Bounded to the lockstep minor series: a newer native minor may carry a different
-# pattern spec (the runtime spec-guard would then silently fall back to Python).
-native = ["safestream-redactor-native>=0.5.0,<0.6"]
+# The wheel is a separate distribution (prebuilt, abi3, for Linux glibc/musl, macOS
+# and Windows), built by .github/workflows/native-wheels.yml and uploaded by
+# publish.yml in the same release as this package. Pinned exactly: both are
+# released in lockstep from one commit, and scripts/set_version.py writes this pin
+# (tests/test_packaging.py checks it). A runtime spec-guard still falls back to
+# Python if a mismatched wheel is ever installed by hand.
+native = ["safestream-redactor-native==0.5.0"]
 # ruff is pinned to a minor series: its formatter output changes between minors,
 # and an unpinned CI once failed `ruff format --check` on code that was clean
 # locally. Bump it together with the ruff rev in .pre-commit-config.yaml.
@@ -74,6 +82,9 @@ native = ["safestream-redactor-native>=0.5.0,<0.6"]
 ui = ["streamlit>=1.40,<2"]
 # Reversible `encrypt` redaction mode + `safestream deanonymize` (AES-256-GCM).
 crypto = ["cryptography>=42"]
+# Everything that installs as a prebuilt wheel. `ner` and `onnx` stay out: they
+# pull in large models/runtimes and need a model download or export step.
+all = ["safestream-redactor[native,ui,crypto]"]
 dev = [
   "pytest>=7.0",
   "pytest-cov>=4.1",
@@ -97,12 +108,17 @@ redactionbench = ["datasets>=2.14", "huggingface_hub>=0.20", "pyarrow>=12"]
 
 [project.urls]
 Homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
+Source = "https://github.com/MounishSenisetty/SafeStream-Redactor"
 Documentation = "https://github.com/MounishSenisetty/SafeStream-Redactor/tree/main/docs"
 Issues = "https://github.com/MounishSenisetty/SafeStream-Redactor/issues"
 Changelog = "https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/CHANGELOG.md"
+Security = "https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/SECURITY.md"
 
 [project.scripts]
 safestream = "safestream_redactor.cli:main"
+# the distribution's own name, so `pipx run safestream-redactor` and
+# `uvx safestream-redactor` work without `--from`
+safestream-redactor = "safestream_redactor.cli:main"
 
 [tool.hatch.version]
 path = "src/safestream_redactor/__init__.py"
@@ -115,11 +131,11 @@ packages = ["src/safestream_redactor"]
 exclude = ["src/safestream_redactor/memstream"]
 
 # The sdist carries only what pip needs to build and install the package: the
-# source (with its PyPI README) and the license; pyproject.toml, PKG-INFO and
+# source, the README (the project description) and the license; pyproject.toml, PKG-INFO and
 # .gitignore (hatchling reads it when pip builds the wheel from this sdist) are
 # always added. Tests, benchmarks, docs, datasets and CI files stay in the repo.
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/LICENSE"]
+include = ["/src", "/README.md", "/LICENSE"]
 exclude = ["/src/safestream_redactor/memstream"]
 
 [tool.pytest.ini_options]
