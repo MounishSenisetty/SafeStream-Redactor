@@ -464,6 +464,176 @@ prose. See the accuracy note in the main [README](../README.md#detection-accurac
 
 ---
 
+## Appendix — every command in one place
+
+The complete command set for the demonstration, copy-paste runnable top to bottom.
+`sample.txt` is the [demo sample](#the-demo-sample) above.
+
+### Setup (pick your install method)
+
+```bash
+# A) PyPI
+pip install safestream-redactor
+pip install 'safestream-redactor[ner]'          # optional NER tier
+python -m spacy download en_core_web_sm          # optional NER model
+
+# B) git clone (development)
+git clone https://github.com/MounishSenisetty/SafeStream-Redactor.git
+cd SafeStream-Redactor
+pip install -e '.[dev]'                           # + tests/lint/type tooling
+pip install -e '.[bench]'                         # optional: Presidio for benchmarks
+
+# C) Docker
+docker build -t safestream-redactor .
+docker pull ghcr.io/mounishsenisetty/safestream-redactor   # or the released image
+
+safestream --version
+```
+
+### Method 1 — CLI + Python library
+
+```bash
+safestream detect sample.txt --json
+safestream redact sample.txt -o out.txt
+safestream init-config -o policy.toml
+```
+
+```python
+from safestream_redactor import Redactor, RedactionPolicy, EntityType
+Redactor().redact("email bob@corp.io, ssn: 123-45-6789")
+policy = RedactionPolicy(replacements={EntityType.EMAIL: "<EMAIL>"})
+Redactor(policy=policy).redact("write to bob@corp.io")
+stats = Redactor().redact_file("huge.log", "huge_redacted.log")
+print(stats.summary())
+Redactor().redact_file("huge.log", "huge_redacted.log", workers=8)
+```
+
+### Method 2 — clone: tests, lint, types
+
+```bash
+pytest
+pytest -m memory -o addopts=''
+ruff check .
+mypy src
+```
+
+### Method 3 — Docker: one-shot + API
+
+```bash
+docker run --rm -v "$PWD":/data safestream-redactor redact /data/sample.txt -o /data/out.txt
+docker run --rm -p 127.0.0.1:8000:8000 safestream-redactor serve --host 0.0.0.0 --port 8000
+```
+
+### Method 4 — REST API (start the server, then call every endpoint)
+
+```bash
+safestream serve &                                # http://127.0.0.1:8000 (background)
+
+curl -s http://127.0.0.1:8000/health
+curl -s http://127.0.0.1:8000/version
+curl -s http://127.0.0.1:8000/detectors
+curl -s -X POST http://127.0.0.1:8000/redact -H 'Content-Type: application/json' \
+  -d '{"text":"email bob@corp.io key AKIAIOSFODNN7EXAMPLE ssn 123-45-6789"}'
+curl -s -X POST http://127.0.0.1:8000/scan -H 'Content-Type: application/json' \
+  -d '{"text":"email bob@corp.io key AKIAIOSFODNN7EXAMPLE"}'
+
+kill %1                                            # stop the background server
+```
+
+### Feature tour (all flags)
+
+```bash
+# detect only
+safestream detect sample.txt --json
+
+# redaction modes
+safestream redact sample.txt -o -                                  # replace (default)
+safestream redact sample.txt -o - --mode mask --keep-last 4        # mask
+safestream redact sample.txt -o - --mode mask --keep-last 4 --mask-char '#'
+safestream redact sample.txt -o - --mode pseudonymize --hmac-key demo-key
+
+# type filter + per-type replacements
+safestream redact sample.txt -o - --types email,ssn \
+    --replace-type "email=<EMAIL>" --replace-type "ssn=<SSN>"
+
+# fixed replacement string
+safestream redact sample.txt -o - --replace '***'
+
+# custom words / regexes
+safestream redact sample.txt -o - --custom-word ProjectFalcon --custom-regex 'EMP-[0-9]+'
+
+# TOML policy (examples/policy.toml enables NER — add --ner and the [ner] extra)
+safestream redact sample.txt -o - --config examples/policy.toml --ner
+
+# NER tier on / entropy tier off
+safestream redact sample.txt -o - --ner
+safestream redact sample.txt -o - --no-entropy
+
+# confidence threshold, chunk size, overlap, encoding
+safestream redact sample.txt -o - --min-confidence 0.35
+safestream redact sample.txt -o - --chunk-size 65536 --overlap 8192
+safestream redact legacy.log -o out.log --encoding latin-1
+
+# streaming through a pipe
+cat sample.txt | safestream redact - -o -
+
+# parallelism: directory tree, then one big file across cores
+safestream redact ./logs -o ./logs_redacted --workers 8
+safestream redact huge.log -o clean.log --workers 8
+
+# stats + content-free JSON run report
+safestream redact sample.txt -o out.txt --stats --report report.json
+
+# CI / pre-commit secret gate (non-zero exit on any detection)
+safestream detect build.log --fail-on-detect
+
+# disable the offline network guard
+safestream redact sample.txt -o out.txt --allow-network
+
+# starter policy
+safestream init-config -o policy.toml
+```
+
+### Datasets (generate synthetic, or convert a public corpus)
+
+```bash
+# synthetic: clean, then adversarial (each writes dataset.txt + dataset.json)
+python benchmarks/generate_dataset.py --size-mb 10 --out benchmarks/data --seed 42
+python benchmarks/generate_hard_dataset.py --size-mb 5 --out benchmarks/data_hard --seed 7
+```
+
+### Benchmarks (all scripts)
+
+```bash
+# regression fixture vs Presidio (+ CI quality gates)
+python benchmarks/run_benchmark.py --data benchmarks/data
+python benchmarks/run_benchmark.py --data benchmarks/data_hard
+python benchmarks/run_benchmark.py --assert-precision 0.99 --assert-recall 0.99
+
+# real accuracy on an INDEPENDENT labeled corpus
+python benchmarks/evaluate.py --jsonl corpus.jsonl \
+    --label-map PERSON=person,EMAIL_ADDRESS=email,US_SSN=ssn,CREDIT_CARD=credit_card --ner
+python benchmarks/evaluate.py --presidio-json presidio_eval.json --system safestream --bootstrap 2000
+python benchmarks/evaluate.py --conll conll2003.txt --ner --system safestream
+python benchmarks/evaluate.py --jsonl secrets.jsonl --system safestream \
+    --compare gitleaks --bootstrap 2000 --errors 10
+
+# scaling proofs
+python benchmarks/scale_memory.py --sizes 64 256 1024 4096
+python benchmarks/parallel_speedup.py --size 512 --workers 1 2 4 8
+
+# confidence calibration
+python benchmarks/calibrate.py --jsonl labeled.jsonl \
+    --label-map PERSON=person,EMAIL_ADDRESS=email,US_SSN=ssn --out calibrator.json
+```
+
+### One command that runs the whole tour
+
+```bash
+examples/run_demo.sh            # feature tour
+examples/run_demo.sh --bench    # + generate a corpus and run the benchmark
+```
+
 ## Read more
 
 - [`README.md`](../README.md) — full feature list and architecture diagrams
