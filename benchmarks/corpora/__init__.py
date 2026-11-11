@@ -472,6 +472,13 @@ def load_logs() -> Corpus:
     return Corpus("logs", docs, [text_path], None, "self-generated regression fixture")
 
 
+def load_realworld() -> Corpus:
+    """Authorised real-world artefacts (adjudicated gold); see benchmarks/realworld/."""
+    from benchmarks.realworld import data
+
+    return data.to_corpus(data.load_dataset())
+
+
 LOADERS: dict[str, Callable[[], Corpus]] = {
     "redactionbench": load_redactionbench,
     "presidio_research": load_presidio_research,
@@ -480,6 +487,7 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "n2c2": load_n2c2,
     "secrets": load_secrets,
     "logs": load_logs,
+    "realworld": load_realworld,
 }
 
 

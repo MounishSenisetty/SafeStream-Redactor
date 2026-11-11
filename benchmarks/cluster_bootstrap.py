@@ -14,8 +14,9 @@ all systems, so every difference is paired:
 * ``two_stage``: clusters drawn with replacement, then documents drawn with
   replacement inside each drawn cluster (hierarchical bootstrap).
 
-Clusters: ``secrets`` -- the rule id for a positive, the generator template for a
-gold-free document; ``redactionbench`` -- the document's domain;
+Clusters: ``realworld`` -- the document's ``source``; ``secrets`` -- the rule id
+for a positive, the generator template for a gold-free document;
+``redactionbench`` -- the document's domain;
 ``presidio_research`` -- the generator template; any other corpus -- the document
 itself (all three schemes then coincide with ``document``).
 
@@ -70,6 +71,10 @@ def clusters_for(corpus: str, docs: list[corpora.Doc]) -> list[str]:
         path = corpora.EXTERNAL / "presidio_research" / "synth_dataset_v2.json"
         rows = json.loads(path.read_text(encoding="utf-8"))
         return [f"template:{rows[int(d.doc_id[3:])]['template_id']}" for d in docs]
+    if corpus == "realworld":  # documents from one source system or repository
+        from benchmarks.realworld.data import sources_of
+
+        return sources_of([d.doc_id for d in docs])
     return [d.doc_id for d in docs]
 
 
@@ -92,6 +97,59 @@ def weight_matrix(scheme: str, labels: list[str], resamples: int, seed: int = 0)
     return w
 
 
+def bootstrap(
+    docs: list[corpora.Doc],
+    labels: list[str],
+    preds: dict[str, list[list[harness.Pred]]],
+    pairs: list[tuple[str, str]],
+    resamples: int = 2000,
+    seed: int = 0,
+) -> dict[str, Any]:
+    """Point estimates, intervals and paired differences under every scheme."""
+    mats = {
+        name: [harness.score_doc(d, p) for d, p in zip(docs, ps, strict=True)]
+        for name, ps in preds.items()
+    }
+    keys = sorted({k for cs in mats.values() for c in cs for k in c})
+    col = {k: i for i, k in enumerate(keys)}
+    arr = {n: np.array([[c.get(k, 0) for k in keys] for c in cs], float) for n, cs in mats.items()}
+
+    def get(s: np.ndarray):
+        return lambda key: s[..., col[key]] if key in col else np.zeros(s.shape[:-1])
+
+    out: dict[str, Any] = {
+        "point": {
+            n: {k: float(v) for k, v in harness.metrics(get(a.sum(0))).items() if k in KEYS}
+            for n, a in arr.items()
+        },
+        "ci95": {},
+        "paired_diff_p2.5_p50_p97.5": {},
+    }
+    for scheme in SCHEMES:
+        w = weight_matrix(scheme, labels, resamples, seed)
+        boot = {n: harness.metrics(get(w @ a)) for n, a in arr.items()}
+        out["ci95"][scheme] = {
+            n: {
+                k: [float(np.percentile(b[k], 2.5)), float(np.percentile(b[k], 97.5))] for k in KEYS
+            }
+            for n, b in boot.items()
+        }
+        out["paired_diff_p2.5_p50_p97.5"][scheme] = {
+            f"{a} - {b}": {
+                k: [float(np.percentile(boot[a][k] - boot[b][k], q)) for q in (2.5, 50, 97.5)]
+                for k in KEYS
+            }
+            for a, b in pairs
+        }
+    return out
+
+
+def load_checkpoint(path: Path) -> tuple[list[list[harness.Pred]], str]:
+    """(per-document predictions, commit) from a harness checkpoint file."""
+    saved = json.loads(Path(path).read_text(encoding="utf-8"))
+    return [[tuple(p) for p in doc] for doc in saved["run"]["preds"]], saved["commit"]
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -107,20 +165,13 @@ def main() -> None:
 
     docs = corpora.load(args.corpus, args.split).docs
     labels = clusters_for(args.corpus, docs)
-    mats, commits = {}, {}
+    preds, commits = {}, {}
     for spec in args.system:
         name, path = spec.split("=", 1)
-        saved = json.loads(Path(path).read_text(encoding="utf-8"))
-        preds = [[tuple(p) for p in doc] for doc in saved["run"]["preds"]]
-        commits[name] = saved["commit"]
-        mats[name] = [harness.score_doc(d, p) for d, p in zip(docs, preds, strict=True)]
-    keys = sorted({k for cs in mats.values() for c in cs for k in c})
-    col = {k: i for i, k in enumerate(keys)}
-    arr = {n: np.array([[c.get(k, 0) for k in keys] for c in cs], float) for n, cs in mats.items()}
-
-    def get(s: np.ndarray):
-        return lambda key: s[..., col[key]] if key in col else np.zeros(s.shape[:-1])
-
+        preds[name], commits[name] = load_checkpoint(Path(path))
+    res = bootstrap(
+        docs, labels, preds, [tuple(p.split(":", 1)) for p in args.pair], args.resamples, args.seed
+    )
     out: dict[str, Any] = {
         "corpus": args.corpus,
         "split": args.split,
@@ -130,30 +181,8 @@ def main() -> None:
         "n_clusters": len(set(labels)),
         "cluster_sizes": {c: labels.count(c) for c in sorted(set(labels))},
         "harness_commit_per_system": commits,
-        "point": {
-            n: {k: float(v) for k, v in harness.metrics(get(a.sum(0))).items() if k in KEYS}
-            for n, a in arr.items()
-        },
-        "ci95": {},
-        "paired_diff_p2.5_p50_p97.5": {},
+        **res,
     }
-    pairs = [p.split(":", 1) for p in args.pair]
-    for scheme in SCHEMES:
-        w = weight_matrix(scheme, labels, args.resamples, args.seed)
-        boot = {n: harness.metrics(get(w @ a)) for n, a in arr.items()}
-        out["ci95"][scheme] = {
-            n: {
-                k: [float(np.percentile(b[k], 2.5)), float(np.percentile(b[k], 97.5))] for k in KEYS
-            }
-            for n, b in boot.items()
-        }
-        out["paired_diff_p2.5_p50_p97.5"][scheme] = {
-            f"{a} - {b}": {
-                k: [float(np.percentile(boot[a][k] - boot[b][k], q)) for q in (2.5, 50, 97.5)]
-                for k in KEYS
-            }
-            for a, b in pairs
-        }
     args.json.write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
     for scheme in SCHEMES:
         print(f"## {scheme}")
