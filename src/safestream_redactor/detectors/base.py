@@ -31,7 +31,8 @@ class StreamingRequirements:
         The longest detection span (in characters) the detector can emit. This
         is the value that drives the engine's overlap: an entity up to this long
         is guaranteed to be seen whole even when split by a chunk boundary
-        (``docs/FORMAL_MODEL.md``, Theorem 1 requires ``overlap >= max_span``).
+        (``docs/FORMAL_MODEL.md``, Theorem 1 requires ``overlap >=
+        max(max_span + right_context, left_context)`` for every active detector).
     left_context:
         Characters *before* a candidate the detector reads to make its decision
         (e.g. the contextual scorer's trigger-word window). The engine already
