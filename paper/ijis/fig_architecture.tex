@@ -55,7 +55,7 @@
 \node[box, below=3mm of t0, minimum width=50mm, text width=48mm] (backend)
   {Rust core (PyO3) \;$\equiv$\; Python reference\\ spec guard, identical output};
 \node[box, below=3mm of backend, minimum width=50mm, text width=48mm, draw=opt, dashed] (ner)
-  {\textbf{Optional NER tier}\\ spaCy, or gated ONNX DistilBERT};
+  {\textbf{Optional NER tier}\\ spaCy (\texttt{en\_core\_web\_sm})};
 \node[box, below=3mm of ner, minimum width=50mm, text width=48mm] (res)
   {confidence filter $\rightarrow$ overlap resolver\\ (greedy for patterns; union with NER)};
 \begin{scope}[on background layer]
@@ -77,7 +77,7 @@
 
 % ---------------- safety check (top band) ----------------
 \node[box, draw=eng, above=9mm of t0, minimum width=50mm, text width=48mm] (req)
-  {each detector declares max span and context\\ $\Rightarrow$ required overlap $\max(L_{\max}, C_{\mathrm{left}}, C_{\mathrm{right}})$};
+  {each detector $d$ declares $L_d$, $C_{\mathrm{left},d}$, $C_{\mathrm{right},d}$\\ $\Rightarrow$ required overlap\\ $\max_d \max(L_d + C_{\mathrm{right},d},\, C_{\mathrm{left},d})$};
 \node[box, draw=eng, left=14mm of req, minimum width=40mm, text width=38mm] (guard)
   {overlap safety check\\ refuses $w$ below the requirement};
 
