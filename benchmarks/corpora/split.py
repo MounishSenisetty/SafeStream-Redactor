@@ -26,6 +26,13 @@ PREVIOUSLY_EXPOSED = {
 }
 
 
+# Corpora with no development half: every document is test data, scored once with
+# frozen code, so nothing can be tuned on them.
+TEST_ONLY = {
+    "realworld": "authorised real-world artefacts; evaluation only, never used for tuning",
+}
+
+
 def _group(corpus: str, doc_id: str) -> str:
     """Documents that must land on the same side of the split.
 
@@ -48,6 +55,9 @@ def make_manifest(corpus: corpora.Corpus, seed: int = SEED) -> dict[str, object]
     dev: list[str] = []
     test: list[str] = []
     for key in order:  # fill dev to half the documents, whole groups at a time
+        if corpus.name in TEST_ONLY:
+            test.extend(groups[key])
+            continue
         (dev if len(dev) < len(corpus.docs) // 2 else test).extend(groups[key])
     return {
         "corpus": corpus.name,
@@ -58,6 +68,7 @@ def make_manifest(corpus: corpora.Corpus, seed: int = SEED) -> dict[str, object]
         "group_by": "rule" if corpus.name == "secrets" else "document",
         "previously_exposed": PREVIOUSLY_EXPOSED.get(corpus.name),
         "notes": corpus.notes,
+        "test_only": TEST_ONLY.get(corpus.name),
         "dev": sorted(dev),
         "test": sorted(test),
     }
