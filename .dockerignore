@@ -3,6 +3,7 @@
 # .env) stays out of the context by default instead of by remembering to list it.
 *
 !pyproject.toml
+!README.md
 !LICENSE
 !src/
 !docker/build-requirements.txt

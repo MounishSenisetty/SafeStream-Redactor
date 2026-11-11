@@ -14,6 +14,19 @@ Notable changes to this project. The format follows
   (`card=4111 ...`). Their output is now limited to the requested types. Runs without
   `--types` are unchanged.
 
+### Documentation
+
+- **One README for GitHub and PyPI.** `README.md` is now the PyPI project page, and
+  `src/README_PYPI.md` is gone (the two had drifted: the PyPI page listed six of nine
+  subcommands, version 0.4.0, and no `crypto` extra or 0.5.0 modes). It is restructured
+  around a "choose your path" table with a quickstart for each interface: CLI, Python,
+  REST API, MCP server, web playground, CI gate and Docker.
+- `tests/test_readme.py` runs every console and Python example in the README and checks
+  the output shown, and rejects relative links and Mermaid, which break on PyPI.
+- Reference material moved out of the README into `docs/CLI.md` (every option, exit codes,
+  network isolation, policy files, plugins), `docs/EVALUATION.md` (the benchmark tables
+  and accuracy limits) and `docs/WEB_UI.md` (the playground in detail).
+
 ### Packaging
 
 - **`pip install 'safestream-redactor[native]'` now works.** The Rust core

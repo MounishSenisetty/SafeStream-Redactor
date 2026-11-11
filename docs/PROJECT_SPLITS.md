@@ -247,7 +247,7 @@ promise hold at the edges.
 | `api.py` | Local REST API on the standard library only: loopback by default, request bodies never logged, size-capped |
 | `mcp_server.py` | Model Context Protocol server so AI assistants can scan and redact without the raw secret ever crossing the tool boundary |
 | `netguard.py`, `netguard_hard.py` | Offline guards: an in-process block on outbound connections (on by default), and kernel-enforced modes on Linux (`seccomp`, network namespace) |
-| `__init__.py`, `src/README_PYPI.md`, `pyproject.toml` | The public Python API, the PyPI page, and packaging metadata |
+| `__init__.py`, `README.md`, `pyproject.toml` | The public Python API, the PyPI page, and packaging metadata |
 | `Dockerfile`, `docker/`, `.dockerignore` | Reproducible, non-root, digest-pinned container image |
 | `action.yml`, `.pre-commit-hooks.yaml` | GitHub Action and pre-commit hook for secret scanning |
 | `.github/workflows/` (`ci`, `publish`, `docker`), `dependabot.yml` | CI across 5 Python versions and 3 operating systems, release automation, dependency updates |

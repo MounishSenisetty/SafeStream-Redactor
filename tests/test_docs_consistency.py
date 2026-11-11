@@ -14,7 +14,6 @@ ROOT = Path(__file__).resolve().parent.parent
 CURRENT_DOCS = [
     "README.md",
     "SYSTEM_DESIGN.md",
-    "src/README_PYPI.md",
     *sorted(
         str(p.relative_to(ROOT))
         for p in (ROOT / "docs").glob("*.md")

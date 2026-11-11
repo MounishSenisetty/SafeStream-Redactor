@@ -8,10 +8,9 @@ build-backend = "hatchling.build"
 name = "safestream-redactor"
 dynamic = ["version"]
 description = "Streaming PII & credential detection/redaction for very large text files with constant memory usage."
-# PyPI-specific description: prose only, no Mermaid diagram source and no
-# repo-relative file links (those render as broken paths on the PyPI page).
-# The rich GitHub README (diagrams + deep links) stays at ./README.md.
-readme = "src/README_PYPI.md"
+# One README for GitHub and PyPI: tests/test_readme.py runs its examples and rejects
+# relative links and Mermaid, which do not render on the PyPI page.
+readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 # All three names carry no email so they render together in a single PyPI
@@ -132,11 +131,11 @@ packages = ["src/safestream_redactor"]
 exclude = ["src/safestream_redactor/memstream"]
 
 # The sdist carries only what pip needs to build and install the package: the
-# source (with its PyPI README) and the license; pyproject.toml, PKG-INFO and
+# source, the README (the project description) and the license; pyproject.toml, PKG-INFO and
 # .gitignore (hatchling reads it when pip builds the wheel from this sdist) are
 # always added. Tests, benchmarks, docs, datasets and CI files stay in the repo.
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/LICENSE"]
+include = ["/src", "/README.md", "/LICENSE"]
 exclude = ["/src/safestream_redactor/memstream"]
 
 [tool.pytest.ini_options]
