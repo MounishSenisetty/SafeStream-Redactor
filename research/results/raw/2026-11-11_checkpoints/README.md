@@ -12,3 +12,17 @@ types of every prediction, per test document, no corpus text.
 Every point estimate and every document-level paired interval reproduces the
 2026-10-11 results. Re-score with `python -m benchmarks.cluster_bootstrap` (outputs:
 `../2026-11-11_*_test_cluster_bootstrap.json`).
+
+## Scanner sensitivity (`scanners_nofilters/`)
+
+gitleaks 8.28.0 and TruffleHog 3.90.8 with their false-positive filters disabled,
+produced by `python -m benchmarks.scanner_sensitivity` (see its docstring):
+
+- `gitleaks-default-config`: the release's own `config/gitleaks.toml` (control; its
+  predictions are identical to `post_3d2c6ac/*_gitleaks.json`);
+- `gitleaks-nofilters`: that file without the global `[allowlist]` and the nine
+  `[[rules.allowlists]]` tables (`gitleaks_nofilters.toml`, 217 rules unchanged);
+- `trufflehog-nofilters`: `--results=verified,unverified,unknown,filtered_unverified`,
+  still `--no-verification`.
+
+Scores: `../2026-11-11_{secrets,redactionbench}_test_scanner_sensitivity.json`.
