@@ -443,7 +443,7 @@ produces many detections per window.
 
 | Decision | Rationale | Trade-off |
 | --- | --- | --- |
-| Chunked streaming with overlap | Bounded memory on unbounded input; boundary-safe. | Entities longer than `overlap` (default 4 KB) could in principle split — tune `--overlap` for exotic inputs. |
+| Chunked streaming with overlap | Bounded memory on unbounded input; boundary-safe. | The overlap (8 KiB by default) must cover every active detector's span plus its right context; the engine refuses a smaller `--overlap` unless the caller explicitly allows an unsafe one, in which case a long entity could split. |
 | Regex + validators over an NLP model for the core | Fast, deterministic, dependency-free, high precision. | Misses free-form names/locations without the NER extra. |
 | Confidence thresholds + contextual scoring | Lets ambiguous shapes (bare phone/SSN) depend on nearby cues, cutting false positives. | Tuning is heuristic; unusual phrasing can miss a boost. |
 | Entropy tier on by default | Catches undocumented secrets pattern tools miss. | Rare high-entropy non-secrets (e.g. long hashes) can trip it — disable with `--no-entropy`. |

@@ -216,8 +216,16 @@ covered (§5).
 
 ### Theorem 1 — Streaming equivalence
 
-> Under A1 and A2, if `w >= max(L_max, C_left, C_right)`, then `S_w(T) = Π(T)`
-> for every `T` and every chunking of `T`.
+> Under A1 and A2 (per detector `d`, with constants `L_d`, `C_left,d`, `C_right,d`),
+> if `w >= w* = max_d max(L_d + C_right,d, C_left,d)` and `min_emit >= w`, then
+> `S_w(T) = Π(T)` for every `T` and every chunking of `T`.
+>
+> Pipeline-wide sufficient condition: `w >= max(L_max + C_right, C_left)`. It
+> implies `w >= w*` but is not necessary: at the evaluated commit it asks for
+> 8192 + 8 = 8200, whereas `w* = 8192` because the 8192-character detectors read no
+> right context. `w*` is exactly what `engine.required_overlap` computes. The full
+> proof, and proofs of Theorems 2 and 3, are in Section 5 and Appendix A of the
+> manuscript (`paper/ijis/main.tex`).
 
 **Proof obligations, each mapped to code.**
 
@@ -369,7 +377,7 @@ in exactly these cases, all of them detectable or documented:
 
 | Guarantee | Statement | Discharged by |
 | --- | --- | --- |
-| **T1 Streaming equivalence** | `S_w(T) = Π(T)` for all chunkings when `w >= max(L_max, C_left, C_right)` | `engine.stream_windows`; `test_streaming.py`, `test_properties.py` |
+| **T1 Streaming equivalence** | `S_w(T) = Π(T)` for all chunkings when `w >= max_d max(L_d + C_right,d, C_left,d)` | `engine.stream_windows`; `test_streaming.py`, `test_properties.py` |
 | **T2 Parallel byte-identity** | `P_{w,k}(T) = S_w(T)` unconditionally (equal when A1 holds; safe fallback when it does not) | `parallel.py` seam valve; `test_parallel.py` |
 | **T3 Constant memory** | peak `<= chunk_size + w + L_max`, independent of `|T|`; `k×` for parallel | `engine.stream_windows`; `test_memory.py`, `benchmarks/scale_memory.py` |
 
