@@ -7,6 +7,10 @@ results, document identifiers and character offsets do.
 
 ## Before collecting anything
 
+A concrete plan for building such a corpus from public CI logs (sampling, consent,
+annotation, analysis and the decisions it needs) is in `COLLECTION_PLAN.md`.
+
+
 - **Authorisation.** Use only artefacts you are allowed to process for research:
   public CI logs or issue attachments from repositories whose licences permit it,
   or data from an organisation that authorises the study in writing.
