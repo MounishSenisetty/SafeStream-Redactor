@@ -45,8 +45,6 @@
 \pagestyle{headings}
 \emergencystretch=2em
 
-%% author-only information that must be supplied before submission
-\newcommand{\MISSING}[1]{\textcolor{red}{[MISSING: #1]}}
 \newcommand{\ns}{$^{\dagger}$}
 %% point estimate with its interval stacked underneath, so no interval wraps or clips
 \newcommand{\pc}[2]{\begin{tabular}[t]{@{}l@{}}#1\\[-1pt]{[}#2{]}\end{tabular}}
@@ -56,10 +54,12 @@
 
 \title[Bounded-memory streaming redaction with a whole-document equivalence guarantee]{Bounded-memory streaming redaction of personal data and credentials with a whole-document equivalence guarantee}
 
-\author*[1]{\fnm{Mounish} \sur{Senisetty}}\email{senisettymounish@gmail.com}
-\author[1]{\fnm{\MISSING{co-author}} \sur{\MISSING{or delete}}}
+\author[1]{\fnm{Mounish} \sur{Senisetty}}\email{am.ai.u4aid23058@am.students.amrita.edu}
+\author[1]{\fnm{Sandhiya} \sur{Kennedy}}\email{am.ai.u4aid23056@am.students.amrita.edu}
+\author[1]{\fnm{Ashrith Reddy} \sur{N}}\email{am.ai.u4aid23014@am.students.amrita.edu}
+\author*[1]{\fnm{Parvathy} \sur{R}}\email{parvathyr@am.amrita.edu}
 
-\affil*[1]{\orgdiv{\MISSING{Department}}, \orgname{\MISSING{Institution}}, \orgaddress{\city{\MISSING{City}}, \country{\MISSING{Country}}}}
+\affil*[1]{\orgdiv{Amrita School of Computing}, \orgname{Amrita Vishwa Vidyapeetham}, \orgaddress{\city{Amritapuri}, \country{India}}}
 
 \abstract{Logs and data exports that leave an organisation carry personal data and credentials and are often too large to hold in memory. Processing them in chunks adds a silent failure: a value straddling a chunk boundary reaches the detector in two halves and is written out in the clear. We present SafeStream-Redactor, a local redaction engine that treats chunking as a correctness problem. Each detector declares the longest span it emits and the context it reads. We show that an overlap as long as the longest span can still leak, and prove that if the overlap covers every detector's span plus its right context, the streamed output equals a whole-document pass, multi-process output equals the sequential output or falls back to it, and the working buffer is independent of input size. The engine derives and enforces this overlap at run time. Peak memory added by streaming stayed between 8.4 and 8.54\,MiB from 8\,MiB to 2\,GiB of input, against 904.6\,MiB for whole-document redaction of a 32\,MiB file; throughput was 10.5\,MB/s with one worker and 41.1\,MB/s with four. On held-out test data the pattern tiers fully redacted 0.437 of credentials, against 0.311 for gitleaks and 0.270 for TruffleHog; the gitleaks margin holds under rule-clustered resampling and with its filters disabled. The guarantee does not make detection complete: no configuration fully protected more than 17.9\% of RedactionBench documents, and two of the three corpora are synthetic.}
 
@@ -82,7 +82,6 @@ This paper answers that question for a concrete system, SafeStream-Redactor (her
 \item \textbf{Bounded memory, measured.} The working buffer is bounded independently of input size, and peak memory stays flat across a 256-fold range of input sizes, where whole-document redaction needs about 28 times the input size (Section~\ref{sec:memory}).
 \item \textbf{A detection evaluation that separates robust from fragile margins.} Equivalence says nothing about how good the detectors are. We evaluate them on held-out test splits against Presidio and two secret scanners, with paired bootstrap intervals at the document, cluster and two-stage levels, a scanner sensitivity run with false-positive filters disabled, an ablation and a contamination analysis (Sections~\ref{sec:setup} and~\ref{sec:results}). Two margins survive every check: a higher fully redacted rate for credentials than gitleaks, and higher character F1 than Presidio with the same spaCy model. Others do not, and we report them as such.
 \end{enumerate}
-\MISSING{If the FTNCT'09 conference paper on SafeStream-Redactor was published, cite it here and state what this article adds: held-out test evaluation, secret-scanner baselines, cluster-robust statistics, ablation, contamination analysis, peak-memory curve, benign-shape suppression in the entropy tier, native core parity results.}
 
 Two scope limits are stated at the outset. First, the guarantee concerns equivalence rather than accuracy: streaming does not improve detection, it makes the streamed result the same as the whole-document result, so every detection error of the whole-document pipeline is also an error of the streamed one. Second, the evaluation has known weaknesses that we quantify rather than omit: one corpus, RedactionBench, was inspected during rule development (Section~\ref{sec:contam}); two corpora are synthetic; and fewer than one RedactionBench document in five was fully protected by any configuration we evaluated (Section~\ref{sec:noleak}). Section~\ref{sec:discussion} states when the approach is useful despite these limits and what evidence a deployment would need.
 
@@ -211,8 +210,8 @@ For large files the parallel engine splits the input into character-aligned byte
 \subsection{Implementation}
 The pure-Python implementation is the reference. An optional Rust core implements the pattern tiers. At start-up it checks that its compiled pattern sources equal the Python ones, and it hands a window back to Python in the rare cases where Unicode case folding or floating-point summation could make the two disagree.
 
-\paragraph{Use of AI assistance}
-An AI assistant (Claude, Anthropic) was used to implement evaluation scripts and to draft this manuscript under the authors' supervision. The authors reviewed every result and every sentence and are accountable for the final content.
+\paragraph{Use of AI tools}
+The large language model Claude (Anthropic) was used during this research to help write evaluation harness scripts, draft early versions of manuscript sections, format the \LaTeX{} source for the journal template, refine prose and check bibliographic entries. The authors independently verified all experimental outputs, mathematical proofs and manuscript text, and take full responsibility for the final work.
 
 %% ===================================================================
 \section{Formal analysis}\label{sec:formal}
@@ -331,7 +330,7 @@ Let $G$ and $R$ be the sets of gold and redacted character positions in a docume
 We report 95\% percentile bootstrap intervals with 2,000 resamples and seed 0 \cite{efron1993bootstrap}. All systems evaluated on a corpus are scored on one shared resample matrix, so every difference between two systems is paired; we report the median paired difference and call it significant only when its paired interval excludes zero. Documents are not independent. Secrets positives cluster by rule, presidio-research documents share generator templates, and RedactionBench documents share domains. We therefore use three resampling schemes on the same per-document counts \cite{field2007bootstrapping}: \emph{document} (documents drawn independently), \emph{cluster} (whole clusters drawn with replacement, all their documents kept) and \emph{two-stage} (clusters drawn with replacement, then documents drawn with replacement inside each drawn cluster). Table~\ref{tab:corpora} lists the clusters. Tables~\ref{tab:main}, \ref{tab:rb} and~\ref{tab:ablation} give document-level intervals. Table~\ref{tab:cluster} repeats the planned comparisons under all three schemes, and we call a difference \emph{robust} when it is significant under all three. RedactionBench has only eleven clusters, so its cluster intervals are themselves imprecise; we read them as a sensitivity analysis rather than as an exact test. No correction for multiple comparisons was applied; the comparisons in the abstract were planned, the ablation comparisons were not. The analysis was not pre-registered.
 
 \subsection{Environment}
-Accuracy runs used a 4-vCPU Intel Xeon virtual machine at 2.80\,GHz with 15\,GB RAM, Linux and CPython 3.13. Throughput figures come from separate runs, five per configuration, on the same machine with no other benchmark running; the throughput recorded during accuracy runs is not used. Memory was measured as the peak resident set size of a fresh process per point minus its resident set size after imports, so native allocations are included; it is reported in MiB. The cluster analysis re-ran every test-split system at the evaluated commits with the same tool versions and saved per-document predictions; each point estimate and each document-level paired interval reproduced the published values to three decimals.
+Accuracy runs used a 4-vCPU Intel Xeon virtual machine at 2.80\,GHz with 15\,GB RAM, Linux and CPython 3.13. Throughput figures come from separate runs, five per configuration, on the same machine with no other benchmark running; the throughput recorded during accuracy runs is not used. Memory was measured as the peak resident set size of a fresh process per point minus its resident set size after imports, so native allocations are included; it is reported in MiB. The cluster analysis re-ran every test-split system at the evaluated commits with the same tool versions and saved per-document predictions; each point estimate and each document-level paired interval reproduced the published values to three decimals. The held-out results come from commit \texttt{0765dae}, the results after the entropy fix (Section~\ref{sec:fp}) from \texttt{3d2c6ac}, and the pre-exposure RedactionBench results from \texttt{874e105}, all on the main branch of the public repository.
 
 %% ===================================================================
 \section{Results}\label{sec:results}
@@ -584,19 +583,19 @@ Chunked redaction need not trade correctness for scale. With detector-declared b
 \backmatter
 
 \bmhead{Acknowledgements}
-\MISSING{acknowledgements, or remove this paragraph}
+The authors gratefully acknowledge Sri Mata Amritanandamayi Devi (Amma), Chancellor of Amrita Vishwa Vidyapeetham, for her inspiration and for providing financial support towards the Article Processing Charges (APC) of this publication. The authors also thank the maintainers of Microsoft Presidio, Nosey Parker and RedactionBench for making their software and benchmark datasets publicly available.
 
 \section*{Declarations}
 
 \begin{itemize}
-\item \textbf{Funding.} \MISSING{funding sources, or: The authors did not receive support from any organisation for the submitted work.}
-\item \textbf{Competing interests.} \MISSING{The authors have no relevant financial or non-financial interests to disclose. -- confirm or replace}
-\item \textbf{Ethics approval and consent to participate.} Not applicable: no human participants were involved. All corpora are public or generated. The secrets corpus consists of example strings published in an open-source rule set; no credential was tested against a live service (TruffleHog ran without verification).
+\item \textbf{Funding.} The authors gratefully acknowledge the financial support provided by Sri Mata Amritanandamayi Devi (Amma), Chancellor of Amrita Vishwa Vidyapeetham, towards the Article Processing Charges (APC) of this publication.
+\item \textbf{Competing interests.} The authors declare no competing financial or non-financial interests.
+\item \textbf{Ethics approval and consent to participate.} Not applicable: no human participants were involved and the authors collected no data. presidio-research is synthetic, the secrets corpus consists of example strings from an open-source rule set together with generated negatives, and RedactionBench is a public dataset released by its authors under CC BY 4.0, which they describe as seeded from real-world sources. All processing was local; no excerpt of any document is published here, and no credential was sent to a live service (TruffleHog ran without verification).
 \item \textbf{Consent for publication.} Not applicable.
-\item \textbf{Data availability.} presidio-research and Nosey Parker are public; RedactionBench is available from its authors under CC BY 4.0. Generated non-secrets are produced by the released code with a fixed seed. Split manifests, raw results and per-document predictions (character offsets only, no corpus text) are in the repository under \texttt{research/results/}. \MISSING{archive a tagged release (e.g.\ on Zenodo) and give its DOI here}.
+\item \textbf{Data availability.} presidio-research and Nosey Parker are public; RedactionBench is available from its authors under CC BY 4.0. Generated non-secrets are produced by the released code with a fixed seed. Split manifests, raw results and per-document predictions (character offsets only, no corpus text) are in the public repository under \texttt{research/results/}.
 \item \textbf{Code availability.} Source code and the evaluation harness, including the scripts \texttt{benchmarks/\allowbreak cluster\_\allowbreak bootstrap.py} and \texttt{benchmarks/\allowbreak scanner\_\allowbreak sensitivity.py}, are available at \url{https://github.com/MounishSenisetty/SafeStream-Redactor}.
-\item \textbf{Author contributions.} \MISSING{each author's contribution (conceptualisation, software, validation, formal analysis, investigation, writing)}
-\item \textbf{Use of generative AI.} Claude (Anthropic) was used to implement evaluation scripts and to draft the manuscript text. The authors reviewed and edited the content and take full responsibility for the publication.
+\item \textbf{Author contributions.} Mounish Senisetty: conceptualisation, methodology, software architecture, formal analysis, validation, investigation, data curation, visualisation, writing (original draft) and writing (review and editing). Ashrith Reddy N: software implementation, validation, investigation and writing (review and editing). Sandhiya Kennedy: software implementation, validation, investigation and writing (review and editing). Parvathy R: supervision and writing (review and editing). All authors read and approved the final manuscript.
+\item \textbf{Use of generative AI.} During the preparation of this work the authors used the large language model Claude (Anthropic) to help implement evaluation scripts, draft early manuscript text, convert \LaTeX{} markup to the journal template, edit language and check bibliographic references. After using this tool, the authors reviewed and revised all code, experimental results and text, and take full responsibility for the content.
 \end{itemize}
 
 %% ===================================================================
@@ -654,7 +653,7 @@ A \emph{straddler} of a seam $a$ is a span with $i < a < j$. Worker $r$ reports 
 
 \subsection{Implementation mapping}
 
-\begin{table}[h]
+\begin{table}[ht]
 \caption{Proof steps and the code that discharges them (module paths under \texttt{src/safestream\_redactor/}).}\label{tab:mapping}
 \footnotesize
 \begin{tabular*}{\textwidth}{@{\extracolsep\fill}>{\raggedright\arraybackslash}p{0.40\textwidth}>{\raggedright\arraybackslash}p{0.54\textwidth}}
