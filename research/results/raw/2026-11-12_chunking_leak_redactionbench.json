@@ -1,0 +1,164 @@
+{
+ "corpus": "redactionbench",
+ "split": "test",
+ "pipeline": "pattern",
+ "safestream_version": "0.4.0",
+ "stream_chars": 1361826,
+ "n_docs": 100,
+ "overlap_w": 8192,
+ "longest_declared_span": 8192,
+ "results": {
+  "1024": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 74,
+    "missed_chars": 1229,
+    "extra_chars": 131,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 237,
+    "gold_chars_leaked_by_chunking": 1659
+   },
+   "overlap_256": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 3,
+    "missed_chars": 39,
+    "extra_chars": 131,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 2,
+    "gold_chars_leaked_by_chunking": 32
+   },
+   "overlap_8192": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 3,
+    "missed_chars": 39,
+    "extra_chars": 131,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 2,
+    "gold_chars_leaked_by_chunking": 32
+   },
+   "safestream": {
+    "chunkings": 5,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  },
+  "4096": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 9,
+    "missed_chars": 110,
+    "extra_chars": 86,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 10,
+    "gold_chars_leaked_by_chunking": 88
+   },
+   "overlap_256": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 1,
+    "missed_chars": 12,
+    "extra_chars": 86,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_8192": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 1,
+    "missed_chars": 12,
+    "extra_chars": 86,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "safestream": {
+    "chunkings": 5,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  },
+  "16384": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 2,
+    "missed_chars": 19,
+    "extra_chars": 52,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 1,
+    "gold_chars_leaked_by_chunking": 3
+   },
+   "overlap_256": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 52,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_8192": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 52,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "safestream": {
+    "chunkings": 5,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  },
+  "65536": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 3166,
+    "missed_detections": 1,
+    "missed_chars": 2,
+    "extra_chars": 0,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 1,
+    "gold_chars_leaked_by_chunking": 3
+   },
+   "overlap_256": {
+    "identical": true,
+    "ref_detections": 3166,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 0,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_8192": {
+    "identical": true,
+    "ref_detections": 3166,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 0,
+    "gold_spans": 25592,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "safestream": {
+    "chunkings": 5,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  }
+ }
+}

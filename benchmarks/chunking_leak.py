@@ -116,6 +116,12 @@ def main() -> None:
     ap.add_argument("--spacy", action="store_true", help="add the spaCy tier")
     ap.add_argument("--chunks", type=int, nargs="+", default=[1024, 4096, 16384, 65536])
     ap.add_argument("--seeds", type=int, default=5)
+    ap.add_argument(
+        "--max-chars",
+        type=int,
+        help="keep whole documents, in order, up to this stream length (spaCy refuses "
+        "inputs over 1,000,000 characters, so the whole-document reference needs a cap)",
+    )
     ap.add_argument("--json", type=Path, required=True)
     args = ap.parse_args()
 
@@ -124,7 +130,16 @@ def main() -> None:
 
     redactor = Redactor(backend="python", use_ner=args.spacy)
     corpus = corpora.load(args.corpus, args.split)
-    text, gold = concatenate(corpus.docs)
+    docs = corpus.docs
+    if args.max_chars:
+        kept, total = [], 0
+        for d in docs:
+            if total + len(d.text) + len(SEP) > args.max_chars:
+                break
+            kept.append(d)
+            total += len(d.text) + len(SEP)
+        docs = kept
+    text, gold = concatenate(docs)
     n = len(text)
     ref = _spans(redactor.detect(text))
     longest = max((d.requirements.max_span for d in redactor._detectors), default=8192)
@@ -134,7 +149,8 @@ def main() -> None:
         "pipeline": "pattern+spacy" if args.spacy else "pattern",
         "safestream_version": safestream_redactor.__version__,
         "stream_chars": n,
-        "n_docs": len(corpus.docs),
+        "n_docs": len(docs),
+        "max_chars": args.max_chars,
         "overlap_w": redactor.overlap,
         "longest_declared_span": longest,
         "results": {},
