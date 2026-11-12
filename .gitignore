@@ -165,7 +165,8 @@ venv.bak/
 .ropeproject
 
 # mkdocs documentation
-/site
+# (the demo website's sources live in site/; its build output is _site/)
+/_site
 
 # mypy
 .mypy_cache/

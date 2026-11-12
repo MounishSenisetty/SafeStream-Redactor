@@ -1,0 +1,66 @@
+# The live demo: site/ built by scripts/build_site.py (the page, the wheel from this
+# commit, and a pinned Pyodide runtime) and published to GitHub Pages.
+#
+# Every PR and push to main that touches the site or the package builds it and runs
+# site/smoke.mjs in a real browser. It deploys only on a published release, so the
+# public demo always runs a released version, or by hand (Actions -> Demo site ->
+# Run workflow, on main). One-time setup: Settings -> Pages -> Source: GitHub Actions.
+name: Demo site
+
+permissions:
+  contents: read
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["site/**", "src/**", "scripts/build_site.py", "pyproject.toml", ".github/workflows/pages.yml"]
+  pull_request:
+    paths: ["site/**", "src/**", "scripts/build_site.py", "pyproject.toml", ".github/workflows/pages.yml"]
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python scripts/build_site.py --out _site
+      # the browser test: engine boots, every console answers, nothing leaves the origin
+      - name: Smoke test in Chromium
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+          (cd _site && python -m http.server 8642 --bind 127.0.0.1 &)
+          sleep 1
+          node site/smoke.mjs http://127.0.0.1:8642/ smoke.png
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: smoke-screenshot
+          path: smoke.png
+          if-no-files-found: ignore
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
