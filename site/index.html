@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Everything this page uses comes from this origin, and nothing may be sent
+     anywhere else. The engine's worker inherits this policy (engine.js). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src blob:; connect-src 'self'; style-src 'self'; img-src 'self' data:; manifest-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>SafeStream Redactor demo</title>
+<meta name="description" content="Find and redact PII and secrets in your browser. Nothing is uploaded: the real safestream-redactor package runs locally in WebAssembly.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./" aria-label="SafeStream Redactor demo home">
+    <img src="favicon.svg" alt="" width="22" height="22">
+    <span>SafeStream Redactor</span>
+  </a>
+  <span class="chip" id="version" title="safestream-redactor version running in this page">loading…</span>
+  <span class="local" id="local-badge" title="The engine runs in this tab via WebAssembly. A Content-Security-Policy blocks every connection to other sites, so nothing you paste can leave this page.">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 7V5a4 4 0 1 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7H4Zm2 0h4V5a2 2 0 1 0-4 0v2Z"/></svg>
+    Runs in your browser. Nothing is uploaded.
+  </span>
+  <nav class="links" aria-label="Project links">
+    <a href="https://github.com/MounishSenisetty/SafeStream-Redactor">GitHub</a>
+    <a href="https://pypi.org/project/safestream-redactor/">PyPI</a>
+    <button type="button" class="icon-btn" id="theme" aria-label="Switch colour theme" title="Switch colour theme">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.5v11a5.5 5.5 0 0 1 0-11Z"/></svg>
+    </button>
+  </nav>
+</header>
+
+<div class="boot" id="boot" role="status" aria-live="polite">
+  <div class="boot-bar"><span id="boot-fill"></span></div>
+  <span id="boot-text">Starting the engine…</span>
+</div>
+
+<div class="layout">
+  <details class="rail" id="rail" open>
+    <summary>Settings</summary>
+    <form id="settings" autocomplete="off">
+      <fieldset>
+        <legend>Redaction</legend>
+        <div class="seg" role="radiogroup" aria-label="Redaction style">
+          <label><input type="radio" name="style" value="replace" checked><span>Replace</span></label>
+          <label><input type="radio" name="style" value="mask"><span>Mask</span></label>
+          <label><input type="radio" name="style" value="hash"><span>Hash</span></label>
+        </div>
+        <label class="field" data-for="replace">Replacement
+          <input type="text" name="replacement" value="[REDACTED]" maxlength="40">
+        </label>
+        <label class="field" data-for="mask" hidden>Characters left visible
+          <input type="number" name="keep_last" value="4" min="0" max="16">
+          <small>Never more than half of a value.</small>
+        </label>
+        <label class="field" data-for="hash" hidden>HMAC key
+          <input type="password" name="hash_key" spellcheck="false">
+          <small>Random for this tab. Equal values get equal pseudonyms.</small>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Detection</legend>
+        <label class="field">Minimum confidence <output id="conf-out">0.50</output>
+          <input type="range" name="min_confidence" min="0" max="1" step="0.05" value="0.5">
+        </label>
+        <label class="switch"><input type="checkbox" name="use_entropy" checked><span>High-entropy secrets</span></label>
+        <label class="switch"><input type="checkbox" name="use_names"><span>Name heuristics</span></label>
+        <details class="types">
+          <summary>Entity types <span id="types-count"></span></summary>
+          <div class="types-actions">
+            <button type="button" class="link" data-types="all">All</button>
+            <button type="button" class="link" data-types="none">None</button>
+          </div>
+          <div class="types-list" id="types-list"></div>
+        </details>
+      </fieldset>
+
+      <fieldset>
+        <legend>Custom rules</legend>
+        <label class="field">Words, one per line
+          <textarea name="custom_words" rows="2" spellcheck="false" placeholder="ProjectX"></textarea>
+        </label>
+        <label class="field">Regex patterns, one per line
+          <textarea name="custom_patterns" rows="2" spellcheck="false" placeholder="\bEMP-\d{5}\b"></textarea>
+        </label>
+      </fieldset>
+      <p class="error" id="settings-error" role="alert" hidden></p>
+    </form>
+  </details>
+
+  <main>
+    <div class="tabs" role="tablist" aria-label="Demo sections">
+      <button role="tab" id="tab-playground" aria-controls="panel-playground" aria-selected="true">Playground</button>
+      <button role="tab" id="tab-inspector" aria-controls="panel-inspector" aria-selected="false" tabindex="-1">Streaming inspector</button>
+      <button role="tab" id="tab-rest" aria-controls="panel-rest" aria-selected="false" tabindex="-1">REST API</button>
+      <button role="tab" id="tab-mcp" aria-controls="panel-mcp" aria-selected="false" tabindex="-1">MCP server</button>
+      <button role="tab" id="tab-install" aria-controls="panel-install" aria-selected="false" tabindex="-1">Install</button>
+    </div>
+
+    <!-- Playground -->
+    <section role="tabpanel" id="panel-playground" aria-labelledby="tab-playground">
+      <div class="toolbar">
+        <label class="inline">Sample
+          <select id="sample">
+            <option value="log">Application log</option>
+            <option value="env">.env file</option>
+            <option value="ticket">Support ticket</option>
+          </select>
+        </label>
+        <label class="btn" for="upload">Open file…</label>
+        <input type="file" id="upload" accept=".txt,.log,.json,.csv,.env,.md,.yaml,.yml,.conf,.ini,text/*" hidden>
+        <span class="hint" id="sample-hint"></span>
+      </div>
+
+      <dl class="metrics" id="metrics">
+        <div><dt>Findings</dt><dd id="m-findings">–</dd></div>
+        <div><dt>Entity types</dt><dd id="m-types">–</dd></div>
+        <div><dt>Highest severity</dt><dd id="m-severity">–</dd></div>
+        <div><dt>Characters</dt><dd id="m-chars">–</dd></div>
+        <div><dt>Engine time</dt><dd id="m-time">–</dd></div>
+      </dl>
+
+      <div class="split">
+        <div class="pane">
+          <div class="pane-head">
+            <label for="input">Input</label>
+            <span class="muted" id="input-size"></span>
+          </div>
+          <textarea id="input" class="code" spellcheck="false" aria-describedby="input-size"></textarea>
+        </div>
+        <div class="pane">
+          <div class="pane-head">
+            <div class="seg small" role="radiogroup" aria-label="Output view">
+              <label><input type="radio" name="view" value="redacted" checked><span>Redacted</span></label>
+              <label><input type="radio" name="view" value="highlighted"><span>Highlighted</span></label>
+            </div>
+            <span class="actions">
+              <button type="button" class="btn" id="copy-out">Copy</button>
+              <button type="button" class="btn" id="download-out">Download</button>
+            </span>
+          </div>
+          <pre id="output" class="code view" tabindex="0" role="region" aria-live="polite" aria-label="Output"></pre>
+          <p class="legend" aria-hidden="true">
+            <span class="sev" data-sev="critical">critical</span>
+            <span class="sev" data-sev="high">high</span>
+            <span class="sev" data-sev="medium">medium</span>
+            <span class="sev" data-sev="low">low</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Findings</h2>
+          <label class="switch small"><input type="checkbox" id="reveal"><span>Reveal matched values</span></label>
+        </div>
+        <div class="table-wrap">
+          <table id="findings">
+            <thead><tr><th scope="col">Severity</th><th scope="col">Type</th><th scope="col">Line:col</th><th scope="col">Confidence</th><th scope="col">Detector</th><th scope="col">Value</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Run this on your own files</h2></div>
+        <p class="muted">The same settings, as a command and as Python. Your files never leave your machine.</p>
+        <div class="snippet"><pre id="cli-snippet" class="code"></pre><button type="button" class="btn copy" data-copy="cli-snippet">Copy</button></div>
+        <div class="snippet"><pre id="py-snippet" class="code"></pre><button type="button" class="btn copy" data-copy="py-snippet">Copy</button></div>
+      </div>
+    </section>
+
+    <!-- Streaming inspector -->
+    <section role="tabpanel" id="panel-inspector" aria-labelledby="tab-inspector" hidden>
+      <p class="lead">The engine never holds the whole input. It reads a chunk, scans it together
+        with an overlap carried from the last pass, writes out what is safe, and repeats. Step
+        through the passes to watch the window move while its size stays fixed.</p>
+      <div class="toolbar">
+        <div class="seg" role="radiogroup" aria-label="Text to inspect">
+          <label><input type="radio" name="isrc" value="long" checked><span>Long log (60 KB)</span></label>
+          <label><input type="radio" name="isrc" value="input"><span>Playground input</span></label>
+        </div>
+        <label class="inline">Chunk size <select id="ichunk"></select></label>
+      </div>
+
+      <dl class="metrics" id="imetrics">
+        <div><dt>Passes</dt><dd id="i-passes">–</dd></div>
+        <div><dt>Findings</dt><dd id="i-findings">–</dd></div>
+        <div><dt>Boundary retreats</dt><dd id="i-retreats">–</dd></div>
+        <div><dt>Largest window</dt><dd id="i-window">–</dd></div>
+        <div><dt>Input size</dt><dd id="i-input">–</dd></div>
+      </dl>
+
+      <div class="card">
+        <div class="player">
+          <button type="button" class="btn primary" id="iplay">Play</button>
+          <button type="button" class="btn" id="iback" aria-label="Previous pass">◀</button>
+          <button type="button" class="btn" id="istep" aria-label="Next pass">▶</button>
+          <label class="grow">Pass <output id="ipos">–</output>
+            <input type="range" id="iseek" min="0" max="0" value="0">
+          </label>
+          <label class="inline">Speed
+            <select id="ispeed"><option value="1200">Slow</option><option value="600" selected>Normal</option><option value="200">Fast</option></select>
+          </label>
+        </div>
+        <div class="tape-wrap" aria-hidden="true">
+          <div class="tape" id="tape">
+            <span class="t-done" id="t-done"></span>
+            <span class="t-win" id="t-win"><span class="t-ctx" id="t-ctx"></span><span class="t-emit" id="t-emit"></span><span class="t-carry" id="t-carry"></span></span>
+          </div>
+          <div class="tape-scale"><span>0</span><span id="tape-end"></span></div>
+        </div>
+        <div class="bars-wrap">
+          <div class="bars" id="bars" aria-hidden="true"></div>
+          <p class="muted small" id="bars-caption"></p>
+        </div>
+        <div id="inotes"></div>
+        <div class="split">
+          <div class="pane">
+            <div class="pane-head"><strong>Scanned window</strong>
+              <span class="muted small"><span class="key ctx">context</span> <span class="key emit">emitted</span> <span class="key carry">carried</span></span></div>
+            <pre id="iwindow" class="code view" tabindex="0"></pre>
+          </div>
+          <div class="pane">
+            <div class="pane-head"><strong>Written by this pass</strong></div>
+            <pre id="isegment" class="code view" tabindex="0"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REST API -->
+    <section role="tabpanel" id="panel-rest" aria-labelledby="tab-rest" hidden>
+      <p class="lead">This is the API <code>safestream serve</code> exposes on your machine. Here
+        the same request handler answers inside your browser, with the settings on the left.</p>
+      <div class="split">
+        <div class="pane">
+          <div class="pane-head"><strong>Request</strong></div>
+          <div class="toolbar">
+            <select id="rest-route" aria-label="Endpoint">
+              <option value="POST /redact">POST /redact</option>
+              <option value="POST /scan">POST /scan</option>
+              <option value="GET /detectors">GET /detectors</option>
+              <option value="GET /health">GET /health</option>
+              <option value="GET /version">GET /version</option>
+            </select>
+            <button type="button" class="btn primary" id="rest-send">Send</button>
+          </div>
+          <label class="sr-only" for="rest-body">Request body (JSON)</label>
+          <textarea id="rest-body" class="code" rows="8" spellcheck="false"></textarea>
+          <div class="snippet"><pre id="rest-curl" class="code"></pre><button type="button" class="btn copy" data-copy="rest-curl">Copy</button></div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><strong>Response</strong> <span class="status" id="rest-status"></span></div>
+          <pre id="rest-response" class="code view" tabindex="0" aria-live="polite"></pre>
+        </div>
+      </div>
+      <p class="muted">Endpoints: <code>GET /health</code>, <code>/version</code>, <code>/detectors</code>,
+        <code>POST /redact</code>, and <code>POST /scan</code>, which returns offsets and types but never the matched text.</p>
+    </section>
+
+    <!-- MCP -->
+    <section role="tabpanel" id="panel-mcp" aria-labelledby="tab-mcp" hidden>
+      <p class="lead"><code>safestream mcp-serve</code> gives an AI agent redaction tools over the
+        Model Context Protocol. The tools report <em>what</em> was found and <em>where</em>,
+        never the secret itself. Send the same JSON-RPC messages an agent would.</p>
+      <div class="split">
+        <div class="pane">
+          <div class="pane-head"><strong>Message</strong></div>
+          <div class="toolbar wrap" id="mcp-presets">
+            <button type="button" class="btn" data-preset="initialize">initialize</button>
+            <button type="button" class="btn" data-preset="list">tools/list</button>
+            <button type="button" class="btn" data-preset="scan">scan</button>
+            <button type="button" class="btn" data-preset="redact">redact</button>
+            <button type="button" class="btn" data-preset="explain">explain_detection</button>
+          </div>
+          <label class="sr-only" for="mcp-body">JSON-RPC message</label>
+          <textarea id="mcp-body" class="code" rows="10" spellcheck="false"></textarea>
+          <button type="button" class="btn primary" id="mcp-send">Send</button>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><strong>Reply</strong></div>
+          <pre id="mcp-response" class="code view" tabindex="0" aria-live="polite"></pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Connect your MCP client</h2></div>
+        <p class="muted">Install the package, then add this to your client's configuration (Claude Desktop, Cursor, and others):</p>
+        <div class="snippet"><pre id="mcp-config" class="code">{
+  "mcpServers": {
+    "safestream": { "command": "safestream", "args": ["mcp-serve"] }
+  }
+}</pre><button type="button" class="btn copy" data-copy="mcp-config">Copy</button></div>
+      </div>
+    </section>
+
+    <!-- Install -->
+    <section role="tabpanel" id="panel-install" aria-labelledby="tab-install" hidden>
+      <div class="cards">
+        <div class="card">
+          <h2>Install</h2>
+          <div class="snippet"><pre id="i1" class="code">pip install safestream-redactor</pre><button type="button" class="btn copy" data-copy="i1">Copy</button></div>
+          <p class="muted">Python 3.10 or newer on Linux, macOS or Windows. No third-party runtime dependencies.</p>
+          <table class="plain">
+            <tbody>
+              <tr><td><code>[native]</code></td><td>Rust core, 3–12× faster, identical output</td></tr>
+              <tr><td><code>[ui]</code></td><td>This playground, locally, for files up to 2 GB</td></tr>
+              <tr><td><code>[crypto]</code></td><td>Reversible <code>encrypt</code> mode</td></tr>
+              <tr><td><code>[all]</code></td><td>All three</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h2>Command line</h2>
+          <div class="snippet"><pre id="i2" class="code">safestream redact app.log -o clean.log
+safestream detect src/ --fail-on-detect
+tail -f app.log | safestream redact - -o -</pre><button type="button" class="btn copy" data-copy="i2">Copy</button></div>
+        </div>
+        <div class="card">
+          <h2>Python</h2>
+          <div class="snippet"><pre id="i3" class="code">from safestream_redactor import Redactor
+
+Redactor().redact_file("huge.log", "clean.log")</pre><button type="button" class="btn copy" data-copy="i3">Copy</button></div>
+        </div>
+        <div class="card">
+          <h2>Docker</h2>
+          <div class="snippet"><pre id="i4" class="code">docker run --rm --network none -v "$PWD":/data \
+  ghcr.io/mounishsenisetty/safestream-redactor \
+  redact /data/app.log -o /data/clean.log</pre><button type="button" class="btn copy" data-copy="i4">Copy</button></div>
+        </div>
+      </div>
+      <p class="muted">Documentation, CI integrations and benchmarks are on
+        <a href="https://github.com/MounishSenisetty/SafeStream-Redactor">GitHub</a>.</p>
+    </section>
+  </main>
+</div>
+
+<footer class="foot">
+  <span>MIT licensed</span>
+  <span>This page runs the published Python package in WebAssembly (Pyodide), pure-Python backend.
+    Install <code>[native]</code> locally for 3–12× the speed and files of any size.</span>
+</footer>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

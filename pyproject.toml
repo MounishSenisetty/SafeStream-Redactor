@@ -108,6 +108,7 @@ redactionbench = ["datasets>=2.14", "huggingface_hub>=0.20", "pyarrow>=12"]
 
 [project.urls]
 Homepage = "https://github.com/MounishSenisetty/SafeStream-Redactor"
+Demo = "https://mounishsenisetty.github.io/SafeStream-Redactor/"
 Source = "https://github.com/MounishSenisetty/SafeStream-Redactor"
 Documentation = "https://github.com/MounishSenisetty/SafeStream-Redactor/tree/main/docs"
 Issues = "https://github.com/MounishSenisetty/SafeStream-Redactor/issues"

@@ -4,6 +4,7 @@
 [![PyPI](https://img.shields.io/pypi/v/safestream-redactor.svg)](https://pypi.org/project/safestream-redactor/)
 [![Python](https://img.shields.io/pypi/pyversions/safestream-redactor.svg)](https://pypi.org/project/safestream-redactor/)
 [![License](https://img.shields.io/pypi/l/safestream-redactor.svg)](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-try%20it%20in%20your%20browser-3b4fd8)](https://mounishsenisetty.github.io/SafeStream-Redactor/)
 
 **Find and redact PII and secrets in text of any size, in constant memory, entirely offline.**
 
@@ -15,6 +16,11 @@ line endings included, comes out byte for byte as it went in.
 
 Use it as a command-line tool, a Python library, a local REST API, an MCP server for AI
 agents, a CI secret gate, or a local web playground.
+
+**[Try it in your browser →](https://mounishsenisetty.github.io/SafeStream-Redactor/)** The demo runs the real package in WebAssembly,
+so nothing you paste leaves your machine.
+
+[![The live demo: a service log with its PII and credentials redacted, findings ranked by severity](https://raw.githubusercontent.com/MounishSenisetty/SafeStream-Redactor/main/docs/images/demo-playground.png)](https://mounishsenisetty.github.io/SafeStream-Redactor/)
 
 ## 30-second quickstart
 
@@ -54,7 +60,8 @@ dependencies.
 | Redact inside my own application | Python library | [Python](#user-content-python) |
 | Call it from another language or a container | REST API | [REST API](#user-content-rest-api) |
 | Give an AI agent a safe redaction tool | MCP server | [MCP server](#user-content-mcp-server) |
-| Try it interactively, without code | Web playground | [Web playground](#user-content-web-playground) |
+| Try it without installing anything | Live demo | [Open the demo](https://mounishsenisetty.github.io/SafeStream-Redactor/) |
+| Try it on my own large files, without code | Local web playground | [Web playground](#user-content-web-playground) |
 | Block secrets before they are committed or merged | Pre-commit hook, GitHub Action | [CI gate](#user-content-ci-gate) |
 | Run it fully isolated | Docker | [Docker](#user-content-docker) |
 
@@ -171,6 +178,10 @@ curl -s -X POST http://127.0.0.1:8000/redact \
 See [docs/MCP.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/MCP.md).
 
 ### Web playground
+
+The [live demo](https://mounishsenisetty.github.io/SafeStream-Redactor/) needs no install. It covers the playground, the streaming
+inspector, and the REST and MCP consoles, for inputs up to 1 MiB. For big files, run the
+playground locally:
 
 ```bash
 pip install 'safestream-redactor[ui]'

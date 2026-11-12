@@ -14,6 +14,20 @@ Notable changes to this project. The format follows
   (`card=4111 ...`). Their output is now limited to the requested types. Runs without
   `--types` are unchanged.
 
+### Added
+
+- **Live demo** (`site/`, published to GitHub Pages by `.github/workflows/pages.yml`).
+  The PyPI wheel runs in the browser through Pyodide (CPython for WebAssembly), so
+  nothing a visitor pastes leaves the page. A Content-Security-Policy allows connections
+  only to the page's own origin, and the engine's worker inherits it. It has a playground
+  with three samples and file upload, a streaming inspector that steps through the
+  engine's passes and shows the window size staying fixed, a REST console and an MCP
+  console (the same `dispatch()` and MCP server as `serve` and `mcp-serve`), and install
+  instructions. Light and dark themes; usable on a phone.
+- `scripts/build_site.py` builds the site with a hash-pinned Pyodide. `site/smoke.mjs`
+  tests it in Chromium: the engine starts, every console answers, no request leaves the
+  origin, and the CSP blocks a worker that tries.
+
 ### Documentation
 
 - **One README for GitHub and PyPI.** `README.md` is now the PyPI project page, and
