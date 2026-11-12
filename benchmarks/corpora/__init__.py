@@ -45,6 +45,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 EXTERNAL = ROOT / "benchmarks" / "data" / "external"
@@ -472,6 +473,103 @@ def load_logs() -> Corpus:
     return Corpus("logs", docs, [text_path], None, "self-generated regression fixture")
 
 
+def load_loghub() -> Corpus:
+    """Loghub's 2,000-line samples of real system logs, one document per system.
+
+    No gold: the logs carry no redaction labels, so this corpus is for experiments
+    whose reference is the pipeline itself (chunking equivalence and leaks), never
+    for accuracy. Free for research; cite Zhu et al., ISSRE 2023, and the repository.
+    """
+    directory = EXTERNAL / "loghub"
+    files = sorted(directory.glob("*/*_2k.log"))
+    if not files:
+        _require(directory / "README.md", "git clone https://github.com/logpai/loghub")
+        raise FileNotFoundError(f"no */*_2k.log under {directory}")
+    docs = [
+        Doc(f"loghub-{f.parent.name}", f.read_text(encoding="utf-8", errors="replace"), [])
+        for f in files
+    ]
+    return Corpus(
+        "loghub",
+        docs,
+        files,
+        _revision(directory),
+        "real system logs (Loghub, ISSRE 2023), no gold; for chunking experiments only",
+    )
+
+
+LOGHUB_SLOTS = Path(__file__).resolve().parent / "loghub_slots.json"
+
+
+def loghub_ssh_gold(
+    slots: dict[str, Any], structured: list[dict[str, str]], lines: list[str]
+) -> tuple[list[Doc], list[str]]:
+    """One document per sshd line, gold from template-slot labels (see loghub_slots.json)."""
+    import ipaddress
+
+    docs, skipped = [], []
+    for row in structured:
+        n = int(row["LineId"])
+        raw, content, event = lines[n - 1], row["Content"], row["EventId"]
+        label = slots.get(event)
+        base = raw.rfind(content)
+        rx = re.escape(row["EventTemplate"]).replace(re.escape("<*>"), "(.*?)")
+        m = re.fullmatch(rx, content)
+        if label is None or base < 0 or m is None or len(m.groups()) != len(label["slots"]):
+            skipped.append(f"OpenSSH line {n} ({event}): template does not match its content")
+            continue
+        spans = []
+        for g, kind in enumerate(label["slots"], 1):
+            value, start = m.group(g), base + m.start(g)
+            if not value or kind is None:
+                continue
+            if kind == "USER":
+                spans.append(Gold(start, start + len(value), "USERNAME", "mandatory"))
+            elif kind == "HOST":
+                try:
+                    ipaddress.ip_address(value)
+                except ValueError:
+                    continue  # a public reverse-DNS hostname: not gold by rule
+                spans.append(Gold(start, start + len(value), "IP_ADDRESS", "mandatory"))
+        for user in label.get("literal_users", []):
+            for hit in re.finditer(rf"(?<![\w.-]){re.escape(user)}(?![\w.-])", content):
+                spans.append(Gold(base + hit.start(), base + hit.end(), "USERNAME", "mandatory"))
+        docs.append(Doc(f"ssh-{n:04d}-{event}", raw, sorted(spans, key=lambda x: x.start)))
+    return docs, skipped
+
+
+def load_loghub_ssh() -> Corpus:
+    """Loghub's OpenSSH sample (2,000 real lines) with gold from template-slot labels.
+
+    Refuses to load until a person has checked the labels and filled ``verified_by``
+    in loghub_slots.json (set SAFESTREAM_LOGHUB_UNVERIFIED=1 for a marked preview).
+    """
+    import csv
+    import os
+
+    labels = json.loads(LOGHUB_SLOTS.read_text(encoding="utf-8"))
+    preview = os.environ.get("SAFESTREAM_LOGHUB_UNVERIFIED") == "1"
+    if not labels.get("verified_by") and not preview:
+        raise ValueError(
+            f"{LOGHUB_SLOTS.name} is not verified: check every template's labels and fill "
+            "'verified_by' and 'verified_on' before scoring"
+        )
+    directory = EXTERNAL / "loghub" / "OpenSSH"
+    log = _require(directory / "OpenSSH_2k.log", "git clone https://github.com/logpai/loghub")
+    csv_path = directory / "OpenSSH_2k.log_structured.csv"
+    lines = log.read_text(encoding="utf-8").splitlines()
+    with csv_path.open(encoding="utf-8", newline="") as f:
+        structured = list(csv.DictReader(f))
+    docs, skipped = loghub_ssh_gold(labels["OpenSSH"], structured, lines)
+    note = "real sshd lines (Loghub); gold from template-slot labels"
+    note += "" if labels.get("verified_by") else " (UNVERIFIED PREVIEW)"
+    corpus = Corpus(
+        "loghub_ssh", docs, [log, csv_path, LOGHUB_SLOTS], _revision(directory.parent), note
+    )
+    corpus.skipped.extend(skipped)
+    return corpus
+
+
 def load_realworld() -> Corpus:
     """Authorised real-world artefacts (adjudicated gold); see benchmarks/realworld/."""
     from benchmarks.realworld import data
@@ -488,6 +586,8 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "secrets": load_secrets,
     "logs": load_logs,
     "realworld": load_realworld,
+    "loghub": load_loghub,
+    "loghub_ssh": load_loghub_ssh,
 }
 
 
