@@ -30,6 +30,8 @@ PREVIOUSLY_EXPOSED = {
 # frozen code, so nothing can be tuned on them.
 TEST_ONLY = {
     "realworld": "authorised real-world artefacts; evaluation only, never used for tuning",
+    "loghub_ssh": "real sshd lines (Loghub); gold labels verified before any scoring; "
+    "evaluation only, never used for tuning",
 }
 
 
