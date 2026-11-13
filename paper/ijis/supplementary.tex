@@ -30,7 +30,7 @@
 \begin{document}
 \maketitle
 
-\noindent This resource holds detail that the article summarises: the full chunking-leak table, throughput and scaling, a figure of the held-out accuracy results, the scanner sensitivity table, the false-alarm analysis behind the entropy fix, the analysis of where RedactionBench leaks occur, and the ablation. Section, table and equation numbers without an ``S'' refer to the article. Every number here comes from the result files in the public repository (\url{https://github.com/MounishSenisetty/SafeStream-Redactor}, \texttt{research/results/}).
+\noindent This resource holds detail that the article summarises: the full chunking-leak table, throughput and scaling, a figure of the held-out accuracy results, the scanner sensitivity table, the false-alarm analysis behind the entropy fix, the analysis of where RedactionBench leaks occur, the ablation, TAB results by entity type and the mapping of proof steps to code. Section, table and equation numbers without an ``S'' refer to the article. Every number here comes from the result files in the public repository (\url{https://github.com/MounishSenisetty/SafeStream-Redactor}, \texttt{research/results/}).
 
 %% ===================================================================
 \section{Leaks caused by chunking alone: all chunk sizes}\label{s:chunk}
@@ -181,6 +181,31 @@ FR or mandatory recall$^{a}$ & $+.013$ [$.000$, $.032$] & $+.001$ [$.000$, $.002
 \end{table}
 
 The entropy tier carried most of the credential recall: without it, character F1 on secrets fell from 0.842 to 0.383. The label-anchored tier mattered on presidio-research, where several identifiers carry labels. The contextual scorer's own detections changed no result on these corpora; its confidence adjustment was kept in every variant. Alone, the deterministic tier reached a character F1 of 0.380 on secrets and 0.237 on presidio-research, and the entropy tier alone 0.822 on secrets. The union rule raised recall by small and mostly significant amounts at no significant cost in F1 on secrets ($+0.000$ [$-0.003$, $+0.005$]) and RedactionBench ($+0.003$ [$-0.002$, $+0.008$]); on presidio-research its F1 difference was $+0.004$ [$+0.001$, $+0.007$]. The ablation was not planned and its intervals are document-level only.
+
+%% ===================================================================
+\section{TAB: character recall by entity type}\label{s:tab}
+
+Table~\ref{t:tab} breaks down the character recall of Table~9 of the article by TAB's entity types, pooled over document--annotator pairs (descriptive; no intervals). The secret scanners redacted nothing and are omitted. SafeStream's named-entity tier maps only spaCy's person, organisation and place labels, so it leaves dates, which are 44.7\% of the gold characters, almost entirely unredacted; its opt-in date tier, evaluated separately, redacts most of them.
+
+\begin{table}[ht]
+\caption{Character recall on TAB by entity type (\textsc{direct} and \textsc{quasi} mentions). Share: the type's share of gold characters.}\label{t:tab}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lrrrrrrr}
+\toprule
+Type & Share (\%) & Pattern & +dates & +spaCy & P.\ regex & P.\ sm & P.\ lg \\
+\midrule
+\textsc{datetime} & 44.7 & 0.01 & 0.88 & 0.01 & 0.00 & 0.98 & 0.99 \\
+\textsc{person} & 19.8 & 0.00 & 0.00 & 0.78 & 0.06 & 0.72 & 0.79 \\
+\textsc{org} & 13.9 & 0.00 & 0.00 & 0.78 & 0.07 & 0.21 & 0.22 \\
+\textsc{loc} & 5.2 & 0.03 & 0.03 & 0.87 & 0.07 & 0.78 & 0.76 \\
+\textsc{code} & 4.7 & 0.00 & 0.00 & 0.03 & 0.01 & 0.12 & 0.07 \\
+\textsc{misc} & 4.5 & 0.00 & 0.01 & 0.10 & 0.08 & 0.14 & 0.15 \\
+\textsc{dem} & 4.0 & 0.00 & 0.00 & 0.15 & 0.07 & 0.44 & 0.47 \\
+\textsc{quantity} & 3.2 & 0.00 & 0.00 & 0.12 & 0.03 & 0.05 & 0.04 \\
+\bottomrule
+\end{tabular*}
+\end{table}
 
 %% ===================================================================
 \section{Implementation mapping of the proofs}\label{s:mapping}
