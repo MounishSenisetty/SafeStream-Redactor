@@ -32,6 +32,8 @@ TEST_ONLY = {
     "realworld": "authorised real-world artefacts; evaluation only, never used for tuning",
     "loghub_ssh": "real sshd lines (Loghub); gold labels verified before any scoring; "
     "evaluation only, never used for tuning",
+    "loghub_linux": "real Linux syslog lines (Loghub); held out from the log-username tier; "
+    "labels verified before any scoring; evaluation only",
 }
 
 
