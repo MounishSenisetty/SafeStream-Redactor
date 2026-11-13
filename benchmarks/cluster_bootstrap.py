@@ -71,6 +71,8 @@ def clusters_for(corpus: str, docs: list[corpora.Doc]) -> list[str]:
         path = corpora.EXTERNAL / "presidio_research" / "synth_dataset_v2.json"
         rows = json.loads(path.read_text(encoding="utf-8"))
         return [f"template:{rows[int(d.doc_id[3:])]['template_id']}" for d in docs]
+    if corpus == "loghub_ssh":  # sshd lines generated from one log template
+        return ["template:" + d.doc_id.rsplit("-", 1)[1] for d in docs]
     if corpus == "realworld":  # documents from one source system or repository
         from benchmarks.realworld.data import sources_of
 
