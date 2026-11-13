@@ -85,6 +85,7 @@ _SCHEMA: dict[str, dict[str, str]] = {
         "profile": _STR,
         "use_prose_fields": _BOOL,
         "use_urls": _BOOL,
+        "use_log_usernames": _BOOL,
         "backend": _STR,
     },
     "redaction": {
