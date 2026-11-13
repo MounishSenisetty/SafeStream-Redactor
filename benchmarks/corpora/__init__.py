@@ -623,6 +623,79 @@ def load_loghub_linux() -> Corpus:
     return corpus
 
 
+TAB_MASKED = ("DIRECT", "QUASI")
+
+
+def tab_annotations(doc: dict[str, Any]) -> dict[str, list[tuple[int, int, str, str, str]]]:
+    """Per annotator, the mentions TAB says must be masked: (start, end, type, identifier, entity).
+
+    TAB marks a mention for masking when its identifier type is DIRECT or QUASI;
+    NO_MASK mentions are not gold.
+    """
+    out: dict[str, list[tuple[int, int, str, str, str]]] = {}
+    for annotator, ann in sorted(doc["annotations"].items()):
+        out[annotator] = [
+            (
+                m["start_offset"],
+                m["end_offset"],
+                m["entity_type"],
+                m["identifier_type"],
+                m["entity_id"],
+            )
+            for m in ann["entity_mentions"]
+            if m["identifier_type"] in TAB_MASKED
+        ]
+    return out
+
+
+def load_tab() -> Corpus:
+    """Text Anonymization Benchmark (Pilan et al., 2022), test split only.
+
+    127 real ECHR judgments, annotated by one to ten people each. Every document is
+    test data (no development half), scored once with frozen code. Each Doc carries
+    the union over annotators of the mentions to be masked (merged into maximal
+    intervals) so that the generic harness can run; the primary scores come from
+    ``benchmarks.tab_score``, which scores each annotator's gold separately as TAB
+    prescribes.
+    """
+    directory = EXTERNAL / "tab"
+    path = _require(
+        directory / "echr_test.json",
+        "git clone https://github.com/NorskRegnesentral/text-anonymization-benchmark "
+        "and copy echr_test.json, LICENSE.txt and README.md here, with the commit in REVISION",
+    )
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    docs, skipped = [], []
+    for d in raw:
+        text = d["text"]
+        spans = []
+        for annotator, mentions in tab_annotations(d).items():
+            for start, end, etype, _ident, _ent in mentions:
+                if not (0 <= start < end <= len(text)):
+                    skipped.append(f"{d['doc_id']} {annotator}: offsets {start}-{end}")
+                    continue
+                spans.append((start, end, etype))
+        spans.sort()
+        merged: list[list[Any]] = []
+        for start, end, etype in spans:
+            if merged and start <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], end)
+            else:
+                merged.append([start, end, etype])
+        gold = [Gold(a, b, t, "mandatory") for a, b, t in merged]
+        docs.append(Doc(f"tab-{d['doc_id']}", text, gold))
+    corpus = Corpus(
+        "tab",
+        docs,
+        [path],
+        _revision(directory),
+        "real ECHR judgments (TAB test split, MIT licence); gold = DIRECT and QUASI "
+        "mentions, union over annotators here; primary scores per annotator",
+    )
+    corpus.skipped.extend(skipped)
+    return corpus
+
+
 def load_realworld() -> Corpus:
     """Authorised real-world artefacts (adjudicated gold); see benchmarks/realworld/."""
     from benchmarks.realworld import data
@@ -642,6 +715,7 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "loghub": load_loghub,
     "loghub_ssh": load_loghub_ssh,
     "loghub_linux": load_loghub_linux,
+    "tab": load_tab,
 }
 
 
