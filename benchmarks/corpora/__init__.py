@@ -502,9 +502,18 @@ LOGHUB_SLOTS = Path(__file__).resolve().parent / "loghub_slots.json"
 
 
 def loghub_ssh_gold(
-    slots: dict[str, Any], structured: list[dict[str, str]], lines: list[str]
+    slots: dict[str, Any],
+    structured: list[dict[str, str]],
+    lines: list[str],
+    prefix: str = "ssh",
+    unlisted_have_no_gold: bool = False,
 ) -> tuple[list[Doc], list[str]]:
-    """One document per sshd line, gold from template-slot labels (see loghub_slots.json)."""
+    """One document per log line, gold from template-slot labels (see loghub_slots.json).
+
+    With ``unlisted_have_no_gold``, a template absent from ``slots`` contributes a
+    gold-free document instead of being skipped (the Linux labels list only the
+    templates that carry gold).
+    """
     import ipaddress
 
     docs, skipped = [], []
@@ -515,8 +524,11 @@ def loghub_ssh_gold(
         base = raw.rfind(content)
         rx = re.escape(row["EventTemplate"]).replace(re.escape("<*>"), "(.*?)")
         m = re.fullmatch(rx, content)
+        if label is None and unlisted_have_no_gold and base >= 0:
+            docs.append(Doc(f"{prefix}-{n:04d}-{event}", raw, []))
+            continue
         if label is None or base < 0 or m is None or len(m.groups()) != len(label["slots"]):
-            skipped.append(f"OpenSSH line {n} ({event}): template does not match its content")
+            skipped.append(f"{prefix} line {n} ({event}): template does not match its content")
             continue
         spans = []
         for g, kind in enumerate(label["slots"], 1):
@@ -534,7 +546,7 @@ def loghub_ssh_gold(
         for user in label.get("literal_users", []):
             for hit in re.finditer(rf"(?<![\w.-]){re.escape(user)}(?![\w.-])", content):
                 spans.append(Gold(base + hit.start(), base + hit.end(), "USERNAME", "mandatory"))
-        docs.append(Doc(f"ssh-{n:04d}-{event}", raw, sorted(spans, key=lambda x: x.start)))
+        docs.append(Doc(f"{prefix}-{n:04d}-{event}", raw, sorted(spans, key=lambda x: x.start)))
     return docs, skipped
 
 
@@ -570,6 +582,47 @@ def load_loghub_ssh() -> Corpus:
     return corpus
 
 
+LOGHUB_SLOTS_LINUX = Path(__file__).resolve().parent / "loghub_slots_linux.json"
+
+
+def load_loghub_linux() -> Corpus:
+    """Loghub's Linux sample (2,000 real syslog lines) with gold from template-slot labels.
+
+    The held-out real-log corpus for the log-username tier: its labels were drafted
+    after that tier was committed. Same verification gate as ``loghub_ssh``.
+    """
+    import csv
+    import os
+
+    labels = json.loads(LOGHUB_SLOTS_LINUX.read_text(encoding="utf-8"))
+    preview = os.environ.get("SAFESTREAM_LOGHUB_UNVERIFIED") == "1"
+    if not labels.get("verified_by") and not preview:
+        raise ValueError(
+            f"{LOGHUB_SLOTS_LINUX.name} is not verified: check every template's labels and "
+            "fill 'verified_by' and 'verified_on' before scoring"
+        )
+    directory = EXTERNAL / "loghub" / "Linux"
+    log = _require(directory / "Linux_2k.log", "git clone https://github.com/logpai/loghub")
+    csv_path = directory / "Linux_2k.log_structured.csv"
+    lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
+    with csv_path.open(encoding="utf-8", errors="replace", newline="") as f:
+        structured = list(csv.DictReader(f))
+    docs, skipped = loghub_ssh_gold(
+        labels["Linux"], structured, lines, prefix="linux", unlisted_have_no_gold=True
+    )
+    note = "real Linux syslog lines (Loghub); gold from template-slot labels"
+    note += "" if labels.get("verified_by") else " (UNVERIFIED PREVIEW)"
+    corpus = Corpus(
+        "loghub_linux",
+        docs,
+        [log, csv_path, LOGHUB_SLOTS_LINUX],
+        _revision(directory.parent),
+        note,
+    )
+    corpus.skipped.extend(skipped)
+    return corpus
+
+
 def load_realworld() -> Corpus:
     """Authorised real-world artefacts (adjudicated gold); see benchmarks/realworld/."""
     from benchmarks.realworld import data
@@ -588,6 +641,7 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "realworld": load_realworld,
     "loghub": load_loghub,
     "loghub_ssh": load_loghub_ssh,
+    "loghub_linux": load_loghub_linux,
 }
 
 

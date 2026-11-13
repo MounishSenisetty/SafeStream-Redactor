@@ -16,6 +16,13 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- **User names in authentication logs** (opt-in: `use_log_usernames=True`,
+  `--log-usernames`, `use_log_usernames = true`, or naming `username` in `types`). A new
+  tier redacts the user name in the message formats of sshd (`Invalid user NAME from`,
+  `Failed password for NAME from`, ...), Linux-PAM (`user=NAME`, `session opened for user
+  NAME`), su, sudo and login. Only the name is redacted. The tier declares its context
+  bounds, so the default overlap is unchanged. Off by default, so existing output does
+  not change.
 - **Live demo** (`site/`, published to GitHub Pages by `.github/workflows/pages.yml`).
   The PyPI wheel runs in the browser through Pyodide (CPython for WebAssembly), so
   nothing a visitor pastes leaves the page. A Content-Security-Policy allows connections

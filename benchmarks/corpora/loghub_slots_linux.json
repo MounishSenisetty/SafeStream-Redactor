@@ -1,0 +1,85 @@
+{
+ "about": "Template-slot labels that turn Loghub's Linux sample (2,000 real syslog lines from sshd/PAM, su, login, ftpd, klogind and the kernel; Loghub commit dd61d09) into a gold standard, under the same rule as loghub_slots.json: a HOST slot whose value is a valid IP address is IP_ADDRESS (hostnames are not gold); every USER slot value and every account name written literally into a template is USERNAME; everything else is not gold. Templates not listed here have no gold slots. Drafted after the log-username tier was committed (c699ec6) and before any system was scored on these lines.",
+ "drafted_by": "AI assistant (Claude), from the template text only",
+ "verified_by": "Mounish Senisetty",
+ "verified_on": "2026-11-13",
+ "Linux": {
+  "E9": {
+   "slots": [
+    "HOST"
+   ]
+  },
+  "E13": {
+   "slots": [
+    "HOST",
+    "HOST"
+   ]
+  },
+  "E14": {
+   "slots": [
+    "HOST",
+    "HOST"
+   ]
+  },
+  "E16": {
+   "slots": [
+    "HOST"
+   ]
+  },
+  "E17": {
+   "slots": [
+    "HOST"
+   ],
+   "literal_users": [
+    "guest"
+   ]
+  },
+  "E18": {
+   "slots": [
+    "HOST"
+   ],
+   "literal_users": [
+    "root"
+   ]
+  },
+  "E19": {
+   "slots": [
+    "HOST"
+   ],
+   "literal_users": [
+    "test"
+   ]
+  },
+  "E29": {
+   "slots": [
+    "HOST",
+    "HOST",
+    null,
+    null,
+    null
+   ]
+  },
+  "E88": {
+   "slots": [
+    "HOST"
+   ]
+  },
+  "E101": {
+   "slots": [
+    "USER"
+   ]
+  },
+  "E102": {
+   "slots": [
+    "USER",
+    null
+   ]
+  },
+  "E103": {
+   "slots": [
+    "USER",
+    null
+   ]
+  }
+ }
+}

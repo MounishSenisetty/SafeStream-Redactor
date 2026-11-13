@@ -109,6 +109,11 @@ class Redactor:
         Redact every URL. Off by default (URLs with credentials, webhook URLs and
         the values of sensitive query parameters are always redacted); on in the
         prose profile.
+    use_log_usernames:
+        Redact user names in authentication log messages: sshd (``Invalid user
+        NAME from``), PAM (``user=NAME``, ``session opened for user NAME``), su,
+        sudo and login (``detectors/log_username.py``). Off by default; naming
+        ``username`` in ``types`` also enables it.
     use_prose_fields:
         Also redact sex/gender and honorific/job-title fields (``"Gender": "F"``)
         and nationality / religious-group words (``EntityType.NRP``). Off by
@@ -170,6 +175,7 @@ class Redactor:
         use_dates: bool | None = None,
         use_prose_fields: bool | None = None,
         use_urls: bool | None = None,
+        use_log_usernames: bool = False,
         profile: str = "default",
         calibrator: Calibrator | None = None,
         extra_detectors: Iterable[Detector] = (),
@@ -310,6 +316,12 @@ class Redactor:
             from safestream_redactor.detectors.deterministic import NrpDetector
 
             self._detectors.append(NrpDetector())
+        if use_log_usernames or (
+            resolved_types is not None and EntityType.USERNAME in resolved_types
+        ):
+            from safestream_redactor.detectors.log_username import LogUsernameDetector
+
+            self._detectors.append(LogUsernameDetector())
         if use_dates or (resolved_types is not None and EntityType.DATE in resolved_types):
             from safestream_redactor.detectors.deterministic import DateDetector
 
