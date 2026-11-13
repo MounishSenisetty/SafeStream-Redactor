@@ -34,6 +34,8 @@ TEST_ONLY = {
     "evaluation only, never used for tuning",
     "loghub_linux": "real Linux syslog lines (Loghub); held out from the log-username tier; "
     "labels verified before any scoring; evaluation only",
+    "tab": "real ECHR judgments (TAB test split), human gold from the TAB authors; "
+    "never used for development; evaluation only",
 }
 
 
