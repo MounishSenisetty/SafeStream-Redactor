@@ -127,11 +127,22 @@ def metrics(v: np.ndarray) -> dict[str, np.ndarray]:
     }
 
 
+CORPUS_FILES = {
+    "tab": ("echr_test.json", "test"),
+    "tab_dev": ("echr_dev.json", "dev"),
+    "tab_train": ("echr_train.json", "test"),
+}
+
+
 def score(
-    systems: dict[str, list[list[tuple[int, ...]]]], resamples: int = 2000, seed: int = 0
+    systems: dict[str, list[list[tuple[int, ...]]]],
+    resamples: int = 2000,
+    seed: int = 0,
+    corpus: str = "tab",
 ) -> dict[str, Any]:
-    raw = {d["doc_id"]: d for d in _raw_test()}
-    ids = [d.doc_id.removeprefix("tab-") for d in corpora.load("tab", "test").docs]
+    fname, split = CORPUS_FILES[corpus]
+    raw = {d["doc_id"]: d for d in _raw(fname)}
+    ids = [d.doc_id.removeprefix("tab-") for d in corpora.load(corpus, split).docs]
     docs = [raw[i] for i in ids]
     arr, types = {}, {}
     for name, preds in systems.items():
@@ -150,6 +161,7 @@ def score(
     boot = {n: metrics(w @ a) for n, a in arr.items()}
     out: dict[str, Any] = {
         "protocol": PROTOCOL,
+        "corpus": corpus,
         "n_docs": len(docs),
         "annotator_pairs": int(sum(len(d["annotations"]) for d in docs)),
         "resamples": resamples,
@@ -186,13 +198,14 @@ def score(
     return out
 
 
-def _raw_test() -> list[dict[str, Any]]:
-    path = corpora.EXTERNAL / "tab" / "echr_test.json"
+def _raw(fname: str) -> list[dict[str, Any]]:
+    path = corpora.EXTERNAL / "tab" / fname
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--corpus", default="tab", choices=sorted(CORPUS_FILES))
     ap.add_argument("--system", action="append", required=True, metavar="NAME=CHECKPOINT")
     ap.add_argument("--resamples", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=0)
@@ -202,7 +215,7 @@ def main() -> None:
     for spec in args.system:
         name, path = spec.split("=", 1)
         systems[name], commits[name] = load_checkpoint(Path(path))
-    res = score(systems, args.resamples, args.seed)
+    res = score(systems, args.resamples, args.seed, args.corpus)
     res["commits"] = commits
     args.json.write_text(json.dumps(res, indent=1) + "\n", encoding="utf-8")
     for n, m in res["point"].items():

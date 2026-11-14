@@ -36,6 +36,13 @@ TEST_ONLY = {
     "labels verified before any scoring; evaluation only",
     "tab": "real ECHR judgments (TAB test split), human gold from the TAB authors; "
     "never used for development; evaluation only",
+    "tab_train": "TAB training split used as held-out confirmation for the free-text "
+    "configuration: never inspected or scored before that configuration was frozen",
+}
+
+# Corpora with no test half: every document is development data.
+DEV_ONLY = {
+    "tab_dev": "TAB development split: the only TAB data used to design configurations",
 }
 
 
@@ -64,6 +71,9 @@ def make_manifest(corpus: corpora.Corpus, seed: int = SEED) -> dict[str, object]
         if corpus.name in TEST_ONLY:
             test.extend(groups[key])
             continue
+        if corpus.name in DEV_ONLY:
+            dev.extend(groups[key])
+            continue
         (dev if len(dev) < len(corpus.docs) // 2 else test).extend(groups[key])
     return {
         "corpus": corpus.name,
@@ -75,6 +85,7 @@ def make_manifest(corpus: corpora.Corpus, seed: int = SEED) -> dict[str, object]
         "previously_exposed": PREVIOUSLY_EXPOSED.get(corpus.name),
         "notes": corpus.notes,
         "test_only": TEST_ONLY.get(corpus.name),
+        "dev_only": DEV_ONLY.get(corpus.name),
         "dev": sorted(dev),
         "test": sorted(test),
     }
