@@ -340,3 +340,9 @@ repository holds pseudonymised counts only.
   chat template, and calls are parsed from its `<tool_call>` blocks. A 2-run smoke
   test checked only that tool calls parse; no outcome was looked at. Everything else
   in Amendment 2 is unchanged. A run on Claude can follow later as a replication.
+- **Smoke test** (one document, T4, both conditions). It was run to check that tool
+  calls parse and that the read and restore calls reach the server. Its outcome counts
+  were printed and therefore seen. Nothing was changed after it except two harness
+  details made before any outcome: SafeStream's read call (`redact`) was added to the
+  manifest, and tools whose name contains "apply" were excluded as file tools. The
+  smoke runs are not part of the results.
