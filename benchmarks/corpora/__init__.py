@@ -712,6 +712,79 @@ def load_tab_train() -> Corpus:
     return _load_tab("train", "tab_train")
 
 
+def load_creddata() -> Corpus:
+    """CredData (Samsung): lines of real open-source files labelled by people as holding
+    a credential (T) or not (F, X), with real values obfuscated by its builder.
+
+    One document per labelled line range (LineStart..LineEnd) of a file; a range with
+    at least one T row carries each T row's value span as gold, and a range whose
+    rows are all F or X is gold-free, so any detection on it is a false alarm. Only
+    labelled lines are documents: CredData labels the candidates its authors' tools
+    proposed, so recall is measured over those. Evaluation only; nothing is tuned.
+    """
+    import csv
+
+    directory = EXTERNAL / "creddata"
+    meta_dir = _require(
+        directory / "meta",
+        "git clone https://github.com/Samsung/CredData, run its download_data.py, and copy "
+        "meta/ and data/ here (commit in REVISION)",
+    )
+    rows: dict[tuple[str, int, int], list[dict[str, str]]] = {}
+    files: list[Path] = sorted(meta_dir.glob("*.csv"))
+    for f in files:
+        with f.open(encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                key = (row["FilePath"], int(row["LineStart"]), int(row["LineEnd"]))
+                rows.setdefault(key, []).append(row)
+    docs, skipped = [], []
+    cache: dict[str, list[str]] = {}
+    for (fpath, ls, le), group in sorted(rows.items()):
+        path = directory / fpath
+        if fpath not in cache:
+            try:
+                raw = path.read_bytes().decode("utf-8", errors="replace")
+            except OSError:
+                skipped.append(f"{fpath}: missing")
+                cache[fpath] = []
+                continue
+            cache[fpath] = raw.split("\n")
+        lines = cache[fpath]
+        if not lines or le < ls or le > len(lines):
+            skipped.append(f"{fpath}:{ls}-{le}: outside the file")
+            continue
+        chunk = lines[ls - 1 : le]
+        text = "\n".join(chunk)
+        starts = [0]
+        for line in chunk[:-1]:
+            starts.append(starts[-1] + len(line) + 1)
+        gold = []
+        for row in group:
+            if row["GroundTruth"] != "T":
+                continue
+            vs, ve = row["ValueStart"].strip(), row["ValueEnd"].strip()
+            if not vs or not ve or int(vs) < 0 or int(ve) < 0:
+                skipped.append(f"{fpath}:{ls}-{le} row {row['Id']}: T without a value span")
+                continue
+            a, b = starts[0] + int(vs), starts[-1] + int(ve)
+            if not (0 <= a < b <= len(text)):
+                skipped.append(f"{fpath}:{ls}-{le} row {row['Id']}: span outside the lines")
+                continue
+            gold.append(Gold(a, b, row.get("Category") or "credential", "mandatory"))
+        doc_id = f"cred-{group[0]['RepoName']}-{Path(fpath).stem}-{ls}-{le}"
+        docs.append(Doc(doc_id, text, sorted(gold, key=lambda g: (g.start, g.end))))
+    corpus = Corpus(
+        "creddata",
+        docs,
+        files,
+        _revision(directory),
+        "CredData labelled lines (real open-source files, values obfuscated); gold = "
+        "T value spans; all-F/X line ranges are gold-free",
+    )
+    corpus.skipped.extend(skipped)
+    return corpus
+
+
 def load_realworld() -> Corpus:
     """Authorised real-world artefacts (adjudicated gold); see benchmarks/realworld/."""
     from benchmarks.realworld import data
@@ -734,6 +807,7 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "tab": load_tab,
     "tab_dev": load_tab_dev,
     "tab_train": load_tab_train,
+    "creddata": load_creddata,
 }
 
 

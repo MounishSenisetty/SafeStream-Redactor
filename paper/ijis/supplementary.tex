@@ -30,7 +30,7 @@
 \begin{document}
 \maketitle
 
-\noindent This resource holds detail that the article summarises: the full chunking-leak table, throughput and scaling, a figure of the held-out accuracy results, the scanner sensitivity table, the false-alarm analysis behind the entropy fix, the analysis of where RedactionBench leaks occur, the ablation, TAB results by entity type (test and held-out splits) and the mapping of proof steps to code. Section, table and equation numbers without an ``S'' refer to the article. Every number here comes from the result files in the public repository (\url{https://github.com/MounishSenisetty/SafeStream-Redactor}, \texttt{research/results/}).
+\noindent This resource holds detail that the article summarises: the full chunking-leak table, throughput and scaling, a figure of the held-out accuracy results, the scanner sensitivity table, the false-alarm analysis behind the entropy fix, the analysis of where RedactionBench leaks occur, the ablation, TAB results by entity type (test and held-out splits), CredData results by category and the mapping of proof steps to code. Section, table and equation numbers without an ``S'' refer to the article. Every number here comes from the result files in the public repository (\url{https://github.com/MounishSenisetty/SafeStream-Redactor}, \texttt{research/results/}).
 
 %% ===================================================================
 \section{Leaks caused by chunking alone: all chunk sizes}\label{s:chunk}
@@ -146,7 +146,7 @@ Before the suppression rule of Section~4.1, SafeStream flagged 83 of the 103 gen
 %% ===================================================================
 \section{Where the RedactionBench leaks are}\label{s:leaks}
 
-We re-ran five systems of Table~5 of the article (exposed pattern tiers, exposed +spaCy, gitleaks, TruffleHog and Presidio lg) on the test half at the commit that produced those rows, reproducing its mandatory recall and no-leak rates exactly, and kept the per-document predictions. The 95 test documents with mandatory gold contain 8{,}002 mandatory spans. The observations below are descriptive, from one corpus that had been inspected during development, and carry no confidence intervals.
+We re-ran five systems of Table~6 of the article (exposed pattern tiers, exposed +spaCy, gitleaks, TruffleHog and Presidio lg) on the test half at the commit that produced those rows, reproducing its mandatory recall and no-leak rates exactly, and kept the per-document predictions. The 95 test documents with mandatory gold contain 8{,}002 mandatory spans. The observations below are descriptive, from one corpus that had been inspected during development, and carry no confidence intervals.
 \begin{itemize}
 \item \emph{Leaks are whole misses, not boundary errors.} With spaCy, 6{,}441 mandatory spans were fully redacted, 64 partially and 1{,}497 not at all; of the 17{,}122 leaked mandatory characters, 826 (4.8\%) lie in partially redacted spans and the rest in spans with no detection. For the pattern tiers alone the share is 3.7\% (854 of 22{,}778). Presidio lg leaks more through partial coverage: 7{,}354 of its 41{,}589 leaked characters (17.7\%).
 \item \emph{Few documents are near misses; leaks are concentrated.} With spaCy, 17 documents leaked nothing, 5 more leaked exactly one mandatory span and 7 more leaked two, so fixing one or two spans per document would raise the no-leak rate to at most 29 of 95 (0.305). The median document leaked 6 mandatory spans (interquartile range 2--16), a median of 23\% of its mandatory spans, and the 9 documents with the most leaked characters held 67\% of them. For the pattern tiers alone the median document leaked 11 spans (52\%), and only 2 documents were within two spans of no leak.
@@ -185,7 +185,7 @@ The entropy tier carried most of the credential recall: without it, character F1
 %% ===================================================================
 \section{TAB: character recall by entity type}\label{s:tab}
 
-Table~\ref{t:tab} breaks down the character recall of Table~9 of the article by TAB's entity types, pooled over document--annotator pairs (descriptive; no intervals). The secret scanners redacted nothing and are omitted. SafeStream's named-entity tier maps only spaCy's person, organisation and place labels, so it leaves dates, which are 44.7\% of the gold characters, almost entirely unredacted; its opt-in date tier, evaluated separately, redacts most of them.
+Table~\ref{t:tab} breaks down the character recall of Table~10 of the article by TAB's entity types, pooled over document--annotator pairs (descriptive; no intervals). The secret scanners redacted nothing and are omitted. SafeStream's named-entity tier maps only spaCy's person, organisation and place labels, so it leaves dates, which are 44.7\% of the gold characters, almost entirely unredacted; its opt-in date tier, evaluated separately, redacts most of them.
 
 \begin{table}[ht]
 \caption{Character recall on TAB by entity type (\textsc{direct} and \textsc{quasi} mentions). Share: the type's share of gold characters.}\label{t:tab}
@@ -210,7 +210,7 @@ Type & Share (\%) & Pattern & +dates & +spaCy & P.\ regex & P.\ sm & P.\ lg \\
 %% ===================================================================
 \section{TAB held-out judgments: character recall by entity type}\label{s:tabtrain}
 
-Table~\ref{t:tabtrain} breaks down the held-out results of Table~10 of the article (TAB training split, 1,014 judgments) by entity type, pooled over document--annotator pairs (descriptive; no intervals). The free-text configuration is \texttt{Redactor(profile="prose", use\_ner=True)} frozen at commit \texttt{9c10975}; its protocol is \texttt{benchmarks/TAB\_PROSE\_PROTOCOL.md}.
+Table~\ref{t:tabtrain} breaks down the held-out results of Table~11 of the article (TAB training split, 1,014 judgments) by entity type, pooled over document--annotator pairs (descriptive; no intervals). The free-text configuration is \texttt{Redactor(profile="prose", use\_ner=True)} frozen at commit \texttt{9c10975}; its protocol is \texttt{benchmarks/TAB\_PROSE\_PROTOCOL.md}.
 
 \begin{table}[ht]
 \caption{Character recall on held-out TAB judgments by entity type (\textsc{direct} and \textsc{quasi} mentions).}\label{t:tabtrain}
@@ -227,6 +227,36 @@ Type & Free-text & +spaCy & P.\ regex & P.\ sm & P.\ lg \\
 \textsc{misc} & 0.17 & 0.15 & 0.07 & 0.16 & 0.16 \\
 \textsc{dem} & 0.26 & 0.07 & 0.10 & 0.36 & 0.37 \\
 \textsc{quantity} & 0.49 & 0.10 & 0.03 & 0.08 & 0.05 \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+%% ===================================================================
+\section{CredData: fully redacted rate by credential category}\label{s:cred}
+
+Table~\ref{t:cred} breaks down the fully redacted rate of Table~5 of the article by CredData's first category label (descriptive; no intervals; the 14 most frequent categories, which hold 13,566 of the 14,626 values). Evaluated: SafeStream's pattern tiers at commit \texttt{3d2c6ac}; current: the default profile at \texttt{9c10975}. The protocol is \texttt{benchmarks/CREDDATA\_PROTOCOL.md}.
+
+\begin{table}[ht]
+\caption{Fully redacted rate on CredData by category.}\label{t:cred}
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lrrrrr}
+\toprule
+Category & Values & Evaluated & Current & gitleaks & TruffleHog \\
+\midrule
+Key & 4,015 & 0.94 & 0.96 & 0.86 & 0.00 \\
+Password & 2,655 & 0.19 & 0.88 & 0.05 & 0.00 \\
+UUID & 2,356 & 0.09 & 0.11 & 0.01 & 0.00 \\
+Secret & 1,343 & 0.77 & 0.89 & 0.81 & 0.00 \\
+Auth & 1,095 & 0.73 & 0.78 & 0.11 & 0.00 \\
+Token & 798 & 0.47 & 0.78 & 0.60 & 0.00 \\
+API & 226 & 0.33 & 0.49 & 0.24 & 0.00 \\
+URL credentials & 213 & 0.96 & 0.96 & 0.00 & 0.29 \\
+AWS client ID & 198 & 0.75 & 0.75 & 0.46 & 0.02 \\
+JSON Web Token & 152 & 0.97 & 0.99 & 0.92 & 0.00 \\
+PEM private key & 151 & 0.90 & 0.91 & 1.00 & 0.00 \\
+Nonce & 149 & 0.68 & 0.68 & 0.00 & 0.00 \\
+NTLM token & 117 & 1.00 & 1.00 & 0.00 & 0.00 \\
+Credential & 94 & 0.10 & 0.14 & 0.07 & 0.03 \\
 \bottomrule
 \end{tabular*}
 \end{table}
