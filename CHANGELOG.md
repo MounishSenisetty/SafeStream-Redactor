@@ -8,6 +8,15 @@ Notable changes to this project. The format follows
 
 ### Added
 
+- **Live demo: a complete, guided playground.** The browser demo now offers every
+  redaction mode the pure-Python engine runs (replace, mask, pseudonymize, hash,
+  fictionalize; encrypt is labelled local only), types grouped PII / Secrets / Opt-in,
+  the regional, dates, prose and log-username tiers, per-type replacements, and a
+  `policy.toml` editor checked by the same loader as `--config`. It shows the matching
+  CLI, Python, REST and MCP calls and can run the CLI in the page to compare bytes; adds a
+  determinism check, a split-secret replay and a generated-input memory benchmark, a CI
+  gate tab running `safestream detect --fail-on-detect`, an install chooser, an offline
+  proof, a guided tour, keyboard shortcuts and shareable settings in the URL (never text).
 - **Prose profile: years, money and reference numbers; spaCy prose mode.** `profile="prose"`
   now also redacts bare years (with the date tier), sums of money with their currency
   (`EntityType.MONEY`) and number/year references such as case or application numbers

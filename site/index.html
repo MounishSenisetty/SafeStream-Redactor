@@ -14,123 +14,192 @@
 <script type="module" src="app.js"></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to the demo</a>
 <header class="topbar">
   <a class="brand" href="./" aria-label="SafeStream Redactor demo home">
     <img src="favicon.svg" alt="" width="22" height="22">
     <span>SafeStream Redactor</span>
   </a>
   <span class="chip" id="version" title="safestream-redactor version running in this page">loading…</span>
-  <span class="local" id="local-badge" title="The engine runs in this tab via WebAssembly. A Content-Security-Policy blocks every connection to other sites, so nothing you paste can leave this page.">
+  <a class="local" id="local-badge" href="#tab=trust" data-goto="trust">
     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 7V5a4 4 0 1 1 8 0v2h.5A1.5 1.5 0 0 1 14 8.5v5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5v-5A1.5 1.5 0 0 1 3.5 7H4Zm2 0h4V5a2 2 0 1 0-4 0v2Z"/></svg>
-    Runs in your browser. Nothing is uploaded.
-  </span>
+    <span>Offline · <output id="net-count" aria-live="polite">0</output> requests since start</span>
+  </a>
   <nav class="links" aria-label="Project links">
     <a href="https://github.com/MounishSenisetty/SafeStream-Redactor">GitHub</a>
     <a href="https://pypi.org/project/safestream-redactor/">PyPI</a>
-    <button type="button" class="icon-btn" id="theme" aria-label="Switch colour theme" title="Switch colour theme">
+    <button type="button" class="icon-btn" id="help-btn" aria-label="Keyboard shortcuts and help" title="Shortcuts and help (?)">?</button>
+    <button type="button" class="icon-btn" id="theme" aria-label="Switch colour theme" title="Switch colour theme (t)">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 1.5v11a5.5 5.5 0 0 1 0-11Z"/></svg>
     </button>
   </nav>
 </header>
 
 <div class="boot" id="boot" role="status" aria-live="polite">
-  <div class="boot-bar"><span id="boot-fill"></span></div>
+  <div class="boot-bar" role="progressbar" aria-label="Engine start-up" aria-valuemin="0" aria-valuemax="100" aria-valuenow="5" id="boot-progress"><span id="boot-fill"></span></div>
   <span id="boot-text">Starting the engine…</span>
+  <span class="muted small" id="boot-note">About 14 MB, downloaded once from this site. You can read and explore while it loads.</span>
 </div>
 
-<div class="layout">
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-text">
+    <h1 id="hero-title">Find and redact PII and secrets in text of any size, in constant memory, entirely offline.</h1>
+    <p class="trust"><strong>Runs entirely in your browser. Nothing is uploaded.</strong>
+      This page runs the real <code>safestream-redactor</code> Python package in
+      <span data-term="wasm">WebAssembly</span>; a <span data-term="csp">Content-Security-Policy</span>
+      stops it from contacting any other site.</p>
+    <ul class="pills" aria-label="What it does">
+      <li><span data-term="pii">PII</span> and <span data-term="secret">secrets</span> in one pass</li>
+      <li><span data-term="stream">Constant memory</span></li>
+      <li><span data-term="determinism">Deterministic</span></li>
+      <li>CLI · Python · REST · MCP · CI gate</li>
+    </ul>
+  </div>
+  <div class="hero-actions">
+    <button type="button" class="btn primary" id="tour-btn">Take the 1-minute tour</button>
+    <button type="button" class="btn" data-goto="install">Install it</button>
+  </div>
+</section>
+
+<div class="layout" id="layout">
   <details class="rail" id="rail" open>
-    <summary>Settings</summary>
-    <form id="settings" autocomplete="off">
-      <fieldset>
-        <legend>Redaction</legend>
-        <div class="seg" role="radiogroup" aria-label="Redaction style">
-          <label><input type="radio" name="style" value="replace" checked><span>Replace</span></label>
-          <label><input type="radio" name="style" value="mask"><span>Mask</span></label>
-          <label><input type="radio" name="style" value="hash"><span>Hash</span></label>
+    <summary>Settings <span class="muted small" id="rail-summary"></span></summary>
+    <form id="settings" autocomplete="off" novalidate>
+      <fieldset id="mode-group">
+        <legend>Redaction mode</legend>
+        <div class="modes" id="modes" role="radiogroup" aria-label="Redaction mode"></div>
+        <p class="mode-help" id="mode-help" aria-live="polite"></p>
+
+        <label class="field" data-for="replace">Replacement text
+          <input type="text" name="replacement" value="[REDACTED]" maxlength="60">
+        </label>
+        <div class="row2" data-for="mask" hidden>
+          <label class="field">Characters left visible
+            <input type="number" name="mask_keep_last" value="4" min="0" max="32">
+          </label>
+          <label class="field">Mask character
+            <input type="text" name="mask_char" value="*" maxlength="1">
+          </label>
+          <small class="full">Never more than half of a value stays visible.</small>
         </div>
-        <label class="field" data-for="replace">Replacement
-          <input type="text" name="replacement" value="[REDACTED]" maxlength="40">
-        </label>
-        <label class="field" data-for="mask" hidden>Characters left visible
-          <input type="number" name="keep_last" value="4" min="0" max="16">
-          <small>Never more than half of a value.</small>
-        </label>
-        <label class="field" data-for="hash" hidden>HMAC key
-          <input type="password" name="hash_key" spellcheck="false">
-          <small>Random for this tab. Equal values get equal pseudonyms.</small>
-        </label>
+        <div data-for="pseudonymize fictionalize" hidden>
+          <label class="field"><span data-term="hmac">HMAC key</span>
+            <span class="with-btn"><input type="password" name="hmac_key" spellcheck="false" autocomplete="off">
+            <button type="button" class="btn small" id="new-key" aria-label="Generate a new random key">New</button></span>
+          </label>
+          <small>Random for this tab and never put in the page address. Equal values get equal output.</small>
+          <label class="field" data-for="pseudonymize">Token length (hex digits)
+            <input type="number" name="pseudonym_length" value="16" min="8" max="64">
+          </label>
+        </div>
+        <div class="row2" data-for="hash" hidden>
+          <label class="field">Algorithm
+            <select name="hash_algorithm"><option>sha256</option><option>sha512</option></select>
+          </label>
+          <label class="field">Secret salt
+            <input type="password" name="hash_salt" spellcheck="false" autocomplete="off">
+          </label>
+          <small class="full">Without a secret salt, a short value (an SSN) can be guessed by hashing every possibility. Use pseudonymize when you can.</small>
+        </div>
+        <div class="static-note" data-for="encrypt" hidden>
+          <p><strong>Runs locally only.</strong> Encrypt needs the optional <code>cryptography</code>
+            package, which this browser demo does not include. Nothing here is simulated.</p>
+          <div class="snippet"><pre class="code" id="encrypt-cmd">pip install 'safestream-redactor[crypto]'
+export SAFESTREAM_ENCRYPT_KEY='a secret of at least 16 bytes'
+safestream redact app.log -o clean.log --mode encrypt
+safestream deanonymize clean.log -o restored.log</pre><button type="button" class="btn copy" data-copy="encrypt-cmd">Copy</button></div>
+        </div>
       </fieldset>
 
       <fieldset>
         <legend>Detection</legend>
-        <label class="field">Minimum confidence <output id="conf-out">0.50</output>
+        <label class="field"><span data-term="confidence">Minimum confidence</span> <output id="conf-out">0.50</output>
           <input type="range" name="min_confidence" min="0" max="1" step="0.05" value="0.5">
         </label>
-        <label class="switch"><input type="checkbox" name="use_entropy" checked><span>High-entropy secrets</span></label>
-        <label class="switch"><input type="checkbox" name="use_names"><span>Name heuristics</span></label>
-        <details class="types">
-          <summary>Entity types <span id="types-count"></span></summary>
-          <div class="types-actions">
-            <button type="button" class="link" data-types="all">All</button>
-            <button type="button" class="link" data-types="none">None</button>
-          </div>
-          <div class="types-list" id="types-list"></div>
-        </details>
+        <label class="switch"><input type="checkbox" name="use_entropy" checked><span><span data-term="entropy">High-entropy secrets</span></span></label>
+        <label class="switch"><input type="checkbox" name="use_names"><span>Name heuristics <small class="muted">(no model)</small></span></label>
+        <label class="switch"><input type="checkbox" name="use_regional"><span>Regional IDs <small class="muted">IBAN, NINO, NHS, Aadhaar, PAN, crypto</small></span></label>
+        <label class="switch"><input type="checkbox" name="use_dates"><span>Dates and times</span></label>
+        <label class="switch"><input type="checkbox" name="use_log_usernames"><span>Log user names <small class="muted">sshd, sudo, PAM</small></span></label>
+        <label class="field inline-field">Profile
+          <select name="profile"><option value="default">default (logs)</option><option value="prose">prose (documents)</option></select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Entity types <span class="muted" id="types-count"></span></legend>
+        <div class="types-actions">
+          <button type="button" class="link" data-types="all">All</button>
+          <button type="button" class="link" data-types="none">None</button>
+        </div>
+        <div class="types-groups" id="types-list"></div>
       </fieldset>
 
       <fieldset>
         <legend>Custom rules</legend>
         <label class="field">Words, one per line
-          <textarea name="custom_words" rows="2" spellcheck="false" placeholder="ProjectX"></textarea>
+          <textarea name="custom_words" rows="2" spellcheck="false" placeholder="ProjectFalcon"></textarea>
         </label>
         <label class="field">Regex patterns, one per line
           <textarea name="custom_patterns" rows="2" spellcheck="false" placeholder="\bEMP-\d{5}\b"></textarea>
         </label>
+        <div class="field">Per-type replacement text
+          <div class="repl-add">
+            <label class="sr-only" for="repl-type">Entity type</label>
+            <select id="repl-type"></select>
+            <label class="sr-only" for="repl-text">Replacement</label>
+            <input type="text" id="repl-text" placeholder="<EMAIL>" maxlength="60">
+            <button type="button" class="btn small" id="repl-add">Add</button>
+          </div>
+          <ul class="repl-list" id="repl-list" aria-label="Per-type replacements"></ul>
+        </div>
       </fieldset>
       <p class="error" id="settings-error" role="alert" hidden></p>
     </form>
   </details>
 
-  <main>
+  <main id="main" tabindex="-1">
     <div class="tabs" role="tablist" aria-label="Demo sections">
       <button role="tab" id="tab-playground" aria-controls="panel-playground" aria-selected="true">Playground</button>
-      <button role="tab" id="tab-inspector" aria-controls="panel-inspector" aria-selected="false" tabindex="-1">Streaming inspector</button>
+      <button role="tab" id="tab-inspector" aria-controls="panel-inspector" aria-selected="false" tabindex="-1">Streaming</button>
       <button role="tab" id="tab-rest" aria-controls="panel-rest" aria-selected="false" tabindex="-1">REST API</button>
       <button role="tab" id="tab-mcp" aria-controls="panel-mcp" aria-selected="false" tabindex="-1">MCP server</button>
+      <button role="tab" id="tab-ci" aria-controls="panel-ci" aria-selected="false" tabindex="-1">CI gate</button>
       <button role="tab" id="tab-install" aria-controls="panel-install" aria-selected="false" tabindex="-1">Install</button>
+      <button role="tab" id="tab-trust" aria-controls="panel-trust" aria-selected="false" tabindex="-1">How it works</button>
     </div>
 
     <!-- Playground -->
-    <section role="tabpanel" id="panel-playground" aria-labelledby="tab-playground">
-      <div class="toolbar">
-        <label class="inline">Sample
-          <select id="sample">
-            <option value="log">Application log</option>
-            <option value="env">.env file</option>
-            <option value="ticket">Support ticket</option>
-          </select>
-        </label>
-        <label class="btn" for="upload">Open file…</label>
-        <input type="file" id="upload" accept=".txt,.log,.json,.csv,.env,.md,.yaml,.yml,.conf,.ini,text/*" hidden>
-        <span class="hint" id="sample-hint"></span>
+    <section role="tabpanel" id="panel-playground" aria-labelledby="tab-playground" tabindex="-1">
+      <div class="samples" id="samples" role="group" aria-label="Samples">
+        <span class="samples-label">Try a sample:</span>
       </div>
+      <p class="hint" id="sample-hint" aria-live="polite"></p>
 
       <dl class="metrics" id="metrics">
         <div><dt>Findings</dt><dd id="m-findings">–</dd></div>
         <div><dt>Entity types</dt><dd id="m-types">–</dd></div>
-        <div><dt>Highest severity</dt><dd id="m-severity">–</dd></div>
+        <div><dt><span data-term="severity">Highest severity</span></dt><dd id="m-severity">–</dd></div>
         <div><dt>Characters</dt><dd id="m-chars">–</dd></div>
         <div><dt>Engine time</dt><dd id="m-time">–</dd></div>
       </dl>
 
       <div class="split">
-        <div class="pane">
+        <div class="pane" id="input-pane">
           <div class="pane-head">
-            <label for="input">Input</label>
-            <span class="muted" id="input-size"></span>
+            <label for="input">Input <span class="muted small">type, paste or drop a file</span></label>
+            <span class="actions">
+              <label class="btn small" for="upload">Open file…</label>
+              <input type="file" id="upload" class="sr-only" tabindex="-1" accept=".txt,.log,.json,.csv,.env,.md,.yaml,.yml,.conf,.ini,.toml,.py,.js,.ts,.go,.java,.rb,.sh,.diff,.patch,text/*">
+              <button type="button" class="btn small" id="clear-input">Clear</button>
+            </span>
           </div>
-          <textarea id="input" class="code" spellcheck="false" aria-describedby="input-size"></textarea>
+          <div class="editor" id="editor">
+            <div class="backdrop code" id="backdrop" aria-hidden="true"></div>
+            <textarea id="input" class="code" wrap="off" spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="input-size"></textarea>
+            <div class="drop" id="drop" hidden><span>Drop a text file to scan it here. It is read by this page only.</span></div>
+          </div>
+          <p class="muted small pane-foot" id="input-size"></p>
         </div>
         <div class="pane">
           <div class="pane-head">
@@ -139,49 +208,105 @@
               <label><input type="radio" name="view" value="highlighted"><span>Highlighted</span></label>
             </div>
             <span class="actions">
-              <button type="button" class="btn" id="copy-out">Copy</button>
-              <button type="button" class="btn" id="download-out">Download</button>
+              <button type="button" class="btn small" id="copy-out" title="Copy the redacted output (c)">Copy</button>
+              <button type="button" class="btn small" id="download-out" title="Download the redacted output (d)">Download</button>
+              <button type="button" class="btn small" id="det-btn" title="Re-run four independent ways and compare the bytes">Check determinism</button>
             </span>
           </div>
-          <pre id="output" class="code view" tabindex="0" role="region" aria-live="polite" aria-label="Output"></pre>
-          <p class="legend" aria-hidden="true">
-            <span class="sev" data-sev="critical">critical</span>
-            <span class="sev" data-sev="high">high</span>
-            <span class="sev" data-sev="medium">medium</span>
-            <span class="sev" data-sev="low">low</span>
-          </p>
+          <pre id="output" class="code view" tabindex="0" role="region" aria-label="Output. Use the left and right arrow keys to move between findings." aria-describedby="output-note"></pre>
+          <p class="muted small pane-foot" id="output-note"></p>
         </div>
       </div>
+      <div class="legend" id="legend" aria-label="Colour key"></div>
+      <div class="card result-card" id="det-card" hidden aria-live="polite"></div>
 
-      <div class="card">
+      <div class="card" id="findings-card">
         <div class="card-head">
-          <h2>Findings</h2>
+          <h2>Findings <span class="muted" id="findings-shown"></span></h2>
           <label class="switch small"><input type="checkbox" id="reveal"><span>Reveal matched values</span></label>
         </div>
-        <div class="table-wrap">
+        <p class="muted small">Matched values stay hidden unless you reveal them, the same default as
+          <code>safestream detect</code> (<code>--show-text</code> reveals them).</p>
+        <div class="type-counts" id="type-counts" role="group" aria-label="Filter by type"></div>
+        <div class="filters">
+          <label class="inline">Search <input type="search" id="f-search" placeholder="type or detector"></label>
+          <label class="inline">Severity
+            <select id="f-sev"><option value="">any</option><option>critical</option><option>high</option><option>medium</option><option>low</option></select>
+          </label>
+          <button type="button" class="link" id="f-clear" hidden>Clear filters</button>
+        </div>
+        <div class="table-wrap" id="findings-wrap">
           <table id="findings">
-            <thead><tr><th scope="col">Severity</th><th scope="col">Type</th><th scope="col">Line:col</th><th scope="col">Confidence</th><th scope="col">Detector</th><th scope="col">Value</th></tr></thead>
+            <caption class="sr-only">Detections, sortable by column</caption>
+            <thead><tr>
+              <th scope="col" aria-sort="none"><button type="button" data-sort="severity">Severity</button></th>
+              <th scope="col" aria-sort="none"><button type="button" data-sort="type">Type</button></th>
+              <th scope="col" aria-sort="ascending"><button type="button" data-sort="start">Line:col</button></th>
+              <th scope="col" aria-sort="none"><button type="button" data-sort="confidence"><span data-term="confidence">Confidence</span></button></th>
+              <th scope="col" aria-sort="none"><button type="button" data-sort="detector">Detector</button></th>
+              <th scope="col">Value</th>
+              <th scope="col">Replaced by</th>
+            </tr></thead>
             <tbody></tbody>
           </table>
         </div>
+        <button type="button" class="btn small" id="show-all" hidden>Show all</button>
       </div>
 
-      <div class="card">
-        <div class="card-head"><h2>Run this on your own files</h2></div>
-        <p class="muted">The same settings, as a command and as Python. Your files never leave your machine.</p>
-        <div class="snippet"><pre id="cli-snippet" class="code"></pre><button type="button" class="btn copy" data-copy="cli-snippet">Copy</button></div>
-        <div class="snippet"><pre id="py-snippet" class="code"></pre><button type="button" class="btn copy" data-copy="py-snippet">Copy</button></div>
+      <div class="cards two">
+        <div class="card" id="policy-card">
+          <div class="card-head">
+            <h2><span data-term="policy">policy.toml</span></h2>
+            <span class="actions">
+              <button type="button" class="btn small" data-copy="policy-text">Copy</button>
+              <button type="button" class="btn small" id="policy-download">Download</button>
+            </span>
+          </div>
+          <p class="muted small">The settings on the left as a policy file. Edit either side; the other follows.
+            Checked by the same loader as <code>--config policy.toml</code>.</p>
+          <label class="sr-only" for="policy-text">Policy file (TOML)</label>
+          <textarea id="policy-text" class="code" rows="10" spellcheck="false" aria-describedby="policy-status"></textarea>
+          <p class="status-line" id="policy-status" aria-live="polite"></p>
+          <button type="button" class="link small" id="policy-starter">Load the starter file from <code>safestream init-config</code></button>
+        </div>
+
+        <div class="card" id="run-card">
+          <div class="card-head"><h2>Run this yourself</h2></div>
+          <p class="muted small">The current settings, ready to paste. Your files never leave your machine.</p>
+          <div class="subtabs" role="tablist" aria-label="Run this yourself">
+            <button role="tab" id="rt-cli" aria-controls="rp-cli" aria-selected="true">CLI</button>
+            <button role="tab" id="rt-py" aria-controls="rp-py" aria-selected="false" tabindex="-1">Python</button>
+            <button role="tab" id="rt-rest" aria-controls="rp-rest" aria-selected="false" tabindex="-1">REST</button>
+            <button role="tab" id="rt-mcp" aria-controls="rp-mcp" aria-selected="false" tabindex="-1">MCP</button>
+          </div>
+          <div role="tabpanel" id="rp-cli" aria-labelledby="rt-cli">
+            <div class="snippet"><pre id="cli-snippet" class="code"></pre><button type="button" class="btn copy" data-copy="cli-snippet">Copy</button></div>
+            <button type="button" class="btn small" id="cli-run">Run this command here</button>
+            <div id="cli-result" class="cli-result" aria-live="polite"></div>
+          </div>
+          <div role="tabpanel" id="rp-py" aria-labelledby="rt-py" hidden>
+            <div class="snippet"><pre id="py-snippet" class="code"></pre><button type="button" class="btn copy" data-copy="py-snippet">Copy</button></div>
+          </div>
+          <div role="tabpanel" id="rp-rest" aria-labelledby="rt-rest" hidden>
+            <div class="snippet"><pre id="rest-snippet" class="code"></pre><button type="button" class="btn copy" data-copy="rest-snippet">Copy</button></div>
+          </div>
+          <div role="tabpanel" id="rp-mcp" aria-labelledby="rt-mcp" hidden>
+            <div class="snippet"><pre id="mcp-snippet" class="code"></pre><button type="button" class="btn copy" data-copy="mcp-snippet">Copy</button></div>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- Streaming inspector -->
-    <section role="tabpanel" id="panel-inspector" aria-labelledby="tab-inspector" hidden>
-      <p class="lead">The engine never holds the whole input. It reads a chunk, scans it together
-        with an overlap carried from the last pass, writes out what is safe, and repeats. Step
-        through the passes to watch the window move while its size stays fixed.</p>
+    <section role="tabpanel" id="panel-inspector" aria-labelledby="tab-inspector" tabindex="-1" hidden>
+      <p class="lead">The engine never holds the whole input. It reads a <span data-term="chunk">chunk</span>,
+        scans it together with an <span data-term="overlap">overlap</span> carried from the last pass,
+        writes out what is safe, and repeats. Step through the passes to watch the window move while
+        its size stays fixed.</p>
       <div class="toolbar">
         <div class="seg" role="radiogroup" aria-label="Text to inspect">
           <label><input type="radio" name="isrc" value="long" checked><span>Long log (60 KB)</span></label>
+          <label><input type="radio" name="isrc" value="split"><span>Split secret</span></label>
           <label><input type="radio" name="isrc" value="input"><span>Playground input</span></label>
         </div>
         <label class="inline">Chunk size <select id="ichunk"></select></label>
@@ -201,54 +326,97 @@
           <button type="button" class="btn" id="iback" aria-label="Previous pass">◀</button>
           <button type="button" class="btn" id="istep" aria-label="Next pass">▶</button>
           <label class="grow">Pass <output id="ipos">–</output>
-            <input type="range" id="iseek" min="0" max="0" value="0">
+            <input type="range" id="iseek" min="0" max="0" value="0" aria-label="Pass">
           </label>
           <label class="inline">Speed
             <select id="ispeed"><option value="1200">Slow</option><option value="600" selected>Normal</option><option value="200">Fast</option></select>
           </label>
         </div>
-        <div class="tape-wrap" aria-hidden="true">
-          <div class="tape" id="tape">
+        <div class="tape-wrap">
+          <div class="tape" id="tape" aria-hidden="true">
             <span class="t-done" id="t-done"></span>
             <span class="t-win" id="t-win"><span class="t-ctx" id="t-ctx"></span><span class="t-emit" id="t-emit"></span><span class="t-carry" id="t-carry"></span></span>
           </div>
           <div class="tape-scale"><span>0</span><span id="tape-end"></span></div>
+          <p class="muted small key-row"><span class="key done">written</span> <span class="key ctx">read-only context</span> <span class="key emit">written by this pass</span> <span class="key carry">carried to the next pass</span></p>
         </div>
         <div class="bars-wrap">
           <div class="bars" id="bars" aria-hidden="true"></div>
           <p class="muted small" id="bars-caption"></p>
         </div>
-        <div id="inotes"></div>
+        <div id="inotes" aria-live="polite"></div>
         <div class="split">
           <div class="pane">
             <div class="pane-head"><strong>Scanned window</strong>
               <span class="muted small"><span class="key ctx">context</span> <span class="key emit">emitted</span> <span class="key carry">carried</span></span></div>
-            <pre id="iwindow" class="code view" tabindex="0"></pre>
+            <pre id="iwindow" class="code view" tabindex="0" aria-label="Scanned window"></pre>
           </div>
           <div class="pane">
             <div class="pane-head"><strong>Written by this pass</strong></div>
-            <pre id="isegment" class="code view" tabindex="0"></pre>
+            <pre id="isegment" class="code view" tabindex="0" aria-label="Written by this pass"></pre>
           </div>
         </div>
+      </div>
+
+      <div class="card" id="bench-card">
+        <div class="card-head"><h2>Memory stays flat as input grows</h2></div>
+        <p class="muted">Generate a synthetic service log of each size inside the engine and stream it
+          through <code>redact_stream</code>, as <code>safestream redact</code> streams a file. Each size
+          runs twice: once timed, once under Python's <span data-term="tracemalloc">tracemalloc</span>
+          to measure the peak memory the engine allocates. The log is generated as it is read and the
+          output is hashed as it is written, so neither is ever held whole.</p>
+        <div class="toolbar">
+          <label class="inline">Sizes
+            <select id="bench-sizes">
+              <option value="262144,524288,1048576">256 KiB, 512 KiB, 1 MiB (quick)</option>
+              <option value="1048576,2097152,4194304" selected>1, 2 and 4 MiB</option>
+              <option value="1048576,4194304,16777216">1, 4 and 16 MiB (a few minutes)</option>
+            </select>
+          </label>
+          <button type="button" class="btn primary" id="bench-run">Generate and stream</button>
+          <span class="muted small" id="bench-status" aria-live="polite"></span>
+        </div>
+        <div class="bench-progress" id="bench-progress" hidden><span id="bench-fill"></span></div>
+        <div class="bench-out" id="bench-out"></div>
+      </div>
+
+      <div class="card local-only">
+        <div class="card-head"><h2>Faster, on your machine</h2><span class="tag">Runs locally, not in this page</span></div>
+        <p class="muted">This page runs one copy of the pure-Python engine inside WebAssembly. Installed
+          locally, the same package adds a Rust core and multi-core workers with byte-identical output.
+          From the README: about 1.1–1.4 MB/s per core in pure Python and 3–17 MB/s with the native core,
+          and <code>--workers N</code> scales across cores.</p>
+        <div class="snippet"><pre class="code" id="fast-cmd">pip install 'safestream-redactor[native]'
+safestream redact huge.log -o clean.log --backend native --workers 8</pre><button type="button" class="btn copy" data-copy="fast-cmd">Copy</button></div>
       </div>
     </section>
 
     <!-- REST API -->
-    <section role="tabpanel" id="panel-rest" aria-labelledby="tab-rest" hidden>
-      <p class="lead">This is the API <code>safestream serve</code> exposes on your machine. Here
-        the same request handler answers inside your browser, with the settings on the left.</p>
+    <section role="tabpanel" id="panel-rest" aria-labelledby="tab-rest" tabindex="-1" hidden>
+      <p class="lead">This is the API <code>safestream serve</code> exposes on your machine
+        (<code>127.0.0.1:8000</code>). Here the same request handler answers inside your browser, with the
+        settings on the left.</p>
       <div class="split">
         <div class="pane">
           <div class="pane-head"><strong>Request</strong></div>
           <div class="toolbar">
-            <select id="rest-route" aria-label="Endpoint">
-              <option value="POST /redact">POST /redact</option>
-              <option value="POST /scan">POST /scan</option>
-              <option value="GET /detectors">GET /detectors</option>
-              <option value="GET /health">GET /health</option>
-              <option value="GET /version">GET /version</option>
+            <label class="sr-only" for="rest-route">Endpoint</label>
+            <select id="rest-route">
+              <optgroup label="Endpoints">
+                <option value="POST /redact">POST /redact</option>
+                <option value="POST /scan">POST /scan</option>
+                <option value="GET /detectors">GET /detectors</option>
+                <option value="GET /health">GET /health</option>
+                <option value="GET /version">GET /version</option>
+              </optgroup>
+              <optgroup label="Errors">
+                <option value="POST /redact|nofield">400: body without a text field</option>
+                <option value="POST /scan|badjson">400: body that is not JSON</option>
+                <option value="GET /nope">404: no such route</option>
+              </optgroup>
             </select>
             <button type="button" class="btn primary" id="rest-send">Send</button>
+            <button type="button" class="btn small" id="rest-use-input">Use playground input</button>
           </div>
           <label class="sr-only" for="rest-body">Request body (JSON)</label>
           <textarea id="rest-body" class="code" rows="8" spellcheck="false"></textarea>
@@ -256,94 +424,297 @@
         </div>
         <div class="pane">
           <div class="pane-head"><strong>Response</strong> <span class="status" id="rest-status"></span></div>
-          <pre id="rest-response" class="code view" tabindex="0" aria-live="polite"></pre>
+          <pre id="rest-response" class="code view" tabindex="0" aria-live="polite" aria-label="Response"></pre>
         </div>
       </div>
-      <p class="muted">Endpoints: <code>GET /health</code>, <code>/version</code>, <code>/detectors</code>,
-        <code>POST /redact</code>, and <code>POST /scan</code>, which returns offsets and types but never the matched text.</p>
+      <div class="card">
+        <h2>Endpoints</h2>
+        <div class="table-wrap">
+          <table class="plain-table">
+            <thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">Body</th><th scope="col">Returns</th></tr></thead>
+            <tbody>
+              <tr><td>GET</td><td><code>/health</code></td><td>–</td><td><code>{"status": "ok"}</code></td></tr>
+              <tr><td>GET</td><td><code>/version</code></td><td>–</td><td>tool name and version</td></tr>
+              <tr><td>GET</td><td><code>/detectors</code></td><td>–</td><td>active tiers and every entity type</td></tr>
+              <tr><td>POST</td><td><code>/redact</code></td><td><code>{"text": "..."}</code></td><td>redacted text and counts by type</td></tr>
+              <tr><td>POST</td><td><code>/scan</code></td><td><code>{"text": "..."}</code></td><td>offsets, types and confidence, never the matched text</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted small">Errors: <code>400</code> bad JSON or no string <code>text</code>, <code>404</code> unknown
+          route, <code>411</code> chunked body, <code>413</code> body over the limit (8 MiB by default). Request bodies are never logged.</p>
+      </div>
     </section>
 
     <!-- MCP -->
-    <section role="tabpanel" id="panel-mcp" aria-labelledby="tab-mcp" hidden>
+    <section role="tabpanel" id="panel-mcp" aria-labelledby="tab-mcp" tabindex="-1" hidden>
       <p class="lead"><code>safestream mcp-serve</code> gives an AI agent redaction tools over the
-        Model Context Protocol. The tools report <em>what</em> was found and <em>where</em>,
-        never the secret itself. Send the same JSON-RPC messages an agent would.</p>
+        <span data-term="mcp">Model Context Protocol</span>. The tools report <em>what</em> was found and
+        <em>where</em>, never the secret itself. Send the same <span data-term="jsonrpc">JSON-RPC</span>
+        messages an agent would.</p>
       <div class="split">
         <div class="pane">
           <div class="pane-head"><strong>Message</strong></div>
-          <div class="toolbar wrap" id="mcp-presets">
-            <button type="button" class="btn" data-preset="initialize">initialize</button>
-            <button type="button" class="btn" data-preset="list">tools/list</button>
-            <button type="button" class="btn" data-preset="scan">scan</button>
-            <button type="button" class="btn" data-preset="redact">redact</button>
-            <button type="button" class="btn" data-preset="explain">explain_detection</button>
+          <div class="toolbar wrap" id="mcp-presets" role="group" aria-label="Message presets">
+            <button type="button" class="btn small" data-preset="initialize">initialize</button>
+            <button type="button" class="btn small" data-preset="initialized">notifications/initialized</button>
+            <button type="button" class="btn small" data-preset="ping">ping</button>
+            <button type="button" class="btn small" data-preset="list">tools/list</button>
+            <button type="button" class="btn small" data-preset="scan">scan</button>
+            <button type="button" class="btn small" data-preset="redact">redact</button>
+            <button type="button" class="btn small" data-preset="explain">explain_detection</button>
+            <button type="button" class="btn small" data-preset="detectors">detectors</button>
+            <button type="button" class="btn small" data-preset="health">health</button>
+            <button type="button" class="btn small" data-preset="unknown">unknown tool</button>
           </div>
           <label class="sr-only" for="mcp-body">JSON-RPC message</label>
           <textarea id="mcp-body" class="code" rows="10" spellcheck="false"></textarea>
-          <button type="button" class="btn primary" id="mcp-send">Send</button>
+          <div class="toolbar"><button type="button" class="btn primary" id="mcp-send">Send</button>
+            <button type="button" class="btn small" id="mcp-use-input">Use playground input</button></div>
         </div>
         <div class="pane">
           <div class="pane-head"><strong>Reply</strong></div>
-          <pre id="mcp-response" class="code view" tabindex="0" aria-live="polite"></pre>
+          <pre id="mcp-response" class="code view" tabindex="0" aria-live="polite" aria-label="Reply"></pre>
         </div>
       </div>
       <div class="card">
         <div class="card-head"><h2>Connect your MCP client</h2></div>
-        <p class="muted">Install the package, then add this to your client's configuration (Claude Desktop, Cursor, and others):</p>
-        <div class="snippet"><pre id="mcp-config" class="code">{
-  "mcpServers": {
-    "safestream": { "command": "safestream", "args": ["mcp-serve"] }
-  }
-}</pre><button type="button" class="btn copy" data-copy="mcp-config">Copy</button></div>
+        <p class="muted">Install the package, then add this to your client's configuration (Claude Desktop, Cursor, and others).
+          It follows the settings on the left: anything other than the defaults goes through a policy file.</p>
+        <div class="snippet"><pre id="mcp-config" class="code"></pre><button type="button" class="btn copy" data-copy="mcp-config">Copy</button></div>
+        <h3>Tools</h3>
+        <div class="table-wrap">
+          <table class="plain-table">
+            <thead><tr><th scope="col">Tool</th><th scope="col">Input</th><th scope="col">Returns</th></tr></thead>
+            <tbody>
+              <tr><td><code>scan</code></td><td><code>{"text"}</code></td><td>type, offsets, length, confidence, severity, detector: no secret text</td></tr>
+              <tr><td><code>redact</code></td><td><code>{"text"}</code></td><td>the text with secrets removed, and counts</td></tr>
+              <tr><td><code>explain_detection</code></td><td><code>{"text"}</code></td><td>why each finding was flagged: no secret text</td></tr>
+              <tr><td><code>detectors</code></td><td><code>{}</code></td><td>active tiers, their streaming requirements, the overlap</td></tr>
+              <tr><td><code>health</code></td><td><code>{}</code></td><td>version, tiers, protocol, offline status</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CI gate -->
+    <section role="tabpanel" id="panel-ci" aria-labelledby="tab-ci" tabindex="-1" hidden>
+      <p class="lead"><code>safestream detect --fail-on-detect</code> exits with status 1 when it finds
+        anything, which fails a commit hook or a CI job. It reports <code>file:line:col</code> and the type,
+        never the secret. Paste a file or a diff: the real command runs on it here.</p>
+      <div class="split">
+        <div class="pane">
+          <div class="pane-head">
+            <label for="ci-input">File to check</label>
+            <span class="actions">
+              <button type="button" class="btn small" data-ci="leak">Diff with a leaked key</button>
+              <button type="button" class="btn small" data-ci="clean">Clean diff</button>
+              <button type="button" class="btn small" data-ci="input">Playground input</button>
+            </span>
+          </div>
+          <textarea id="ci-input" class="code" rows="12" spellcheck="false"></textarea>
+          <div class="toolbar ci-opts">
+            <label class="inline">File name <input type="text" id="ci-name" value="change.diff" maxlength="80" spellcheck="false"></label>
+            <div class="seg small" role="radiogroup" aria-label="Report format">
+              <label><input type="radio" name="ci-format" value="" checked><span>Text</span></label>
+              <label><input type="radio" name="ci-format" value="--json"><span>JSON</span></label>
+              <label><input type="radio" name="ci-format" value="--sarif"><span><span data-term="sarif">SARIF</span></span></label>
+            </div>
+            <button type="button" class="btn primary" id="ci-run">Run the gate</button>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><strong>Result</strong></div>
+          <div class="gate" id="ci-verdict" aria-live="polite"><span class="muted">Run the gate to see the verdict.</span></div>
+          <div class="snippet"><pre id="ci-cmd" class="code"></pre><button type="button" class="btn copy" data-copy="ci-cmd">Copy</button></div>
+          <pre id="ci-output" class="code view small-view" tabindex="0" aria-label="Command output"></pre>
+        </div>
+      </div>
+      <p class="muted small">The command scans the whole text it is given, removed lines of a diff included.
+        As a pre-commit hook it receives the staged files themselves.</p>
+      <div class="cards two">
+        <div class="card">
+          <div class="card-head"><h2>Pre-commit hook</h2></div>
+          <div class="snippet"><pre id="ci-precommit" class="code"></pre><button type="button" class="btn copy" data-copy="ci-precommit">Copy</button></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>GitHub Action</h2></div>
+          <div class="snippet"><pre id="ci-action" class="code"></pre><button type="button" class="btn copy" data-copy="ci-action">Copy</button></div>
+          <p class="muted small">The SARIF report is content-free, so it is safe to upload to code scanning.</p>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span data-term="exit">Exit codes</span></h2>
+        <table class="plain-table">
+          <tbody>
+            <tr><td><code>0</code></td><td>Success: nothing found</td></tr>
+            <tr><td><code>1</code></td><td><code>--fail-on-detect</code> found something, or a runtime error (unreadable input, invalid config)</td></tr>
+            <tr><td><code>2</code></td><td>Invalid command-line usage</td></tr>
+            <tr><td><code>3</code></td><td>The run could not fit in <code>--memory-limit</code></td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
     <!-- Install -->
-    <section role="tabpanel" id="panel-install" aria-labelledby="tab-install" hidden>
-      <div class="cards">
+    <section role="tabpanel" id="panel-install" aria-labelledby="tab-install" tabindex="-1" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Which one do I need?</h2></div>
+        <div class="chooser" id="chooser" role="radiogroup" aria-label="I want to…"></div>
+        <div class="chooser-out" id="chooser-out" aria-live="polite"></div>
+      </div>
+      <div class="cards two">
         <div class="card">
-          <h2>Install</h2>
+          <h2>pip</h2>
           <div class="snippet"><pre id="i1" class="code">pip install safestream-redactor</pre><button type="button" class="btn copy" data-copy="i1">Copy</button></div>
-          <p class="muted">Python 3.10 or newer on Linux, macOS or Windows. No third-party runtime dependencies.</p>
-          <table class="plain">
-            <tbody>
-              <tr><td><code>[native]</code></td><td>Rust core, 3–12× faster, identical output</td></tr>
-              <tr><td><code>[ui]</code></td><td>This playground, locally, for files up to 2 GB</td></tr>
-              <tr><td><code>[crypto]</code></td><td>Reversible <code>encrypt</code> mode</td></tr>
-              <tr><td><code>[all]</code></td><td>All three</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="card">
-          <h2>Command line</h2>
-          <div class="snippet"><pre id="i2" class="code">safestream redact app.log -o clean.log
-safestream detect src/ --fail-on-detect
-tail -f app.log | safestream redact - -o -</pre><button type="button" class="btn copy" data-copy="i2">Copy</button></div>
-        </div>
-        <div class="card">
-          <h2>Python</h2>
-          <div class="snippet"><pre id="i3" class="code">from safestream_redactor import Redactor
-
-Redactor().redact_file("huge.log", "clean.log")</pre><button type="button" class="btn copy" data-copy="i3">Copy</button></div>
+          <p class="muted">Python 3.10 or newer on Linux, macOS or Windows. No third-party runtime dependencies.
+            Only need the command? <code>pipx install safestream-redactor</code>, or without installing:
+            <code>uvx safestream-redactor --help</code>.</p>
         </div>
         <div class="card">
           <h2>Docker</h2>
-          <div class="snippet"><pre id="i4" class="code">docker run --rm --network none -v "$PWD":/data \
-  ghcr.io/mounishsenisetty/safestream-redactor \
-  redact /data/app.log -o /data/clean.log</pre><button type="button" class="btn copy" data-copy="i4">Copy</button></div>
+          <div class="snippet"><pre id="i4" class="code">docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD":/data \
+    ghcr.io/mounishsenisetty/safestream-redactor redact /data/app.log -o /data/clean.log</pre><button type="button" class="btn copy" data-copy="i4">Copy</button></div>
+          <p class="muted">Multi-architecture images (amd64, arm64) with an SBOM and provenance. <code>--network none</code> runs it with no network at all.</p>
+        </div>
+        <div class="card">
+          <h2>From a clone</h2>
+          <div class="snippet"><pre id="i5" class="code">git clone https://github.com/MounishSenisetty/SafeStream-Redactor
+cd SafeStream-Redactor
+pip install -e '.[dev]'
+pytest</pre><button type="button" class="btn copy" data-copy="i5">Copy</button></div>
+          <p class="muted">For contributors: tests, benchmarks and the latest <code>main</code>.</p>
+        </div>
+        <div class="card">
+          <h2>Optional extras</h2>
+          <table class="plain-table">
+            <tbody>
+              <tr><td><code>[native]</code></td><td>Rust core, 3–12× faster, byte-identical output (<code>--backend native</code>)</td></tr>
+              <tr><td><code>[ui]</code></td><td>The local web playground (Streamlit), for files up to 2 GB</td></tr>
+              <tr><td><code>[crypto]</code></td><td>Reversible <code>--mode encrypt</code> and <code>safestream deanonymize</code></td></tr>
+              <tr><td><code>[ner]</code></td><td>spaCy names, organisations and locations (<code>--ner</code>)</td></tr>
+              <tr><td><code>[onnx]</code></td><td>An on-device ONNX NER model you supply (<code>--onnx</code>)</td></tr>
+              <tr><td><code>[all]</code></td><td><code>native</code>, <code>ui</code> and <code>crypto</code> together</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
-      <p class="muted">Documentation, CI integrations and benchmarks are on
-        <a href="https://github.com/MounishSenisetty/SafeStream-Redactor">GitHub</a>.</p>
+      <h2 class="section-title">Not in this browser demo</h2>
+      <p class="muted">These parts of the product need your machine. Nothing below runs in this page; each panel gives the command to run it yourself.</p>
+      <div class="cards three" id="local-only"></div>
+    </section>
+
+    <!-- How it works / trust -->
+    <section role="tabpanel" id="panel-trust" aria-labelledby="tab-trust" tabindex="-1" hidden>
+      <div class="card proof">
+        <div class="card-head"><h2>Offline proof</h2><span class="tag ok">Live</span></div>
+        <div class="proof-grid">
+          <div class="proof-num"><output id="net-count-2">0</output><span>network requests since the engine started, from this page and the engine together</span></div>
+          <div class="proof-num"><output id="offsite-count">0</output><span>requests to any other site, ever (the page's own files come from this site)</span></div>
+        </div>
+        <p class="muted small">Counted from the browser's own resource-timing records. Every run, sample, upload and console
+          call above is processed in this tab. The <span data-term="csp">Content-Security-Policy</span> below makes the
+          browser refuse any connection to another site, for the page and for the engine's worker:</p>
+        <pre class="code csp" id="csp-text"></pre>
+      </div>
+
+      <h2 class="section-title">How it works</h2>
+      <ol class="steps">
+        <li><strong>Stream through a fixed window.</strong> Text is read in chunks into a rolling buffer of one chunk plus
+          an 8 KiB overlap. Only text at least one overlap from the end of the buffer is written each round; the rest is
+          carried into the next, so an entity cut by a chunk boundary is still seen whole. Memory never grows with input size.</li>
+        <li><strong>Detect in tiers.</strong> Patterns with validators (Luhn, SSN rules, …), entropy scoring for unknown
+          secrets, and optional NER (spaCy or ONNX) find candidates; contextual scoring, a confidence filter and overlap
+          resolution decide what is kept.</li>
+        <li><strong>Rewrite by policy.</strong> Each kept span is replaced: replace, mask, pseudonymize, hash, encrypt or
+          fictionalize. Everything outside a redacted span, line endings included, comes out byte for byte as it went in.</li>
+      </ol>
+      <div class="card">
+        <pre class="code diagram" aria-label="Architecture diagram from the README"> text chunks ──&gt; [ rolling buffer: chunk + 8 KiB overlap ] ──&gt; redacted chunks
+                                   │
+          ┌────────────────────────┼─────────────────────────┐
+          ▼                        ▼                         ▼
+   patterns + validators     entropy scoring          NER (optional)
+   (Luhn, SSN rules, …)      for unknown secrets      spaCy or ONNX
+          └────────────────────────┼─────────────────────────┘
+                                   ▼
+            contextual scoring ─&gt; confidence filter ─&gt; overlap resolution
+                                   ▼
+        redaction policy: replace, mask, pseudonymize, hash, encrypt, fictionalize</pre>
+        <p class="muted small">From the README. In this page the NER tier is not available (see Install → Not in this browser demo).</p>
+      </div>
+
+      <div class="cards two">
+        <div class="card">
+          <h2>Limitations</h2>
+          <p>No tool can guarantee every name or free-form identifier in prose is found: "April" is a name and a month,
+            and an account number looks like any other run of digits. SafeStream is tuned for high precision on structured
+            PII and credentials. For names, enable <code>[ner]</code> or <code>[onnx]</code>. For identifiers without a fixed
+            format, add label-anchored patterns, as in <code>examples/policy.toml</code>. Review redacted output before
+            sharing it anywhere a miss would be costly.</p>
+          <p>Where it loses, from the README's evaluation: Presidio's transformer engine redacts more entities fully, and
+            wins on ai4privacy. SafeStream misses values inside structured fields, unlabelled ID numbers, many international
+            phone formats, and many names.</p>
+        </div>
+        <div class="card">
+          <h2>This demo, specifically</h2>
+          <ul class="plain-list">
+            <li>Text typed or dropped here is capped at 1 MiB; the CLI streams files of any size.</li>
+            <li>It runs the pure-Python engine on one thread inside WebAssembly, slower than a local install.</li>
+            <li>The spaCy and ONNX name tiers, encrypt mode, the native core, multi-core workers and kernel-enforced offline
+              mode need your machine (Install tab).</li>
+            <li>The in-process network guard is defence in depth, not a sandbox. Locally, <code>--offline-hard</code> on Linux
+              or <code>docker run --network none</code> adds a hard boundary.</li>
+          </ul>
+          <p class="muted small">Full results: <a href="https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/EVALUATION.md">docs/EVALUATION.md</a>.
+            Threat model: <a href="https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+        </div>
+      </div>
     </section>
   </main>
 </div>
 
 <footer class="foot">
-  <span>MIT licensed</span>
-  <span>This page runs the published Python package in WebAssembly (Pyodide), pure-Python backend.
+  <span>MIT licensed · <a href="https://github.com/MounishSenisetty/SafeStream-Redactor">GitHub</a> · <a href="https://pypi.org/project/safestream-redactor/">PyPI</a> · <a href="https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/DEMO.md">Feature guide</a></span>
+  <span>This page runs the published Python package in WebAssembly (Pyodide), pure-Python backend, <span id="py-version"></span>.
     Install <code>[native]</code> locally for 3–12× the speed and files of any size.</span>
 </footer>
+
+<dialog id="help" aria-labelledby="help-title">
+  <h2 id="help-title">Keyboard shortcuts</h2>
+  <table class="plain-table keys">
+    <tbody>
+      <tr><td><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd></td><td>Run now (anywhere)</td></tr>
+      <tr><td><kbd>1</kbd> … <kbd>7</kbd></td><td>Switch tab</td></tr>
+      <tr><td><kbd>c</kbd></td><td>Copy the redacted output</td></tr>
+      <tr><td><kbd>d</kbd></td><td>Download the redacted output</td></tr>
+      <tr><td><kbd>v</kbd></td><td>Reveal or hide matched values</td></tr>
+      <tr><td><kbd>t</kbd></td><td>Switch colour theme</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>→</kbd> in the output</td><td>Move between findings</td></tr>
+      <tr><td><kbd>?</kbd></td><td>This help</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close a dialog or the tour</td></tr>
+    </tbody>
+  </table>
+  <p class="muted small">Letter shortcuts work when you are not typing in a field.</p>
+  <div class="dialog-actions">
+    <button type="button" class="btn" id="help-tour">Restart the tour</button>
+    <button type="button" class="btn primary" id="help-close">Close</button>
+  </div>
+</dialog>
+
+<div class="tour" id="tour" role="dialog" aria-modal="false" aria-labelledby="tour-title" hidden>
+  <p class="tour-step" id="tour-step"></p>
+  <h2 id="tour-title"></h2>
+  <p id="tour-body"></p>
+  <div class="tour-actions">
+    <button type="button" class="link" id="tour-skip">Skip tour</button>
+    <span class="grow"></span>
+    <button type="button" class="btn small" id="tour-back">Back</button>
+    <button type="button" class="btn small primary" id="tour-next">Next</button>
+  </div>
+</div>
+<div class="tooltip" id="tooltip" role="tooltip" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>
