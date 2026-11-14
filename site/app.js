@@ -1596,16 +1596,20 @@ $("rest-use-input").addEventListener("click", () => {
   $("rest-body").value = JSON.stringify({ text: input.value }, null, 2);
   renderCurl();
 });
+let restSeq = 0;
 async function sendRest() {
   if (!info) return;
   const { method, path } = restRoute();
   const status = $("rest-status");
+  const seq = ++restSeq;
   try {
     const r = await call("rest", { method, path, body: method === "POST" ? $("rest-body").value : "", settings: settingsKey() });
+    if (seq !== restSeq) return; // a newer request was sent: show its reply only
     status.textContent = `${r.status}`;
     status.className = `status ${r.status < 400 ? "ok" : "err"}`;
     $("rest-response").textContent = JSON.stringify(r.body, null, 2);
   } catch (err) {
+    if (seq !== restSeq) return;
     status.textContent = "error";
     status.className = "status err";
     $("rest-response").textContent = err.message;
@@ -1647,12 +1651,16 @@ $("mcp-use-input").addEventListener("click", () => {
   msg.params.arguments.text = input.value;
   $("mcp-body").value = JSON.stringify(msg, null, 2);
 });
+let mcpSeq = 0;
 async function sendMcp() {
   if (!info) return;
+  const seq = ++mcpSeq;
   try {
     const reply = await call("mcp", { message: $("mcp-body").value, settings: settingsKey() });
+    if (seq !== mcpSeq) return; // a newer message was sent: show its reply only
     $("mcp-response").textContent = reply === null ? "(no reply: that was a notification)" : JSON.stringify(reply, null, 2);
   } catch (err) {
+    if (seq !== mcpSeq) return;
     $("mcp-response").textContent = err.message;
   }
 }
