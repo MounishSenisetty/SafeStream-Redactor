@@ -6,6 +6,17 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-14
+
+### Changed
+
+- **One PyPI project.** Only `safestream-redactor` is published. The `[native]` extra
+  and the separate `safestream-redactor-native` distribution are gone; the optional
+  Rust core is built from source with
+  `pip install 'git+https://github.com/MounishSenisetty/SafeStream-Redactor#subdirectory=native'`
+  (needs a Rust toolchain). `backend="native"` falls back to pure Python without it,
+  as before, and `[all]` is now `ui` and `crypto`.
+
 ### Added
 
 - **Live demo: a complete, guided playground.** The browser demo now offers every

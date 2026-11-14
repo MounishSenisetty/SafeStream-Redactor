@@ -1255,6 +1255,9 @@ const main = wireTabs(document.querySelector(".tabs"), (tab) => {
   if (tab.id === "tab-inspector") loadTrace();
   else pause();
   if (tab.id === "tab-ci" && !$("ci-input").value) { ciPreset("leak"); runGate(); }
+  // show a real answer straight away, not an empty pane
+  if (tab.id === "tab-rest" && !$("rest-response").textContent) sendRest();
+  if (tab.id === "tab-mcp" && !$("mcp-response").textContent) sendMcp();
   writeHash();
 });
 const tabName = (tab) => tab.id.slice(4);
@@ -1593,15 +1596,20 @@ $("rest-use-input").addEventListener("click", () => {
   $("rest-body").value = JSON.stringify({ text: input.value }, null, 2);
   renderCurl();
 });
+let restSeq = 0;
 async function sendRest() {
+  if (!info) return;
   const { method, path } = restRoute();
   const status = $("rest-status");
+  const seq = ++restSeq;
   try {
     const r = await call("rest", { method, path, body: method === "POST" ? $("rest-body").value : "", settings: settingsKey() });
+    if (seq !== restSeq) return; // a newer request was sent: show its reply only
     status.textContent = `${r.status}`;
     status.className = `status ${r.status < 400 ? "ok" : "err"}`;
     $("rest-response").textContent = JSON.stringify(r.body, null, 2);
   } catch (err) {
+    if (seq !== restSeq) return;
     status.textContent = "error";
     status.className = "status err";
     $("rest-response").textContent = err.message;
@@ -1643,11 +1651,16 @@ $("mcp-use-input").addEventListener("click", () => {
   msg.params.arguments.text = input.value;
   $("mcp-body").value = JSON.stringify(msg, null, 2);
 });
+let mcpSeq = 0;
 async function sendMcp() {
+  if (!info) return;
+  const seq = ++mcpSeq;
   try {
     const reply = await call("mcp", { message: $("mcp-body").value, settings: settingsKey() });
+    if (seq !== mcpSeq) return; // a newer message was sent: show its reply only
     $("mcp-response").textContent = reply === null ? "(no reply: that was a notification)" : JSON.stringify(reply, null, 2);
   } catch (err) {
+    if (seq !== mcpSeq) return;
     $("mcp-response").textContent = err.message;
   }
 }
@@ -1728,7 +1741,7 @@ async function runGate() {
 }
 $("ci-run").addEventListener("click", runGate);
 function renderCiSnippets() {
-  const v = info ? `v${info.version}` : "v0.5.0";
+  const v = info ? `v${info.version}` : "v1.0.0";
   const cfg = Object.keys(policy).length;
   $("ci-precommit").textContent = `# .pre-commit-config.yaml
 repos:
@@ -1779,7 +1792,7 @@ function renderChoice() {
     el("div", { className: "snippet" }, pre, copy), go);
 }
 const LOCAL_ONLY = [
-  ["Native Rust core", "3–12× faster, byte-identical output.", "pip install 'safestream-redactor[native]'\nsafestream redact huge.log -o clean.log --backend native"],
+  ["Native Rust core", "3–12× faster, byte-identical output.", "pip install 'git+https://github.com/MounishSenisetty/SafeStream-Redactor#subdirectory=native'  # needs Rust\nsafestream redact huge.log -o clean.log --backend native"],
   ["Multi-core workers", "Directories fan out over files; one big file is split across cores. Output is byte-identical to one core.", "safestream redact logs/ -o logs_clean/ --workers 8\nsafestream redact huge.log -o clean.log --workers 8"],
   ["Kernel-enforced offline mode", "Linux only: a seccomp filter or an empty network namespace, on top of the in-process guard.", "safestream redact input.txt -o out.txt --offline-hard seccomp\nsafestream redact input.txt -o out.txt --offline-hard netns"],
   ["Names with spaCy", "Free-form person, organisation and location names.", "pip install 'safestream-redactor[ner]'\npython -m spacy download en_core_web_sm\nsafestream redact in.txt -o out.txt --ner"],
@@ -1930,6 +1943,8 @@ startEngine()
     runAnalyze();
     if (activeTab().id === "tab-inspector") loadTrace();
     if (activeTab().id === "tab-ci") runGate();
+    if (activeTab().id === "tab-rest") sendRest();
+    if (activeTab().id === "tab-mcp") sendMcp();
     if (!store.get("tour") && matchMedia("(min-width: 600px)").matches) startTour();
   })
   .catch((err) => bootFailed(err.message));

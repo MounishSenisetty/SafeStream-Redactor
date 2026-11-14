@@ -206,7 +206,7 @@ reports `file:line:col` and the type, never the secret. As a pre-commit hook:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/MounishSenisetty/SafeStream-Redactor
-    rev: v0.5.0
+    rev: v1.0.0
     hooks:
       - id: safestream-detect
 ```
@@ -214,7 +214,7 @@ repos:
 As a GitHub Action, with an optional SARIF report for code scanning:
 
 ```yaml
-- uses: MounishSenisetty/SafeStream-Redactor@v0.5.0
+- uses: MounishSenisetty/SafeStream-Redactor@v1.0.0
   with:
     paths: "."
     sarif-file: results.sarif
@@ -240,10 +240,10 @@ adds a read-only filesystem, no capabilities and a 64 MiB memory cap.
 | Install | Adds |
 |---|---|
 | `pip install safestream-redactor` | Everything above except the extras below. No runtime dependencies. |
-| `pip install 'safestream-redactor[native]'` | The Rust core: 3–12× faster, byte-identical output. Prebuilt wheels for Linux (x86_64/aarch64, glibc and musl), macOS and Windows. Enable with `--backend native`. |
+| `pip install 'git+https://github.com/MounishSenisetty/SafeStream-Redactor#subdirectory=native'` | The optional Rust core: 3–12× faster, byte-identical output. Not on PyPI; this builds it from source and needs a [Rust toolchain](https://rustup.rs). Enable with `--backend native`. |
 | `pip install 'safestream-redactor[ui]'` | The web playground (Streamlit). |
 | `pip install 'safestream-redactor[crypto]'` | Reversible `--mode encrypt` (AES-256-GCM) and `safestream deanonymize`. |
-| `pip install 'safestream-redactor[all]'` | `native`, `ui` and `crypto` together. |
+| `pip install 'safestream-redactor[all]'` | `ui` and `crypto` together. |
 | `pip install 'safestream-redactor[ner]'` | spaCy names, organisations and locations (`--ner`). Then run `python -m spacy download en_core_web_sm`. |
 | `pip install 'safestream-redactor[onnx]'` | An on-device ONNX NER model you supply (`--onnx`); see [docs/DETECTORS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/DETECTORS.md). |
 

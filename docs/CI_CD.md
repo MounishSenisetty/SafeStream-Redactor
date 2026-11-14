@@ -33,7 +33,7 @@ repo's `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/MounishSenisetty/SafeStream-Redactor
-    rev: v0.5.0
+    rev: v1.0.0
     hooks:
       - id: safestream-detect
 ```
@@ -47,7 +47,7 @@ contains a detectable secret. It runs offline and never prints the secret — on
 `action.yml` is a composite action:
 
 ```yaml
-- uses: MounishSenisetty/SafeStream-Redactor@v0.5.0
+- uses: MounishSenisetty/SafeStream-Redactor@v1.0.0
   with:
     paths: "."
     sarif-file: results.sarif        # optional
