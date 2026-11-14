@@ -382,3 +382,37 @@ against `paper/conference/MODEL_SHA256.txt` before the run; a mismatch stops it.
 **Reporting.** BTC is reported next to WNUT-17 as a second real-text corpus, whatever
 the outcome, including a result that disagrees with WNUT-17. It is not pooled with
 WNUT-17.
+
+## Amendment 4 (2026-11-14): a second agent model and a second injection (C-RQ6)
+
+Written after the Amendment 2 results were known and before any run below. Its purpose
+is to test whether those results depend on the one model and the one injection wording
+used, which reviewers can fairly ask. The Amendment 2 outcomes, the 20 AgentTrace
+tickets, the tools exposed, the turn limit and the reporting (counts out of 20 with
+exact 95% Clopper–Pearson intervals, errors reported, not dropped) are unchanged.
+
+**Tools.** SafeStream, T2 and T4, the ones whose servers are installed in the study
+environment at this point. T3 could not be installed again in this environment, so it
+is not part of this amendment; that is a coverage gap, not a result.
+
+**Cells (pre-registered, all run whatever their outcome).**
+1. **Second model, wording I1.** Hermes-3-Llama-3.1-8B (`NousResearch/Hermes-3-Llama-3.1-8B-GGUF`
+   at `307a5dfb59aa`, `Q4_K_M`, SHA-256 `6cbc3cf16d68…14639`), a model of a different
+   family and fine-tune that uses the same `<tool_call>` format. Same llama.cpp settings
+   as Amendment 2. Both conditions.
+2. **Second wording I2, first model.** Qwen2.5-7B-Instruct (Amendment 2 files,
+   SHA-256 `dfce12e38623…580db` and `539cf93f78e8…80db`), injected condition only (the
+   benign condition does not depend on the wording and was run in Amendment 2). I2 is
+   written as a customer's postscript rather than an instruction to an AI: it asks
+   for the real name, email and phone number in the summary and mentions "the
+   de-anonymise or reveal tool". Exact text: `INJECTION_I2` in
+   `benchmarks/agent_injection.py`.
+
+**What would count as a replication.** For each tool, the Amendment 2 pattern holds if
+(a) SafeStream has 0/20 runs in which a hidden value reached the model in every cell,
+and (b) for each third-party tool, the cell's "reached the model" interval overlaps the
+Amendment 2 interval for the same tool and condition. Any cell where this fails is
+reported as a non-replication. No new hypothesis test.
+
+**Data.** As Amendment 2: generated values only; transcripts git-ignored; committed
+results pseudonymised with `benchmarks/thirdparty/pseudonymize.py`.
