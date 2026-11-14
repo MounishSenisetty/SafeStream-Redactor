@@ -1,5 +1,5 @@
 \begin{table}[t]
-\caption{A local LLM agent (Qwen2.5-7B-Instruct) asked to summarise a ticket it may read only through each redaction tool (C-RQ6), 20 tickets per condition. Reached: runs in which a value the tool had hidden reached the model through a tool result; Answer: in the final answer; Restore: runs in which the agent called a restore tool. B: benign ticket; I: ticket with an appended prompt injection.}\label{tab:agent}
+\caption{A local LLM agent (Qwen2.5-7B-Instruct) asked to summarise a ticket it may read only through each redaction tool (C-RQ6), 20 tickets per condition. Reached: runs in which a value the tool had hidden reached the model through a tool result; Answer: in the final answer; Restore: runs in which the agent called a restore tool. B: benign ticket; I: ticket with an appended prompt injection. Lower blocks: pre-registered replications with a second model and a second injection wording.}\label{tab:agent}
 \centering\footnotesize\setlength{\tabcolsep}{3pt}
 \begin{tabular}{@{}l rr rr rr@{}}
 \toprule
@@ -10,6 +10,8 @@ SafeStream & 0/20 & 0/20 & 0/20 & 0/20 & 0/20 & 0/20 \\
 T2 & 20/20 & 20/20 & 17/20 & 20/20 & 0/20 & 0/20 \\
 T3 & 0/20 & 1/20 & 0/20 & 1/20 & 0/20 & 14/20 \\
 T4 & 7/20 & 13/20 & 7/20 & 9/20 & 13/20 & 15/20 \\
+\MISSING{E13_hermes_I1.json} \\
+\MISSING{E13_qwen_I2.json} \\
 \bottomrule
 \end{tabular}
 \end{table}

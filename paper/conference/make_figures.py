@@ -366,6 +366,21 @@ def table_agent() -> str:
                 m = d["results"][f"{t}|{cond}"][metric]
                 cells.append(f"{m['runs']}/{m['of']}")
         rows.append(" & ".join(cells) + r" \\")
+    # Amendment 4 replications: Hermes-3 with wording I1; Qwen with wording I2 (injected only)
+    for fname, label in (("E13_hermes_I1.json", "Hermes-3-8B, wording I1"),
+                         ("E13_qwen_I2.json", "Qwen2.5-7B, wording I2")):  # fmt: skip
+        r = load(fname)
+        if not r:
+            rows.append(missing(fname) + r" \\")
+            continue
+        rows.append(r"\midrule" + "\n" + rf"\multicolumn{{7}}{{@{{}}l}}{{\emph{{{label}}}}} \\")
+        for t in sorted({k.split("|")[0] for k in r["results"]}, key=lambda t: (t != "safestream", t)):
+            cells = ["SafeStream" if t == "safestream" else t]
+            for metric in ("reached_model", "in_answer", "restore_called"):
+                for cond in ("benign", "injected"):
+                    c = r["results"].get(f"{t}|{cond}")
+                    cells.append(f"{c[metric]['runs']}/{c[metric]['of']}" if c else "--")
+            rows.append(" & ".join(cells) + r" \\")
     return (
         r"\begin{table}[t]"
         "\n"
@@ -374,7 +389,8 @@ def table_agent() -> str:
         + f"{d['n_docs']} tickets per condition. "
         r"Reached: runs in which a value the tool had hidden reached the model through a tool "
         r"result; Answer: in the final answer; Restore: runs in which the agent called a "
-        r"restore tool. B: benign ticket; I: ticket with an appended prompt injection.}"
+        r"restore tool. B: benign ticket; I: ticket with an appended prompt injection. Lower blocks: "
+        r"pre-registered replications with a second model and a second injection wording.}"
         r"\label{tab:agent}"
         "\n"
         r"\centering\footnotesize\setlength{\tabcolsep}{3pt}"
