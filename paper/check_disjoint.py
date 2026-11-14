@@ -9,7 +9,12 @@ Default mode, two checks:
    LaTeX comments, labels, references, citations, file names and URLs are removed
    first. A number is shared if both papers print it. Method constants (the 95%
    level, 2,000 resamples, seed 0, chunk and window sizes both papers describe, years)
-   are allow-listed below, each with its reason. Any other shared number fails.
+   are allow-listed below, each with its reason. Any other shared value must be a
+   coincidence: it must trace to the conference's own raw results
+   (``research/results/raw/conf/``, which the journal never uses; see
+   ``audit_numbers.py``), so the two papers report different measurements that
+   happen to round to the same digits. A shared value that does not trace there
+   fails: the conference would be repeating a journal result.
 2. **Shared 8-grams.** Commands and comments are stripped, the text is lower-cased,
    and for each paper the share of its distinct 8-word sequences that also occur in
    the other is computed. Above 2% in either direction fails.
@@ -118,10 +123,21 @@ def disjoint() -> int:
     texts = {k: read(v) for k, v in PAPERS.items()}
     nums = {k: set(numbers(t)) for k, t in texts.items()}
     shared = sorted(nums["journal"] & nums["conference"], key=lambda x: (len(x), x))
-    bad = [x for x in shared if x not in ALLOWED]
+    from audit_numbers import _round, index, matches, raw_files
+
+    conf = index(raw_files("conference"))
+    by_places = {
+        p: {_round(s, p) for v in conf for s in (v, v * 100, v * 1000, abs(v), abs(v) * 100)}
+        for p in range(4)
+    }
+    rest = [x for x in shared if x not in ALLOWED]
+    coincidental = [x for x in rest if matches(x, conf, by_places)]
+    bad = [x for x in rest if x not in coincidental]
     print(f"distinct numbers: journal {len(nums['journal'])}, conference {len(nums['conference'])}")
-    print(f"shared, allow-listed: {[x for x in shared if x in ALLOWED]}")
-    print(f"shared, NOT allowed: {bad or 'none'}")
+    print(f"shared, allow-listed constants: {[x for x in shared if x in ALLOWED]}")
+    print(f"shared, coincidental (conference value traced to its own raw results): "
+          f"{len(coincidental)}")
+    print(f"shared, NOT traced to the conference's results: {bad or 'none'}")
     g = {k: grams(words(t)) for k, t in texts.items()}
     common = g["journal"] & g["conference"]
     rates = {k: len(common) / max(1, len(v)) for k, v in g.items()}

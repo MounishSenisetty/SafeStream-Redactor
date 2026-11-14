@@ -1,0 +1,11 @@
+%% Everything after the conclusion, in any class. \def\noappendix{} drops the appendix.
+\ifanonymous\else
+\section*{Acknowledgements}
+\input{content/acknowledgements}
+\fi
+\section*{Declarations}
+\input{content/declarations}
+\ifdefined\noappendix\else
+\appendix
+\input{content/appendix}
+\fi

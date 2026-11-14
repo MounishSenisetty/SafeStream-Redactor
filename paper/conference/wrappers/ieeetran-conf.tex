@@ -1,0 +1,31 @@
+%% IEEE conferences (IEEEtran.cls, conference mode, two columns).
+\newif\ifanonymous\ifdefined\anonymousbuild\anonymoustrue\fi
+\documentclass[conference]{IEEEtran}
+\usepackage{amsmath}\usepackage{amsthm}
+\input{meta}
+\input{content/preamble}
+\usepackage[hidelinks]{hyperref}
+\begin{document}
+\title{\ssTitle}
+\ifanonymous
+  \author{\IEEEauthorblockN{Anonymous authors}}
+\else
+  \def\ssSep{}
+  \def\ssAuthor#1#2#3#4{\ssSep#1~#2\def\ssSep{, }}
+  \author{\IEEEauthorblockN{\ssAuthorList}
+    \IEEEauthorblockA{\ssDept, \ssOrg, \ssCity, \ssCountry}}
+\fi
+\maketitle
+\begin{abstract}
+\input{content/abstract}
+\end{abstract}
+\begin{IEEEkeywords}
+\input{content/keywords}
+\end{IEEEkeywords}
+\input{content/body}
+\input{content/end}
+\bibliographystyle{IEEEtran}
+\begingroup\sloppy
+\bibliography{refs}
+\endgroup
+\end{document}

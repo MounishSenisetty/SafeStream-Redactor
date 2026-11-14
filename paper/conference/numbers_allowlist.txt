@@ -1,0 +1,4 @@
+# Numbers the conference paper prints that no result file holds, each with its reason.
+# Checked by paper/audit_numbers.py. Format: <number as extracted> <reason>
+2.1.0 SARIF specification version
+2.2.366 software version (Presidio, recorded as a string in each result's environment)

@@ -1,0 +1,28 @@
+\section{Threat model}\label{sec:threat}
+
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=8mm, inner sep=3pt, font=\small},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  lab/.style={font=\scriptsize, align=center}]
+\node[box, fill=red!8] (llm) {LLM\\(provider)};
+\node[box, right=13mm of llm] (client) {Agent\\client};
+\node[box, right=13mm of client, fill=green!8] (srv) {Redaction tool\\(MCP / REST)};
+\node[box, right=13mm of srv, fill=green!8] (ws) {Workspace\\files, logs};
+\draw[arr] (ws) -- node[lab, above] {raw text} (srv);
+\draw[arr] (srv) -- node[lab, above] {replies} (client);
+\draw[arr] (client) -- node[lab, above] {context} (llm);
+\draw[arr, dashed] (llm) to[bend left=28] node[lab, above] {tool calls (may be\\attacker-steered)} (srv);
+\draw[dashed, thick, red!70!black] ($(client.north east)!0.5!(srv.north west)+(0,6mm)$) -- ($(client.south east)!0.5!(srv.south west)+(0,-6mm)$)
+  node[lab, below, text=red!70!black] {trust boundary};
+\end{tikzpicture}}
+\caption{The setting. Everything the tool returns crosses the trust boundary into the model's context. The tool and the workspace are on the user's machine.}\label{fig:topology}
+\end{figure}
+
+Figure~\ref{fig:topology} shows the setting. An agent client relays tool calls chosen by an LLM to a local redaction tool, which reads workspace text and returns replies. We assume the model, its provider or a prompt injected into its context \cite{greshake2023injection} may try to learn values from the workspace, and that it can choose the arguments of tool calls. Everything the tool returns is therefore disclosed. The tool and the host are trusted: an adversary with code execution on the host needs no tool to read a file.
+
+The tool makes two promises. \emph{Content-free replies}: \texttt{scan}, \texttt{explain\_\allowbreak detection}, \texttt{detectors}, \texttt{health}, REST \texttt{/scan} and SARIF output report types, offsets, confidences and detector names, never the matched text. \emph{Redaction}: \texttt{redact} returns the input with every detected value replaced. The first promise can be broken by the implementation; the second is bounded by detection recall. We measure both, and the cost of keeping them.
+
+Out of scope are values the agent could infer from what the tool must disclose by design: the offset and length of a finding, and the suffix shown by masking (Section~\ref{sec:egress} describes what they reveal), and attacks on the model itself \cite{carlini2021extracting,lukas2023pii}.

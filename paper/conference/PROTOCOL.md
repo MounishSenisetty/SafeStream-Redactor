@@ -160,3 +160,16 @@ reason, and is never removed.
    are searched. Both the pre-fix and the post-fix runs were then repeated with the
    new rule. What offsets and lengths disclose is analysed separately (E7), not
    searched for.
+5. **2026-11-14, E4 stream length on ai4privacy.** The full concatenated test half
+   (1.7 million characters) would take hours per batch setting: the pipeline's
+   8,192-character overlap makes 1 KiB chunking re-detect each character about nine
+   times. The run was stopped before any result was written and restarted with
+   `--max-chars 300000`, that is, the first whole documents up to 300,000 characters
+   in manifest order. WNUT-17 (128,373 characters) runs in full.
+6. **2026-11-14, firewall rule for numbers.** Read literally, "no number reported here
+   is reported in J" cannot hold. The two papers print about 550 distinct numbers,
+   mostly three-decimal rates, so identical values occur by chance (41 did). The
+   check (`paper/check_disjoint.py`) therefore fails on any shared value that does
+   not trace to this study's own raw results (`research/results/raw/conf/`, which J
+   never uses). A shared value that does trace there is a different measurement that
+   rounds to the same digits. Method constants are allow-listed with their reasons.

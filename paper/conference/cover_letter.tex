@@ -1,0 +1,31 @@
+%% Cover letter, venue-neutral. Set the macros below once a venue is chosen; red text
+%% marks what is still to fill. Build from this folder: pdflatex cover_letter
+\documentclass[10pt]{letter}
+\usepackage[a4paper,margin=2cm]{geometry}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parskip}{0.35em}
+\newif\ifanonymous
+\input{meta}
+\newcommand{\Venue}{\textcolor{red}{[conference name]}}
+\newcommand{\Chairs}{\textcolor{red}{[Programme Chairs]}}
+
+\signature{\ssCorresponding{} (corresponding author), on behalf of all authors\\ \ssDept, \ssOrg}
+\address{\ssDept\\ \ssOrg\\ \ssCity, \ssCountry}
+\date{\today}
+
+\begin{document}
+\begin{letter}{\Chairs\\ \emph{\Venue}}
+
+\opening{Dear \Chairs,}
+
+We submit ``\ssTitle'' to \emph{\Venue}.
+
+LLM coding agents read workspace text through tools, and agents are increasingly given local redaction tools through the Model Context Protocol. The paper asks what an agent learns through such a tool. In a pre-registered study of an open-source on-device guardrail, a differential egress audit found that a reply documented as content-free returned person names through detector metadata; we fixed it and verified the fix with the same audit and a property test. We also measure a regex-gated neural name tier on real user-generated text, show that batched inference re-opens a chunking leak, and report the per-call cost of the guardrail, including a transport stall that the measurement exposed.
+
+The manuscript is not under consideration elsewhere, and all authors approve the submission. A separate manuscript by the same authors, ``Bounded-memory streaming redaction of personal data and credentials with a whole-document equivalence guarantee'', is under review at a journal. It analyses the streaming engine and the pattern tiers, which this paper treats as a fixed baseline. The two papers ask different questions on different corpora and share no result; we will gladly send it to you. An AI assistant was used to implement the evaluation, run the experiments and draft the text, as the manuscript states; the authors take full responsibility for the content. The authors declare no competing interests.
+
+\closing{Yours sincerely,}
+
+\end{letter}
+\end{document}
