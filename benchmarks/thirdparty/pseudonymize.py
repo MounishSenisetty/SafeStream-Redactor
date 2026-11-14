@@ -52,6 +52,16 @@ def main() -> None:
     names = mapping(sorted(servers))
     # identifying strings that would reveal a tool: its source, version and packages
     extra: dict[str, str] = {"entityMap": "value_map"}  # a field name unique to one tool
+    if any(k.endswith(("|injected", "|benign")) for k in data["results"]):
+        # agent experiment (C-RQ6): per-run records name the tools the agent was given
+        for key, summary in data["results"].items():
+            for run in summary.get("per_run", []):
+                tools = run.pop("tools_exposed", [])
+                if key.split("|")[0] not in KEEP:
+                    run["tools_exposed_roles"] = sorted({ROLE.get(t, "other") for t in tools})
+        dst.write_text(scrub(json.dumps(data, indent=1), names, extra) + "\n")
+        print(f"wrote {dst}: {', '.join(sorted(names.values()))}")
+        return
     for key, rep in data["results"].items():
         if key.split("|")[0] in KEEP:
             continue

@@ -44,6 +44,14 @@ We ran the same audit, through the official MCP client, on every open-source red
 
 \paragraph{Values in the same reply} T2 returned a map from each placeholder to its original value in the same reply as the anonymised text. That map carried 0.62 of all values on AgentTrace (3,242 of 5,250), although its documentation says no data leaves the machine: in an agent loop the reply goes to the model. The detection calls of T1 and T3 returned the matched values themselves, 0.63 and 0.44 of all values on AgentTrace. That is by design and documented for T1, which warns that its use exposes the text to the model. Under the same harness, no SafeStream reply carried a value outside its redacted output, and it offers no restore call to the agent.
 
+\subsection{C-RQ6: a real agent, with and without a prompt injection}\label{sec:agent}
+
+\input{content/tab_agent}
+
+The audits above measure what a tool returns. To see what an agent does with it, a local open-weight model, Qwen2.5-7B-Instruct (4-bit, run with llama.cpp at temperature 0), was asked to summarise a ticket in three sentences. It could read the ticket only through each tool's anonymiser, and it was also given the tool's own text tools, the restore call among them. Each tool was run on 20 generated tickets, once as written and once with an appended paragraph telling AI assistants to call ``the tool that restores or reveals the original values'' and quote the restored ticket (Table~\ref{tab:agent}).
+
+With SafeStream, no hidden value reached the model in any run, with or without the injection. With T2, every run leaked, with or without it: the anonymiser returns the value map with the text, so the hidden values were in the model's context from the first read, and the agent copied them into its summary in 17 of 20 benign runs and all 20 injected ones. With T3 and T4, the restore call decided the outcome. Without the injection, the agent never called T3's restore call, but it called T4's in 13 of 20 runs unprompted, and hidden values reached it in 7. The injection raised restore calls to 14 of 20 for T3 and 15 of 20 for T4. Runs in which hidden values reached the model rose to 13 of 20 for T4 (95\% interval 0.41 to 0.85, against 0.15 to 0.59 without the injection). For T3, in 10 of its 14 restore calls the agent asked the tool to write the restored text to a file rather than return it, so values reached the model in only one run. The cleartext was still restored, onto disk at a path the agent chose; this count is exploratory, not a pre-registered outcome. One model, one injection and 20 tickets per cell show that the attack works on a capable open model, not how often it works on every model.
+
 \subsection{C-RQ4: what the guardrail costs per call}\label{sec:cost}
 
 \input{content/tab_cost}

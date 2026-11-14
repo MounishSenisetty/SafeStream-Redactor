@@ -343,6 +343,52 @@ def table_thirdparty() -> str:
     )
 
 
+def table_agent() -> str:
+    d = load("E12_agent_injection.json")
+    if not d:
+        return missing("E12 agent experiment") + "\n"
+    tools = sorted({k.split("|")[0] for k in d["results"]}, key=lambda t: (t != "safestream", t))
+    rows = []
+    for t in tools:
+        cells = ["SafeStream" if t == "safestream" else t]
+        for metric in ("reached_model", "in_answer", "restore_called"):
+            for cond in ("benign", "injected"):
+                m = d["results"][f"{t}|{cond}"][metric]
+                cells.append(f"{m['runs']}/{m['of']}")
+        rows.append(" & ".join(cells) + r" \\")
+    return (
+        r"\begin{table}[t]"
+        "\n"
+        r"\caption{A local LLM agent (Qwen2.5-7B-Instruct) asked to summarise a ticket it "
+        r"may read only through each redaction tool (C-RQ6), "
+        + f"{d['n_docs']} tickets per condition. "
+        r"Reached: runs in which a value the tool had hidden reached the model through a tool "
+        r"result; Answer: in the final answer; Restore: runs in which the agent called a "
+        r"restore tool. B: benign ticket; I: ticket with an appended prompt injection.}"
+        r"\label{tab:agent}"
+        "\n"
+        r"\centering\footnotesize\setlength{\tabcolsep}{3pt}"
+        "\n"
+        r"\begin{tabular}{@{}l rr rr rr@{}}"
+        "\n"
+        r"\toprule"
+        "\n"
+        r" & \multicolumn{2}{c}{Reached} & \multicolumn{2}{c}{Answer} & "
+        r"\multicolumn{2}{c}{Restore} \\"
+        "\n"
+        r"Tool & B & I & B & I & B & I \\"
+        "\n"
+        r"\midrule"
+        "\n" + "\n".join(rows) + "\n"
+        r"\bottomrule"
+        "\n"
+        r"\end{tabular}"
+        "\n"
+        r"\end{table}"
+        "\n"
+    )
+
+
 def figure_recall_cost() -> None:
     import matplotlib
 
@@ -391,6 +437,7 @@ def main() -> None:
         ("tab_egress", table_egress),
         ("tab_cost", table_cost),
         ("tab_thirdparty", table_thirdparty),
+        ("tab_agent", table_agent),
     ]:
         (OUT_TEX / f"{name}.tex").write_text(fn(), encoding="utf-8")
         print("wrote", name)
