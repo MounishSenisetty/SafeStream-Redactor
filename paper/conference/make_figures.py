@@ -374,7 +374,8 @@ def table_agent() -> str:
             rows.append(missing(fname) + r" \\")
             continue
         rows.append(r"\midrule" + "\n" + rf"\multicolumn{{7}}{{@{{}}l}}{{\emph{{{label}}}}} \\")
-        for t in sorted({k.split("|")[0] for k in r["results"]}, key=lambda t: (t != "safestream", t)):
+        names = {k.split("|")[0] for k in r["results"]}
+        for t in sorted(names, key=lambda t: (t != "safestream", t)):
             cells = ["SafeStream" if t == "safestream" else t]
             for metric in ("reached_model", "in_answer", "restore_called"):
                 for cond in ("benign", "injected"):
@@ -389,8 +390,9 @@ def table_agent() -> str:
         + f"{d['n_docs']} tickets per condition. "
         r"Reached: runs in which a value the tool had hidden reached the model through a tool "
         r"result; Answer: in the final answer; Restore: runs in which the agent called a "
-        r"restore tool. B: benign ticket; I: ticket with an appended prompt injection. Lower blocks: "
-        r"pre-registered replications with a second model and a second injection wording.}"
+        r"restore tool. B: benign ticket; I: ticket with an appended prompt injection. "
+        r"Lower blocks: pre-registered replications with a second model and a second "
+        r"injection wording.}"
         r"\label{tab:agent}"
         "\n"
         r"\centering\footnotesize\setlength{\tabcolsep}{3pt}"
