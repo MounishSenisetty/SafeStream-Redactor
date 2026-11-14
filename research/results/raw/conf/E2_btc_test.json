@@ -1,0 +1,2821 @@
+{
+ "corpus": "btc",
+ "split": "test",
+ "n_docs": 201,
+ "source_revision": "0c45ef7b1924a6b8115bceab388781590b1b553a",
+ "previously_exposed": null,
+ "corpus_notes": "Broad Twitter Corpus section F, real tweets, CC BY 4.0",
+ "corpus_skipped": [],
+ "has_necessity": false,
+ "has_negatives": false,
+ "has_scope": true,
+ "environment": {
+  "date": "2026-11-14T16:03:42+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.18",
+  "versions": {
+   "safestream-redactor": "0.5.0",
+   "safestream-redactor-native": "0.5.0",
+   "presidio-analyzer": "2.2.366",
+   "spacy": "3.8.18",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": "3.8.0",
+   "onnxruntime": "1.29.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.4.6"
+  },
+  "commit": "1cdd3c12f923c35d8ea0096502f34757d8438d3e",
+  "dirty": false
+ },
+ "isolated_venvs": null,
+ "systems": {
+  "safestream-native": "pattern",
+  "safestream-native-onnx": "ner",
+  "safestream-native-onnx-ungated": "ner",
+  "safestream-native-onnx-batched": "ner",
+  "safestream-native-spacy": "ner",
+  "presidio-sm": "ner",
+  "presidio-lg": "ner"
+ },
+ "runs": {
+  "safestream-native": {
+   "system": "safestream-native",
+   "load_s": 0.2342276929999798,
+   "bytes": 200710,
+   "peak_rss_mb": 62.609375,
+   "tool_rss_mb": 41.61328125,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.10311481299982006,
+   "mb_s": 1.9464710661925,
+   "p50_ms": 0.4975130000275385,
+   "p99_ms": 0.9627160000036383
+  },
+  "safestream-native-onnx": {
+   "system": "safestream-native-onnx",
+   "load_s": 0.9691805029999614,
+   "bytes": 200710,
+   "peak_rss_mb": 209.2109375,
+   "tool_rss_mb": 188.140625,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 8.808914712000444,
+   "mb_s": 0.02278487266161987,
+   "p50_ms": 43.54389600001696,
+   "p99_ms": 93.48627399998577
+  },
+  "safestream-native-onnx-ungated": {
+   "system": "safestream-native-onnx-ungated",
+   "load_s": 0.40503996400002507,
+   "bytes": 200710,
+   "peak_rss_mb": 212.81640625,
+   "tool_rss_mb": 191.69921875,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 19.900529094000206,
+   "mb_s": 0.010085661494322374,
+   "p50_ms": 98.82654000000457,
+   "p99_ms": 129.16789999997036
+  },
+  "safestream-native-onnx-batched": {
+   "system": "safestream-native-onnx-batched",
+   "load_s": 0.39428753700002517,
+   "bytes": 200710,
+   "peak_rss_mb": 222.77734375,
+   "tool_rss_mb": 201.6796875,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 9.963640810000186,
+   "mb_s": 0.02014424283526498,
+   "p50_ms": 47.812534999991385,
+   "p99_ms": 105.87438699997165
+  },
+  "safestream-native-spacy": {
+   "system": "safestream-native-spacy",
+   "load_s": 8.953311762999988,
+   "bytes": 200710,
+   "peak_rss_mb": 185.3828125,
+   "tool_rss_mb": 164.32421875,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 3.0165705590000584,
+   "mb_s": 0.06653582141520732,
+   "p50_ms": 14.489765999996962,
+   "p99_ms": 24.589769000044726
+  },
+  "presidio-sm": {
+   "system": "presidio-sm",
+   "load_s": 1.5865014379999707,
+   "bytes": 200710,
+   "peak_rss_mb": 166.73046875,
+   "tool_rss_mb": 145.6171875,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 6.430444611999803,
+   "mb_s": 0.031212460741121478,
+   "p50_ms": 29.37421199999335,
+   "p99_ms": 62.89285099995823
+  },
+  "presidio-lg": {
+   "system": "presidio-lg",
+   "load_s": 14.059051298999975,
+   "bytes": 200710,
+   "peak_rss_mb": 763.72265625,
+   "tool_rss_mb": 742.4609375,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 6.088152146000141,
+   "mb_s": 0.03296731014382822,
+   "p50_ms": 29.2007869999793,
+   "p99_ms": 50.38510399998586
+  }
+ },
+ "scores": {
+  "systems": {
+   "safestream-native": {
+    "point": {
+     "char_p": 1.0,
+     "char_r": 0.0005435130123409425,
+     "char_f1": 0.0010864355328327208,
+     "entity_recall_covered": 0.00022851919561243144,
+     "ent_p_partial": 1.0,
+     "ent_r_partial": 0.00022851919561243144,
+     "ent_f1_partial": 0.0004569339730408956,
+     "ent_p_strict": 1.0,
+     "ent_r_strict": 0.00022851919561243144,
+     "ent_f1_strict": 0.0004569339730408956,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 1.0,
+     "scope_char_r": 0.0005435130123409425,
+     "scope_char_f1": 0.0010864355328327208,
+     "scope_fully_redacted": 0.00022851919561243144
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      1.0
+     ],
+     "char_r": [
+      0.0,
+      0.0016817502251868573
+     ],
+     "char_f1": [
+      0.0,
+      0.003357853374970608
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0007131226806163562
+     ],
+     "ent_p_partial": [
+      0.0,
+      1.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0007131226806163562
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0014252289980586294
+     ],
+     "ent_p_strict": [
+      0.0,
+      1.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0007131226806163562
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0014252289980586294
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "scope_char_p": [
+      0.0,
+      1.0
+     ],
+     "scope_char_r": [
+      0.0,
+      0.0016817502251868573
+     ],
+     "scope_char_f1": [
+      0.0,
+      0.003357853374970608
+     ],
+     "scope_fully_redacted": [
+      0.0,
+      0.0007131226806163562
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 636,
+      "pred": 1,
+      "p_partial": 1.0,
+      "r_partial": 0.0015723270440251573,
+      "f1_partial": 0.0031397174254317113,
+      "p_strict": 1.0,
+      "r_strict": 0.0015723270440251573,
+      "f1_strict": 0.0031397174254317113
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 1090,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 2650,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-onnx": {
+    "point": {
+     "char_p": 0.8080463892874223,
+     "char_r": 0.43215678751838354,
+     "char_f1": 0.563137941090697,
+     "entity_recall_covered": 0.2867915904936015,
+     "ent_p_partial": 0.8031152647975078,
+     "ent_r_partial": 0.2945612431444241,
+     "ent_f1_partial": 0.4310316000668784,
+     "ent_p_strict": 0.6853582554517134,
+     "ent_r_strict": 0.2513711151736746,
+     "ent_f1_strict": 0.36783146630998165,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.8080463892874223,
+     "scope_char_r": 0.43215678751838354,
+     "scope_char_f1": 0.563137941090697,
+     "scope_fully_redacted": 0.2867915904936015
+    },
+    "ci95": {
+     "char_p": [
+      0.7843907447548166,
+      0.8307127412153956
+     ],
+     "char_r": [
+      0.4089400855293992,
+      0.45505986103535806
+     ],
+     "char_f1": [
+      0.5407040367231999,
+      0.5847515794381539
+     ],
+     "entity_recall_covered": [
+      0.26754931144827226,
+      0.30566120196657887
+     ],
+     "ent_p_partial": [
+      0.7779139647267771,
+      0.8265371468338192
+     ],
+     "ent_r_partial": [
+      0.2759157630581256,
+      0.31417278919685615
+     ],
+     "ent_f1_partial": [
+      0.40829064847388263,
+      0.453162726023356
+     ],
+     "ent_p_strict": [
+      0.6574242326893299,
+      0.7117763446270936
+     ],
+     "ent_r_strict": [
+      0.23409096836817261,
+      0.26963041703894236
+     ],
+     "ent_f1_strict": [
+      0.3466779643551275,
+      0.3893972859133138
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "scope_char_p": [
+      0.7843907447548166,
+      0.8307127412153956
+     ],
+     "scope_char_r": [
+      0.4089400855293992,
+      0.45505986103535806
+     ],
+     "scope_char_f1": [
+      0.5407040367231999,
+      0.5847515794381539
+     ],
+     "scope_fully_redacted": [
+      0.26754931144827226,
+      0.30566120196657887
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 636,
+      "pred": 403,
+      "p_partial": 0.7196029776674938,
+      "r_partial": 0.4559748427672956,
+      "f1_partial": 0.5582290664100096,
+      "p_strict": 0.6550868486352357,
+      "r_strict": 0.41509433962264153,
+      "f1_strict": 0.5081809432146296
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 1090,
+      "pred": 715,
+      "p_partial": 0.35524475524475524,
+      "r_partial": 0.23302752293577983,
+      "f1_partial": 0.2814404432132964,
+      "p_strict": 0.2881118881118881,
+      "r_strict": 0.1889908256880734,
+      "f1_strict": 0.22825484764542936
+     },
+     "PERSON": {
+      "gold": 2650,
+      "pred": 487,
+      "p_partial": 0.8357289527720739,
+      "r_partial": 0.15358490566037736,
+      "f1_partial": 0.2594835830411221,
+      "p_strict": 0.7618069815195072,
+      "r_strict": 0.14,
+      "f1_strict": 0.23653171820210395
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-onnx-ungated": {
+    "point": {
+     "char_p": 0.7930481701595246,
+     "char_r": 0.6484749664300786,
+     "char_f1": 0.7135118021599183,
+     "entity_recall_covered": 0.421617915904936,
+     "ent_p_partial": 0.7636786961583236,
+     "ent_r_partial": 0.44972577696526506,
+     "ent_f1_partial": 0.5660865813317991,
+     "ent_p_strict": 0.6589057043073341,
+     "ent_r_strict": 0.3880255941499086,
+     "ent_f1_strict": 0.4884222637710341,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.7930481701595246,
+     "scope_char_r": 0.6484749664300786,
+     "scope_char_f1": 0.7135118021599183,
+     "scope_fully_redacted": 0.421617915904936
+    },
+    "ci95": {
+     "char_p": [
+      0.7730636649851981,
+      0.8120370890264819
+     ],
+     "char_r": [
+      0.6287497376458245,
+      0.6681694449921202
+     ],
+     "char_f1": [
+      0.6966060801785409,
+      0.729475663930865
+     ],
+     "entity_recall_covered": [
+      0.40428911595564065,
+      0.43945501969135564
+     ],
+     "ent_p_partial": [
+      0.7431044730113906,
+      0.7838267643752622
+     ],
+     "ent_r_partial": [
+      0.4330276680908213,
+      0.467112672619919
+     ],
+     "ent_f1_partial": [
+      0.5494953785740828,
+      0.5822904716330705
+     ],
+     "ent_p_strict": [
+      0.636431765774579,
+      0.6806865215358092
+     ],
+     "ent_r_strict": [
+      0.37207346363317684,
+      0.40555857477254886
+     ],
+     "ent_f1_strict": [
+      0.4713468019609625,
+      0.5062029265014208
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "scope_char_p": [
+      0.7730636649851981,
+      0.8120370890264819
+     ],
+     "scope_char_r": [
+      0.6287497376458245,
+      0.6681694449921202
+     ],
+     "scope_char_f1": [
+      0.6966060801785409,
+      0.729475663930865
+     ],
+     "scope_fully_redacted": [
+      0.40428911595564065,
+      0.43945501969135564
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 636,
+      "pred": 600,
+      "p_partial": 0.605,
+      "r_partial": 0.5707547169811321,
+      "f1_partial": 0.587378640776699,
+      "p_strict": 0.5233333333333333,
+      "r_strict": 0.4937106918238994,
+      "f1_strict": 0.5080906148867315
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 1090,
+      "pred": 1271,
+      "p_partial": 0.3029110936270653,
+      "r_partial": 0.3532110091743119,
+      "f1_partial": 0.3261329944938585,
+      "p_strict": 0.25177025963808025,
+      "r_strict": 0.29357798165137616,
+      "f1_strict": 0.2710715798390513
+     },
+     "PERSON": {
+      "gold": 2650,
+      "pred": 706,
+      "p_partial": 0.7946175637393768,
+      "r_partial": 0.21169811320754717,
+      "f1_partial": 0.33432657926102505,
+      "p_strict": 0.7110481586402266,
+      "r_strict": 0.18943396226415093,
+      "f1_strict": 0.29916567342073896
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-onnx-batched": {
+    "point": {
+     "char_p": 0.8169840699484968,
+     "char_r": 0.4361532067267728,
+     "char_f1": 0.5687010171752543,
+     "entity_recall_covered": 0.2870201096892139,
+     "ent_p_partial": 0.8114856429463171,
+     "ent_r_partial": 0.2970749542961609,
+     "ent_f1_partial": 0.4349280695884912,
+     "ent_p_strict": 0.6947565543071161,
+     "ent_r_strict": 0.2543418647166362,
+     "ent_f1_strict": 0.3723653395784544,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.8169840699484968,
+     "scope_char_r": 0.4361532067267728,
+     "scope_char_f1": 0.5687010171752543,
+     "scope_fully_redacted": 0.2870201096892139
+    },
+    "ci95": {
+     "char_p": [
+      0.7927574453449575,
+      0.8403583405945834
+     ],
+     "char_r": [
+      0.41265184783521763,
+      0.45938806773380264
+     ],
+     "char_f1": [
+      0.5459609469833752,
+      0.5904672957241432
+     ],
+     "entity_recall_covered": [
+      0.26775406972234955,
+      0.3064504488398581
+     ],
+     "ent_p_partial": [
+      0.7884727115956417,
+      0.8330409253651722
+     ],
+     "ent_r_partial": [
+      0.2784625182626697,
+      0.31692729991418095
+     ],
+     "ent_f1_partial": [
+      0.4123317022152602,
+      0.45703145320251976
+     ],
+     "ent_p_strict": [
+      0.6666615384615384,
+      0.7210338187595207
+     ],
+     "ent_r_strict": [
+      0.23615637537852896,
+      0.2728725079105416
+     ],
+     "ent_f1_strict": [
+      0.3500849987598553,
+      0.3948040384286993
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "scope_char_p": [
+      0.7927574453449575,
+      0.8403583405945834
+     ],
+     "scope_char_r": [
+      0.41265184783521763,
+      0.45938806773380264
+     ],
+     "scope_char_f1": [
+      0.5459609469833752,
+      0.5904672957241432
+     ],
+     "scope_fully_redacted": [
+      0.26775406972234955,
+      0.3064504488398581
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 636,
+      "pred": 397,
+      "p_partial": 0.7304785894206549,
+      "r_partial": 0.4559748427672956,
+      "f1_partial": 0.5614714424007745,
+      "p_strict": 0.672544080604534,
+      "r_strict": 0.419811320754717,
+      "f1_strict": 0.5169409486931269
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 1090,
+      "pred": 713,
+      "p_partial": 0.37727910238429174,
+      "r_partial": 0.2467889908256881,
+      "f1_partial": 0.2983915696062119,
+      "p_strict": 0.30014025245441794,
+      "r_strict": 0.1963302752293578,
+      "f1_strict": 0.23738214087631726
+     },
+     "PERSON": {
+      "gold": 2650,
+      "pred": 492,
+      "p_partial": 0.8597560975609756,
+      "r_partial": 0.15962264150943395,
+      "f1_partial": 0.2692552514322088,
+      "p_strict": 0.774390243902439,
+      "r_strict": 0.1437735849056604,
+      "f1_strict": 0.24252068746021646
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-spacy": {
+    "point": {
+     "char_p": 0.5474269320423166,
+     "char_r": 0.3904341709827994,
+     "char_f1": 0.45579069159855184,
+     "entity_recall_covered": 0.2867915904936015,
+     "ent_p_partial": 0.6610437532946758,
+     "ent_r_partial": 0.286563071297989,
+     "ent_f1_partial": 0.39980870396939266,
+     "ent_p_strict": 0.4654717975751186,
+     "ent_r_strict": 0.20178244972577697,
+     "ent_f1_strict": 0.28152399171050535,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.5474269320423166,
+     "scope_char_r": 0.3904341709827994,
+     "scope_char_f1": 0.45579069159855184,
+     "scope_fully_redacted": 0.2867915904936015
+    },
+    "ci95": {
+     "char_p": [
+      0.5194578397403802,
+      0.5752157058656895
+     ],
+     "char_r": [
+      0.3671886097353035,
+      0.4134079799991956
+     ],
+     "char_f1": [
+      0.43429774736392857,
+      0.4780952531873579
+     ],
+     "entity_recall_covered": [
+      0.26873963202696544,
+      0.3065437155646604
+     ],
+     "ent_p_partial": [
+      0.633617899392188,
+      0.688799049042503
+     ],
+     "ent_r_partial": [
+      0.2693253597848953,
+      0.3041016335208507
+     ],
+     "ent_f1_partial": [
+      0.38021202091471235,
+      0.4205467534046693
+     ],
+     "ent_p_strict": [
+      0.4364451176051318,
+      0.49482494749541983
+     ],
+     "ent_r_strict": [
+      0.18694832343524528,
+      0.21791201823072465
+     ],
+     "ent_f1_strict": [
+      0.2629546623583519,
+      0.30122212924263303
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "scope_char_p": [
+      0.5194578397403802,
+      0.5752157058656895
+     ],
+     "scope_char_r": [
+      0.3671886097353035,
+      0.4134079799991956
+     ],
+     "scope_char_f1": [
+      0.43429774736392857,
+      0.4780952531873579
+     ],
+     "scope_fully_redacted": [
+      0.26873963202696544,
+      0.3065437155646604
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 636,
+      "pred": 352,
+      "p_partial": 0.6761363636363636,
+      "r_partial": 0.3742138364779874,
+      "f1_partial": 0.4817813765182186,
+      "p_strict": 0.6051136363636364,
+      "r_strict": 0.33490566037735847,
+      "f1_strict": 0.43117408906882587
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 1090,
+      "pred": 681,
+      "p_partial": 0.34801762114537443,
+      "r_partial": 0.21743119266055047,
+      "f1_partial": 0.2676453980801807,
+      "p_strict": 0.23494860499265785,
+      "r_strict": 0.14678899082568808,
+      "f1_strict": 0.18068887634105027
+     },
+     "PERSON": {
+      "gold": 2650,
+      "pred": 864,
+      "p_partial": 0.46412037037037035,
+      "r_partial": 0.15132075471698114,
+      "f1_partial": 0.228229937393284,
+      "p_strict": 0.3101851851851852,
+      "r_strict": 0.10113207547169811,
+      "f1_strict": 0.15253272623790554
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-sm": {
+    "point": {
+     "char_p": 0.2736882010570212,
+     "char_r": 0.3923844235564934,
+     "char_f1": 0.3224602934801172,
+     "entity_recall_covered": 0.2897623400365631,
+     "ent_p_partial": 0.37292576419213974,
+     "ent_r_partial": 0.29273308957952465,
+     "ent_f1_partial": 0.32799897580335424,
+     "ent_p_strict": 0.26521106259097527,
+     "ent_r_strict": 0.20818098720292505,
+     "ent_f1_strict": 0.23326078607092562,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.2736882010570212,
+     "scope_char_r": 0.3923844235564934,
+     "scope_char_f1": 0.3224602934801172,
+     "scope_fully_redacted": 0.2897623400365631
+    },
+    "ci95": {
+     "char_p": [
+      0.25448937885729006,
+      0.29303494600069396
+     ],
+     "char_r": [
+      0.3699477154675999,
+      0.41444566932741583
+     ],
+     "char_f1": [
+      0.3042713980735302,
+      0.3416312883266719
+     ],
+     "entity_recall_covered": [
+      0.2715617994388619,
+      0.30929057927193104
+     ],
+     "ent_p_partial": [
+      0.3509518730564552,
+      0.3952317050284263
+     ],
+     "ent_r_partial": [
+      0.2757164401337549,
+      0.31005590304437214
+     ],
+     "ent_f1_partial": [
+      0.3107304686487381,
+      0.3458180147058824
+     ],
+     "ent_p_strict": [
+      0.24555822807897498,
+      0.2861500235496979
+     ],
+     "ent_r_strict": [
+      0.19277935219560843,
+      0.22482786826029086
+     ],
+     "ent_f1_strict": [
+      0.2170135974455387,
+      0.2506082406961656
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "scope_char_p": [
+      0.25448937885729006,
+      0.29303494600069396
+     ],
+     "scope_char_r": [
+      0.3699477154675999,
+      0.41444566932741583
+     ],
+     "scope_char_f1": [
+      0.3042713980735302,
+      0.3416312883266719
+     ],
+     "scope_fully_redacted": [
+      0.2715617994388619,
+      0.30929057927193104
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 476,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 11,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 636,
+      "pred": 331,
+      "p_partial": 0.6797583081570997,
+      "r_partial": 0.35377358490566035,
+      "f1_partial": 0.4653567735263701,
+      "p_strict": 0.6132930513595166,
+      "r_strict": 0.3191823899371069,
+      "f1_strict": 0.4198552223371251
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 93,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 1090,
+      "pred": 680,
+      "p_partial": 0.34852941176470587,
+      "r_partial": 0.21743119266055047,
+      "f1_partial": 0.2677966101694916,
+      "p_strict": 0.23529411764705882,
+      "r_strict": 0.14678899082568808,
+      "f1_strict": 0.1807909604519774
+     },
+     "PERSON": {
+      "gold": 2650,
+      "pred": 862,
+      "p_partial": 0.4617169373549884,
+      "r_partial": 0.150188679245283,
+      "f1_partial": 0.2266514806378132,
+      "p_strict": 0.31206496519721577,
+      "r_strict": 0.10150943396226415,
+      "f1_strict": 0.15318906605922553
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 982,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-lg": {
+    "point": {
+     "char_p": 0.2980743273643481,
+     "char_r": 0.42362043608926403,
+     "char_f1": 0.3499273735639773,
+     "entity_recall_covered": 0.3226691042047532,
+     "ent_p_partial": 0.4189110070257611,
+     "ent_r_partial": 0.3270109689213894,
+     "ent_f1_partial": 0.367299794661191,
+     "ent_p_strict": 0.3360655737704918,
+     "ent_r_strict": 0.2623400365630713,
+     "ent_f1_strict": 0.2946611909650924,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.2980743273643481,
+     "scope_char_r": 0.42362043608926403,
+     "scope_char_f1": 0.3499273735639773,
+     "scope_fully_redacted": 0.3226691042047532
+    },
+    "ci95": {
+     "char_p": [
+      0.2777386210058457,
+      0.3179078288368605
+     ],
+     "char_r": [
+      0.40259369475710954,
+      0.4463060439211083
+     ],
+     "char_f1": [
+      0.33105441455871926,
+      0.36893754561409337
+     ],
+     "entity_recall_covered": [
+      0.30460932329645557,
+      0.34267014322564937
+     ],
+     "ent_p_partial": [
+      0.39652242236715013,
+      0.4412714484245157
+     ],
+     "ent_r_partial": [
+      0.3089405769951292,
+      0.34621485165468197
+     ],
+     "ent_f1_partial": [
+      0.3490774720317562,
+      0.3859792356103084
+     ],
+     "ent_p_strict": [
+      0.3153453642553627,
+      0.35681292747178384
+     ],
+     "ent_r_strict": [
+      0.24658060877877527,
+      0.27925087568392387
+     ],
+     "ent_f1_strict": [
+      0.2780362308169369,
+      0.3119182775569813
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "scope_char_p": [
+      0.2777386210058457,
+      0.3179078288368605
+     ],
+     "scope_char_r": [
+      0.40259369475710954,
+      0.4463060439211083
+     ],
+     "scope_char_f1": [
+      0.33105441455871926,
+      0.36893754561409337
+     ],
+     "scope_fully_redacted": [
+      0.30460932329645557,
+      0.34267014322564937
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 471,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 11,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 636,
+      "pred": 389,
+      "p_partial": 0.7197943444730077,
+      "r_partial": 0.44025157232704404,
+      "f1_partial": 0.5463414634146342,
+      "p_strict": 0.6375321336760925,
+      "r_strict": 0.389937106918239,
+      "f1_strict": 0.48390243902439023
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 107,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 1090,
+      "pred": 788,
+      "p_partial": 0.37944162436548223,
+      "r_partial": 0.2743119266055046,
+      "f1_partial": 0.31842385516506916,
+      "p_strict": 0.2639593908629442,
+      "r_strict": 0.1908256880733945,
+      "f1_strict": 0.2215122470713525
+     },
+     "PERSON": {
+      "gold": 2650,
+      "pred": 668,
+      "p_partial": 0.6916167664670658,
+      "r_partial": 0.17433962264150943,
+      "f1_partial": 0.2784810126582278,
+      "p_strict": 0.5838323353293413,
+      "r_strict": 0.1471698113207547,
+      "f1_strict": 0.23508137432188064
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 982,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {
+   "safestream-native - safestream-native-onnx": {
+    "char_p": [
+     -0.8227827493894988,
+     0.1811679800469158,
+     0.21169328855650885
+    ],
+    "char_r": [
+     -0.45427491390008184,
+     -0.43167637568311684,
+     -0.4084495823748187
+    ],
+    "char_f1": [
+     -0.5832391766437222,
+     -0.5623164232072868,
+     -0.5394728799247059
+    ],
+    "entity_recall_covered": [
+     -0.30543881906379555,
+     -0.28683604043698097,
+     -0.2673160251306231
+    ],
+    "ent_p_partial": [
+     -0.8202679766560906,
+     0.18583819627835524,
+     0.2187749769899943
+    ],
+    "ent_r_partial": [
+     -0.31382570638483537,
+     -0.29480838070770365,
+     -0.275685219360347
+    ],
+    "ent_f1_partial": [
+     -0.4524906114935136,
+     -0.43080054965574244,
+     -0.40785323609968444
+    ],
+    "ent_f1_strict": [
+     -0.3889994047932365,
+     -0.3674747358607059,
+     -0.34623898596743086
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.5832391766437222,
+     -0.5623164232072868,
+     -0.5394728799247059
+    ],
+    "scope_fully_redacted": [
+     -0.30543881906379555,
+     -0.28683604043698097,
+     -0.2673160251306231
+    ]
+   },
+   "safestream-native - safestream-native-onnx-ungated": {
+    "char_p": [
+     -0.8052223202776121,
+     0.1976104885294257,
+     0.22467748185242067
+    ],
+    "char_r": [
+     -0.6676202950473373,
+     -0.6479787350989563,
+     -0.6283520488013971
+    ],
+    "char_f1": [
+     -0.7279880207503846,
+     -0.7122752569199402,
+     -0.6958993507155579
+    ],
+    "entity_recall_covered": [
+     -0.43923154264623204,
+     -0.4216270488928284,
+     -0.4040736189799522
+    ],
+    "ent_p_partial": [
+     -0.7770232044813771,
+     0.22697616119356478,
+     0.25467395600872733
+    ],
+    "ent_r_partial": [
+     -0.4669266824776043,
+     -0.4496221977056891,
+     -0.43285196660162495
+    ],
+    "ent_f1_partial": [
+     -0.5815186485482168,
+     -0.5654955887815205,
+     -0.5493015906740865
+    ],
+    "ent_f1_strict": [
+     -0.505764608142715,
+     -0.4879427557268139,
+     -0.47085809698820186
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.7279880207503846,
+     -0.7122752569199402,
+     -0.6958993507155579
+    ],
+    "scope_fully_redacted": [
+     -0.43923154264623204,
+     -0.4216270488928284,
+     -0.4040736189799522
+    ]
+   },
+   "safestream-native - safestream-native-onnx-batched": {
+    "char_p": [
+     -0.8336837311897028,
+     0.1714597439114819,
+     0.2030537284480112
+    ],
+    "char_r": [
+     -0.45841252372576397,
+     -0.43605704728825967,
+     -0.4125242495001544
+    ],
+    "char_f1": [
+     -0.5887553492577946,
+     -0.5679442342807864,
+     -0.5449107463379355
+    ],
+    "entity_recall_covered": [
+     -0.3061156567890314,
+     -0.2871720191400786,
+     -0.2676332620183403
+    ],
+    "ent_p_partial": [
+     -0.8279158853903736,
+     0.17794988758215147,
+     0.20927687216130714
+    ],
+    "ent_r_partial": [
+     -0.31669445105103516,
+     -0.2974015677064825,
+     -0.27816745298239764
+    ],
+    "ent_f1_partial": [
+     -0.4565650645668956,
+     -0.4349073001383387,
+     -0.4119364498055223
+    ],
+    "ent_f1_strict": [
+     -0.3940730812462059,
+     -0.3721349004296004,
+     -0.3496177551065384
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.5887553492577946,
+     -0.5679442342807864,
+     -0.5449107463379355
+    ],
+    "scope_fully_redacted": [
+     -0.3061156567890314,
+     -0.2871720191400786,
+     -0.2676332620183403
+    ]
+   },
+   "safestream-native - safestream-native-spacy": {
+    "char_p": [
+     -0.5697739404922596,
+     0.43996024820674834,
+     0.47584740448283497
+    ],
+    "char_r": [
+     -0.41284048906760196,
+     -0.3899690026482703,
+     -0.3671186308335406
+    ],
+    "char_f1": [
+     -0.4767244927638016,
+     -0.4547523143061596,
+     -0.4337141146401278
+    ],
+    "entity_recall_covered": [
+     -0.3063966116498343,
+     -0.2866066074744074,
+     -0.2684007745636328
+    ],
+    "ent_p_partial": [
+     -0.6824539035876387,
+     0.3273011922465994,
+     0.3629035256769076
+    ],
+    "ent_r_partial": [
+     -0.3038294799901943,
+     -0.28653526310435795,
+     -0.2692274994332351
+    ],
+    "ent_f1_partial": [
+     -0.4203046492860803,
+     -0.39935776949094204,
+     -0.3795071608715233
+    ],
+    "ent_f1_strict": [
+     -0.3010569412236667,
+     -0.28094930852053934,
+     -0.2624812648676715
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.4767244927638016,
+     -0.4547523143061596,
+     -0.4337141146401278
+    ],
+    "scope_fully_redacted": [
+     -0.3063966116498343,
+     -0.2866066074744074,
+     -0.2684007745636328
+    ]
+   },
+   "safestream-native - presidio-sm": {
+    "char_p": [
+     -0.2879705279058179,
+     0.7172868157860104,
+     0.7424438466407373
+    ],
+    "char_r": [
+     -0.4139258142053488,
+     -0.3917147756824172,
+     -0.36940532344365934
+    ],
+    "char_f1": [
+     -0.34064509512283914,
+     -0.32108272386650666,
+     -0.302366227857508
+    ],
+    "entity_recall_covered": [
+     -0.3092031161283894,
+     -0.28951022338684684,
+     -0.2712669300999356
+    ],
+    "ent_p_partial": [
+     -0.38937509311716145,
+     0.6174672312901375,
+     0.646690516461242
+    ],
+    "ent_r_partial": [
+     -0.3098390436137672,
+     -0.292655429446499,
+     -0.2755746263092364
+    ],
+    "ent_f1_partial": [
+     -0.34561134576788105,
+     -0.32712089011003587,
+     -0.3104085371354737
+    ],
+    "ent_f1_strict": [
+     -0.25048730072340586,
+     -0.23267700501057897,
+     -0.21630867443573393
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.34064509512283914,
+     -0.32108272386650666,
+     -0.302366227857508
+    ],
+    "scope_fully_redacted": [
+     -0.3092031161283894,
+     -0.28951022338684684,
+     -0.2712669300999356
+    ]
+   },
+   "safestream-native - presidio-lg": {
+    "char_p": [
+     -0.31231099917021093,
+     0.6932475641794922,
+     0.7196202645049143
+    ],
+    "char_r": [
+     -0.4459441938614146,
+     -0.42327115971614815,
+     -0.40173187729785337
+    ],
+    "char_f1": [
+     -0.36767592354390044,
+     -0.3487014986856305,
+     -0.3296338866438306
+    ],
+    "entity_recall_covered": [
+     -0.3424407212292919,
+     -0.3228437863484217,
+     -0.30442498617144925
+    ],
+    "ent_p_partial": [
+     -0.43641207247305874,
+     0.5717443214198275,
+     0.6015878309108962
+    ],
+    "ent_r_partial": [
+     -0.3460777302510069,
+     -0.32716321850373437,
+     -0.3088308814023682
+    ],
+    "ent_f1_partial": [
+     -0.38559297846036655,
+     -0.3669878592472591,
+     -0.34854438090623063
+    ],
+    "ent_f1_strict": [
+     -0.31169449900800206,
+     -0.29435040404441104,
+     -0.27769392619070926
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.36767592354390044,
+     -0.3487014986856305,
+     -0.3296338866438306
+    ],
+    "scope_fully_redacted": [
+     -0.3424407212292919,
+     -0.3228437863484217,
+     -0.30442498617144925
+    ]
+   },
+   "safestream-native-onnx - safestream-native-onnx-ungated": {
+    "char_p": [
+     -0.0007099782143022814,
+     0.015221720414297701,
+     0.03133054410989792
+    ],
+    "char_r": [
+     -0.2366958859283606,
+     -0.21603586816272696,
+     -0.19547659951553256
+    ],
+    "char_f1": [
+     -0.16953860958812006,
+     -0.14980776782981142,
+     -0.13188087992163547
+    ],
+    "entity_recall_covered": [
+     -0.1465041878705237,
+     -0.13463745324776474,
+     -0.12224527252183347
+    ],
+    "ent_p_partial": [
+     0.022507098676844438,
+     0.03960376300923868,
+     0.05691309297889219
+    ],
+    "ent_r_partial": [
+     -0.16800223575601236,
+     -0.1548810235308429,
+     -0.14183454746740717
+    ],
+    "ent_f1_partial": [
+     -0.14972738726661158,
+     -0.13459657882460468,
+     -0.11996557128253382
+    ],
+    "ent_f1_strict": [
+     -0.13537500079485673,
+     -0.12035900534978705,
+     -0.10562582534929822
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.16953860958812006,
+     -0.14980776782981142,
+     -0.13188087992163547
+    ],
+    "scope_fully_redacted": [
+     -0.1465041878705237,
+     -0.13463745324776474,
+     -0.12224527252183347
+    ]
+   },
+   "safestream-native-onnx - safestream-native-onnx-batched": {
+    "char_p": [
+     -0.01637437105872868,
+     -0.008964968710256538,
+     -0.002325924165962115
+    ],
+    "char_r": [
+     -0.00798898673257374,
+     -0.004049343636477798,
+     6.412987781187897e-05
+    ],
+    "char_f1": [
+     -0.009771156238855805,
+     -0.005636934726488185,
+     -0.0014829639051788814
+    ],
+    "entity_recall_covered": [
+     -0.0033871338103992578,
+     -0.00022836265178108328,
+     0.002925523647172805
+    ],
+    "ent_p_partial": [
+     -0.017623192521850385,
+     -0.008386978618529106,
+     0.000266568928583074
+    ],
+    "ent_r_partial": [
+     -0.006052251178597994,
+     -0.0025287361667297725,
+     0.0006830834697584441
+    ],
+    "ent_f1_partial": [
+     -0.007895891726453693,
+     -0.003934065148650107,
+     -7.17918310132036e-05
+    ],
+    "ent_f1_strict": [
+     -0.009473603879077225,
+     -0.00457161638215306,
+     0.00027647723192545585
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.009771156238855805,
+     -0.005636934726488185,
+     -0.0014829639051788814
+    ],
+    "scope_fully_redacted": [
+     -0.0033871338103992578,
+     -0.00022836265178108328,
+     0.002925523647172805
+    ]
+   },
+   "safestream-native-onnx - safestream-native-spacy": {
+    "char_p": [
+     0.23399192398753646,
+     0.2599423090274846,
+     0.28732901963421587
+    ],
+    "char_r": [
+     0.020946535810618106,
+     0.0416034911222892,
+     0.061871399713875216
+    ],
+    "char_f1": [
+     0.08771430165742902,
+     0.10708955715856064,
+     0.12714506359752806
+    ],
+    "entity_recall_covered": [
+     -0.014691267172060487,
+     0.0004497919769007319,
+     0.013805411020284694
+    ],
+    "ent_p_partial": [
+     0.11503400245979505,
+     0.14184885578699635,
+     0.16954432304880726
+    ],
+    "ent_r_partial": [
+     -0.0053720421860019305,
+     0.008249652488184628,
+     0.020503075261112214
+    ],
+    "ent_f1_partial": [
+     0.015719803272381514,
+     0.03164700691781344,
+     0.046645500578991375
+    ],
+    "ent_f1_strict": [
+     0.06957312642779928,
+     0.08621098645517347,
+     0.10296389238986994
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.08771430165742902,
+     0.10708955715856064,
+     0.12714506359752806
+    ],
+    "scope_fully_redacted": [
+     -0.014691267172060487,
+     0.0004497919769007319,
+     0.013805411020284694
+    ]
+   },
+   "safestream-native-onnx - presidio-sm": {
+    "char_p": [
+     0.5102731196461959,
+     0.5341452934720321,
+     0.5570226987662835
+    ],
+    "char_r": [
+     0.017902753504115944,
+     0.040082984408409905,
+     0.06201246939562869
+    ],
+    "char_f1": [
+     0.2197991410829746,
+     0.2408518233066129,
+     0.2618559300477699
+    ],
+    "entity_recall_covered": [
+     -0.01719907944225476,
+     -0.0024647455979693034,
+     0.010943351522650732
+    ],
+    "ent_p_partial": [
+     0.40595766588015963,
+     0.430092100215091,
+     0.45527461049022216
+    ],
+    "ent_r_partial": [
+     -0.012230123374869619,
+     0.002184614870653162,
+     0.015396057870166888
+    ],
+    "ent_f1_partial": [
+     0.08662348335165135,
+     0.10322430436111552,
+     0.1197186374980367
+    ],
+    "ent_f1_strict": [
+     0.11827699243396066,
+     0.13460839702290595,
+     0.15119554002650498
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.2197991410829746,
+     0.2408518233066129,
+     0.2618559300477699
+    ],
+    "scope_fully_redacted": [
+     -0.01719907944225476,
+     -0.0024647455979693034,
+     0.010943351522650732
+    ]
+   },
+   "safestream-native-onnx - presidio-lg": {
+    "char_p": [
+     0.4850372829092335,
+     0.5095858597336265,
+     0.5344386396707217
+    ],
+    "char_r": [
+     -0.01272815681897383,
+     0.00881644334594825,
+     0.02981533774289148
+    ],
+    "char_f1": [
+     0.19286035729275958,
+     0.21350058332034047,
+     0.2347747225618962
+    ],
+    "entity_recall_covered": [
+     -0.05070444856141603,
+     -0.035706741079453985,
+     -0.020800701104222764
+    ],
+    "ent_p_partial": [
+     0.3600903648850252,
+     0.38382116877233724,
+     0.4092906724890509
+    ],
+    "ent_r_partial": [
+     -0.0474346211980589,
+     -0.03239841316163136,
+     -0.017906560689893682
+    ],
+    "ent_f1_partial": [
+     0.047197972556133304,
+     0.06400304068792803,
+     0.08088514749715585
+    ],
+    "ent_f1_strict": [
+     0.05519349463087208,
+     0.07322103927331491,
+     0.09185482390130766
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.19286035729275958,
+     0.21350058332034047,
+     0.2347747225618962
+    ],
+    "scope_fully_redacted": [
+     -0.05070444856141603,
+     -0.035706741079453985,
+     -0.020800701104222764
+    ]
+   },
+   "safestream-native-onnx-ungated - safestream-native-onnx-batched": {
+    "char_p": [
+     -0.04115194932377045,
+     -0.023900093414009893,
+     -0.00737219417973847
+    ],
+    "char_r": [
+     0.19139803350750623,
+     0.2117507266074888,
+     0.2323118158039203
+    ],
+    "char_f1": [
+     0.12572456613588612,
+     0.14417921839367936,
+     0.1637881694738223
+    ],
+    "entity_recall_covered": [
+     0.12221081493307877,
+     0.13434194772536137,
+     0.14586876219998438
+    ],
+    "ent_p_partial": [
+     -0.06504818804691556,
+     -0.0481315990435906,
+     -0.03067931580272326
+    ],
+    "ent_r_partial": [
+     0.1400538265749381,
+     0.1523843806781172,
+     0.16519672487702766
+    ],
+    "ent_f1_partial": [
+     0.11618400296508796,
+     0.13074866144409425,
+     0.14557507827698626
+    ],
+    "ent_f1_strict": [
+     0.10054274338947414,
+     0.11565211140488621,
+     0.1309579236533278
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.12572456613588612,
+     0.14417921839367936,
+     0.1637881694738223
+    ],
+    "scope_fully_redacted": [
+     0.12221081493307877,
+     0.13434194772536137,
+     0.14586876219998438
+    ]
+   },
+   "safestream-native-onnx-ungated - safestream-native-spacy": {
+    "char_p": [
+     0.2197646333183602,
+     0.24450552244920193,
+     0.26868839076485745
+    ],
+    "char_r": [
+     0.23312173963057428,
+     0.2583204317541744,
+     0.2815517433009464
+    ],
+    "char_f1": [
+     0.23561690065043897,
+     0.25727871628838295,
+     0.27776264242280574
+    ],
+    "entity_recall_covered": [
+     0.11910632742448876,
+     0.134841628959276,
+     0.14980818117097286
+    ],
+    "ent_p_partial": [
+     0.07789985081811447,
+     0.10248778570836298,
+     0.12674274267391733
+    ],
+    "ent_r_partial": [
+     0.14847889604336767,
+     0.1632016352168324,
+     0.17673741191206985
+    ],
+    "ent_f1_partial": [
+     0.14956332151746493,
+     0.16639176529960495,
+     0.18078618470344684
+    ],
+    "ent_f1_strict": [
+     0.1893456859158697,
+     0.20663286595946923,
+     0.22301994730820165
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.23561690065043897,
+     0.25727871628838295,
+     0.27776264242280574
+    ],
+    "scope_fully_redacted": [
+     0.11910632742448876,
+     0.134841628959276,
+     0.14980818117097286
+    ]
+   },
+   "safestream-native-onnx-ungated - presidio-sm": {
+    "char_p": [
+     0.5002798730683696,
+     0.5189569828178943,
+     0.5372315218137059
+    ],
+    "char_r": [
+     0.2309023614357433,
+     0.2562390925528666,
+     0.2804709790577845
+    ],
+    "char_f1": [
+     0.37170810925853187,
+     0.39112570655975487,
+     0.4093354750782195
+    ],
+    "entity_recall_covered": [
+     0.11582760934107078,
+     0.1321331424098897,
+     0.14722712098744933
+    ],
+    "ent_p_partial": [
+     0.36992962386981537,
+     0.3904457367054862,
+     0.41035936557512587
+    ],
+    "ent_r_partial": [
+     0.1415195679030617,
+     0.15722456066505314,
+     0.17113746123451276
+    ],
+    "ent_f1_partial": [
+     0.22299911448547663,
+     0.23821891879630555,
+     0.25251038038080853
+    ],
+    "ent_f1_strict": [
+     0.2388310509728134,
+     0.2552479269325168,
+     0.2707125930575083
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.37170810925853187,
+     0.39112570655975487,
+     0.4093354750782195
+    ],
+    "scope_fully_redacted": [
+     0.11582760934107078,
+     0.1321331424098897,
+     0.14722712098744933
+    ]
+   },
+   "safestream-native-onnx-ungated - presidio-lg": {
+    "char_p": [
+     0.4748755539848473,
+     0.4947335849805716,
+     0.514680877341273
+    ],
+    "char_r": [
+     0.19924680481514,
+     0.2249706543514685,
+     0.247799226766314
+    ],
+    "char_f1": [
+     0.34357116263775156,
+     0.36359542886900403,
+     0.38187704954918195
+    ],
+    "entity_recall_covered": [
+     0.08227236070381232,
+     0.09897305880986396,
+     0.11502693801310504
+    ],
+    "ent_p_partial": [
+     0.3241396844328432,
+     0.3444886149961872,
+     0.3645124645571001
+    ],
+    "ent_r_partial": [
+     0.10671104754359372,
+     0.12273441698351276,
+     0.1377667781922191
+    ],
+    "ent_f1_partial": [
+     0.18283919213010724,
+     0.1987229024514384,
+     0.2139561687324992
+    ],
+    "ent_f1_strict": [
+     0.17682789313045685,
+     0.19366295325624217,
+     0.21056439848980055
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.34357116263775156,
+     0.36359542886900403,
+     0.38187704954918195
+    ],
+    "scope_fully_redacted": [
+     0.08227236070381232,
+     0.09897305880986396,
+     0.11502693801310504
+    ]
+   },
+   "safestream-native-onnx-batched - safestream-native-spacy": {
+    "char_p": [
+     0.24302358754132827,
+     0.2690150298396707,
+     0.29532350675530467
+    ],
+    "char_r": [
+     0.024787289068001758,
+     0.045724887676469816,
+     0.0664005381804429
+    ],
+    "char_f1": [
+     0.0930584604966428,
+     0.11277821126685059,
+     0.1328176539546585
+    ],
+    "entity_recall_covered": [
+     -0.013860018613258453,
+     0.0005732156230773555,
+     0.013731049206059713
+    ],
+    "ent_p_partial": [
+     0.12418325880830697,
+     0.1503421609778589,
+     0.17637302049305917
+    ],
+    "ent_r_partial": [
+     -0.0027429505685965592,
+     0.010684215815989523,
+     0.022793423454696645
+    ],
+    "ent_f1_partial": [
+     0.019836858848597202,
+     0.035324096467766214,
+     0.05010420393687628
+    ],
+    "ent_f1_strict": [
+     0.0740986822724366,
+     0.0907746861729607,
+     0.10760369894071152
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.0930584604966428,
+     0.11277821126685059,
+     0.1328176539546585
+    ],
+    "scope_fully_redacted": [
+     -0.013860018613258453,
+     0.0005732156230773555,
+     0.013731049206059713
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-sm": {
+    "char_p": [
+     0.5196373688128265,
+     0.54286474573048,
+     0.5662583201313995
+    ],
+    "char_r": [
+     0.022530282810775654,
+     0.043992736315370984,
+     0.06621124087205722
+    ],
+    "char_f1": [
+     0.22494364888888432,
+     0.24665230070770325,
+     0.26724010511580015
+    ],
+    "entity_recall_covered": [
+     -0.017113407529522475,
+     -0.002350179508423089,
+     0.010983487956693424
+    ],
+    "ent_p_partial": [
+     0.41544830303046126,
+     0.4385392326035961,
+     0.46113652393485666
+    ],
+    "ent_r_partial": [
+     -0.009392498638238293,
+     0.004651163042247858,
+     0.01794587156074245
+    ],
+    "ent_f1_partial": [
+     0.09046675980697885,
+     0.10726656870681922,
+     0.12359895602058132
+    ],
+    "ent_f1_strict": [
+     0.122282529782042,
+     0.1391881031323307,
+     0.15600847318921576
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.22494364888888432,
+     0.24665230070770325,
+     0.26724010511580015
+    ],
+    "scope_fully_redacted": [
+     -0.017113407529522475,
+     -0.002350179508423089,
+     0.010983487956693424
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-lg": {
+    "char_p": [
+     0.49462200360473824,
+     0.5185942430384924,
+     0.5442083708589663
+    ],
+    "char_r": [
+     -0.008498908130773484,
+     0.012879679738639821,
+     0.03400526022480563
+    ],
+    "char_f1": [
+     0.19831749514893443,
+     0.2190627977762119,
+     0.2407083673861598
+    ],
+    "entity_recall_covered": [
+     -0.05000267157444786,
+     -0.03555658174914697,
+     -0.02101953485334705
+    ],
+    "ent_p_partial": [
+     0.3693879690862973,
+     0.3922852082242445,
+     0.41611482843233855
+    ],
+    "ent_r_partial": [
+     -0.043927783724173726,
+     -0.030046055667339783,
+     -0.015815039386318022
+    ],
+    "ent_f1_partial": [
+     0.05119669714557014,
+     0.06800726036336988,
+     0.0842061704734845
+    ],
+    "ent_f1_strict": [
+     0.059390628205564094,
+     0.07803396518780023,
+     0.09681336648945718
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.19831749514893443,
+     0.2190627977762119,
+     0.2407083673861598
+    ],
+    "scope_fully_redacted": [
+     -0.05000267157444786,
+     -0.03555658174914697,
+     -0.02101953485334705
+    ]
+   },
+   "safestream-native-spacy - presidio-sm": {
+    "char_p": [
+     0.2562183975717975,
+     0.2740854725742789,
+     0.2924986758811541
+    ],
+    "char_r": [
+     -0.009230660745876345,
+     -0.0018818558170336785,
+     0.005749394841819186
+    ],
+    "char_f1": [
+     0.12321788285851427,
+     0.13333087783871342,
+     0.1444863351261113
+    ],
+    "entity_recall_covered": [
+     -0.007525933479168063,
+     -0.002928263963917599,
+     0.0017998922220226476
+    ],
+    "ent_p_partial": [
+     0.2736980892528855,
+     0.2879710951367109,
+     0.3025526361320815
+    ],
+    "ent_r_partial": [
+     -0.01005754624247698,
+     -0.006047215528458827,
+     -0.002275817732630535
+    ],
+    "ent_f1_partial": [
+     0.06533758007320586,
+     0.07186613817733797,
+     0.0785870256541092
+    ],
+    "ent_f1_strict": [
+     0.04252326990249318,
+     0.04832913188999492,
+     0.05436366612318347
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.12321788285851427,
+     0.13333087783871342,
+     0.1444863351261113
+    ],
+    "scope_fully_redacted": [
+     -0.007525933479168063,
+     -0.002928263963917599,
+     0.0017998922220226476
+    ]
+   },
+   "safestream-native-spacy - presidio-lg": {
+    "char_p": [
+     0.23030257431499834,
+     0.24980828519730008,
+     0.2695318248819988
+    ],
+    "char_r": [
+     -0.04902790705752226,
+     -0.033160474064443224,
+     -0.01657624858630846
+    ],
+    "char_f1": [
+     0.09098021445656045,
+     0.10598770551743578,
+     0.12123658079058747
+    ],
+    "entity_recall_covered": [
+     -0.047904526817390734,
+     -0.03579813021565942,
+     -0.023464307916895633
+    ],
+    "ent_p_partial": [
+     0.22183350813970554,
+     0.24216291550015837,
+     0.26265510398083164
+    ],
+    "ent_r_partial": [
+     -0.051234761331192376,
+     -0.04029013541087939,
+     -0.02983686465370697
+    ],
+    "ent_f1_partial": [
+     0.01996913720843047,
+     0.032667385318144115,
+     0.0450566771111479
+    ],
+    "ent_f1_strict": [
+     -0.02514697402352021,
+     -0.013194319549086314,
+     -0.0009350768739719586
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.09098021445656045,
+     0.10598770551743578,
+     0.12123658079058747
+    ],
+    "scope_fully_redacted": [
+     -0.047904526817390734,
+     -0.03579813021565942,
+     -0.023464307916895633
+    ]
+   },
+   "presidio-sm - presidio-lg": {
+    "char_p": [
+     -0.03237958328795741,
+     -0.024395159764766222,
+     -0.016495570234195154
+    ],
+    "char_r": [
+     -0.046322154515063996,
+     -0.03146604907913733,
+     -0.016086805370066345
+    ],
+    "char_f1": [
+     -0.03785396479582613,
+     -0.027566938178680667,
+     -0.01714404127973369
+    ],
+    "entity_recall_covered": [
+     -0.044380475157242257,
+     -0.032942594527006624,
+     -0.021353603112875364
+    ],
+    "ent_p_partial": [
+     -0.05707100081679862,
+     -0.04578229081088439,
+     -0.035354091344540636
+    ],
+    "ent_r_partial": [
+     -0.044768975767617555,
+     -0.034335773183667484,
+     -0.024514577703617545
+    ],
+    "ent_f1_partial": [
+     -0.04967010695278108,
+     -0.03931309396342175,
+     -0.029704916180323556
+    ],
+    "ent_f1_strict": [
+     -0.07131648362484257,
+     -0.061454837639452226,
+     -0.051947790865495405
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     -0.03785396479582613,
+     -0.027566938178680667,
+     -0.01714404127973369
+    ],
+    "scope_fully_redacted": [
+     -0.044380475157242257,
+     -0.032942594527006624,
+     -0.021353603112875364
+    ]
+   }
+  }
+ },
+ "command": "python -m benchmarks.harness --corpus btc --split test --systems safestream-native safestream-native-onnx safestream-native-onnx-ungated safestream-native-onnx-batched safestream-native-spacy presidio-sm presidio-lg --bootstrap 2000 --checkpoint-dir research/results/raw/conf/ckpt_btc --json research/results/raw/conf/E2_btc_test.json --md research/results/raw/conf/E2_btc_test.md"
+}

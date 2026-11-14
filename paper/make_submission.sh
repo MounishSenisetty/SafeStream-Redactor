@@ -15,7 +15,7 @@ paper=$(pwd)
 shift
 wrappers=("$@")
 [ ${#wrappers[@]} -eq 0 ] && wrappers=($(ls wrappers/*.tex | xargs -n1 basename | sed 's/\.tex$//'))
-export TEXINPUTS="$paper:$paper/wrappers:" BIBINPUTS="$paper:" BSTINPUTS="$paper/wrappers:"
+export TEXINPUTS="$paper:$paper/wrappers:" BIBINPUTS="$paper:" BSTINPUTS="$paper:$paper/wrappers:"
 status=0
 printf '%-24s %-6s %6s %9s %9s %s\n' wrapper blind pages overfull undefined result
 for w in "${wrappers[@]}"; do
@@ -40,7 +40,7 @@ for w in "${wrappers[@]}"; do
       fi
       cp -r content figures meta.tex refs.bib "$src/"
       cp "$out/main.bbl" "$src/"
-      find wrappers -maxdepth 1 \( -name '*.cls' -o -name '*.bst' -o -name '*.sty' \) \
+      find . -maxdepth 1 \( -name '*.cls' -o -name '*.bst' -o -name '*.sty' \) \
         -exec cp {} "$src/" \;
       (cd "$src" && rm -f figures/*.tex && zip -qr "$paper/$out/source.zip" .)
       # the zip must build on its own (no TEXINPUTS help)
@@ -56,12 +56,12 @@ for w in "${wrappers[@]}"; do
   done
 done
 # the supplement (if any) is a plain article of its own: normal and anonymous
-if [ -f supplement/supplementary.tex ]; then
+if [ -f supplementary.tex ]; then
   for anon in 0 1; do
     pre=""; name=supplement; [ $anon = 1 ] && { pre='\def\anonymousbuild{}'; name=supplement-anon; }
     out=build/$name; rm -rf "$out"; mkdir -p "$out"
     sup() { pdflatex -interaction=nonstopmode -halt-on-error -jobname=supplementary \
-      -output-directory="$out" "$pre\\input{supplement/supplementary.tex}" >/dev/null 2>&1; }
+      -output-directory="$out" "$pre\\input{supplementary.tex}" >/dev/null 2>&1; }
     if sup && sup; then
       over=$(grep -c "^Overfull" "$out/supplementary.log" || true)
       undef=$(grep -cE "Warning: (Reference|Citation) .* undefined" "$out/supplementary.log" || true)
@@ -72,5 +72,9 @@ if [ -f supplement/supplementary.tex ]; then
       printf '%-24s %-6s %6s %9s %9s %s\n' supplement "$anon" - - - ERROR; status=1
     fi
   done
+fi
+# main.tex is the single-file copy for Overleaf (paper/flatten.py); it must match the sources
+if ! python3 ../flatten.py "$(basename "$paper")" --check >/dev/null; then
+  echo "main.tex is out of date: run python paper/flatten.py $(basename "$paper")"; status=1
 fi
 exit $status

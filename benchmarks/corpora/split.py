@@ -43,6 +43,8 @@ TEST_ONLY = {
     "wiki_bios": "Wikipedia biographies annotated with TAB's scheme; held-out second domain "
     "for the frozen free-text configuration; evaluation only",
     "benign": "public prose with no personal data; false-alarm probe only",
+    "btc": "Broad Twitter Corpus section F (real tweets, human gold); conference study "
+    "Amendment 3; evaluation only",
     "wnut17": "WNUT-17 test set (real user-generated text, human gold); conference study "
     "only, never used for development; evaluation only",
 }
