@@ -136,3 +136,17 @@ committed. It is used only for E6 to E9.
 
 None at the time of writing. Any later departure is added below with its date and
 reason, and is never removed.
+
+1. **2026-11-14, cost figures on ai4privacy.** The E2 run on ai4privacy overlapped
+   with the E6 egress audit and the E7 residual-exposure run: one or two other
+   single-threaded processes on the 4-vCPU machine. Its accuracy is unaffected. Its
+   MB/s and latency may be pessimistic, so the cost comparisons are quoted from the
+   WNUT-17 and CoNLL runs, which ran alone.
+2. **2026-11-14, P2 throughput.** The harness reports one MB/s figure per system and
+   no per-document resampling of it, so the MB/s part of P2 is reported
+   descriptively, without an interval.
+3. **2026-11-14, REST transport.** The E8 smoke test found that every kept-alive REST
+   request waited about 40 ms: the handler writes the headers and the body
+   separately, and Nagle's algorithm held the body until the client's delayed ACK.
+   This was fixed (`disable_nagle_algorithm`). E8 therefore reports REST twice, on the
+   commit before the fix and after it, in the same way as E6.
