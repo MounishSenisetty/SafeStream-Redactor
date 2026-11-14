@@ -40,6 +40,8 @@ TEST_ONLY = {
     "configuration: never inspected or scored before that configuration was frozen",
     "creddata": "CredData (Samsung) labelled lines from real open-source files; "
     "evaluation only, never used for development",
+    "wiki_bios": "Wikipedia biographies annotated with TAB's scheme; held-out second domain "
+    "for the frozen free-text configuration; evaluation only",
 }
 
 # Corpora with no test half: every document is development data.

@@ -77,3 +77,18 @@ Development-split scores (for reference only; not evidence):
 | SafeStream +spaCy (current code, default profile) | .455 | .324 | .378 | .123 | .160 |
 | Presidio sm | .547 | .683 | .607 | .116 | .646 |
 | Presidio lg | .550 | .688 | .612 | .132 | .644 |
+
+## Second domain: Wikipedia biographies (added before its run)
+
+Added after the TAB confirmation and before any system was run on this corpus.
+Corpus `wiki_bios`: the 553 Wikipedia biography summaries of Papadopoulou et al.
+(LREC 2022), annotated with TAB's scheme (20 by two annotators), repository
+`anthipapa/textanonymization` at the commit in `REVISION`; test-only manifest in
+`benchmarks/corpora/splits/wiki_bios.json`. It tests whether the free-text
+configuration, frozen at `9c10975` and **not changed**, transfers to a genre it
+was not designed on.
+
+Systems, metrics, intervals and planned comparisons are those of the
+confirmation run above (free-text configuration minus Presidio sm and minus
+Presidio lg on character F1, character recall, direct and quasi entity recall).
+Results are reported whatever their direction.

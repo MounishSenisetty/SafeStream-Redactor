@@ -648,7 +648,7 @@ def tab_annotations(doc: dict[str, Any]) -> dict[str, list[tuple[int, int, str, 
     return out
 
 
-def _load_tab(split: str, name: str) -> Corpus:
+def _load_tab(split: str, name: str, directory: Path | None = None, fname: str = "") -> Corpus:
     """One split of the Text Anonymization Benchmark (Pilan et al., 2022).
 
     127 real ECHR judgments, annotated by one to ten people each. Every document is
@@ -658,9 +658,9 @@ def _load_tab(split: str, name: str) -> Corpus:
     ``benchmarks.tab_score``, which scores each annotator's gold separately as TAB
     prescribes.
     """
-    directory = EXTERNAL / "tab"
+    directory = directory or EXTERNAL / "tab"
     path = _require(
-        directory / f"echr_{split}.json",
+        directory / (fname or f"echr_{split}.json"),
         "git clone https://github.com/NorskRegnesentral/text-anonymization-benchmark "
         "and copy its echr_*.json files, LICENSE.txt and README.md here (commit in REVISION)",
     )
@@ -689,7 +689,12 @@ def _load_tab(split: str, name: str) -> Corpus:
         docs,
         [path],
         _revision(directory),
-        f"real ECHR judgments (TAB {split} split, MIT licence); gold = DIRECT and QUASI "
+        (
+            f"real ECHR judgments (TAB {split} split, MIT licence)"
+            if not fname
+            else "Wikipedia biographies (Papadopoulou et al. 2022)"
+        )
+        + "; gold = DIRECT and QUASI "
         "mentions, union over annotators here; primary scores per annotator",
     )
     corpus.skipped.extend(skipped)
@@ -710,6 +715,13 @@ def load_tab_train() -> Corpus:
     """TAB training split used as a held-out confirmation set: 1,014 judgments, never
     inspected or scored before the free-text configuration was frozen."""
     return _load_tab("train", "tab_train")
+
+
+def load_wiki_bios() -> Corpus:
+    """553 Wikipedia biography summaries annotated for anonymisation with TAB's scheme
+    (Papadopoulou et al., LREC 2022): a second, held-out domain for the free-text
+    configuration. Test-only; every system is run once."""
+    return _load_tab("test", "wiki_bios", EXTERNAL / "wiki_bios", "annotated_wikipedia.json")
 
 
 def load_creddata() -> Corpus:
@@ -808,6 +820,7 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "tab_dev": load_tab_dev,
     "tab_train": load_tab_train,
     "creddata": load_creddata,
+    "wiki_bios": load_wiki_bios,
 }
 
 

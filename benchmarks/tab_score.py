@@ -128,9 +128,10 @@ def metrics(v: np.ndarray) -> dict[str, np.ndarray]:
 
 
 CORPUS_FILES = {
-    "tab": ("echr_test.json", "test"),
-    "tab_dev": ("echr_dev.json", "dev"),
-    "tab_train": ("echr_train.json", "test"),
+    "tab": ("tab", "echr_test.json", "test"),
+    "tab_dev": ("tab", "echr_dev.json", "dev"),
+    "tab_train": ("tab", "echr_train.json", "test"),
+    "wiki_bios": ("wiki_bios", "annotated_wikipedia.json", "test"),
 }
 
 
@@ -140,8 +141,8 @@ def score(
     seed: int = 0,
     corpus: str = "tab",
 ) -> dict[str, Any]:
-    fname, split = CORPUS_FILES[corpus]
-    raw = {d["doc_id"]: d for d in _raw(fname)}
+    folder, fname, split = CORPUS_FILES[corpus]
+    raw = {d["doc_id"]: d for d in _raw(folder, fname)}
     ids = [d.doc_id.removeprefix("tab-") for d in corpora.load(corpus, split).docs]
     docs = [raw[i] for i in ids]
     arr, types = {}, {}
@@ -198,8 +199,8 @@ def score(
     return out
 
 
-def _raw(fname: str) -> list[dict[str, Any]]:
-    path = corpora.EXTERNAL / "tab" / fname
+def _raw(folder: str, fname: str) -> list[dict[str, Any]]:
+    path = corpora.EXTERNAL / folder / fname
     return json.loads(path.read_text(encoding="utf-8"))
 
 
