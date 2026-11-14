@@ -416,3 +416,15 @@ reported as a non-replication. No new hypothesis test.
 
 **Data.** As Amendment 2: generated values only; transcripts git-ignored; committed
 results pseudonymised with `benchmarks/thirdparty/pseudonymize.py`.
+
+### Amendment 4: departure before the Hermes-3 runs (2026-11-14)
+
+The Hermes-3 GGUF file embeds a plain ChatML chat template with no tool section, so the
+first three Hermes-3 runs (SafeStream, benign) showed the model no tools: it called
+none and wrote an invented summary. Those three runs were stopped and discarded as a
+harness fault; their outcomes (no tool call, no hidden value) were seen. The tools are
+now given to Hermes-3 with the function-calling system prompt from its model card, and
+tool results come back in `<tool_response>` blocks (`--tool-prompt hermes`). A
+one-ticket smoke test (SafeStream, benign) checked only that the calls parse; it is not
+part of the results. All Hermes-3 cells are then run from the start. Nothing else
+changes.
