@@ -38,6 +38,8 @@ TEST_ONLY = {
     "never used for development; evaluation only",
     "tab_train": "TAB training split used as held-out confirmation for the free-text "
     "configuration: never inspected or scored before that configuration was frozen",
+    "creddata": "CredData (Samsung) labelled lines from real open-source files; "
+    "evaluation only, never used for development",
 }
 
 # Corpora with no test half: every document is development data.
