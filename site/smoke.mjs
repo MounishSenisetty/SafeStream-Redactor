@@ -257,6 +257,8 @@ check(benchRows.length === 3 && benchRows.every((r) => r.includes("MB/s")), "gen
 
 // --- REST console: every endpoint and the error cases
 await page.keyboard.press("3");
+// opening the tab sends its default request: let that reply land before the loop clears the pane
+await until(() => document.querySelector("#rest-status").textContent !== "");
 const rest = async (route) => {
   await page.selectOption("#rest-route", route);
   await page.click("#rest-send");
@@ -275,6 +277,7 @@ check((await text("#rest-curl")).includes("curl -s"), "REST shows the matching c
 
 // --- MCP console: every preset
 await page.keyboard.press("4");
+await until(() => document.querySelector("#mcp-response").textContent !== "");
 for (const preset of ["initialize", "initialized", "ping", "list", "scan", "redact", "explain", "detectors", "health", "unknown"]) {
   await page.evaluate(() => { document.querySelector("#mcp-response").textContent = ""; });
   await page.click(`[data-preset="${preset}"]`);
