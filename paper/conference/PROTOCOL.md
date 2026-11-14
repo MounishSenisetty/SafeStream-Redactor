@@ -173,3 +173,69 @@ reason, and is never removed.
    not trace to this study's own raw results (`research/results/raw/conf/`, which J
    never uses). A shared value that does trace there is a different measurement that
    rounds to the same digits. Method constants are allow-listed with their reasons.
+
+## Amendment 1 (2026-11-14): third-party MCP redaction tools (C-RQ5)
+
+Written and committed **before any third-party tool was installed or run**. The tools'
+READMEs were read as documents; none of their code had been executed.
+
+**Question.** C-RQ5: do other agent-facing redaction tools let an agent learn the values
+they protect, through the same three channels as C-RQ3, plus a fourth one many of them
+add on purpose: a restore tool the agent itself can call?
+
+**Sampling frame.** Searches on 2026-11-14: web search ("MCP server PII redaction
+presidio", "Model Context Protocol server secret scanning", "MCP server anonymize
+redact PII detection pypi npm"), the npm registry search API ("mcp pii", "mcp redact",
+"mcp presidio", "mcp anonymize", "mcp secret scan", "mcp sensitive data"), and the PyPI
+JSON API for 24 likely package names. Inclusion criteria:
+- open source;
+- runs on the user's machine as an MCP server over stdio, with no account, API key or
+  remote service;
+- exposes at least one tool that takes text and detects, redacts or anonymises personal
+  data or secrets;
+- installable at a pinned version.
+
+| Tool | Version / commit | Stated contract (from its README) |
+|---|---|---|
+| privacyscrubber-mcp (moxno) | PyPI 2.5.0.post1; npm 2.5.0; git `2ee0500e1e46` | values are "replaced by tokens before being sent"; has `reveal_text` to restore originals |
+| pii-mcp (foro-sh) | PyPI 1.13.0; git `2e93566e3b49` | FastMCP middleware that masks tool results; included only if it ships a standalone text tool |
+| anonymize-mcp (Buggy1111) | PyPI 0.10.4; git `b34976e6f368` | "zero-egress local mode" (`ANONYMIZE_MCP_LOCAL=1`); only that mode is audited |
+| mcp-presidio (cmalpass) | git `b875094d6a16` | Presidio analysis and anonymisation; README warns that text reaches the LLM |
+| PII-Shield (gregmos) | npm 2.2.0; git `e2e0fed96c93` | "Zero PII in API": `anonymize_file` returns a path and session id; has deanonymisation tools |
+| pii-anonymizer-mcp (kofi-sketch) | git `176ab59353e1` | "No data leaves the machine"; has `deanonymize_text` to restore originals |
+
+Excluded, with reason:
+- MCP proxies, which filter other servers' traffic and so have a different contract:
+  @guardbee/mcp-security-proxy, movahedi-ca/pii-filter-mcp,
+  growthspace gs-mcp-proxy-pii-redactor.
+- Tools that need a remote or separately run service: philter-mcp (Philter server),
+  anonymize.dev and the Apify gitleaks actor (hosted), GitHub's MCP secret scanning
+  (hosted; needs GitHub Secret Protection), obot pii-filter (HTTP only).
+- A tool that fails to install or start offline is reported as excluded, with the
+  error.
+
+**Procedure.** Each tool is installed at its pin into its own isolated environment and
+started with the command its README gives. `benchmarks/mcp_thirdparty_audit.py` lists
+its tools and calls every tool that takes a text argument on each document. It searches
+every string of every reply for every gold value: at least 4 characters with a letter,
+whole-token match, five encodings, against a masked-input control. Corpora: AgentTrace
+(2,000), WNUT-17 (129), and the first 500 ai4privacy test documents (a cost bound
+fixed now). Measured per tool:
+1. **Egress in non-output fields**: values in any reply field other than the tool's
+   redacted text, such as entity lists, mapping tables or echoes. Reported against
+   what the README states.
+2. **Residual exposure**: values left in the redacted text. This is a recall measure,
+   reported only descriptively.
+3. **Restore by the agent**: whether a restore tool exists that the agent itself can
+   call. If it does, whether calling it with a reply's placeholders returns the original
+   values (measured on AgentTrace).
+4. **Failures**: calls that error or time out.
+
+No tool is ranked on detection accuracy, because the tools target different entity sets.
+SafeStream is run through the same harness as a reference.
+
+**Disclosure.** If a tool's reply contradicts what its README says it returns, the
+maintainers are told privately, with the reproducer, before any public version of this
+paper. The paper names the tool, version and finding only after a 30-day notice, or
+earlier if the maintainer agrees. Expected behaviour, such as a documented restore tool
+or a documented entity list, is reported as a design property, not a vulnerability.

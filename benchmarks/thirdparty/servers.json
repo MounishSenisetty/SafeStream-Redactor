@@ -1,0 +1,9 @@
+[
+  {
+    "name": "safestream",
+    "version": "0.5.0",
+    "source": "this repository",
+    "command": "python",
+    "args": ["-m", "safestream_redactor", "mcp-serve"]
+  }
+]
