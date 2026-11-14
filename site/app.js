@@ -1255,6 +1255,9 @@ const main = wireTabs(document.querySelector(".tabs"), (tab) => {
   if (tab.id === "tab-inspector") loadTrace();
   else pause();
   if (tab.id === "tab-ci" && !$("ci-input").value) { ciPreset("leak"); runGate(); }
+  // show a real answer straight away, not an empty pane
+  if (tab.id === "tab-rest" && !$("rest-response").textContent) sendRest();
+  if (tab.id === "tab-mcp" && !$("mcp-response").textContent) sendMcp();
   writeHash();
 });
 const tabName = (tab) => tab.id.slice(4);
@@ -1594,6 +1597,7 @@ $("rest-use-input").addEventListener("click", () => {
   renderCurl();
 });
 async function sendRest() {
+  if (!info) return;
   const { method, path } = restRoute();
   const status = $("rest-status");
   try {
@@ -1644,6 +1648,7 @@ $("mcp-use-input").addEventListener("click", () => {
   $("mcp-body").value = JSON.stringify(msg, null, 2);
 });
 async function sendMcp() {
+  if (!info) return;
   try {
     const reply = await call("mcp", { message: $("mcp-body").value, settings: settingsKey() });
     $("mcp-response").textContent = reply === null ? "(no reply: that was a notification)" : JSON.stringify(reply, null, 2);
@@ -1930,6 +1935,8 @@ startEngine()
     runAnalyze();
     if (activeTab().id === "tab-inspector") loadTrace();
     if (activeTab().id === "tab-ci") runGate();
+    if (activeTab().id === "tab-rest") sendRest();
+    if (activeTab().id === "tab-mcp") sendMcp();
     if (!store.get("tour") && matchMedia("(min-width: 600px)").matches) startTour();
   })
   .catch((err) => bootFailed(err.message));
