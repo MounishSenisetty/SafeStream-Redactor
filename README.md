@@ -20,7 +20,7 @@ agents, a CI secret gate, or a local web playground.
 **[Try it in your browser →](https://mounishsenisetty.github.io/SafeStream-Redactor/)** The demo runs the real package in WebAssembly,
 so nothing you paste leaves your machine.
 
-[![The live demo: a service log with its PII and credentials redacted, findings ranked by severity](https://raw.githubusercontent.com/MounishSenisetty/SafeStream-Redactor/main/docs/images/demo-playground.png)](https://mounishsenisetty.github.io/SafeStream-Redactor/)
+[![The live demo: a service log with its PII and credentials redacted, each finding tagged by type](https://raw.githubusercontent.com/MounishSenisetty/SafeStream-Redactor/main/docs/images/demo-playground.png)](https://mounishsenisetty.github.io/SafeStream-Redactor/)
 
 ## 30-second quickstart
 
@@ -179,9 +179,10 @@ See [docs/MCP.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/m
 
 ### Web playground
 
-The [live demo](https://mounishsenisetty.github.io/SafeStream-Redactor/) needs no install. It covers the playground, the streaming
-inspector, and the REST and MCP consoles, for inputs up to 1 MiB. For big files, run the
-playground locally:
+The [live demo](https://mounishsenisetty.github.io/SafeStream-Redactor/) needs no install. It covers the playground (every
+redaction mode the pure-Python engine runs, a `policy.toml` editor, and the matching CLI,
+Python, REST and MCP calls), the streaming inspector, the REST and MCP consoles, and the CI
+gate, for inputs up to 1 MiB. For big files, run the playground locally:
 
 ```bash
 pip install 'safestream-redactor[ui]'

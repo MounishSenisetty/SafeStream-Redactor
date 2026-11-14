@@ -5,6 +5,9 @@
 \input{meta}
 \input{content/preamble}
 \usepackage[hidelinks]{hyperref}
+%% the content's tables and figures are set to the full text width: float them across both columns
+\makeatletter\renewenvironment{table}{\@dblfloat{table}}{\end@dblfloat}
+\renewenvironment{figure}{\@dblfloat{figure}}{\end@dblfloat}\makeatother
 \begin{document}
 \title{\ssTitle}
 \ifanonymous
