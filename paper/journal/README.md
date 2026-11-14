@@ -1,3 +1,5 @@
+> **Superseded by `paper/ijis/`. Do not submit; see `SUPERSEDED.md`.**
+
 # Journal manuscript (Computers & Security, Elsevier `elsarticle`)
 
 ## Overleaf
