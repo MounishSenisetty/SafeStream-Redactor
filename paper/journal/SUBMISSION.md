@@ -10,7 +10,7 @@ No venue has been chosen. Once one is:
    `build/<wrapper>/source.zip`, `build/supplement/supplementary.pdf` as the electronic
    supplementary material ("Online Resource 1"), and `cover_letter.pdf`.
 3. Check the page count in the build summary against the venue's limit. The generic
-   build is 29 pages including references and the proofs appendix.
+   build is 28 pages including references and the proofs appendix.
 4. In `cover_letter.tex`, set `\Venue` and `\Editor`.
 
 ## Ready in the files
@@ -42,7 +42,10 @@ Only the authors can check these facts.
 
 ## Optional, strengthens the paper
 
-- A second person labels the Loghub templates blind
-  (`python -m benchmarks.loghub_agreement sheet`, then `agree`); report the agreement
-  in the threats paragraph. The paper states that the labels were checked by one
-  author and that the tool is released.
+- A second person labels the Loghub templates blind: they fill
+  `benchmarks/corpora/loghub_second_annotator_sheet.csv` (instructions at its top;
+  they must not open `benchmarks/corpora/loghub_slots*.json`), then run
+  `python -m benchmarks.loghub_agreement agree <filled sheet> --annotator "<name>"`
+  and add the reported kappa to the threats paragraph. The paper currently states
+  that one author checked the labels, that an independent audit against the slot
+  values found one disclosed defect, and that the sheet and tool are released.

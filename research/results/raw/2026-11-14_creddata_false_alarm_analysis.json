@@ -1,0 +1,101 @@
+{
+ "note": "Descriptive analyses on the corrected CredData set (63,706 ranges); no threshold or tier was chosen from them.",
+ "false_alarms_by_label": {
+  "safestream_pattern_evaluated": {
+   "F": {
+    "flagged": 8081,
+    "rate": 0.1778
+   },
+   "X": {
+    "flagged": 664,
+    "rate": 0.167
+   },
+   "FX": {
+    "flagged": 62,
+    "rate": 0.6327
+   }
+  },
+  "safestream_default_current": {
+   "F": {
+    "flagged": 12813,
+    "rate": 0.282
+   },
+   "X": {
+    "flagged": 3363,
+    "rate": 0.8456
+   },
+   "FX": {
+    "flagged": 75,
+    "rate": 0.7653
+   }
+  },
+  "gitleaks": {
+   "F": {
+    "flagged": 1105,
+    "rate": 0.0243
+   },
+   "X": {
+    "flagged": 20,
+    "rate": 0.005
+   },
+   "FX": {
+    "flagged": 0,
+    "rate": 0.0
+   }
+  }
+ },
+ "gold_free_ranges_by_label": {
+  "F": 45442,
+  "X": 3977,
+  "FX": 98
+ },
+ "safestream_pattern_by_confidence_threshold": {
+  "0.5": {
+   "fully_redacted": 0.5485,
+   "false_alarm_rate": 0.1779
+  },
+  "0.6": {
+   "fully_redacted": 0.5481,
+   "false_alarm_rate": 0.1741
+  },
+  "0.65": {
+   "fully_redacted": 0.0888,
+   "false_alarm_rate": 0.0699
+  },
+  "0.9": {
+   "fully_redacted": 0.0882,
+   "false_alarm_rate": 0.0461
+  },
+  "0.95": {
+   "fully_redacted": 0.0878,
+   "false_alarm_rate": 0.0387
+  },
+  "0.97": {
+   "fully_redacted": 0.0353,
+   "false_alarm_rate": 0.0137
+  },
+  "0.99": {
+   "fully_redacted": 0.0094,
+   "false_alarm_rate": 0.0046
+  }
+ },
+ "safestream_pattern_by_tier": {
+  "all_tiers": {
+   "fully_redacted": 0.5485,
+   "false_alarm_rate": 0.1779
+  },
+  "without_entropy_tiers": {
+   "fully_redacted": 0.0892,
+   "false_alarm_rate": 0.0755
+  },
+  "entropy_tiers_only": {
+   "fully_redacted": 0.4593,
+   "false_alarm_rate": 0.1284
+  }
+ },
+ "false_alarm_lines_with_only_entropy_detections": {
+  "count": 5069,
+  "of": 8807,
+  "share": 0.5756
+ }
+}

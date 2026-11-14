@@ -855,18 +855,25 @@ def load_creddata() -> Corpus:
         for line in chunk[:-1]:
             starts.append(starts[-1] + len(line) + 1)
         gold = []
+        unscoreable = False
         for row in group:
             if row["GroundTruth"] != "T":
                 continue
             vs, ve = row["ValueStart"].strip(), row["ValueEnd"].strip()
             if not vs or not ve or int(vs) < 0 or int(ve) < 0:
                 skipped.append(f"{fpath}:{ls}-{le} row {row['Id']}: T without a value span")
+                unscoreable = True
                 continue
             a, b = starts[0] + int(vs), starts[-1] + int(ve)
             if not (0 <= a < b <= len(text)):
                 skipped.append(f"{fpath}:{ls}-{le} row {row['Id']}: span outside the lines")
                 continue
             gold.append(Gold(a, b, row.get("Category") or "credential", "mandatory"))
+        if unscoreable and not gold:
+            # a credential line whose value has no position: neither gold nor gold-free
+            # (the protocol counts only all-F/X ranges as gold-free), so it is left out
+            skipped.append(f"{fpath}:{ls}-{le}: credential range without a value span, left out")
+            continue
         doc_id = f"cred-{group[0]['RepoName']}-{Path(fpath).stem}-{ls}-{le}"
         docs.append(Doc(doc_id, text, sorted(gold, key=lambda g: (g.start, g.end))))
     corpus = Corpus(

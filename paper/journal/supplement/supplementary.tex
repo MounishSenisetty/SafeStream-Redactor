@@ -391,4 +391,97 @@ gitleaks, TruffleHog & .000 & .000 & .000 & .000 & .000 \\
 \end{tabular*}
 \end{table}
 
+%% ===================================================================
+\section{CredData: where the false alarms come from}\label{s:credfa}
+
+Descriptive analyses on the corrected CredData set (63,706 ranges); no threshold or tier was chosen from them (\texttt{research/results/raw/2026-11-14\_creddata\_false\_alarm\_analysis.json}). Table~\ref{t:credfa} splits the false-alarm rate by CredData's label for the non-credential ranges: \texttt{F} (not a credential, 45,442 ranges), \texttt{X} (test value, example or placeholder, 3,977) and both (98). Table~\ref{t:credth} gives the evaluated pattern tiers' fully redacted rate (FR) and false-alarm rate (FA) across confidence thresholds and with the entropy tiers removed; 58\% of the flagged non-credential lines carried only entropy-tier detections.
+
+\begin{table}[ht]
+\caption{False-alarm rate on CredData's non-credential ranges by label.}\label{t:credfa}
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lrrr}
+\toprule
+System & \texttt{F} & \texttt{X} & \texttt{F} and \texttt{X} \\
+\midrule
+SafeStream pattern (evaluated) & 0.178 & 0.167 & 0.633 \\
+SafeStream default (current) & 0.282 & 0.846 & 0.765 \\
+gitleaks & 0.024 & 0.005 & 0.000 \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+\begin{table}[ht]
+\caption{SafeStream pattern tiers (evaluated commit) on CredData: operating points.}\label{t:credth}
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lrr}
+\toprule
+Confidence threshold & FR & FA \\
+\midrule
+0.5 & 0.548 & 0.178 \\
+0.6 & 0.548 & 0.174 \\
+0.65 & 0.089 & 0.070 \\
+0.9 & 0.088 & 0.046 \\
+0.95 & 0.088 & 0.039 \\
+0.97 & 0.035 & 0.014 \\
+0.99 & 0.009 & 0.005 \\
+\midrule
+Tiers (threshold 0.5) & FR & FA \\
+\midrule
+All tiers & 0.548 & 0.178 \\
+Without the entropy tiers & 0.089 & 0.075 \\
+Entropy tiers only & 0.459 & 0.128 \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+%% ===================================================================
+\section{Presidio's recognisers wrapped in the streaming engine}\label{s:wrap}
+
+Presidio's pattern recognisers (no NLP engine), with overlapping spans merged, run four ways over each test corpus concatenated into one stream, as in Section~7.1 of the article: whole document (the reference), naive chunks, overlapping windows of $c + o$ characters, and SafeStream's engine with declared bounds $L = 2048$, $C_{\mathrm{left}} = C_{\mathrm{right}} = 64$ and $w = 2112$, over two random chunkings. Each cell gives reference detections missed / gold spans that the reference fully redacts but the variant does not; the last column counts runs identical to the reference. ``Unbounded pattern removed'' drops one pattern, Presidio's low-confidence Indian PAN pattern, whose leading lookaheads \texttt{(?=.*?[a-zA-Z])(?=.*?[0-9]\{4\})} are compiled with \texttt{DOTALL} and so read to the end of the text. Script: \texttt{benchmarks/wrap\_presidio.py}.
+
+\begin{table}[ht]
+\caption{Presidio pattern recognisers: leaks caused by chunking alone, and the wrapped engine.}\label{t:wrap}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}llrrrl}
+\toprule
+Corpus, recognisers & Chunk & Naive & $o = 256$ & $o = 2112$ & Engine \\
+\midrule
+presidio-research, all patterns & 1\,KiB & 42 / 3 & 13 / 1 & 0 / 0 & 2 of 2 \\
+presidio-research, all patterns & 4\,KiB & 6 / 0 & 4 / 0 & 0 / 0 & 2 of 2 \\
+presidio-research, unbounded pattern removed & 1\,KiB & 1 / 1 & 0 / 0 & 0 / 0 & 2 of 2 \\
+presidio-research, unbounded pattern removed & 4\,KiB & 0 / 0 & 0 / 0 & 0 / 0 & 2 of 2 \\
+RedactionBench, all patterns & 1\,KiB & 3387 / 204 & 2720 / 31 & 1117 / 3 & 0 of 2 \\
+RedactionBench, all patterns & 4\,KiB & 1701 / 38 & 1432 / 10 & 716 / 1 & 0 of 2 \\
+RedactionBench, unbounded pattern removed & 1\,KiB & 87 / 145 & 1 / 2 & 0 / 0 & 2 of 2 \\
+RedactionBench, unbounded pattern removed & 4\,KiB & 16 / 11 & 0 / 0 & 0 / 0 & 2 of 2 \\
+TAB, all patterns & 1\,KiB & 1167 / 9 & 438 / 4 & 5 / 0 & 0 of 2 \\
+TAB, all patterns & 4\,KiB & 291 / 0 & 113 / 0 & 4 / 0 & 0 of 2 \\
+TAB, unbounded pattern removed & 1\,KiB & 0 / 0 & 0 / 0 & 0 / 0 & 2 of 2 \\
+TAB, unbounded pattern removed & 4\,KiB & 0 / 0 & 0 / 0 & 0 / 0 & 2 of 2 \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+%% ===================================================================
+\section{Audit of the Loghub labels}\label{s:audit}
+
+\texttt{benchmarks/loghub\_label\_audit.py} checks every slot of every OpenSSH and Linux template (203 slots) against the values the slot takes in the 4,000 real lines, independently of the person who checked the labels. Three kinds of flag resulted. (i) Four OpenSSH user-name slots hold purely numeric values (\texttt{0}, \texttt{123}, \texttt{1234}); these are account names that attackers tried (``Invalid user 1234''), so the labels are correct. (ii) In OpenSSH template E20 (\texttt{rhost=<*> user=<*>}), 383 remote-address values carry a trailing space from Loghub's parser; the gold builder did not recognise them as IP addresses and left them out of the gold. With the whitespace handled, every IP-capable system's precision rises by a similar amount (Section~7.6 of the article). (iii) One Linux host slot is empty in 617 lines and produces no gold. No unlabelled slot ever holds an IP address. A blind second-annotation sheet for all 145 templates is in the repository (\texttt{benchmarks/corpora/loghub\_second\_annotator\_sheet.csv}), with the agreement tool \texttt{benchmarks/loghub\_agreement.py}.
+
+%% ===================================================================
+\section{Corpus details}\label{s:corpora}
+
+The full description of each test corpus (Table~2 of the article).
+
+\begin{itemize}
+\item \textbf{presidio-research} (synthetic): the dataset distributed with Presidio's evaluation toolkit (revision 0cb3650), with person, location, organisation, telephone, card, date and other labels, generated from templates. The 750 test documents come from 200 templates (median 3.5 documents per template).
+\item \textbf{secrets} (semi-synthetic): the labelled examples in the Nosey Parker rule set (revision 2e6e7f3) as positives, with gold spans given by each rule's own capture groups, plus 200 generated non-secrets (UUIDs, commit hashes, SHA-256 digests, base64 image payloads, minified JavaScript) as gold-free documents. The split is by rule, so the test half contains vendor formats absent from the development half; its 216 positives come from 96 rules. The positives are short examples written by rule authors, not credentials observed in real artefacts.
+\item \textbf{RedactionBench}: 200 documents across eleven domains, a majority seeded from real-world sources according to its authors, with character spans labelled \emph{mandatory} or \emph{contextual}. The test half holds between 5 and 17 documents per domain. All 200 documents were used for error analysis and rule writing before the split existed, so its test half is not held out (Section~7.5 of the article).
+\item \textbf{OpenSSH logs} (real): the 2,000-line OpenSSH sample of Loghub, real \texttt{sshd} lines from a server under attack, one document per line. Gold comes from labels on the 27 log templates that Loghub's parser assigns: the value of a slot that names a remote host is \texttt{IP\_ADDRESS} when it is a valid IP address (reverse-DNS hostnames are excluded), and the value of a slot that names an account, and any account name written into a template, is \texttt{USERNAME}. Applying the labels gives 1,349 IP addresses and 1,142 user names; 148 lines contain neither. The labels were drafted from the template text with an AI assistant and checked by the first author, and the corpus was frozen as test-only (commit \texttt{099cc9c}) before any system was run on it. No SafeStream rule was written with these logs in view.
+\item \textbf{Linux logs} (real, held out): Loghub's 2,000-line Linux sample (sshd authentication through PAM, \texttt{su}, \texttt{login}, \texttt{ftpd}, \texttt{klogind} and the kernel), one document per line, labelled under the same rule. That gives 1,258 IP addresses and 618 user names; 407 lines contain neither. Its labels were drafted only after the user-name tier of Section~7.7 of the article had been committed (commit \texttt{c699ec6}), checked by the first author, and frozen as test-only (commit \texttt{7f87a77}) before any system was run on it, so the corpus is held out from that tier and from every other rule.
+\item \textbf{TAB} (real, human gold, held out): the test split of the Text Anonymization Benchmark (repository commit \texttt{558e09e}, MIT licence), 127 English judgments of the European Court of Human Rights annotated by one to ten trained annotators each (555 document--annotator pairs). Annotators marked every mention that identifies the applicant directly (\textsc{direct}) or in combination with other information (\textsc{quasi}), with types such as person, code, date, organisation and location; these mentions are gold. No rule of the evaluated configurations was written with TAB in view. Its manifest and its scoring protocol (metrics, systems and planned comparisons) were committed before any system was run on it (commit \texttt{17b80c4}). TAB's two other splits serve the free-text configuration of Section~7.9 of the article: its development split (127 judgments) is the only TAB data used to design it, and its training split (1,014 judgments, 1,112 document--annotator pairs), never inspected or scored before the configuration was frozen, is its held-out confirmation set (protocol committed in \texttt{f2be354}).
+\item \textbf{Wikipedia biographies} (real, human gold, held out, second domain): 553 Wikipedia biography summaries annotated with TAB's scheme by the same group (GitHub repository \texttt{anthipapa/\allowbreak textanonymization}, commit \texttt{5df8a0d}; 20 summaries annotated twice, 573 document--annotator pairs). They serve only to test whether the free-text configuration of Section~7.9 of the article, frozen on court judgments, transfers to another genre unchanged; the corpus was added and its manifest frozen before any system was run on it (commit \texttt{365f5ad}).
+\item \textbf{CredData} (real credentials, human gold, held out): Samsung's credential dataset (repository commit \texttt{01e3d13}), lines of real files from 337 open-source repositories that its authors labelled as holding a credential, not holding one, or holding a test value or placeholder. Its builder fetches the pinned commits and replaces every real value with a random value of the same shape; we deleted the raw checkouts as soon as it had done so. One document is one labelled line range; a range with a credential carries each credential value as gold, and a range labelled only as non-credential is gold-free. That gives 63,706 documents, 14,626 gold values and 49,517 gold-free ranges; 1,127 credential labels without a value position were dropped, and the 1,091 ranges whose only labels they were are neither gold nor gold-free and are left out. Only the candidates proposed by its authors' tools, which included gitleaks and TruffleHog, are labelled, so recall is relative to that candidate set. The protocol and the frozen manifest were committed before any system was run on it (commits \texttt{f160334} and \texttt{8e9e42f}).
+\end{itemize}
+
 \end{document}

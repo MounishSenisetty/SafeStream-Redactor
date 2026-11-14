@@ -26,7 +26,7 @@ The generic, Springer and ACM builds are free of overfull boxes. The Elsevier
 Adjust those tables if one of these classes is chosen.
 
 The restructuring out of the single-file IJIS manuscript changed no number:
-`python ../check_disjoint.py --same <old main.tex> content` reports the same 810 numbers
+`python ../check_disjoint.py --same <old main.tex> content` reports the same 756 numbers (after the PR #78 manuscript was merged in)
 before and after.
 
 ## Where the numbers come from

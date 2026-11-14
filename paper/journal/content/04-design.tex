@@ -89,6 +89,3 @@ For large files the parallel engine splits the input into character-aligned byte
 
 \subsection{Implementation}
 The pure-Python implementation is the reference. An optional Rust core implements the pattern tiers. At start-up it checks that its compiled pattern sources equal the Python ones, and it hands a window back to Python in the rare cases where Unicode case folding or floating-point summation could make the two disagree.
-
-\paragraph{Use of AI tools}
-The large language model Claude (Anthropic) was used during this research to help write evaluation harness scripts, draft early versions of manuscript sections, format the \LaTeX{} source for the journal template, refine prose and check bibliographic entries. The authors independently verified all experimental outputs, mathematical proofs and manuscript text, and take full responsibility for the final work.
