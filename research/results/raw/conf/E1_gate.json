@@ -1,0 +1,155 @@
+{
+ "declared_context": 256,
+ "gate": {
+  "ai4privacy": {
+   "docs": 3973,
+   "chars": 1692812,
+   "pass_rate": 0.26512867347348673,
+   "windows": 10971,
+   "windows_per_kib": 6.636474694177498,
+   "window_len_p50": 34.0,
+   "window_len_p99": 137.28,
+   "window_len_max": 462,
+   "windows_over_declared": 24,
+   "gate_recall": {
+    "PERSON": 0.542756183745583,
+    "ORGANIZATION": null,
+    "LOCATION": 0.5835871133194422
+   },
+   "gold": {
+    "PERSON": 2830,
+    "ORGANIZATION": 0,
+    "LOCATION": 6239
+   },
+   "person_misses_by_kind": {
+    "all_caps": 5,
+    "lower_case_or_handle": 10,
+    "multi_word": 5,
+    "single_word_other": 539,
+    "single_word_sentence_start": 735
+   }
+  },
+  "conll2003": {
+   "docs": 173,
+   "chars": 125862,
+   "pass_rate": 0.597503615070474,
+   "windows": 1033,
+   "windows_per_kib": 8.404379399659945,
+   "window_len_p50": 59.0,
+   "window_len_p99": 221.62,
+   "window_len_max": 613,
+   "windows_over_declared": 8,
+   "gate_recall": {
+    "PERSON": 0.8798543689320388,
+    "ORGANIZATION": 0.5775962660443408,
+    "LOCATION": 0.7439903846153846
+   },
+   "gold": {
+    "PERSON": 824,
+    "ORGANIZATION": 857,
+    "LOCATION": 832
+   },
+   "person_misses_by_kind": {
+    "all_caps": 14,
+    "multi_word": 9,
+    "single_word_other": 7,
+    "single_word_sentence_start": 69
+   }
+  },
+  "wnut17": {
+   "docs": 129,
+   "chars": 128117,
+   "pass_rate": 0.29809471030386286,
+   "windows": 553,
+   "windows_per_kib": 4.419959880421802,
+   "window_len_p50": 67.0,
+   "window_len_p99": 155.06,
+   "window_len_max": 258,
+   "windows_over_declared": 1,
+   "gate_recall": {
+    "PERSON": 0.5944055944055944,
+    "ORGANIZATION": 0.5627705627705628,
+    "LOCATION": 0.6666666666666666
+   },
+   "gold": {
+    "PERSON": 429,
+    "ORGANIZATION": 231,
+    "LOCATION": 150
+   },
+   "person_misses_by_kind": {
+    "all_caps": 8,
+    "lower_case_or_handle": 74,
+    "multi_word": 9,
+    "single_word_other": 59,
+    "single_word_sentence_start": 24
+   }
+  },
+  "benign": {
+   "docs": 55,
+   "chars": 4420,
+   "pass_rate": 0.5882352941176471,
+   "windows": 36,
+   "windows_per_kib": 8.34027149321267,
+   "window_len_p50": 73.0,
+   "window_len_p99": 96.63,
+   "window_len_max": 96,
+   "windows_over_declared": 0,
+   "gate_recall": {
+    "PERSON": null,
+    "ORGANIZATION": null,
+    "LOCATION": null
+   },
+   "gold": {
+    "PERSON": 0,
+    "ORGANIZATION": 0,
+    "LOCATION": 0
+   },
+   "person_misses_by_kind": {}
+  },
+  "loghub": {
+   "docs": 16,
+   "chars": 4428887,
+   "pass_rate": 0.10391075681090983,
+   "windows": 7385,
+   "windows_per_kib": 1.7074809088603977,
+   "window_len_p50": 58.0,
+   "window_len_p99": 132.14,
+   "window_len_max": 258,
+   "windows_over_declared": 1,
+   "gate_recall": {
+    "PERSON": null,
+    "ORGANIZATION": null,
+    "LOCATION": null
+   },
+   "gold": {
+    "PERSON": 0,
+    "ORGANIZATION": 0,
+    "LOCATION": 0
+   },
+   "person_misses_by_kind": {}
+  },
+  "agent_traces": {
+   "docs": 2000,
+   "chars": 484296,
+   "pass_rate": 0.1878066306556321,
+   "windows": 2250,
+   "windows_per_kib": 4.757421081322167,
+   "window_len_p50": 37.0,
+   "window_len_p99": 66.0,
+   "window_len_max": 86,
+   "windows_over_declared": 0,
+   "gate_recall": {
+    "PERSON": 1.0,
+    "ORGANIZATION": null,
+    "LOCATION": null
+   },
+   "gold": {
+    "PERSON": 1500,
+    "ORGANIZATION": 0,
+    "LOCATION": 0
+   },
+   "person_misses_by_kind": {}
+  }
+ },
+ "context": {}
+}

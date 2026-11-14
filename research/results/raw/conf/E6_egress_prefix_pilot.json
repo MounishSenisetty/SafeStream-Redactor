@@ -1,0 +1,272 @@
+{
+ "code": {
+  "code_root": "/tmp/claude-0/-home-user-SafeStream-Redactor/04b0f226-507e-5845-9a14-3cc8ba7cc7e9/scratchpad/wt_pre",
+  "commit": "21778c1fafc116dcdd369e945a6a6a0b74075112",
+  "src_dirty": false
+ },
+ "min_len": 3,
+ "results": {
+  "pattern|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 8250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "pattern|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 1022,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "pattern|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 10,
+   "values_checked": 23079,
+   "values_egressed": 10,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 8,
+    "mcp.explain_detection|whitespace": 8,
+    "mcp.scan|casefold": 2,
+    "mcp.scan|whitespace": 2,
+    "rest./scan|casefold": 1,
+    "rest./scan|whitespace": 1,
+    "sarif|casefold": 12,
+    "sarif|raw": 7,
+    "sarif|whitespace": 12
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.cue": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.field": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.phone_shape": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].type": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.cue": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.field": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.phone_shape": 2,
+    "mcp.explain_detection.structuredContent.explanations[].type": 2,
+    "mcp.scan.content[].text<json>.findings[].type": 2,
+    "mcp.scan.structuredContent.findings[].type": 2,
+    "rest./scan.detections[].entity_type": 2,
+    "sarif.runs[].results[].message.text": 23,
+    "sarif.runs[].results[].ruleId": 2,
+    "sarif.runs[].tool.driver.rules[].id": 2,
+    "sarif.runs[].tool.driver.rules[].name": 2,
+    "sarif.runs[].tool.driver.rules[].shortDescription.text": 2
+   },
+   "events_by_gold_type": {
+    "LOCATION": 21,
+    "PERSON": 4,
+    "TITLE": 28
+   }
+  },
+  "gazetteer|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 701,
+   "values_checked": 8250,
+   "values_egressed": 701,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 1402,
+    "mcp.explain_detection|whitespace": 1402
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.norm": 1402,
+    "mcp.explain_detection.structuredContent.explanations[].notes.norm": 1402
+   },
+   "events_by_gold_type": {
+    "PERSON": 2804
+   }
+  },
+  "gazetteer|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 24,
+   "values_checked": 1022,
+   "values_egressed": 25,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 52,
+    "mcp.explain_detection|raw": 2,
+    "mcp.explain_detection|whitespace": 52
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.norm": 53,
+    "mcp.explain_detection.structuredContent.explanations[].notes.norm": 53
+   },
+   "events_by_gold_type": {
+    "CREATIVE_WORK": 4,
+    "ORGANIZATION": 16,
+    "PERSON": 82,
+    "PRODUCT": 4
+   }
+  },
+  "gazetteer|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 133,
+   "values_checked": 23079,
+   "values_egressed": 215,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 434,
+    "mcp.explain_detection|raw": 2,
+    "mcp.explain_detection|whitespace": 434,
+    "mcp.scan|casefold": 2,
+    "mcp.scan|whitespace": 2,
+    "rest./scan|casefold": 1,
+    "rest./scan|whitespace": 1,
+    "sarif|casefold": 12,
+    "sarif|raw": 7,
+    "sarif|whitespace": 12
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.cue": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.field": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.norm": 427,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.phone_shape": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].type": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.cue": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.field": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.norm": 427,
+    "mcp.explain_detection.structuredContent.explanations[].notes.phone_shape": 2,
+    "mcp.explain_detection.structuredContent.explanations[].type": 2,
+    "mcp.scan.content[].text<json>.findings[].type": 2,
+    "mcp.scan.structuredContent.findings[].type": 2,
+    "rest./scan.detections[].entity_type": 2,
+    "sarif.runs[].results[].message.text": 23,
+    "sarif.runs[].results[].ruleId": 2,
+    "sarif.runs[].tool.driver.rules[].id": 2,
+    "sarif.runs[].tool.driver.rules[].name": 2,
+    "sarif.runs[].tool.driver.rules[].shortDescription.text": 2
+   },
+   "events_by_gold_type": {
+    "ID": 4,
+    "LOCATION": 61,
+    "PERSON": 708,
+    "SEX": 28,
+    "TITLE": 100,
+    "USERNAME": 6
+   }
+  },
+  "onnx|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 8250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "onnx|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 1022,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "onnx|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 13,
+   "values_checked": 23079,
+   "values_egressed": 13,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 12,
+    "mcp.explain_detection|raw": 4,
+    "mcp.explain_detection|whitespace": 12,
+    "mcp.scan|casefold": 2,
+    "mcp.scan|whitespace": 2,
+    "rest./scan|casefold": 1,
+    "rest./scan|whitespace": 1,
+    "sarif|casefold": 13,
+    "sarif|raw": 7,
+    "sarif|whitespace": 13
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.cue": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.field": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.onnx_score": 6,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.phone_shape": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].type": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.cue": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.field": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.onnx_score": 6,
+    "mcp.explain_detection.structuredContent.explanations[].notes.phone_shape": 2,
+    "mcp.explain_detection.structuredContent.explanations[].type": 2,
+    "mcp.scan.content[].text<json>.findings[].type": 2,
+    "mcp.scan.structuredContent.findings[].type": 2,
+    "rest./scan.detections[].entity_type": 2,
+    "sarif.runs[].results[].message.text": 23,
+    "sarif.runs[].results[].ruleId": 2,
+    "sarif.runs[].tool.driver.rules[].id": 2,
+    "sarif.runs[].tool.driver.rules[].name": 2,
+    "sarif.runs[].tool.driver.rules[].properties.tags[]": 2,
+    "sarif.runs[].tool.driver.rules[].shortDescription.text": 2
+   },
+   "events_by_gold_type": {
+    "LOCATION": 33,
+    "PERSON": 4,
+    "TITLE": 30
+   }
+  },
+  "spacy|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 8250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "spacy|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 1022,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "spacy|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 11,
+   "values_checked": 23079,
+   "values_egressed": 11,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 8,
+    "mcp.explain_detection|whitespace": 8,
+    "mcp.scan|casefold": 2,
+    "mcp.scan|whitespace": 2,
+    "rest./scan|casefold": 1,
+    "rest./scan|whitespace": 1,
+    "sarif|casefold": 13,
+    "sarif|raw": 8,
+    "sarif|whitespace": 13
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.cue": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.field": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.phone_shape": 2,
+    "mcp.explain_detection.content[].text<json>.explanations[].type": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.cue": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.field": 2,
+    "mcp.explain_detection.structuredContent.explanations[].notes.phone_shape": 2,
+    "mcp.explain_detection.structuredContent.explanations[].type": 2,
+    "mcp.scan.content[].text<json>.findings[].type": 2,
+    "mcp.scan.structuredContent.findings[].type": 2,
+    "rest./scan.detections[].entity_type": 2,
+    "sarif.runs[].results[].message.text": 26,
+    "sarif.runs[].results[].ruleId": 2,
+    "sarif.runs[].tool.driver.rules[].id": 2,
+    "sarif.runs[].tool.driver.rules[].name": 2,
+    "sarif.runs[].tool.driver.rules[].shortDescription.text": 2
+   },
+   "events_by_gold_type": {
+    "LOCATION": 24,
+    "PERSON": 4,
+    "TITLE": 28
+   }
+  }
+ }
+}

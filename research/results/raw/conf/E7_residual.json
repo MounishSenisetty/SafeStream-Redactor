@@ -1,0 +1,71 @@
+{
+ "min_len": 4,
+ "results": {
+  "pattern|agent_traces": {
+   "values": 8250,
+   "not_fully_covered": 0.15248484848484847,
+   "replace": 0.12121212121212122,
+   "mask": 0.12121212121212122,
+   "hash": 0.12121212121212122,
+   "pseudonymize": 0.12121212121212122,
+   "encrypt": 0.12121212121212122,
+   "fictionalize": 0.12121212121212122,
+   "mask_visible_char_share_of_covered_values": 0.14734424225821066
+  },
+  "pattern|wnut17": {
+   "values": 1008,
+   "not_fully_covered": 1.0,
+   "replace": 1.0,
+   "mask": 1.0,
+   "hash": 1.0,
+   "pseudonymize": 1.0,
+   "encrypt": 1.0,
+   "fictionalize": 1.0,
+   "mask_visible_char_share_of_covered_values": 0.0
+  },
+  "pattern|ai4privacy": {
+   "values": 21986,
+   "not_fully_covered": 0.5237878650050032,
+   "replace": 0.5149640680433003,
+   "mask": 0.5168743746020195,
+   "hash": 0.5149640680433003,
+   "pseudonymize": 0.5149640680433003,
+   "encrypt": 0.5149640680433003,
+   "fictionalize": 0.5150095515327936,
+   "mask_visible_char_share_of_covered_values": 0.2671449658439463
+  },
+  "onnx|agent_traces": {
+   "values": 8250,
+   "not_fully_covered": 0.0013333333333333333,
+   "replace": 0.0,
+   "mask": 0.0,
+   "hash": 0.0,
+   "pseudonymize": 0.0,
+   "encrypt": 0.0,
+   "fictionalize": 0.0,
+   "mask_visible_char_share_of_covered_values": 0.16022814020995513
+  },
+  "onnx|wnut17": {
+   "values": 1008,
+   "not_fully_covered": 0.6309523809523809,
+   "replace": 0.5882936507936508,
+   "mask": 0.5882936507936508,
+   "hash": 0.5882936507936508,
+   "pseudonymize": 0.5882936507936508,
+   "encrypt": 0.5882936507936508,
+   "fictionalize": 0.5882936507936508,
+   "mask_visible_char_share_of_covered_values": 0.3603784403669725
+  },
+  "onnx|ai4privacy": {
+   "values": 21986,
+   "not_fully_covered": 0.43718730100973346,
+   "replace": 0.42044937687619394,
+   "mask": 0.42240516692440644,
+   "hash": 0.42044937687619394,
+   "pseudonymize": 0.42044937687619394,
+   "encrypt": 0.42044937687619394,
+   "fictionalize": 0.42049486036568723,
+   "mask_visible_char_share_of_covered_values": 0.2736593967967325
+  }
+ }
+}

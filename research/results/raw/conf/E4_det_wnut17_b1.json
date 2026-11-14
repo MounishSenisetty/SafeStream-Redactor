@@ -1,0 +1,166 @@
+{
+ "corpus": "wnut17",
+ "split": "test",
+ "pipeline": "pattern+onnx(batch 1)",
+ "profile": "default",
+ "safestream_version": "0.5.0",
+ "stream_chars": 128373,
+ "n_docs": 129,
+ "max_chars": null,
+ "overlap_w": 8192,
+ "longest_declared_span": 8192,
+ "results": {
+  "1024": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 15,
+    "missed_chars": 126,
+    "extra_chars": 101,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 5,
+    "gold_chars_leaked_by_chunking": 59
+   },
+   "overlap_256": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 2,
+    "missed_chars": 12,
+    "extra_chars": 75,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_8192": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 2,
+    "missed_chars": 12,
+    "extra_chars": 75,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "safestream": {
+    "chunkings": 5,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  },
+  "4096": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 5,
+    "missed_chars": 17,
+    "extra_chars": 3,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 1,
+    "gold_chars_leaked_by_chunking": 11
+   },
+   "overlap_256": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 2,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_8192": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 2,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "safestream": {
+    "chunkings": 5,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  },
+  "16384": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 2,
+    "missed_chars": 8,
+    "extra_chars": 3,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_256": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 2,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_8192": {
+    "identical": false,
+    "ref_detections": 642,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 2,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "safestream": {
+    "chunkings": 5,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  },
+  "65536": {
+   "naive": {
+    "identical": true,
+    "ref_detections": 642,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 0,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_256": {
+    "identical": true,
+    "ref_detections": 642,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 0,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "overlap_8192": {
+    "identical": true,
+    "ref_detections": 642,
+    "missed_detections": 0,
+    "missed_chars": 0,
+    "extra_chars": 0,
+    "gold_spans": 1079,
+    "gold_spans_leaked_by_chunking": 0,
+    "gold_chars_leaked_by_chunking": 0
+   },
+   "safestream": {
+    "chunkings": 5,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  }
+ }
+}

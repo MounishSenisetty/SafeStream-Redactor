@@ -32,12 +32,27 @@ NER_TYPES = ("PERSON", "ORGANIZATION", "LOCATION")
 DECLARED = 256
 
 
+def miss_kind(text: str, start: int, end: int) -> str:
+    """Why a gold person name lies outside every window (a coarse, fixed taxonomy)."""
+    value = text[start:end]
+    before = text[text.rfind("\n", 0, start) + 1 : start].rstrip()
+    if value[:1].islower() or value.startswith("@"):
+        return "lower_case_or_handle"
+    if value.isupper():
+        return "all_caps"
+    if len(value.split()) == 1:
+        at_start = before == "" or before[-1:] in ".!?:\"'"
+        return "single_word_sentence_start" if at_start else "single_word_other"
+    return "multi_word"
+
+
 def gate(docs: list[corpora.Doc]) -> dict[str, Any]:
     from safestream_redactor.detectors.onnx_ner import _candidate_windows
 
     total = inside = 0
     lengths: list[int] = []
     hit: dict[str, list[int]] = {t: [0, 0] for t in NER_TYPES}
+    misses: dict[str, int] = {}
     for d in docs:
         windows = [(o, o + len(p)) for o, p in _candidate_windows(d.text)]
         total += len(d.text)
@@ -46,7 +61,11 @@ def gate(docs: list[corpora.Doc]) -> dict[str, Any]:
         for g in d.spans:
             if g.type in hit:
                 hit[g.type][1] += 1
-                hit[g.type][0] += any(s <= g.start and g.end <= e for s, e in windows)
+                covered = any(s <= g.start and g.end <= e for s, e in windows)
+                hit[g.type][0] += covered
+                if g.type == "PERSON" and not covered:
+                    k = miss_kind(d.text, g.start, g.end)
+                    misses[k] = misses.get(k, 0) + 1
     q = statistics.quantiles(lengths, n=100) if len(lengths) > 1 else [0] * 99
     return {
         "docs": len(docs),
@@ -60,6 +79,7 @@ def gate(docs: list[corpora.Doc]) -> dict[str, Any]:
         "windows_over_declared": sum(n > DECLARED for n in lengths),
         "gate_recall": {t: (h / n if n else None) for t, (h, n) in hit.items()},
         "gold": {t: n for t, (_h, n) in hit.items()},
+        "person_misses_by_kind": dict(sorted(misses.items())),
     }
 
 
