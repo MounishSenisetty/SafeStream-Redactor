@@ -1,3 +1,5 @@
+> **Superseded by `paper/ijis/`. Do not submit; see `SUPERSEDED.md`.**
+
 # FTNCT'09 paper — SafeStream-Redactor
 
 Submission-ready LaTeX source for FTNCT'09, Track 4 (Cybersecurity, Privacy, and
