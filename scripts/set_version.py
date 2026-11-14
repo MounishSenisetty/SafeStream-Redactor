@@ -3,13 +3,12 @@
     python scripts/set_version.py 0.5.1        # a release
     python scripts/set_version.py 0.5.1.dev42  # a TestPyPI dry run (CI does this)
 
-``safestream-redactor`` and ``safestream-redactor-native`` are released in
-lockstep, so one version is written to every place that carries it:
+The package and the optional Rust core in ``native/`` share one version, so it
+is written to every place that carries it:
 
 * ``src/safestream_redactor/__init__.py``  ``__version__`` (PEP 440)
 * ``native/Cargo.toml`` and ``native/Cargo.lock``  the crate version (semver;
   maturin converts ``0.5.1-dev42`` back to ``0.5.1.dev42`` for the wheel)
-* ``pyproject.toml``  the ``[native]`` extra, pinned ``==`` to the same version
 
 ``tests/test_packaging.py`` fails if they ever disagree.
 """
@@ -52,11 +51,6 @@ def set_version(version: str) -> None:
     _sub(ROOT / "native/Cargo.toml", r'^version = ".*"$', f'version = "{crate}"')
     _sub(
         ROOT / "native/Cargo.lock", r'(name = "safestream_native"\nversion = )".*"', rf'\1"{crate}"'
-    )
-    _sub(
-        ROOT / "pyproject.toml",
-        r'"safestream-redactor-native[^"]*"',
-        f'"safestream-redactor-native=={version}"',
     )
 
 

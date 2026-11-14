@@ -425,7 +425,7 @@ use_entropy = true                          # high-entropy secret detection
 # use_gazetteer = false                     # dictionary-backed person-name tier (no deps)
 # use_ensemble = false                      # semantic PERSON/ORG ensemble (no deps)
 # semantic_policy = "strict"                # ensemble policy: strict | high_recall
-# backend = "python"                        # python | native | auto ([native] extra)
+# backend = "python"                        # python | native | auto (Rust core, built from native/)
 
 [redaction]
 mode = "replace"                            # replace | mask | pseudonymize

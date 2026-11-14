@@ -906,8 +906,8 @@ def _load_native(backend: str) -> ModuleType | None:
             # Python's default once-per-location filter shows it once, not per tier
             warnings.warn(
                 "backend='native' requested but the safestream_native extension is not "
-                "installed; falling back to the pure-Python tier. Install it with: "
-                "pip install 'safestream-redactor[native]'",
+                "installed; falling back to the pure-Python tier. Build it (needs Rust) with: "
+                "pip install 'git+https://github.com/MounishSenisetty/SafeStream-Redactor#subdirectory=native'",
                 RuntimeWarning,
                 stacklevel=1,
             )
@@ -919,8 +919,7 @@ def _load_native(backend: str) -> ModuleType | None:
         warnings.warn(
             "the installed safestream_native extension's pattern spec does not match "
             "this version of safestream-redactor (version skew); falling back to the "
-            "pure-Python tier. Install matching versions (the [native] extra pins a "
-            "compatible floor).",
+            "pure-Python tier. Rebuild it from the same version of the source.",
             RuntimeWarning,
             stacklevel=1,
         )

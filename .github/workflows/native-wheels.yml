@@ -6,10 +6,9 @@
 # wheel is then installed and imported ON ITS OWN PLATFORM before it can ship. A
 # wheel that only builds is not trusted.
 #
-# Publishing is not done here. publish.yml calls this workflow and uploads its
-# wheels in the same release as safestream-redactor, native first, so the
-# `[native]` extra (pinned to the exact version) can always be resolved. The
-# versions are kept in lockstep by scripts/set_version.py.
+# These wheels are not published to PyPI: only safestream-redactor is. Users build
+# the core from source (`pip install ./native`). The versions are kept in lockstep
+# by scripts/set_version.py.
 name: Native wheels
 
 permissions:

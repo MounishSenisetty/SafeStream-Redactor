@@ -1,5 +1,6 @@
-# Releases safestream-redactor and safestream-redactor-native together, via PyPI
-# Trusted Publishing (OIDC): no API token is stored anywhere.
+# Releases safestream-redactor via PyPI Trusted Publishing (OIDC): no API token is
+# stored anywhere. Only this one project is published; the optional Rust core in
+# native/ is built and tested by native-wheels.yml but not uploaded.
 #
 #   GitHub release published (tag vX.Y.Z)  ->  build, test, upload to PyPI
 #   Actions -> Publish -> Run workflow     ->  target "check": build and test only
@@ -7,9 +8,8 @@
 #                                              uploads X.Y.(Z+1).dev<run number>
 #
 # One-time setup (docs/RELEASING.md): on pypi.org AND test.pypi.org, add a GitHub
-# trusted publisher with this repo, workflow "publish.yml" and environment "pypi"
-# (resp. "testpypi") to BOTH projects. For safestream-redactor-native, which does
-# not exist yet, use the "pending publisher" form; its first upload creates it.
+# trusted publisher to safestream-redactor with this repo, workflow "publish.yml"
+# and environment "pypi" (resp. "testpypi").
 name: Publish
 
 permissions:
@@ -62,48 +62,9 @@ jobs:
     with:
       version: ${{ needs.version.outputs.stamp }}
 
-  native:
-    needs: version
-    uses: ./.github/workflows/native-wheels.yml
-    with:
-      version: ${{ needs.version.outputs.stamp }}
-
-  # The upload's own install path: the exact `pip install 'safestream-redactor[native]'`
-  # a user runs, resolved against only the artifacts about to be uploaded. Proves the
-  # extra's pin and the wheel tags line up on every OS before anything is published.
-  hybrid-install:
-    name: "pip install [native] from the release artifacts (${{ matrix.os }})"
-    needs: [version, package, native]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-      - uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: wheels-*
-          merge-multiple: true
-          path: native-dist/
-      - run: >
-          python -m pip install --no-index --find-links dist --find-links native-dist
-          "safestream-redactor[native]==${{ needs.version.outputs.version }}"
-      - run: python scripts/smoke_test.py --native
-
   publish-testpypi:
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
-    needs: [version, hybrid-install]
+    needs: [version, package]
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -111,24 +72,13 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: wheels-*
-          merge-multiple: true
-          path: native-dist/
-      - uses: actions/download-artifact@v8
-        with:
           name: dist
           path: dist/
-      # native first: the main package's [native] extra pins it
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          packages-dir: native-dist/
-          skip-existing: true # a re-run attempt re-uploads the same dev version
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist/
-          skip-existing: true
+          skip-existing: true # a re-run attempt re-uploads the same dev version
 
   # Install the dry run back from TestPyPI, exactly as a user would, on every OS.
   verify-testpypi:
@@ -147,24 +97,24 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      # Only our two projects come from TestPyPI (--no-deps): anyone can upload there,
+      # Only our project comes from TestPyPI (--no-deps): anyone can upload there,
       # so a dependency such as cryptography must never be resolved against it. The
       # index can take a minute to serve a new upload, hence the retries.
       - run: |
           v="${{ needs.version.outputs.version }}"
           for attempt in 1 2 3 4 5 6; do
             python -m pip install --no-cache-dir --no-deps -i https://test.pypi.org/simple/ \
-              "safestream-redactor==$v" "safestream-redactor-native==$v" && break
+              "safestream-redactor==$v" && break
             [ "$attempt" = 6 ] && exit 1
             sleep 20
           done
-          # the extras' metadata, resolved from PyPI; ours are already satisfied
-          python -m pip install "safestream-redactor[native,crypto]==$v"
-      - run: python scripts/smoke_test.py --native --crypto
+          # the extra's dependencies, resolved from PyPI; ours is already satisfied
+          python -m pip install "safestream-redactor[crypto]==$v"
+      - run: python scripts/smoke_test.py --crypto
 
   publish-pypi:
     if: github.event_name == 'release'
-    needs: hybrid-install
+    needs: package
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -172,19 +122,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: wheels-*
-          merge-multiple: true
-          path: native-dist/
-      - uses: actions/download-artifact@v8
-        with:
           name: dist
           path: dist/
-      # native first: the main package's [native] extra pins it. skip-existing
-      # lets a re-run recover when this step succeeded and the next one did not.
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: native-dist/
-          skip-existing: true
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/

@@ -34,11 +34,6 @@ def test_native_crate_version_matches_package():
     assert [p["version"] for p in lock if p["name"] == "safestream_native"] == [crate]
 
 
-def test_native_extra_pins_this_exact_version():
-    extras = _toml("pyproject.toml")["project"]["optional-dependencies"]
-    assert extras["native"] == [f"safestream-redactor-native=={__version__}"]
-
-
 def test_native_license_is_a_copy_of_the_root_license():
     # maturin cannot package a file outside native/, so the wheel ships a copy
     assert (ROOT / "native/LICENSE").read_bytes() == (ROOT / "LICENSE").read_bytes()

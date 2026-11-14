@@ -1,7 +1,7 @@
 """Check an *installed* safestream-redactor, the way a user would get it.
 
     python scripts/smoke_test.py                 # base install
-    python scripts/smoke_test.py --native        # + the [native] extra is active
+    python scripts/smoke_test.py --native        # + the Rust core (native/) is active
     python scripts/smoke_test.py --crypto --ui   # + the [crypto] / [ui] extras work
 
 CI runs this against the built wheel, the sdist and the TestPyPI upload on every
