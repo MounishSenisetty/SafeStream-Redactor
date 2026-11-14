@@ -86,7 +86,7 @@ def table_accuracy() -> str:
         "\n"
         r"\centering\footnotesize\setlength{\tabcolsep}{4pt}"
         "\n"
-        r"\begin{tabular}{@{}l llllll rrr@{}}"
+        r"\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}l llllll rrr@{}}"
         "\n"
         r"\toprule"
         "\n"
@@ -100,7 +100,14 @@ def table_accuracy() -> str:
     )
     # an empty column keeps CoNLL apart from the cost block
     body = "\n".join(_insert_gap(r) for r in rows)
-    return head + body + "\n" + r"\bottomrule" "\n" r"\end{tabular}" "\n" r"\end{table*}" "\n"
+    return (
+        head + body + "\n" + r"\bottomrule"
+        "\n"
+        r"\end{tabular}\end{adjustbox}"
+        "\n"
+        r"\end{table*}"
+        "\n"
+    )
 
 
 def _insert_gap(row: str) -> str:

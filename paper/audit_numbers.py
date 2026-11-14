@@ -31,7 +31,9 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from check_disjoint import PAPERS, SKIP_FILES, numbers  # noqa: E402
+import contextlib
+
+from check_disjoint import PAPERS, SKIP_FILES, numbers
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "research" / "results" / "raw"
@@ -72,10 +74,8 @@ def index(files: list[Path]) -> set[float]:
                 pass
         if p.suffix == ".jsonl":
             for line in text.splitlines():
-                try:
+                with contextlib.suppress(ValueError):
                     values.update(_leaves(json.loads(line)))
-                except ValueError:
-                    pass
             continue
         values.update(float(m) for m in re.findall(r"-?\d+(?:\.\d+)?", text))
     return values
@@ -136,8 +136,10 @@ def main() -> None:
             counts["UNTRACED"] += 1
             untraced.append(n)
     print(f"{paper}: {len(values):,} raw values indexed from {len(raw_files(paper))} files")
-    print(f"distinct printed numbers: {sum(counts.values())}  " + "  ".join(
-        f"{k} {v}" for k, v in counts.items()))
+    print(
+        f"distinct printed numbers: {sum(counts.values())}  "
+        + "  ".join(f"{k} {v}" for k, v in counts.items())
+    )
     if untraced:
         print("UNTRACED:", " ".join(untraced))
     sys.exit(1 if untraced else 0)

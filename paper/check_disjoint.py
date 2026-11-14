@@ -67,8 +67,12 @@ SKIP_FILES = {"preamble.tex"}
 
 def strip(tex: str) -> str:
     tex = re.sub(r"(?<!\\)%.*", "", tex)
-    tex = re.sub(r"\\(label|ref|eqref|cite|citep|citet|url|input|includegraphics|graphicspath"
-                 r"|ssCiteAgent|ssCiteJournal)(\[[^\]]*\])?\{[^}]*\}", " ", tex)
+    tex = re.sub(
+        r"\\(label|ref|eqref|cite|citep|citet|url|input|includegraphics|graphicspath"
+        r"|ssCiteAgent|ssCiteJournal)(\[[^\]]*\])?\{[^}]*\}",
+        " ",
+        tex,
+    )
     tex = re.sub(r"https?://\S+", " ", tex)
     tex = re.sub(r"\b[\w./-]+\.(py|json|md|tex|pdf|onnx|jsonl|log|zip|sh)\b", " ", tex)
     tex = re.sub(r"\\texttt\{[^}]*\}", " ", tex)  # code identifiers, commits, paths
@@ -76,9 +80,9 @@ def strip(tex: str) -> str:
 
 
 def numbers(tex: str) -> list[str]:
-    tex = strip(tex).replace("{,}", ",").replace("\\,", "")
+    tex = strip(tex).replace("{,}", ",").replace("\\,", " ")
     out = []
-    for m in re.finditer(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)*)(?![\w])", tex):
+    for m in re.finditer(r"(?<![\w.])(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)*)(?![\w])", tex):
         out.append(m.group(1).replace(",", ""))
     return out
 
@@ -135,8 +139,10 @@ def disjoint() -> int:
     bad = [x for x in rest if x not in coincidental]
     print(f"distinct numbers: journal {len(nums['journal'])}, conference {len(nums['conference'])}")
     print(f"shared, allow-listed constants: {[x for x in shared if x in ALLOWED]}")
-    print(f"shared, coincidental (conference value traced to its own raw results): "
-          f"{len(coincidental)}")
+    print(
+        f"shared, coincidental (conference value traced to its own raw results): "
+        f"{len(coincidental)}"
+    )
     print(f"shared, NOT traced to the conference's results: {bad or 'none'}")
     g = {k: grams(words(t)) for k, t in texts.items()}
     common = g["journal"] & g["conference"]

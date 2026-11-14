@@ -1,0 +1,84 @@
+{
+ "environment": {
+  "date": "2026-11-14T08:23:36+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.18",
+  "versions": {
+   "safestream-redactor": "0.5.0",
+   "safestream-redactor-native": "0.5.0",
+   "presidio-analyzer": "2.2.366",
+   "spacy": "3.8.18",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": "3.8.0",
+   "onnxruntime": "1.29.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.4.6"
+  },
+  "commit": "0a7d408977a0e7a0554131b3a2bdd53746538877",
+  "dirty": false
+ },
+ "code": {
+  "code_root": "/home/user/SafeStream-Redactor",
+  "commit": "0a7d408977a0e7a0554131b3a2bdd53746538877",
+  "src_dirty": false
+ },
+ "mb": 16.0,
+ "overhead": {
+  "input_bytes": 16777216,
+  "detections": 258749,
+  "replace": {
+   "e2e_mb_s": 1.195629654465059,
+   "render_us_per_detection": 0.44053495472380716,
+   "inflation": 0.751967191696167
+  },
+  "mask": {
+   "e2e_mb_s": 1.2223477345563785,
+   "render_us_per_detection": 0.4653476767055996,
+   "inflation": 1.0
+  },
+  "hash": {
+   "e2e_mb_s": 1.176925005282366,
+   "render_us_per_detection": 1.3745457141849529,
+   "inflation": 1.0151804089546204
+  },
+  "pseudonymize": {
+   "e2e_mb_s": 1.1370369144399624,
+   "render_us_per_detection": 2.2337123273911383,
+   "inflation": 0.9843351244926453
+  },
+  "encrypt": {
+   "e2e_mb_s": 1.0594952775902708,
+   "render_us_per_detection": 9.651187471256126,
+   "inflation": 1.945029854774475
+  },
+  "fictionalize": {
+   "e2e_mb_s": 1.1435165583869518,
+   "render_us_per_detection": 2.446105217797505,
+   "inflation": 0.9063401818275452
+  }
+ },
+ "roundtrip": {
+  "tokens": 16171,
+  "roundtrip_exact": true,
+  "restored_tokens": 16171,
+  "tampered": 10000,
+  "tampered_restored": 0
+ },
+ "sarif": {
+  "findings": 7500,
+  "valid": true,
+  "schema_errors": [],
+  "ms_per_1000_findings": 5.384622000080222,
+  "bytes_per_finding": 395.3192,
+  "schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json"
+ }
+}

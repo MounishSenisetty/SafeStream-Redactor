@@ -1,0 +1,171 @@
+{
+ "environment": {
+  "date": "2026-11-14T08:06:55+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.18",
+  "versions": {
+   "safestream-redactor": "0.5.0",
+   "safestream-redactor-native": "0.5.0",
+   "presidio-analyzer": "2.2.366",
+   "spacy": "3.8.18",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": "3.8.0",
+   "onnxruntime": "1.29.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.4.6"
+  },
+  "commit": "63ca492b066dc15af834f7a0247cb3a65f568007",
+  "dirty": false
+ },
+ "code": {
+  "code_root": "/home/user/SafeStream-Redactor",
+  "commit": "63ca492b066dc15af834f7a0247cb3a65f568007",
+  "src_dirty": false
+ },
+ "results": {
+  "inproc|256": {
+   "calls": 1000,
+   "p50_ms": 0.27712600012819166,
+   "p95_ms": 0.4589205497268267,
+   "p99_ms": 0.5122715794550459,
+   "calls_per_s": 3403.0357174904298,
+   "cold_start_s": null,
+   "payload_bytes": 256
+  },
+  "stdio|256": {
+   "calls": 1000,
+   "p50_ms": 0.983983499736496,
+   "p95_ms": 1.3405858499936585,
+   "p99_ms": 1.6180664200692263,
+   "calls_per_s": 994.1744479177559,
+   "cold_start_s": 0.09847652600001311,
+   "payload_bytes": 256
+  },
+  "rest|256": {
+   "calls": 1000,
+   "p50_ms": 0.7497540000258596,
+   "p95_ms": 1.0873959506625397,
+   "p99_ms": 1.3685062600325182,
+   "calls_per_s": 1273.8324692326016,
+   "cold_start_s": 0.12069597500067175,
+   "payload_bytes": 256
+  },
+  "inproc|4096": {
+   "calls": 1000,
+   "p50_ms": 5.010420499729662,
+   "p95_ms": 6.954512549782521,
+   "p99_ms": 8.451942709971263,
+   "calls_per_s": 191.312132958919,
+   "cold_start_s": null,
+   "payload_bytes": 4096
+  },
+  "stdio|4096": {
+   "calls": 1000,
+   "p50_ms": 6.628074000218476,
+   "p95_ms": 9.069381149311084,
+   "p99_ms": 10.546502329552823,
+   "calls_per_s": 141.91983799075865,
+   "cold_start_s": 0.09340289299962024,
+   "payload_bytes": 4096
+  },
+  "rest|4096": {
+   "calls": 1000,
+   "p50_ms": 5.872741999610298,
+   "p95_ms": 8.272775899422413,
+   "p99_ms": 10.387625879484403,
+   "calls_per_s": 161.15099735451798,
+   "cold_start_s": 0.14759463400059758,
+   "payload_bytes": 4096
+  },
+  "inproc|65536": {
+   "calls": 1000,
+   "p50_ms": 79.45746799941844,
+   "p95_ms": 105.18825784929504,
+   "p99_ms": 128.050345169886,
+   "calls_per_s": 12.19173000452419,
+   "cold_start_s": null,
+   "payload_bytes": 65536
+  },
+  "stdio|65536": {
+   "calls": 1000,
+   "p50_ms": 88.7883534996945,
+   "p95_ms": 113.84196279973366,
+   "p99_ms": 130.74465584969403,
+   "calls_per_s": 11.000294353334468,
+   "cold_start_s": 0.11294117699981143,
+   "payload_bytes": 65536
+  },
+  "rest|65536": {
+   "calls": 1000,
+   "p50_ms": 78.51676300015242,
+   "p95_ms": 102.33064094995825,
+   "p99_ms": 116.00545973984481,
+   "calls_per_s": 12.428295467405373,
+   "cold_start_s": 0.12574859899996227,
+   "payload_bytes": 65536
+  },
+  "inproc|1048576": {
+   "calls": 64,
+   "p50_ms": 1268.7032864996581,
+   "p95_ms": 1376.5556467501483,
+   "p99_ms": 1465.7544249993862,
+   "calls_per_s": 0.7834642306157874,
+   "cold_start_s": null,
+   "payload_bytes": 1048576
+  },
+  "stdio|1048576": {
+   "calls": 64,
+   "p50_ms": 1480.274179999924,
+   "p95_ms": 1717.6753544993062,
+   "p99_ms": 1901.5637902510207,
+   "calls_per_s": 0.6716734317639027,
+   "cold_start_s": 0.12556533600036346,
+   "payload_bytes": 1048576
+  },
+  "rest|1048576": {
+   "calls": 64,
+   "p50_ms": 1245.1500155002577,
+   "p95_ms": 1337.0974589995512,
+   "p99_ms": 1397.0327166507104,
+   "calls_per_s": 0.8053903733702324,
+   "cold_start_s": 0.11564420200011227,
+   "payload_bytes": 1048576
+  },
+  "inproc|4194304": {
+   "calls": 20,
+   "p50_ms": 5319.795892999991,
+   "p95_ms": 5571.162085300466,
+   "p99_ms": 5666.483381860717,
+   "calls_per_s": 0.18795515150179243,
+   "cold_start_s": null,
+   "payload_bytes": 4194304
+  },
+  "stdio|4194304": {
+   "calls": 20,
+   "p50_ms": 7421.763482499955,
+   "p95_ms": 7855.970727049862,
+   "p99_ms": 7919.915121409431,
+   "calls_per_s": 0.13542916671668268,
+   "cold_start_s": 0.07962121099990327,
+   "payload_bytes": 4194304
+  },
+  "rest|4194304": {
+   "calls": 20,
+   "p50_ms": 5092.540987500342,
+   "p95_ms": 5223.4467883997695,
+   "p99_ms": 5224.59553207932,
+   "calls_per_s": 0.19777976174731002,
+   "cold_start_s": 0.10513455100044666,
+   "payload_bytes": 4194304
+  }
+ }
+}
