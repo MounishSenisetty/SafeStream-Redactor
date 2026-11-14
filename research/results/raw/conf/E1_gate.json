@@ -84,6 +84,34 @@
     "single_word_sentence_start": 24
    }
   },
+  "btc": {
+   "docs": 201,
+   "chars": 199219,
+   "pass_rate": 0.4207379818190032,
+   "windows": 1081,
+   "windows_per_kib": 5.556417811554119,
+   "window_len_p50": 74.0,
+   "window_len_p99": 143.0,
+   "window_len_max": 149,
+   "windows_over_declared": 0,
+   "gate_recall": {
+    "PERSON": 0.42150943396226415,
+    "ORGANIZATION": 0.5431192660550459,
+    "LOCATION": 0.7484276729559748
+   },
+   "gold": {
+    "PERSON": 2650,
+    "ORGANIZATION": 1090,
+    "LOCATION": 636
+   },
+   "person_misses_by_kind": {
+    "all_caps": 26,
+    "lower_case_or_handle": 1118,
+    "multi_word": 7,
+    "single_word_other": 341,
+    "single_word_sentence_start": 41
+   }
+  },
   "benign": {
    "docs": 55,
    "chars": 4420,

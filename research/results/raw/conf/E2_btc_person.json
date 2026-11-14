@@ -1,0 +1,160 @@
+{
+ "corpus": "btc",
+ "type": "PERSON",
+ "n_docs": 201,
+ "systems": {
+  "presidio-lg": {
+   "gold_spans": 2650,
+   "char_recall": 0.34840589454810333,
+   "char_recall_ci": [
+    0.3210706372381989,
+    0.37510083642806635
+   ],
+   "covered_recall": 0.24377358490566037,
+   "covered_recall_ci": [
+    0.2228026531297059,
+    0.2662123410303502
+   ]
+  },
+  "presidio-sm": {
+   "gold_spans": 2650,
+   "char_recall": 0.3061578976858856,
+   "char_recall_ci": [
+    0.2781437090754439,
+    0.3337232764707245
+   ],
+   "covered_recall": 0.2169811320754717,
+   "covered_recall_ci": [
+    0.19615689507434667,
+    0.23944207671445175
+   ]
+  },
+  "safestream-native-onnx-batched": {
+   "gold_spans": 2650,
+   "char_recall": 0.37025830671821597,
+   "char_recall_ci": [
+    0.34215128468087025,
+    0.39956156455032665
+   ],
+   "covered_recall": 0.22830188679245284,
+   "covered_recall_ci": [
+    0.20756108000142667,
+    0.2511696831416155
+   ]
+  },
+  "safestream-native-onnx-ungated": {
+   "gold_spans": 2650,
+   "char_recall": 0.6341121757158066,
+   "char_recall_ci": [
+    0.6098003053735858,
+    0.6589009503995178
+   ],
+   "covered_recall": 0.37169811320754714,
+   "covered_recall_ci": [
+    0.3522815158546017,
+    0.392755091727772
+   ]
+  },
+  "safestream-native-onnx": {
+   "gold_spans": 2650,
+   "char_recall": 0.3691376701966717,
+   "char_recall_ci": [
+    0.3411200402061618,
+    0.3982924017209252
+   ],
+   "covered_recall": 0.22754716981132075,
+   "covered_recall_ci": [
+    0.2076358427602997,
+    0.2505450070323488
+   ]
+  },
+  "safestream-native-spacy": {
+   "gold_spans": 2650,
+   "char_recall": 0.3068863114248893,
+   "char_recall_ci": [
+    0.27953848268048903,
+    0.33470891800116964
+   ],
+   "covered_recall": 0.21660377358490565,
+   "covered_recall_ci": [
+    0.19556397095430025,
+    0.2388923648893725
+   ]
+  },
+  "safestream-native": {
+   "gold_spans": 2650,
+   "char_recall": 0.0,
+   "char_recall_ci": [
+    0.0,
+    0.0
+   ],
+   "covered_recall": 0.0,
+   "covered_recall_ci": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "paired": {
+  "safestream-native-onnx - safestream-native": {
+   "char_recall": [
+    0.3411200402061618,
+    0.36940494637648047,
+    0.3982924017209252
+   ],
+   "covered_recall": [
+    0.2076358427602997,
+    0.22775332290562428,
+    0.2505450070323488
+   ]
+  },
+  "safestream-native-onnx - safestream-native-spacy": {
+   "char_recall": [
+    0.03410049864309583,
+    0.06259460541009357,
+    0.08934616651304937
+   ],
+   "covered_recall": [
+    -0.007463866438558218,
+    0.01148126886932857,
+    0.028820038222812185
+   ]
+  },
+  "safestream-native-onnx - safestream-native-onnx-ungated": {
+   "char_recall": [
+    -0.29352064745684825,
+    -0.26422108873867234,
+    -0.23537623795258586
+   ],
+   "covered_recall": [
+    -0.16040430587511292,
+    -0.14392523364485982,
+    -0.12819293034442397
+   ]
+  },
+  "safestream-native-onnx - presidio-lg": {
+   "char_recall": [
+    -0.005880724775287421,
+    0.020948668632967737,
+    0.047068195723341776
+   ],
+   "covered_recall": [
+    -0.034405757807334146,
+    -0.01603779604174392,
+    0.0011331026914847737
+   ]
+  },
+  "safestream-native-onnx - presidio-sm": {
+   "char_recall": [
+    0.03452445358159647,
+    0.06332114262050093,
+    0.09127260726113724
+   ],
+   "covered_recall": [
+    -0.007443997912916352,
+    0.01091742701801357,
+    0.02791819429217081
+   ]
+  }
+ }
+}
