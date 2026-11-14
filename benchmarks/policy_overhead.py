@@ -150,9 +150,10 @@ def main() -> None:
     ap.add_argument("--json", type=Path, required=True)
     args = ap.parse_args()
     from benchmarks.harness import environment
+    from benchmarks.mcp_egress_audit import _code_commit
 
     text = corpus_text(args.mb)
-    report: dict[str, Any] = {"environment": environment(), "mb": args.mb}
+    report: dict[str, Any] = {"environment": environment(), "code": _code_commit(), "mb": args.mb}
     report["overhead"] = overhead(text)
     report["roundtrip"] = roundtrip(corpus_text(1), args.tamper)
     print(report["roundtrip"], flush=True)

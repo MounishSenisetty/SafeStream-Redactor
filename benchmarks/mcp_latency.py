@@ -150,8 +150,9 @@ def main() -> None:
     ap.add_argument("--json", type=Path, required=True)
     args = ap.parse_args()
     from benchmarks.harness import environment
+    from benchmarks.mcp_egress_audit import _code_commit
 
-    report: dict[str, Any] = {"environment": environment(), "results": {}}
+    report: dict[str, Any] = {"environment": environment(), "code": _code_commit(), "results": {}}
     for size in args.sizes:
         text, n = payload(size), calls_for(size)
         for tr in args.transports:
