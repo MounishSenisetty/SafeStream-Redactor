@@ -8,7 +8,12 @@ case-folded, whitespace-normalised, base64 and hex.
 
 A hit counts as **egress** only if it disappears when the gold values are masked
 in the input (plant -> call -> search). A leaf that also matches the masked input
-is tool vocabulary (an entity type, a detector name), not a leak.
+is tool vocabulary (an entity type, a detector name), not a leak. Raw, case-folded
+and whitespace-normalised forms must match as a whole token, and only gold values
+of at least ``MIN_LEN`` characters with a letter are searched: a pilot run found
+that shorter or all-digit values ("Hon", a house number) match inside tool words
+("phone") and character offsets by coincidence. What offsets and lengths disclose
+is analysed separately, not searched for.
 
 Works against any checkout: put that checkout's ``src`` first on ``PYTHONPATH`` to
 audit it (the report records the commit of the code it imported).
@@ -31,7 +36,7 @@ from typing import Any
 
 from benchmarks import corpora
 
-MIN_LEN = 3
+MIN_LEN = 4
 ONNX_DIR = corpora.ROOT / "models" / "ner"
 TIERS: dict[str, dict[str, Any]] = {
     "pattern": {},
@@ -82,13 +87,19 @@ def forms(value: str) -> dict[str, str]:
     }
 
 
+def _token(hay: str, needle: str) -> bool:
+    return re.search(rf"(?<![^\W_]){re.escape(needle)}(?![^\W_])", hay) is not None
+
+
 def found(leaf: str, enc: str, needle: str) -> bool:
     if enc == "raw":
-        return needle in leaf
-    if enc in ("casefold", "hex"):
-        return needle in leaf.casefold()
+        return _token(leaf, needle)
+    if enc == "casefold":
+        return _token(leaf.casefold(), needle)
     if enc == "whitespace":
-        return needle in _ws(leaf)
+        return _token(_ws(leaf), needle)
+    if enc == "hex":
+        return needle in leaf.casefold()
     return needle in leaf  # base64 is case-sensitive
 
 
@@ -148,7 +159,11 @@ def audit(docs: list[corpora.Doc], redactor: Any) -> dict[str, Any]:
     values_egressed = 0
     for doc in docs:
         values = {doc.text[g.start : g.end]: g.type for g in doc.spans}
-        values = {v: t for v, t in values.items() if len(v.strip()) >= MIN_LEN}
+        values = {
+            v: t
+            for v, t in values.items()
+            if len(v.strip()) >= MIN_LEN and any(c.isalpha() for c in v)
+        }
         if not values:
             continue
         real = replies(server, redactor, doc.text)

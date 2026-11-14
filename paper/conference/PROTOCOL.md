@@ -150,3 +150,13 @@ reason, and is never removed.
    separately, and Nagle's algorithm held the body until the client's delayed ACK.
    This was fixed (`disable_nagle_algorithm`). E8 therefore reports REST twice, on the
    commit before the fix and after it, in the same way as E6.
+4. **2026-11-14, egress matching rule.** The first pre-fix E6 run
+   (`research/results/raw/conf/E6_egress_prefix_pilot.json`, kept unchanged) was
+   inspected before any post-fix run had finished. Every hit outside the gazetteer
+   tier was a coincidence: a 3-character gold value matching inside a tool word ("Hon"
+   in "phone") or an all-digit value (a house number) matching a character offset in
+   a SARIF message. The rule was tightened. Raw, case-folded and whitespace forms must
+   now match as a whole token, and only values of at least 4 characters with a letter
+   are searched. Both the pre-fix and the post-fix runs were then repeated with the
+   new rule. What offsets and lengths disclose is analysed separately (E7), not
+   searched for.
