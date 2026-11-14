@@ -1,0 +1,138 @@
+# Conference study protocol (pre-registered)
+
+Written and committed **before any system was scored on any corpus below**. Results
+that depart from it are reported as departures. The study is the conference half of
+the split in `paper/DUAL_PUBLICATION_BLUEPRINT.md`. Its question is **what an LLM agent
+learns through a local redaction tool**. The journal manuscript (`paper/ijis/`, called J
+below) owns streaming correctness, memory and the pattern-tier detection evaluation.
+No J corpus is scored here for accuracy, and no J number is reported.
+
+## Frozen artefacts
+
+| Artefact | Pin |
+|---|---|
+| Code under test | the commit that adds this file. Every run records its own commit. |
+| Pre-fix commit for the egress audit | `21778c1` (origin/main at the start of the study; the `explain_detection` metadata leak is present) |
+| Neural tier | `dslim/distilbert-NER` at `dfa2838a127384aabb82ed7719e16dab84c42a2a`. Its own `onnx/model.onnx` export, dynamically quantised to INT8 with `onnxruntime.quantization.quantize_dynamic` (QInt8 weights). SHA-256 of every model file in `paper/conference/MODEL_SHA256.txt`. Gate, context (32 characters) and `min_score` unchanged from the code under test. |
+| spaCy | `en_core_web_sm`, `en_core_web_lg` 3.8 |
+| Presidio | `presidio-analyzer` from PyPI at study start (version recorded per run) |
+
+## Corpora (all disjoint from J's accuracy corpora)
+
+| Corpus | Split | Role | Why it is fair |
+|---|---|---|---|
+| ai4privacy (pii-masking-300k, English validation file) | **test** half, 3,973 documents (manifest frozen 2026-10-03, never scored before) | main synthetic PII corpus | the dev half exists; nothing in the neural tier was tuned on either half |
+| CoNLL-2003 | **test** half, 173 documents | in-distribution upper bound only | the model was trained on CoNLL train; never quoted as independent evidence |
+| WNUT-17 test | test-only, 129 documents (10 sentences each), manifest added with this protocol | **real user-generated text with human gold** | never seen by the authors' rules or by the model's training data |
+| Benign prose (`benchmarks/data/benign/`) | all 55 documents | false alarms on public prose | gold-free |
+| Loghub 2k samples (16 systems) | all | gate pass rate on machine text only (no gold, no detection result) | J used the same text for a chunking count; here only the share of characters the gate sends to the model is measured |
+| AgentTrace (new, generated with a fixed seed) | all | plumbing only: egress and latency | **never** a detection-accuracy claim: the planted formats come from the same authors as the rules |
+
+## Systems
+
+* **T0**: `safestream-native` (pattern tiers, Rust core).
+* **T0+NN-gated**: `safestream-native-onnx` (the product configuration).
+* **T0+NN-ungated**: `safestream-native-onnx-ungated` (benchmark-only). The gate is
+  replaced by whole-line windows: every non-empty line, cut at whitespace into pieces
+  of at most 400 characters. Nothing else changes.
+* **T0+NN-batched**: `safestream-native-onnx-batched` (batch 32). Cost and determinism
+  only.
+* **T0+spaCy**: `safestream-native-spacy` (`en_core_web_sm`).
+* **Presidio-sm**, **Presidio-lg**: Presidio with spaCy `en_core_web_sm` / `_lg`.
+
+Every system runs single-threaded through `benchmarks/harness.py`, each in its own
+subprocess.
+
+## Research questions, hypotheses, metrics and decision rules
+
+Decision rule for every comparison: a paired 95% percentile bootstrap interval over
+documents (2,000 resamples, seed 0, one shared resample matrix) that excludes 0. No
+correction for multiple comparisons; the planned comparisons are listed here, and
+anything else is exploratory and labelled so.
+
+**C-RQ1: does the gated neural tier improve person-name detection over T0, and how does
+it compare with statistical NER at what cost?**
+Primary metric: **PERSON character recall**, the share of gold PERSON characters
+covered by any prediction. Also: PERSON covered-entity recall, and Presidio-scope
+character F1 (the harness headline). Cost: p50/p99 per-document latency, MB/s, load
+time and peak RSS, from the harness.
+- P1 (H1a): T0+NN-gated > T0 on PERSON character recall, on ai4privacy test and WNUT-17.
+- P2 (H1b): T0+NN-gated vs T0+spaCy on PERSON character recall and on MB/s, on the same
+  two corpora. Two-sided.
+- P3: T0+NN-gated vs Presidio-lg on Presidio-scope character F1, on the same two
+  corpora. Two-sided.
+- H1c: the document false-alarm rate on benign prose. T0+NN-gated is reported next to
+  T0, descriptively (55 documents is too few for a test).
+
+**C-RQ2: how good and how cheap is the gate, and does the neural tier honour its
+streaming contract?**
+- P4 (H2a): gate recall, the share of gold PERSON spans lying entirely inside some
+  candidate window, per corpus. Cost of the gate: the paired difference in PERSON
+  character recall, T0+NN-gated minus T0+NN-ungated.
+- H2b: gate pass rate, the share of characters sent to the model, per corpus. Machine
+  text (Loghub) is reported against prose.
+- H2c: determinism. Using `benchmarks/chunking_leak.py --onnx`, batch 1 is expected to
+  match the whole-document reference under every chunking tried, and batch 32 is
+  expected not to. Chunk sizes 1, 4, 16 and 64 KiB, 5 random chunkings each, on WNUT-17
+  and the ai4privacy test half (concatenated streams).
+- H2d: declared context. The tier declares 256/256/256 characters. Measured: the
+  longest merged window, how far it extends from the detection it produces, and
+  whether any decision changes when the text outside ±k characters of the detection is
+  removed (k ∈ {32, 64, 128, 256}). Adversarial probe: lines of chained Titlecase
+  candidates of increasing length.
+
+**C-RQ3: does any value an agent should not see reach it through the tool surface?**
+- E6, differential egress audit. For every document and every tool response (MCP
+  `scan`, `explain_detection`, `detectors`, `health`; REST `/scan`; SARIF built from the
+  same detections), every string leaf of the JSON reply is searched for every gold
+  value of at least 3 characters. The search covers five encodings: raw, case-folded,
+  whitespace-normalised, base64 and hex. Leaves that are tool vocabulary (entity
+  types, severities, detector names, model labels, fixed keys) are excluded. Tier sets
+  tested: pattern, +gazetteer, +NN, +spaCy. Corpora: ai4privacy test, WNUT-17 and
+  AgentTrace. Run on the pre-fix commit `21778c1` first, then after the fix.
+  - H3a: the leak exists before the fix.
+  - H3b: zero egress after the fix.
+  - Metric: the egress rate per tool and per JSON key path.
+- E7, residual exposure through `redact`, per redaction mode: the share of gold values
+  still present verbatim in `redacted_text`. Expected to equal 1 minus covered recall
+  for replace, hash, pseudonymise and encrypt. Mask with keep-last-4 is reported
+  separately, together with an analytic table of what lengths, offsets and masked
+  suffixes disclose. Reported, not tested.
+
+**C-RQ4: what does the guardrail cost per agent tool call?**
+- E8, latency. Three transports: in-process `MCPServer.handle`, stdio through the `mcp`
+  SDK client against `safestream mcp-serve`, and HTTP against `safestream serve`.
+  Payloads of 256 B, 4 KiB, 64 KiB, 1 MiB and 4 MiB of AgentTrace text. Calls per cell:
+  min(1000, max(20, 64 MiB / payload)), after 5 warm-up calls. Reported: p50/p95/p99,
+  calls per second, and cold-start time (process start to `initialize` reply).
+  - H4a: for payloads of at least 64 KiB, detection dominates transport, meaning the
+    stdio p50 is within 1.25 times the in-process p50.
+- E9, policy overhead. Six modes (replace, mask, hash with salt, pseudonymise, encrypt,
+  fictionalise). Reported: end-to-end MB/s on 16 MiB of AgentTrace, output inflation
+  (bytes out / bytes in), and microseconds per detection for rendering.
+  - H4b: encrypt round-trips exactly.
+  - H4c: of 10,000 tokens each with one random bit flipped, none is restored.
+- E10, SARIF. Validate against the official SARIF 2.1.0 JSON schema; report the cost
+  per 1,000 findings.
+
+## AgentTrace (generated)
+
+`benchmarks/generate_agent_traces.py --seed 20261114` writes about 2,000 synthetic tool
+outputs an agent typically reads: stack traces, `.env` and YAML config, CI logs,
+`git log`/`git diff` excerpts, HTTP request dumps and support-ticket prose. Planted
+values with recorded offsets: emails, phone numbers, IPv4, AWS/GitHub/Stripe-shaped
+keys, JWTs, cards, SSNs and person names from a fixed list. Seed and generator code are
+committed. It is used only for E6 to E9.
+
+## Firewall with J
+
+* No number reported here is reported in J, and the reverse. `paper/check_disjoint.py`
+  enforces this.
+* No J corpus is used for any accuracy result here.
+* T0's absolute accuracy is never a contribution of this paper; it appears only as the
+  baseline of a paired difference.
+
+## Departures
+
+None at the time of writing. Any later departure is added below with its date and
+reason, and is never removed.

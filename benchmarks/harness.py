@@ -90,6 +90,8 @@ SYSTEMS: dict[str, tuple[str, dict[str, Any] | None]] = {
         "ner",
         {"backend": "native", "onnx_batch_size": 32, **_ONNX},
     ),
+    # benchmark-only: the regex gate replaced by whole-line windows (conference study)
+    "safestream-native-onnx-ungated": ("ner", {"backend": "native", "_ungated": True, **_ONNX}),
     "safestream-native-onnx-dates": ("ner", {"backend": "native", "use_dates": True, **_ONNX}),
     "safestream-native-onnx-prose": ("ner", {"backend": "native", "profile": "prose", **_ONNX}),
     "safestream-native-spacy": ("ner", {"backend": "native", "use_ner": True}),
@@ -154,11 +156,37 @@ SYSTEMS |= {name: ("pattern", None) for name in SCANNERS}
 # --- systems (run inside the child process) ------------------------------------
 
 
+UNGATED_PIECE = 400
+
+
+def ungated_windows(text: str) -> list[tuple[int, str]]:
+    """Every non-empty line, cut at whitespace into pieces of at most UNGATED_PIECE
+    characters: the neural tier with no regex gate (benchmark-only)."""
+    out: list[tuple[int, str]] = []
+    pos = 0
+    for line in text.split("\n"):
+        start, end = pos, pos + len(line)
+        pos = end + 1
+        while start < end:
+            stop = min(end, start + UNGATED_PIECE)
+            if stop < end:
+                cut = text.rfind(" ", start + 1, stop)
+                stop = cut if cut > start else stop
+            if text[start:stop].strip():
+                out.append((start, text[start:stop]))
+            start = stop
+    return out
+
+
 def _safestream(kwargs: dict[str, Any]) -> Callable[[str], list[Pred]]:
     from safestream_redactor import Redactor
 
     kwargs = dict(kwargs)
     drop = set(kwargs.pop("_drop", ()))
+    if kwargs.pop("_ungated", False):
+        from safestream_redactor.detectors import onnx_ner
+
+        onnx_ner._candidate_windows = ungated_windows
     if kwargs.pop("_greedy", False):
         from safestream_redactor import entities
         from safestream_redactor import redactor as redactor_mod
