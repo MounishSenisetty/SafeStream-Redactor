@@ -73,4 +73,8 @@ if [ -f supplementary.tex ]; then
     fi
   done
 fi
+# main.tex is the single-file copy for Overleaf (paper/flatten.py); it must match the sources
+if ! python3 ../flatten.py "$(basename "$paper")" --check >/dev/null; then
+  echo "main.tex is out of date: run python paper/flatten.py $(basename "$paper")"; status=1
+fi
 exit $status
