@@ -287,29 +287,29 @@ _CONLL_MAP = {"PER": "PERSON", "ORG": "ORGANIZATION", "LOC": "LOCATION"}  # MISC
 _CONLL_SENTENCES_PER_DOC = 10
 
 
-def load_conll2003() -> Corpus:
-    directory = EXTERNAL / "conll2003"
-    path = _require(directory / "test.json", "see benchmarks/corpora/README.md")
-    id2label = {v: k for k, v in json.loads((directory / "label.json").read_text()).items()}
-    sentences = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+def _bio_docs(
+    sentences: list[tuple[list[str], list[str]]], prefix: str, type_map: dict[str, str]
+) -> list[Doc]:
+    """Join BIO-tagged sentences into documents of ``_CONLL_SENTENCES_PER_DOC``
+    sentences: tokens separated by one space, sentences by a newline."""
     docs = []
     for d in range(0, len(sentences), _CONLL_SENTENCES_PER_DOC):
         text, spans = "", []
-        for sent in sentences[d : d + _CONLL_SENTENCES_PER_DOC]:
+        for tokens, tags in sentences[d : d + _CONLL_SENTENCES_PER_DOC]:
             if text:
                 text += "\n"
             cur: list = []  # [start, end, type] of the open entity
-            for token, tag_id in zip(sent["tokens"], sent["tags"], strict=True):
+            for token, tag in zip(tokens, tags, strict=True):
                 if text and not text.endswith("\n"):
                     text += " "
                 start = len(text)
                 text += token
-                prefix, _, etype = id2label[tag_id].partition("-")
-                if prefix == "B" or (prefix == "I" and (not cur or cur[2] != etype)):
+                bio, _, etype = tag.partition("-")
+                if bio == "B" or (bio == "I" and (not cur or cur[2] != etype)):
                     if cur:
                         spans.append(cur)
                     cur = [start, len(text), etype]
-                elif prefix == "I":
+                elif bio == "I":
                     cur[1] = len(text)
                 elif cur:
                     spans.append(cur)
@@ -318,17 +318,69 @@ def load_conll2003() -> Corpus:
                 spans.append(cur)
         docs.append(
             Doc(
-                f"conll-{d // _CONLL_SENTENCES_PER_DOC:04d}",
+                f"{prefix}-{d // _CONLL_SENTENCES_PER_DOC:04d}",
                 text,
-                [Gold(s, e, _CONLL_MAP.get(t, t)) for s, e, t in spans],
+                [Gold(s, e, type_map.get(t, t)) for s, e, t in spans],
             )
         )
+    return docs
+
+
+def load_conll2003() -> Corpus:
+    directory = EXTERNAL / "conll2003"
+    path = _require(directory / "test.json", "see benchmarks/corpora/README.md")
+    id2label = {v: k for k, v in json.loads((directory / "label.json").read_text()).items()}
+    sentences = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        sent = json.loads(line)
+        sentences.append((sent["tokens"], [id2label[t] for t in sent["tags"]]))
     return Corpus(
         "conll2003",
-        docs,
+        _bio_docs(sentences, "conll", _CONLL_MAP),
         [path],
         _revision(directory),
         "CoNLL-2003 test; the bundled ONNX model was trained on CoNLL train",
+    )
+
+
+# WNUT-17 "emerging and rare entities": corporation and group (teams, bands) are
+# organisations; creative-work and product keep their own names (out of Presidio scope)
+_WNUT_MAP = {
+    "person": "PERSON",
+    "location": "LOCATION",
+    "corporation": "ORGANIZATION",
+    "group": "ORGANIZATION",
+    "creative-work": "CREATIVE_WORK",
+    "product": "PRODUCT",
+}
+
+
+def load_wnut17() -> Corpus:
+    """WNUT-17 test set: 1,287 real user-generated sentences (Twitter, Reddit,
+    YouTube, StackExchange) with human NER gold, CC BY 4.0. Test-only."""
+    directory = EXTERNAL / "wnut17"
+    path = _require(
+        directory / "emerging.test.annotated",
+        "git clone https://github.com/leondz/emerging_entities_17 (pin REVISION)",
+    )
+    sentences: list[tuple[list[str], list[str]]] = []
+    tokens: list[str] = []
+    tags: list[str] = []
+    for line in [*path.read_text(encoding="utf-8").splitlines(), ""]:
+        if not line.strip():
+            if tokens:
+                sentences.append((tokens, tags))
+            tokens, tags = [], []
+            continue
+        token, tag = line.rsplit("\t", 1)
+        tokens.append(token)
+        tags.append(tag.strip())
+    return Corpus(
+        "wnut17",
+        _bio_docs(sentences, "wnut", _WNUT_MAP),
+        [path],
+        _revision(directory),
+        "WNUT-17 test (Derczynski et al. 2017), real user-generated text, CC BY 4.0",
     )
 
 
@@ -724,6 +776,38 @@ def load_wiki_bios() -> Corpus:
     return _load_tab("test", "wiki_bios", EXTERNAL / "wiki_bios", "annotated_wikipedia.json")
 
 
+def load_benign() -> Corpus:
+    """55 sentences of public prose and look-alike text with no personal data:
+    every detection on them is a false alarm."""
+    directory = ROOT / "benchmarks" / "data" / "benign"
+    paths = [directory / "benign.jsonl", directory / "benign_hard.jsonl"]
+    docs = [
+        Doc(f"benign-{p.stem}-{i:03d}", json.loads(line)["raw_text"], [])
+        for p in paths
+        for i, line in enumerate(p.read_text(encoding="utf-8").splitlines())
+        if line.strip()
+    ]
+    return Corpus("benign", docs, paths, None, "public prose with no personal data (gold-free)")
+
+
+def load_agent_traces() -> Corpus:
+    """AgentTrace: generated agent tool outputs with planted values (fixed seed).
+    Plumbing only (egress, latency, policy cost), never a detection-accuracy corpus."""
+    from benchmarks import generate_agent_traces as gen
+
+    docs = [
+        Doc(str(d["id"]), str(d["text"]), [Gold(s, e, t) for s, e, t in d["spans"]])  # type: ignore[attr-defined]
+        for d in gen.generate(2000)
+    ]
+    return Corpus(
+        "agent_traces",
+        docs,
+        [Path(gen.__file__)],
+        None,
+        "generated agent tool outputs (seed 20261114); plumbing only, never accuracy",
+    )
+
+
 def load_creddata() -> Corpus:
     """CredData (Samsung): lines of real open-source files labelled by people as holding
     a credential (T) or not (F, X), with real values obfuscated by its builder.
@@ -828,6 +912,9 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "tab_train": load_tab_train,
     "creddata": load_creddata,
     "wiki_bios": load_wiki_bios,
+    "wnut17": load_wnut17,
+    "benign": load_benign,
+    "agent_traces": load_agent_traces,
 }
 
 

@@ -1,0 +1,31 @@
+\section{The guardrail under study}\label{sec:system}
+
+\paragraph{Pattern tiers (baseline)} SafeStream's pattern tiers (regular expressions with checksum and format validators, label-anchored identifiers, a contextual scorer and an entropy tier) and its streaming engine, whose overlap rule makes chunked output equal to whole-document output for detectors that respect their declared bounds, are analysed and evaluated in \ssCiteJournal{}. We treat both as a frozen substrate, called T0, at the commit that opened this study, and report none of that paper's results. Every T0 number below is the baseline of a paired difference, measured on corpora the companion paper does not use.
+
+\paragraph{The gated neural tier} An optional tier runs a token-classification model on the user's machine through ONNX Runtime \cite{onnxruntime}: DistilBERT \cite{sanh2019distilbert} fine-tuned on CoNLL-2003 \cite{tjongkimsang2003conll} for person, organisation and location names, with weights dynamically quantised to INT8 \cite{jacob2018quantization}. To keep the cost of a neural model off machine text, a regular-expression \emph{gate} chooses what the model reads. A candidate is a run of two to four capitalised words, a single capitalised word after a lower-case word or a comma, or up to three words after a person cue (an honorific, ``signed by'', or a label such as ``patient:''). Each candidate is widened by 32 characters of context within its line, overlapping windows are merged, and words after a cue are re-capitalised so that a cased model can recognise a name written in lower or upper case. Only the merged windows are sent to the model. The tier declares a maximum span and left and right context of 256 characters each, which the engine adds to its overlap requirement. An optional batch mode runs up to 32 windows per inference call. Because the INT8 activation ranges are computed per call, a window's scores then depend on which windows share its batch, and batch composition depends on how the input was chunked.
+
+\paragraph{Name-list tier} A third optional tier, the gazetteer, needs no model: it matches capitalised words, and words after a person cue, against lists of given and family names. It is evaluated here only for egress (Section~\ref{sec:egress}).
+
+\paragraph{Tool surface} Table~\ref{tab:contract} lists what each interface returns. The MCP server \cite{mcpspec} speaks JSON-RPC over standard input and output, and the REST server listens on loopback only. Both repeat a reply's structured content as a JSON text block, as MCP clients expect.
+
+\begin{table}[t]
+\caption{What each interface returns. Only \texttt{redact} returns input text, by design: the input with every detected value replaced.}\label{tab:contract}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}\begin{tabular}{@{}l p{0.6\columnwidth}@{}}
+\toprule
+Interface & Fields returned \\
+\midrule
+\multicolumn{2}{@{}l}{\emph{MCP tools}} \\
+\texttt{scan} & per finding: type, start, end, length, confidence, severity, detector \\
+\texttt{explain\_detection} & as \texttt{scan}, plus a context note and detector \texttt{notes} \\
+\texttt{detectors} & tier names and declared bounds \\
+\texttt{health} & version, tiers, settings \\
+\texttt{redact} & redacted text; counts by type \\
+\midrule
+REST \texttt{/scan} & per finding: start, end, type, confidence, detector \\
+SARIF 2.1.0 \cite{sarif210} & rule per type; per finding: level, region (offsets, lines), a fixed message \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Redaction modes} A detected value is replaced by a fixed marker (\emph{replace}), masked except for at most its last four characters and never more than half of it (\emph{mask}), a salted digest (\emph{hash}), an HMAC-SHA-256 pseudonym \cite{rfc2104} (\emph{pseudonymize}), a deterministic AES-256-GCM token that a key holder can reverse and that fails closed on any modification (\emph{encrypt}), or a synthetic value of the same type from reserved ranges (\emph{fictionalize}). Each is a function of the value alone, which is what keeps chunked output equal to whole-document output \ssCiteJournal{}.

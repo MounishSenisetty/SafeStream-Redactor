@@ -1,0 +1,2821 @@
+{
+ "corpus": "benign",
+ "split": "test",
+ "n_docs": 55,
+ "source_revision": null,
+ "previously_exposed": null,
+ "corpus_notes": "public prose with no personal data (gold-free)",
+ "corpus_skipped": [],
+ "has_necessity": false,
+ "has_negatives": true,
+ "has_scope": false,
+ "environment": {
+  "date": "2026-11-14T07:08:05+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.18",
+  "versions": {
+   "safestream-redactor": "0.5.0",
+   "safestream-redactor-native": "0.5.0",
+   "presidio-analyzer": "2.2.366",
+   "spacy": "3.8.18",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": "3.8.0",
+   "onnxruntime": "1.29.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.4.6"
+  },
+  "commit": "529a51d8ec5a84c0764a1029666592d0de9462a7",
+  "dirty": false
+ },
+ "isolated_venvs": null,
+ "systems": {
+  "safestream-native": "pattern",
+  "safestream-native-onnx": "ner",
+  "safestream-native-onnx-ungated": "ner",
+  "safestream-native-onnx-batched": "ner",
+  "safestream-native-spacy": "ner",
+  "presidio-sm": "ner",
+  "presidio-lg": "ner"
+ },
+ "runs": {
+  "safestream-native": {
+   "system": "safestream-native",
+   "load_s": 0.1779146529999025,
+   "bytes": 4420,
+   "peak_rss_mb": 59.9375,
+   "tool_rss_mb": 39.18359375,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.0028064170002153332,
+   "mb_s": 1.574961953145544,
+   "p50_ms": 0.03893300004165212,
+   "p99_ms": 0.3838110000060624
+  },
+  "safestream-native-onnx": {
+   "system": "safestream-native-onnx",
+   "load_s": 0.4212929489999624,
+   "bytes": 4420,
+   "peak_rss_mb": 213.9921875,
+   "tool_rss_mb": 193.3359375,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.21655577899980472,
+   "mb_s": 0.02041044584639778,
+   "p50_ms": 5.005374000006668,
+   "p99_ms": 9.21383299998979
+  },
+  "safestream-native-onnx-ungated": {
+   "system": "safestream-native-onnx-ungated",
+   "load_s": 0.3968965390000676,
+   "bytes": 4420,
+   "peak_rss_mb": 209.4609375,
+   "tool_rss_mb": 188.7734375,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.3973679259989922,
+   "mb_s": 0.011123192665558041,
+   "p50_ms": 6.741929999975582,
+   "p99_ms": 12.225904999922932
+  },
+  "safestream-native-onnx-batched": {
+   "system": "safestream-native-onnx-batched",
+   "load_s": 0.40594536500009326,
+   "bytes": 4420,
+   "peak_rss_mb": 209.6328125,
+   "tool_rss_mb": 188.87890625,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "onnxruntime"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.2346068579996654,
+   "mb_s": 0.018840028964568052,
+   "p50_ms": 5.278065000084098,
+   "p99_ms": 8.973725000032573
+  },
+  "safestream-native-spacy": {
+   "system": "safestream-native-spacy",
+   "load_s": 1.12233939500004,
+   "bytes": 4420,
+   "peak_rss_mb": 185.578125,
+   "tool_rss_mb": 164.88671875,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.2154658249996828,
+   "mb_s": 0.0205136939930335,
+   "p50_ms": 3.6040819999243467,
+   "p99_ms": 6.9162360000518674
+  },
+  "presidio-sm": {
+   "system": "presidio-sm",
+   "load_s": 1.1766449329999205,
+   "bytes": 4420,
+   "peak_rss_mb": 166.8671875,
+   "tool_rss_mb": 146.1171875,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.3151372370000445,
+   "mb_s": 0.014025635440852,
+   "p50_ms": 5.3734670000267215,
+   "p99_ms": 8.740523000028588
+  },
+  "presidio-lg": {
+   "system": "presidio-lg",
+   "load_s": 3.103698930000064,
+   "bytes": 4420,
+   "peak_rss_mb": 764.01953125,
+   "tool_rss_mb": 743.328125,
+   "python": "/usr/local/bin/python",
+   "versions": {
+    "safestream-redactor": "0.5.0",
+    "safestream-redactor-native": "0.5.0",
+    "presidio-analyzer": "2.2.366",
+    "spacy": "3.8.18",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": "1.29.0",
+    "tokenizers": "0.23.3",
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.4.6"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 0.3679903180003521,
+   "mb_s": 0.0120111855768873,
+   "p50_ms": 6.509091999987504,
+   "p99_ms": 9.921157000007952
+  }
+ },
+ "scores": {
+  "systems": {
+   "safestream-native": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.0,
+     "scope_char_r": 0.0,
+     "scope_char_f1": 0.0,
+     "scope_fully_redacted": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "scope_char_p": [
+      0.0,
+      0.0
+     ],
+     "scope_char_r": [
+      0.0,
+      0.0
+     ],
+     "scope_char_f1": [
+      0.0,
+      0.0
+     ],
+     "scope_fully_redacted": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-onnx": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.5636363636363636,
+     "scope_char_p": 0.0,
+     "scope_char_r": 0.0,
+     "scope_char_f1": 0.0,
+     "scope_fully_redacted": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.43636363636363634,
+      0.6909090909090909
+     ],
+     "scope_char_p": [
+      0.0,
+      0.0
+     ],
+     "scope_char_r": [
+      0.0,
+      0.0
+     ],
+     "scope_char_f1": [
+      0.0,
+      0.0
+     ],
+     "scope_fully_redacted": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 40,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 21,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 15,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-onnx-ungated": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.5818181818181818,
+     "scope_char_p": 0.0,
+     "scope_char_r": 0.0,
+     "scope_char_f1": 0.0,
+     "scope_fully_redacted": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.45454545454545453,
+      0.7090909090909091
+     ],
+     "scope_char_p": [
+      0.0,
+      0.0
+     ],
+     "scope_char_r": [
+      0.0,
+      0.0
+     ],
+     "scope_char_f1": [
+      0.0,
+      0.0
+     ],
+     "scope_fully_redacted": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 40,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 23,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 15,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-onnx-batched": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.5636363636363636,
+     "scope_char_p": 0.0,
+     "scope_char_r": 0.0,
+     "scope_char_f1": 0.0,
+     "scope_fully_redacted": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.43636363636363634,
+      0.6909090909090909
+     ],
+     "scope_char_p": [
+      0.0,
+      0.0
+     ],
+     "scope_char_r": [
+      0.0,
+      0.0
+     ],
+     "scope_char_f1": [
+      0.0,
+      0.0
+     ],
+     "scope_fully_redacted": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 40,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 21,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 15,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "safestream-native-spacy": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.5818181818181818,
+     "scope_char_p": 0.0,
+     "scope_char_r": 0.0,
+     "scope_char_f1": 0.0,
+     "scope_fully_redacted": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.45454545454545453,
+      0.7090909090909091
+     ],
+     "scope_char_p": [
+      0.0,
+      0.0
+     ],
+     "scope_char_r": [
+      0.0,
+      0.0
+     ],
+     "scope_char_f1": [
+      0.0,
+      0.0
+     ],
+     "scope_fully_redacted": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 35,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 27,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 15,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-sm": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.7818181818181819,
+     "scope_char_p": 0.0,
+     "scope_char_r": 0.0,
+     "scope_char_f1": 0.0,
+     "scope_fully_redacted": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.6727272727272727,
+      0.8909090909090909
+     ],
+     "scope_char_p": [
+      0.0,
+      0.0
+     ],
+     "scope_char_r": [
+      0.0,
+      0.0
+     ],
+     "scope_char_f1": [
+      0.0,
+      0.0
+     ],
+     "scope_fully_redacted": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 25,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 2,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 31,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 1,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 27,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 15,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 2,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-lg": {
+    "point": {
+     "char_p": 0.0,
+     "char_r": 0.0,
+     "char_f1": 0.0,
+     "entity_recall_covered": 0.0,
+     "ent_p_partial": 0.0,
+     "ent_r_partial": 0.0,
+     "ent_f1_partial": 0.0,
+     "ent_p_strict": 0.0,
+     "ent_r_strict": 0.0,
+     "ent_f1_strict": 0.0,
+     "mandatory_recall": 0.0,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.8,
+     "scope_char_p": 0.0,
+     "scope_char_r": 0.0,
+     "scope_char_f1": 0.0,
+     "scope_fully_redacted": 0.0
+    },
+    "ci95": {
+     "char_p": [
+      0.0,
+      0.0
+     ],
+     "char_r": [
+      0.0,
+      0.0
+     ],
+     "char_f1": [
+      0.0,
+      0.0
+     ],
+     "entity_recall_covered": [
+      0.0,
+      0.0
+     ],
+     "ent_p_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_r_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_partial": [
+      0.0,
+      0.0
+     ],
+     "ent_p_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_r_strict": [
+      0.0,
+      0.0
+     ],
+     "ent_f1_strict": [
+      0.0,
+      0.0
+     ],
+     "mandatory_recall": [
+      0.0,
+      0.0
+     ],
+     "no_leak_doc_rate": [
+      0.0,
+      0.0
+     ],
+     "fp_doc_rate": [
+      0.6909090909090909,
+      0.9090909090909091
+     ],
+     "scope_char_p": [
+      0.0,
+      0.0
+     ],
+     "scope_char_r": [
+      0.0,
+      0.0
+     ],
+     "scope_char_f1": [
+      0.0,
+      0.0
+     ],
+     "scope_fully_redacted": [
+      0.0,
+      0.0
+     ]
+    },
+    "per_type": {
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 24,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 2,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 32,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 28,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 0,
+      "pred": 15,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 2,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {
+   "safestream-native - safestream-native-onnx": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.6909090909090909,
+     -0.5636363636363636,
+     -0.43636363636363634
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-onnx-ungated": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.7090909090909091,
+     -0.5818181818181818,
+     -0.45454545454545453
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-onnx-batched": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.6909090909090909,
+     -0.5636363636363636,
+     -0.43636363636363634
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - safestream-native-spacy": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.7090909090909091,
+     -0.5818181818181818,
+     -0.45454545454545453
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-sm": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.8909090909090909,
+     -0.7818181818181819,
+     -0.6727272727272727
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native - presidio-lg": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.9090909090909091,
+     -0.8,
+     -0.6909090909090909
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - safestream-native-onnx-ungated": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.054545454545454564,
+     -0.018181818181818188,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - safestream-native-onnx-batched": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - safestream-native-spacy": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.09090909090909088,
+     -0.018181818181818188,
+     0.036363636363636376
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - presidio-sm": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.3454545454545455,
+     -0.21818181818181825,
+     -0.09090909090909094
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx - presidio-lg": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.36409090909090913,
+     -0.23636363636363644,
+     -0.10909090909090913
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-ungated - safestream-native-onnx-batched": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     0.0,
+     0.018181818181818188,
+     0.054545454545454564
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-ungated - safestream-native-spacy": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.054545454545454564,
+     0.0,
+     0.054545454545454564
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-ungated - presidio-sm": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.3272727272727273,
+     -0.20000000000000007,
+     -0.07272727272727275
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-ungated - presidio-lg": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.3454545454545455,
+     -0.21818181818181825,
+     -0.09090909090909094
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-batched - safestream-native-spacy": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.09090909090909088,
+     -0.018181818181818188,
+     0.036363636363636376
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-sm": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.3454545454545455,
+     -0.21818181818181825,
+     -0.09090909090909094
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-onnx-batched - presidio-lg": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.36409090909090913,
+     -0.23636363636363644,
+     -0.10909090909090913
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - presidio-sm": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.32727272727272727,
+     -0.20000000000000007,
+     -0.09090909090909094
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "safestream-native-spacy - presidio-lg": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.3454545454545454,
+     -0.2181818181818182,
+     -0.09090909090909094
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   "presidio-sm - presidio-lg": {
+    "char_p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_r": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "entity_recall_covered": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_p_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_r_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_partial": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "ent_f1_strict": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "mandatory_recall": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "no_leak_doc_rate": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fp_doc_rate": [
+     -0.054545454545454564,
+     -0.018181818181818188,
+     0.0
+    ],
+    "scope_char_f1": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "scope_fully_redacted": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  }
+ },
+ "command": "python -m benchmarks.harness --corpus benign --split test --systems safestream-native safestream-native-onnx safestream-native-onnx-ungated safestream-native-onnx-batched safestream-native-spacy presidio-sm presidio-lg --bootstrap 2000 --checkpoint-dir /home/user/SafeStream-Redactor/research/results/raw/conf/ckpt_benign --json /home/user/SafeStream-Redactor/research/results/raw/conf/E2_benign_test.json --md /home/user/SafeStream-Redactor/research/results/raw/conf/E2_benign_test.md"
+}

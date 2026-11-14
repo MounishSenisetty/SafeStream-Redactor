@@ -1,0 +1,336 @@
+% refs.bib -- every entry below was checked to exist on 2026-10-11 by web search
+% (source noted per entry). Fields marked TODO-VERIFY were NOT confirmed and must be
+% checked before submission; no DOI was written from memory.
+
+% ---------------- PII detection, de-identification, anonymisation ----------------
+
+@misc{presidio,
+  year         = {2026},
+  author       = {{Microsoft}},
+  title        = {Presidio: Data Protection and De-identification {SDK}},
+  howpublished = {\url{https://github.com/microsoft/presidio}},
+  note         = {Software; version 2.2.355 evaluated. Accessed 2026-10-11},
+}
+% verified: harness pins presidio-analyzer==2.2.355; repository is the PyPI project home
+
+@misc{presidioresearch,
+  year         = {2026},
+  author       = {{Microsoft}},
+  title        = {presidio-research: Toolbox for developing and evaluating {PII} detectors},
+  howpublished = {\url{https://github.com/microsoft/presidio-research}},
+  note         = {Synthetic dataset \texttt{synth\_dataset\_v2.json}, revision 0cb3650. Accessed 2026-10-11},
+}
+% verified: downloaded at that revision for this work (raw.githubusercontent.com)
+
+@misc{scrubadub,
+  year         = {2026},
+  author       = {{LeapBeyond}},
+  title        = {scrubadub: Remove personally identifiable information from free text},
+  howpublished = {\url{https://github.com/LeapBeyond/scrubadub}},
+  note         = {Software. Accessed 2026-10-11},
+}
+% TODO-VERIFY: repository URL not re-checked this session; scrubadub was NOT evaluated
+
+@article{norgeot2020philter,
+  author  = {Norgeot, Beau and Muenzen, Kathleen and others},
+  title   = {Protected Health Information filter ({Philter}): accurately and securely de-identifying free-text clinical notes},
+  journal = {npj Digital Medicine},
+  volume  = {3},
+  pages   = {57},
+  year    = {2020},
+  doi     = {10.1038/s41746-020-0258-y},
+}
+% verified: PMC7156708, link.springer.com/10.1038/s41746-020-0258-y
+% TODO-VERIFY: only first two and last author confirmed; fill the middle authors from PMC7156708
+
+@article{neamatullah2008deid,
+  author  = {Neamatullah, Ishna and Douglass, Margaret M. and Lehman, Li-wei H. and Reisner, Andrew and Villarroel, Mauricio and Long, William J. and Szolovits, Peter and Moody, George B. and Mark, Roger G. and Clifford, Gari D.},
+  title   = {Automated de-identification of free-text medical records},
+  journal = {BMC Medical Informatics and Decision Making},
+  volume  = {8},
+  pages   = {32},
+  year    = {2008},
+  doi     = {10.1186/1472-6947-8-32},
+}
+% verified: DOAJ, MIT DSpace 1721.1/58676, Altmetric author list
+
+@article{stubbs2015annotating,
+  author  = {Stubbs, Amber and Uzuner, {\"O}zlem},
+  title   = {Annotating longitudinal clinical narratives for de-identification: The 2014 {i2b2/UTHealth} corpus},
+  journal = {Journal of Biomedical Informatics},
+  volume  = {58},
+  number  = {Suppl},
+  pages   = {S20--S29},
+  year    = {2015},
+  doi     = {10.1016/j.jbi.2015.07.020},
+}
+% verified: PMC4978170
+
+@article{dernoncourt2017deid,
+  author  = {Dernoncourt, Franck and Lee, Ji Young and Uzuner, {\"O}zlem and Szolovits, Peter},
+  title   = {De-identification of patient notes with recurrent neural networks},
+  journal = {Journal of the American Medical Informatics Association},
+  volume  = {24},
+  number  = {3},
+  pages   = {596--606},
+  year    = {2017},
+  doi     = {10.1093/jamia/ocw156},
+}
+% verified: PMC record (online 2016-12-31, issue 2017), MIT DSpace 1721.1/111064
+
+@inproceedings{lison2021anonymisation,
+  author    = {Lison, Pierre and Pil{\'a}n, Ildik{\'o} and S{\'a}nchez, David and Batet, Montserrat and {\O}vrelid, Lilja},
+  title     = {Anonymisation Models for Text Data: State of the art, Challenges and Future Directions},
+  booktitle = {Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing (Volume 1: Long Papers)},
+  pages     = {4188--4203},
+  year      = {2021},
+  doi       = {10.18653/v1/2021.acl-long.323},
+}
+% verified: ACL Anthology 2021.acl-long.323
+
+@article{pilan2022tab,
+  author  = {Pil{\'a}n, Ildik{\'o} and Lison, Pierre and {\O}vrelid, Lilja and Papadopoulou, Anthi and S{\'a}nchez, David and Batet, Montserrat},
+  title   = {The Text Anonymization Benchmark ({TAB}): A Dedicated Corpus and Evaluation Framework for Text Anonymization},
+  journal = {Computational Linguistics},
+  volume  = {48},
+  number  = {4},
+  pages   = {1053--1101},
+  year    = {2022},
+  doi     = {10.1162/coli_a_00458},
+}
+% verified: ACL Anthology 2022.cl-4.19
+
+@article{sweeney2002kanonymity,
+  author  = {Sweeney, Latanya},
+  title   = {k-Anonymity: A Model for Protecting Privacy},
+  journal = {International Journal of Uncertainty, Fuzziness and Knowledge-Based Systems},
+  volume  = {10},
+  number  = {5},
+  pages   = {557--570},
+  year    = {2002},
+}
+% verified: dataprivacylab.org, OpenAlex W2159024459. TODO-VERIFY: DOI not found by search
+
+@misc{brynjolfsson2026redactionbench,
+  author        = {Brynj{\'o}lfsson, Sean and others},
+  title         = {{RedactionBench}},
+  year          = {2026},
+  eprint        = {2606.18782},
+  archivePrefix = {arXiv},
+}
+% verified: arXiv 2606.18782 exists (June 2026, A10 Networks).
+% TODO-VERIFY: full title and full author list were not visible; complete from the PDF
+
+@misc{ai4privacy300k,
+  year         = {2026},
+  author       = {{AI4Privacy}},
+  title        = {pii-masking-300k},
+  howpublished = {\url{https://huggingface.co/datasets/ai4privacy/pii-masking-300k}},
+  note         = {Dataset, revision c8c7789; academic non-commercial licence},
+}
+% verified: split manifest pins this revision; NOT evaluated in this work (huggingface.co blocked)
+
+% ---------------- NER models ----------------
+
+@inproceedings{tjongkimsang2003conll,
+  author    = {Tjong Kim Sang, Erik F. and De Meulder, Fien},
+  title     = {Introduction to the {CoNLL}-2003 Shared Task: Language-Independent Named Entity Recognition},
+  booktitle = {Proceedings of the Seventh Conference on Natural Language Learning at {HLT-NAACL} 2003},
+  pages     = {142--147},
+  year      = {2003},
+  url       = {https://aclanthology.org/W03-0419},
+}
+% verified: ACL Anthology W03-0419
+
+@inproceedings{devlin2019bert,
+  author    = {Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
+  title     = {{BERT}: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+  booktitle = {Proceedings of the 2019 Conference of the North {A}merican Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers)},
+  pages     = {4171--4186},
+  year      = {2019},
+  doi       = {10.18653/v1/N19-1423},
+}
+% verified: ACL Anthology N19-1423
+
+@misc{sanh2019distilbert,
+  author        = {Sanh, Victor and Debut, Lysandre and Chaumond, Julien and Wolf, Thomas},
+  title         = {{DistilBERT}, a distilled version of {BERT}: smaller, faster, cheaper and lighter},
+  year          = {2019},
+  eprint        = {1910.01108},
+  archivePrefix = {arXiv},
+}
+% verified: arXiv 1910.01108
+
+@inproceedings{zaratiana2024gliner,
+  author    = {Zaratiana, Urchade and Tomeh, Nadi and Holat, Pierre and Charnois, Thierry},
+  title     = {{GLiNER}: Generalist Model for Named Entity Recognition using Bidirectional Transformer},
+  booktitle = {Proceedings of the 2024 Conference of the North {A}merican Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)},
+  pages     = {5364--5376},
+  year      = {2024},
+  doi       = {10.18653/v1/2024.naacl-long.300},
+}
+% verified: ACL Anthology 2024.naacl-long.300; GLiNER was NOT evaluated
+
+% ---------------- Secret detection ----------------
+
+@inproceedings{meli2019git,
+  author    = {Meli, Michael and McNiece, Matthew R. and Reaves, Bradley},
+  title     = {How Bad Can It Git? Characterizing Secret Leakage in Public {GitHub} Repositories},
+  booktitle = {Network and Distributed System Security Symposium ({NDSS})},
+  year      = {2019},
+  url       = {https://www.ndss-symposium.org/ndss-paper/how-bad-can-it-git-characterizing-secret-leakage-in-public-github-repositories/},
+}
+% verified: ndss-symposium.org paper page. TODO-VERIFY: DOI (10.14722/ndss.2019.23418?) not confirmed
+
+@inproceedings{sinha2015secretkey,
+  author    = {Sinha, Vibha Singhal and Saha, Diptikalyan and Dhoolia, Pankaj and Padhye, Rohan and Mani, Senthil},
+  title     = {Detecting and Mitigating Secret-Key Leaks in Source Code Repositories},
+  booktitle = {Proceedings of the 12th Working Conference on Mining Software Repositories ({MSR})},
+  year      = {2015},
+}
+% verified: author PDF (people.eecs.berkeley.edu/~rohanpadhye). TODO-VERIFY: pages, DOI, "12th"
+
+@inproceedings{saha2020secrets,
+  author    = {Saha, Aakanksha and Denning, Tamara and Srikumar, Vivek and Kasera, Sneha Kumar},
+  title     = {Secrets in Source Code: Reducing False Positives using Machine Learning},
+  booktitle = {2020 International Conference on COMmunication Systems \& NETworkS ({COMSNETS})},
+  year      = {2020},
+  doi       = {10.1109/COMSNETS48256.2020.9027350},
+}
+% verified: author page (secpriv.tuwien.ac.at)
+
+@inproceedings{feng2022passfinder,
+  author    = {Feng, Runhan and Yan, Ziyang and Peng, Shiyan and Zhang, Yuanyuan},
+  title     = {Automated Detection of Password Leakage from Public {GitHub} Repositories},
+  booktitle = {Proceedings of the 44th International Conference on Software Engineering ({ICSE})},
+  year      = {2022},
+}
+% verified: ICSE 2022 researchr page, SJTU PDF. TODO-VERIFY: pages, DOI
+
+@inproceedings{basak2023secretbench,
+  author    = {Basak, Setu Kumar and Neil, Lorenzo and Reaves, Bradley and Williams, Laurie},
+  title     = {{SecretBench}: A Dataset of Software Secrets},
+  booktitle = {Proceedings of the 20th International Conference on Mining Software Repositories ({MSR}), Data and Tool Showcase Track},
+  year      = {2023},
+  eprint    = {2303.06729},
+  archivePrefix = {arXiv},
+}
+% verified: arXiv 2303.06729, MSR 2023 researchr page. TODO-VERIFY: proceedings DOI, "20th"
+
+@inproceedings{basak2023comparative,
+  author    = {Basak, Setu Kumar and Cox, Jamison and Reaves, Bradley and Williams, Laurie},
+  title     = {A Comparative Study of Software Secrets Reporting by Secret Detection Tools},
+  booktitle = {ACM/IEEE International Symposium on Empirical Software Engineering and Measurement ({ESEM})},
+  year      = {2023},
+  eprint    = {2307.00714},
+  archivePrefix = {arXiv},
+}
+% verified: arXiv 2307.00714, ESEM 2023 researchr page. TODO-VERIFY: proceedings DOI, pages
+
+@inproceedings{krause2023pushed,
+  author    = {Krause, Alexander and Klemmer, Jan H. and Huaman, Nicolas and Wermke, Dominik and Acar, Yasemin and Fahl, Sascha},
+  title     = {Pushed by Accident: A Mixed-Methods Study on Strategies of Handling Secret Information in Source Code Repositories},
+  booktitle = {32nd {USENIX} Security Symposium},
+  pages     = {2527--2544},
+  year      = {2023},
+}
+% verified: usenix.org/conference/usenixsecurity23/presentation/krause
+
+@misc{gitleaks,
+  year         = {2026},
+  author       = {{Gitleaks contributors}},
+  title        = {Gitleaks},
+  howpublished = {\url{https://github.com/gitleaks/gitleaks}},
+  note         = {Software, version 8.28.0 evaluated. Accessed 2026-10-11},
+}
+% verified: built from module github.com/zricethezav/gitleaks/v8 at v8.28.0 for this work
+
+@misc{trufflehog,
+  year         = {2026},
+  author       = {{Truffle Security}},
+  title        = {{TruffleHog}},
+  howpublished = {\url{https://github.com/trufflesecurity/trufflehog}},
+  note         = {Software, version 3.90.8 evaluated with \texttt{--no-verification}. Accessed 2026-10-11},
+}
+% verified: cloned and built at tag v3.90.8 for this work
+
+@misc{noseyparker,
+  year         = {2026},
+  author       = {{Praetorian}},
+  title        = {Nosey Parker},
+  howpublished = {\url{https://github.com/praetorian-inc/noseyparker}},
+  note         = {Rule set at revision 2e6e7f3, Apache-2.0. Accessed 2026-10-11},
+}
+% verified: cloned at that revision for this work
+
+@article{alneyadi2016dlp,
+  author  = {Alneyadi, Sultan and Sithirasenan, Elankayer and Muthukkumarasamy, Vallipuram},
+  title   = {A survey on data leakage prevention systems},
+  journal = {Journal of Network and Computer Applications},
+  volume  = {62},
+  pages   = {137--152},
+  year    = {2016},
+}
+% verified: dblp, Griffith repository. TODO-VERIFY: DOI not found by search
+
+% ---------------- Streaming, matching, primitives ----------------
+
+@article{muthukrishnan2005streams,
+  author  = {Muthukrishnan, S.},
+  title   = {Data Streams: Algorithms and Applications},
+  journal = {Foundations and Trends in Theoretical Computer Science},
+  volume  = {1},
+  number  = {2},
+  pages   = {117--236},
+  year    = {2005},
+  doi     = {10.1561/0400000002},
+}
+% verified: nowpublishers.com TCS-002
+
+@article{thompson1968regex,
+  author  = {Thompson, Ken},
+  title   = {Regular expression search algorithm},
+  journal = {Communications of the ACM},
+  volume  = {11},
+  number  = {6},
+  pages   = {419--422},
+  year    = {1968},
+  doi     = {10.1145/363347.363387},
+}
+% verified: ACM listing via netlib BibTeX record
+
+@article{shannon1948,
+  author  = {Shannon, Claude E.},
+  title   = {A Mathematical Theory of Communication},
+  journal = {Bell System Technical Journal},
+  volume  = {27},
+  number  = {3},
+  pages   = {379--423},
+  year    = {1948},
+  doi     = {10.1002/j.1538-7305.1948.tb01338.x},
+}
+% verified: Scinapse DOI record; part 1 only (pp. 379--423)
+
+@misc{rfc2104,
+  author       = {Krawczyk, Hugo and Bellare, Mihir and Canetti, Ran},
+  title        = {{HMAC}: Keyed-Hashing for Message Authentication},
+  howpublished = {RFC 2104},
+  year         = {1997},
+  doi          = {10.17487/RFC2104},
+}
+% verified: rfc-editor.org/info/rfc2104
+
+@misc{luhn1960,
+  author       = {Luhn, Hans Peter},
+  title        = {Computer for Verifying Numbers},
+  howpublished = {US Patent 2,950,048},
+  year         = {1960},
+}
+% verified: patents.google.com/patent/US2950048A (published 1960-08-23)
+
+% ---------------- Leads NOT included (could not verify enough to cite) -----------
+% * "Named Entity Recognition using Sliding Window Approach", arXiv 2609.29682
+%   (2026): seen only as a search hit; authors and content unverified.
+% * spaCy (Honnibal et al.): cite only after confirming the preferred citation.
+% * Streaming / sliding-window NER with a formal equivalence guarantee: no
+%   peer-reviewed source found -> [NEEDS CITATION] if the paper claims novelty.

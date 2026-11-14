@@ -1,0 +1,15 @@
+\begin{table}[t]
+\caption{The gate and the declared context (C-RQ2). Pass: share of characters sent to the model. Gate R: share of gold person names lying entirely inside some window, the ceiling on the tier's recall. Max: longest merged window; $>$256: windows longer than the declared context. Flips: detections that disappear when only 128 / 256 characters are kept on each side of them, out of all detections of the tier on up to 200 documents.}\label{tab:gate}
+\centering\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}l r r r r l@{}}
+\toprule
+Corpus & Pass & Gate R & Max & $>$256 & Flips (128/256) \\
+\midrule
+ai4privacy & 0.265 & 0.543 & 462 & 24 & 1/0 of 378 \\
+WNUT-17 & 0.298 & 0.594 & 258 & 1 & 1/0 of 577 \\
+CoNLL$^\ast$ & 0.598 & 0.880 & 613 & 8 & 11/2 of 2,198 \\
+Benign prose & 0.588 & -- & 96 & 0 & -- \\
+Loghub logs & 0.104 & -- & 258 & 1 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}

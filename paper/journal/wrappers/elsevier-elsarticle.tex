@@ -1,0 +1,33 @@
+%% Elsevier journals (elsarticle.cls, numbered references).
+\newif\ifanonymous\ifdefined\anonymousbuild\anonymoustrue\fi
+\documentclass[preprint,12pt]{elsarticle}
+\usepackage{amsmath}\usepackage{amsthm}% after the class: elsarticle defines \qed
+\input{meta}
+\input{content/preamble}
+\usepackage[hidelinks]{hyperref}
+\journal{}
+\begin{document}
+\begin{frontmatter}
+\title{\ssTitle}
+\ifanonymous
+  \author{Anonymous authors}
+\else
+  \def\ssAuthor#1#2#3#4{\edef\ssThis{#1 #2}%
+    \ifx\ssThis\ssCorresponding\author[a]{#1 #2\corref{cor}}\else\author[a]{#1 #2}\fi
+    \ead{#3}}
+  \ssAuthorList
+  \cortext[cor]{Corresponding author}
+  \affiliation[a]{organization={\ssDept, \ssOrg}, city={\ssCity}, country={\ssCountry}}
+\fi
+\begin{abstract}
+\input{content/abstract}
+\end{abstract}
+\begin{keyword}
+\input{content/keywords}
+\end{keyword}
+\end{frontmatter}
+\input{content/body}
+\input{content/end}
+\bibliographystyle{elsarticle-num}
+\bibliography{refs}
+\end{document}

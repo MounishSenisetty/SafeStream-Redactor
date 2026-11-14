@@ -1,0 +1,49 @@
+\section{Proofs of Theorems~\ref{thm:par} and~\ref{thm:mem}}\label{app:proofs}
+
+Online Resource~1 (Table~S8) maps each step below to the code that discharges it and the tests that corroborate it. Throughout, positions are absolute offsets in $T$, the conditions of Theorem~\ref{thm:stream} hold unless stated otherwise, and $L_{\max} = \max_d L_d \le w$.
+
+\subsection{A streaming engine started mid-text}
+
+The parallel engine runs Algorithm~\ref{alg:stream} on a substring of $T$ with a read-only left context. Lemma~\ref{lem:mid} covers that case.
+
+\begin{lemma}\label{lem:mid}
+Let $X = T[x_0{:}x_1]$ and let the engine start with $P = T[x_0{:}x_0 + h]$ as already-emitted context and stream $T[x_0 + h : x_1]$, where $h = w$, or $h < w$ and $x_0 = 0$. Then it emits exactly the spans of $\Pi(X)$ that start at or after $x_0 + h$.
+\end{lemma}
+
+\begin{proof}
+The proof of Theorem~\ref{thm:stream} uses only two properties of $P$: it holds the $\min(w, p - x_0)$ characters preceding $B$, and the window ends at the end of the text being processed. Both hold here with $X$ in place of $T$. Spans of the first window that start inside $P$ are dropped, as in every later pass.
+\end{proof}
+
+\begin{lemma}[Transfer to the full text]\label{lem:transfer}
+With $X = T[x_0{:}x_1]$, let $s$ be a span of detector $d$ that belongs to $\Pi(X)$ or to $\Pi(T)$, with $i - C_{\mathrm{left},d} \ge x_0$ or $x_0 = 0$, and $j + C_{\mathrm{right},d} \le x_1$ or $x_1 = |T|$. Then $s \in \Pi(X)$ if and only if $s \in \Pi(T)$.
+\end{lemma}
+
+\begin{proof}
+Apply \ref{as:ctx} with $a = x_0$ and $b = x_1$ in $T$; in $X$ these positions are its two edges. This gives $\delta = -x_0$ in the notation of \ref{as:ctx}, and an edge of $X$ that coincides with an edge of $T$ satisfies the edge clause.
+\end{proof}
+
+\subsection{Proof of Theorem~\ref{thm:par}}
+
+Let the split points be $0 = a_0 < a_1 < \dots < a_k = |T|$, with $a_{r+1} - a_r \ge 4w$; \texttt{plan\_ranges} enforces this, and coarsens the split or falls back to one range otherwise. Worker $r$ processes $X_r = T[x_0^{r} : x_1^{r}]$ with $x_0^{r} = \max(0, a_r - 2w)$ and $x_1^{r} = \min(|T|,\, a_{r+1} + w)$. Its first $w$ characters, $T[a_r - 2w : a_r - w]$, are read-only context, and streaming starts at $a_r - w$; worker $0$ has no context and starts at $0$. By Lemma~\ref{lem:mid}, worker $r$ obtains $D_r$, the spans of $\Pi(X_r)$ that start at or after $a_r - w$.
+
+A \emph{straddler} of a seam $a$ is a span with $i < a < j$. Worker $r$ reports the straddler of $a_r$ (its start seam) and the straddler of $a_{r+1}$ (its end seam) found in $D_r$, or reports that none exists. It emits $T[\ell_r : u_r]$, where $\ell_r$ is the end of its start-seam straddler or $a_r$, and $u_r$ is the end of its end-seam straddler or $a_{r+1}$. Together with that text it emits the spans of $D_r$ contained in $[\ell_r, u_r)$.
+
+\emph{Step 1: in the window that matters, worker $r$ sees $\Pi(T)$.} Let $s$ be a span of detector $d$ with $a_r - w \le i < a_{r+1}$ that belongs to $D_r$ or to $\Pi(T)$. On the left, $i - C_{\mathrm{left},d} \ge a_r - 2w \ge x_0^{r}$, because $C_{\mathrm{left},d} \le w$. On the right, $j \le i + L_d < a_{r+1} + L_d \le a_{r+1} + w - C_{\mathrm{right},d}$, so $j + C_{\mathrm{right},d} \le x_1^{r}$, or $x_1^{r} = |T|$. By Lemma~\ref{lem:transfer}, $s \in D_r \Leftrightarrow s \in \Pi(T)$.
+
+\emph{Step 2: both neighbours report the same straddler.} A straddler of $a_r$ starts after $a_r - L_d \ge a_r - w$, and a straddler of $a_{r+1}$ starts before $a_{r+1}$, so both lie in the range of Step 1. Spans that start before $a_r - w$ are dropped as context. Such a span ends at most $L_{\max} \le w$ characters after its start, that is, at or before $a_r$, so it cannot cross $a_r$. Each straddler found by worker $r$ is therefore the unique straddler of $\Pi(T)$ at that seam, if one exists (uniqueness follows from disjointness). Worker $r+1$ applies Step 1 to its own start seam $a_{r+1}$ and obtains the same span. The reports agree, so the valve passes, and $u_r = \ell_{r+1}$.
+
+\emph{Step 3: each part is the sequential redaction of its slice.} Every span emitted by worker $r$ lies in $[\ell_r, u_r)$. It starts at or after $\ell_r \ge a_r$, and before $a_{r+1}$: if there is an end-seam straddler, any span starting at or after $a_{r+1}$ and ending by $u_r$ would overlap it; otherwise $u_r = a_{r+1}$. By Step 1 the emitted spans are exactly the spans of $\Pi(T)$ inside $[\ell_r, u_r)$. No cut point $\ell_r$ lies strictly inside a span of $\Pi(T)$, because it is either a seam with no straddler or the end of a span of $\Pi(T)$, and $\Pi(T)$ is disjoint. The slices $[\ell_r, u_r)$ therefore partition $T$ without cutting any span. Redaction acts on each span separately (Definition~\ref{def:det}), so the concatenated parts equal the redaction of $T$ under $\Pi(T)$. By Theorem~\ref{thm:stream} that is the sequential output.
+
+\emph{Step 4: timing of the cuts.} A worker writes text only once the cuts that can affect it are fixed. It decides $\ell_r$ once its stream has passed $a_r + w$. By then every straddler of $a_r$, which ends before $a_r + L_{\max}$, has been emitted by the streaming engine. It flushes only text below the current position minus $2w$. The stream never extends beyond $a_{r+1} + w$, so this text lies below $a_{r+1} - w$, and the end cut $u_r \ge a_{r+1}$ cannot affect it. This proves~(i).
+
+\emph{Proof of (ii).} This part uses no assumption on the detectors. For each seam, the coordinator compares the left worker's end report with the right worker's start report and redacts the whole file sequentially on any mismatch. If all reports match, each $u_r$ equals $\ell_{r+1}$, because both are computed from the same reported straddler end. The written parts then cover $[0, |T|)$ as consecutive, non-overlapping slices, and every character of $T$ is emitted exactly once, redacted or not. A non-splittable text encoding, a single worker or a small file also take the sequential path. When the conditions of Theorem~\ref{thm:stream} fail, agreeing parts can still contain different detections from the sequential output; this is why an overlap below $w^{\star}$ is refused by default.
+\qed
+
+\subsection{Proof of Theorem~\ref{thm:mem}}
+
+\emph{After an emission.} The retained buffer is $B[e{:}]$. If no span straddles the planned boundary, $|B| - e = w$. Otherwise $e = i^{*} > |B| - w - L_d$, so $|B| - e < w + L_{\max}$. In both cases the retained buffer holds fewer than $w + L_{\max} \le w + m$ characters.
+
+\emph{Before a detection pass.} Chunks are appended until $|B| \ge w + m$. Before the last of them, $|B| < w + m$, and that chunk adds at most $c$ characters, so a pass starts with $|B| < w + m + c$. The proof of Theorem~\ref{thm:stream} shows that the pinned branch, which would let $B$ grow further, is never taken when $m \ge w \ge L_{\max}$. The final buffer obeys the same bound. The window $P \cdot B$ adds $|P| \le w$, which gives $2w + m + c$. The detections of a window are pairwise disjoint and lie inside it, so their number is at most its length.
+
+\emph{Parallel workers.} Each worker runs one streaming engine and holds back emitted segments until they lie $2w$ behind its stream position, together with the detections of that suffix. This adds at most $2w$ characters plus one segment of at most $w + m + c$ characters. The bound does not depend on $|T|$, and $k$ workers need at most $k$ times as much.
+\qed

@@ -11,7 +11,7 @@ Outputs, all without document text:
 * leaked mandatory spans (not fully redacted) per system and type, with the
   documents they occur in, for zero-tolerance acceptance criteria;
 * LaTeX tables for the manuscript (they use the ``\\pc`` macro of
-  ``paper/ijis/main.tex``).
+  ``paper/journal/content/preamble.tex``).
 """
 
 from __future__ import annotations

@@ -127,6 +127,9 @@ def make_handler(
         protocol_version = "HTTP/1.1"
         # applied to the connection socket by StreamRequestHandler.setup()
         timeout = socket_timeout
+        # headers and body go out in separate writes; with Nagle on, the body waits
+        # for the client's delayed ACK, adding ~40 ms to every keep-alive request
+        disable_nagle_algorithm = True
 
         def _reject(self, status: int, message: str) -> None:
             # The body (if any) was not read; closing is the only way to keep it

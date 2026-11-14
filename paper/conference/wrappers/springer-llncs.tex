@@ -1,0 +1,31 @@
+%% Springer LNCS / CCIS proceedings (llncs.cls, splncs04 references).
+\newif\ifanonymous\ifdefined\anonymousbuild\anonymoustrue\fi
+\documentclass[runningheads]{llncs}
+\usepackage{amsmath}
+\input{meta}
+\input{content/preamble}
+\usepackage[hidelinks]{hyperref}
+\begin{document}
+\title{\ssTitle}
+\titlerunning{\ssShortTitle}
+\ifanonymous
+  \author{Anonymous authors}
+  \institute{Withheld for review}
+\else
+  \def\ssSep{}
+  \def\ssAuthor#1#2#3#4{\ssSep#1~#2\def\ssSep{ \and }}
+  \author{\ssAuthorList}
+  \institute{\ssDept, \ssOrg, \ssCity, \ssCountry}
+\fi
+\maketitle
+\begin{abstract}
+\input{content/abstract}
+\keywords{\input{content/keywords}}
+\end{abstract}
+\input{content/body}
+\input{content/end}
+\bibliographystyle{splncs04}
+\begingroup\sloppy
+\bibliography{refs}
+\endgroup
+\end{document}

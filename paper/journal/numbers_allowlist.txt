@@ -1,0 +1,12 @@
+# Numbers the journal prints that no result file holds, each with its reason.
+# Checked by paper/audit_numbers.py. Format: <number as extracted> <reason>
+3.8.0 software version (spaCy models)
+3.8.13 software version (spaCy)
+3.90.8 software version (TruffleHog)
+8.28.0 software version (gitleaks)
+2.2.355 software version (Presidio, journal runs)
+139264 bound from the formula in the same sentence: 2c + w with c = 65,536 and w = 8,192
+147456 bound from the formula in the same sentence: 2c + 2w with c = 65,536 and w = 8,192
+49517 corpus statistic from the CredData loader as corrected in PR #78: non-credential ranges (not stored in a result file; not re-derived in this session)
+17345610 corpus statistic from the CredData loader: characters in the corpus (not stored in a result file; not re-derived in this session)
+59143 corpus statistic from the TAB loader: gold mentions in the 1,014 held-out judgments (not stored in a result file; not re-derived in this session)

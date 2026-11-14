@@ -12,7 +12,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 RAW = Path("research/results/raw")
-OUT = Path(__file__).resolve().parent
+OUT = Path(__file__).resolve().parent / "figures"
 COLOR = {"native": "#2a78d6", "python": "#eb6834"}  # validated categorical pair
 LABEL = {"native": "Rust core", "python": "pure Python"}
 

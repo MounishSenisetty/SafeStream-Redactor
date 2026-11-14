@@ -1,0 +1,81 @@
+{
+ "environment": {
+  "date": "2026-11-14T08:00:21+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.18",
+  "versions": {
+   "safestream-redactor": "0.5.0",
+   "safestream-redactor-native": "0.5.0",
+   "presidio-analyzer": "2.2.366",
+   "spacy": "3.8.18",
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": "3.8.0",
+   "en-core-web-lg": "3.8.0",
+   "onnxruntime": "1.29.0",
+   "tokenizers": "0.23.3",
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.4.6"
+  },
+  "commit": "9fe5cb023d1d7e52c2a04eb537ad584f74f35f3c",
+  "dirty": false
+ },
+ "code": {
+  "code_root": "/tmp/claude-0/-home-user-SafeStream-Redactor/04b0f226-507e-5845-9a14-3cc8ba7cc7e9/scratchpad/wt_nagle",
+  "commit": "7367d5b9e19193f12cb7a810487f6ee4f74b8207",
+  "src_dirty": false
+ },
+ "results": {
+  "rest|256": {
+   "calls": 1000,
+   "p50_ms": 43.9982319999217,
+   "p95_ms": 44.238381350214695,
+   "p99_ms": 47.97112143966842,
+   "calls_per_s": 22.68810333751279,
+   "cold_start_s": 0.1372001640002054,
+   "payload_bytes": 256
+  },
+  "rest|4096": {
+   "calls": 1000,
+   "p50_ms": 48.06398100026854,
+   "p95_ms": 52.12332779960889,
+   "p99_ms": 52.31554180061721,
+   "calls_per_s": 20.346691077353515,
+   "cold_start_s": 0.14675366099982057,
+   "payload_bytes": 4096
+  },
+  "rest|65536": {
+   "calls": 1000,
+   "p50_ms": 79.17760050031575,
+   "p95_ms": 102.44246744964585,
+   "p99_ms": 119.1685088894883,
+   "calls_per_s": 12.304699233900536,
+   "cold_start_s": 0.12602652199984732,
+   "payload_bytes": 65536
+  },
+  "rest|1048576": {
+   "calls": 64,
+   "p50_ms": 1252.15883150031,
+   "p95_ms": 1409.0900514997884,
+   "p99_ms": 1447.6250216001063,
+   "calls_per_s": 0.7952510290825505,
+   "cold_start_s": 0.09464138599923899,
+   "payload_bytes": 1048576
+  },
+  "rest|4194304": {
+   "calls": 20,
+   "p50_ms": 5223.342754000441,
+   "p95_ms": 5488.645138250104,
+   "p99_ms": 5491.361643650125,
+   "calls_per_s": 0.19069396821290505,
+   "cold_start_s": 0.12598331200024404,
+   "payload_bytes": 4194304
+  }
+ }
+}

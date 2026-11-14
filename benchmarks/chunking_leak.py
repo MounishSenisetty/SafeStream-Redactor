@@ -115,6 +115,8 @@ def main() -> None:
     ap.add_argument("--split", default="test")
     ap.add_argument("--spacy", action="store_true", help="add the spaCy tier")
     ap.add_argument("--profile", default="default", help="Redactor detection profile")
+    ap.add_argument("--onnx", action="store_true", help="add the ONNX neural tier (models/ner)")
+    ap.add_argument("--onnx-batch", type=int, default=1, help="ONNX inference batch size")
     ap.add_argument("--chunks", type=int, nargs="+", default=[1024, 4096, 16384, 65536])
     ap.add_argument("--seeds", type=int, default=5)
     ap.add_argument(
@@ -129,7 +131,17 @@ def main() -> None:
     import safestream_redactor
     from safestream_redactor.redactor import Redactor
 
-    redactor = Redactor(backend="python", use_ner=args.spacy, profile=args.profile)
+    onnx: dict[str, Any] = {}
+    if args.onnx:
+        model = corpora.ROOT / "models" / "ner"
+        onnx = {
+            "use_onnx": True,
+            "onnx_model": str(model / "model.int8.onnx"),
+            "onnx_vocab": str(model / "tokenizer.json"),
+            "onnx_labels": str(model / "labels.json"),
+            "onnx_batch_size": args.onnx_batch,
+        }
+    redactor = Redactor(backend="python", use_ner=args.spacy, profile=args.profile, **onnx)
     corpus = corpora.load(args.corpus, args.split)
     docs = corpus.docs
     if args.max_chars:
@@ -148,6 +160,7 @@ def main() -> None:
         "corpus": args.corpus,
         "split": args.split,
         "pipeline": ("pattern+spacy" if args.spacy else "pattern")
+        + (f"+onnx(batch {args.onnx_batch})" if args.onnx else "")
         + ("" if args.profile == "default" else f" ({args.profile} profile)"),
         "profile": args.profile,
         "safestream_version": safestream_redactor.__version__,

@@ -1,0 +1,78 @@
+\section{Formal analysis}\label{sec:formal}
+
+Let $S_w(T)$ be the set of detections emitted by Algorithm~\ref{alg:stream} for some chunking of $T$, mapped back to absolute offsets, and $P_{w,k}(T)$ the output of the parallel engine with $k$ workers. Each detector $d \in \mathcal{D}$ declares three constants: the longest span it emits, $L_d$, and the context it reads to the left and right of a span, $C_{\mathrm{left},d}$ and $C_{\mathrm{right},d}$. The two assumptions are stated per detector and must hold for every input text, not only for $T$, because the engine applies $\Pi$ to windows.
+
+\begin{assumption}[Bounded span]\label{as:span}
+For every text $X$, every detection of detector $d$ in $\Pi(X)$ has length $j - i \le L_d$.
+\end{assumption}
+
+\begin{assumption}[Bounded context]\label{as:ctx}
+Let $X$ and $Y$ be texts and $\delta$ an offset with $X[a{:}b] = Y[a{+}\delta : b{+}\delta]$. Let $(i, j)$ be a span of detector $d$ such that either $i - C_{\mathrm{left},d} \ge a$ or $a = a + \delta = 0$, and either $j + C_{\mathrm{right},d} \le b$ or both $b = |X|$ and $b + \delta = |Y|$. Then $(i, j, \tau, \kappa) \in \Pi(X)$ if and only if $(i + \delta, j + \delta, \tau, \kappa) \in \Pi(Y)$.
+\end{assumption}
+
+In words, \ref{as:ctx} says that whether a span of $d$ is in the final detection set, and with which type and confidence, depends only on the $C_{\mathrm{left},d}$ characters before it, the span itself and the $C_{\mathrm{right},d}$ characters after it, where a window edge that coincides with an edge of both texts counts as real. The pipeline requirement is
+\begin{equation}\label{eq:wstar}
+w^{\star} \;=\; \max_{d \in \mathcal{D}}\ \max\bigl(L_d + C_{\mathrm{right},d},\ C_{\mathrm{left},d}\bigr).
+\end{equation}
+
+\begin{theorem}[Streaming equivalence]\label{thm:stream}
+Under \ref{as:span} and \ref{as:ctx}, if $w \ge w^{\star}$ and $m \ge w$, then $S_w(T) = \Pi(T)$ for every text $T$ and every chunking of $T$.
+\end{theorem}
+
+\begin{corollary}[Pipeline-wide sufficient condition]\label{cor:coarse}
+Let $L_{\max} = \max_d L_d$, $C_{\mathrm{left}} = \max_d C_{\mathrm{left},d}$ and $C_{\mathrm{right}} = \max_d C_{\mathrm{right},d}$. Then $w \ge \max(L_{\max} + C_{\mathrm{right}},\, C_{\mathrm{left}})$ implies $w \ge w^{\star}$, so Theorem~\ref{thm:stream} applies.
+\end{corollary}
+
+The corollary is the intuition: the overlap must hold the longest span together with the widest right context, and the widest left context. It is sufficient but not necessary, because it pairs the longest span with a right context that may belong to a different detector. Equation~\eqref{eq:wstar} is the condition the engine checks (Section~\ref{sec:derived}).
+
+\paragraph{Why the right context is added to the span}
+An overlap of $\max_d \max(L_d, C_{\mathrm{left},d}, C_{\mathrm{right},d})$, which bounds each quantity separately, is not enough. Take a detector $d$ that rejects a candidate whose right context is missing, and an overlap $w < L_d + C_{\mathrm{right},d} - 1$. A chunking can end a pass so that a span $s = (i, j)$ of $\Pi(T)$ starts one character before the planned boundary $e_0 = |B| - w$ and has length $L_d$. Its right context then extends $(L_d - 1) + C_{\mathrm{right},d} > w$ characters beyond $e_0$, past the end of the buffer. The window therefore rejects $s$. If no other detection straddles $e_0$, the boundary does not retreat, and the pass emits $T[i : e_0]$, the first character of $s$, unredacted. A shorter span ending before $e_0$ can be emitted in its place. The bound in Eq.~\eqref{eq:wstar} is thus tight up to one character. It is also why the safe-region step in the proof below adds $C_{\mathrm{right},d}$ to $L_d$.
+
+\begin{proof}[Proof of Theorem~\ref{thm:stream}]
+Fix a non-final pass. Let $p$ be the absolute position of $B[0]$, $q = p + |B|$ and $e_0 = q - w$ the planned boundary. The window is $W = T[p - |P| : q]$, where $|P| = \min(w, p)$ because $P$ holds the last $w$ emitted characters.
+
+\emph{Safe region.} Let $s = (i, j, \tau, \kappa)$ be a span of detector $d$, in absolute offsets, with $p \le i < e_0$ that belongs to $\Pi(W)$ or to $\Pi(T)$. By \ref{as:span}, $j \le i + L_d < q - w + L_d \le q - C_{\mathrm{right},d}$, using $w \ge L_d + C_{\mathrm{right},d}$. On the left, $i - C_{\mathrm{left},d} \ge p - w$ because $w \ge C_{\mathrm{left},d}$; if $p < w$, the window starts at position 0 of $T$. \ref{as:ctx}, applied to $X = W$ and $Y = T$, then gives $s \in \Pi(W) \Leftrightarrow s \in \Pi(T)$. So the spans of the window that start in $[p, e_0)$ are exactly the spans of $\Pi(T)$ that start there.
+
+\emph{Retreat.} $\Pi(W)$ is pairwise disjoint, so at most one span $s^{*}$ straddles $e_0$, and it starts before $e_0$, so it belongs to $\Pi(T)$. The boundary becomes $e = i^{*}$ if $s^{*}$ exists and $e = e_0$ otherwise. In the first case, $i^{*} > e_0 - L_d \ge p + m - L_d \ge p$, because $|B| \ge w + m$ and $m \ge w \ge L_d$. So $e > p$, and the pass emits at least one character; the pinned branch is never taken. No span of $\Pi(T)$ straddles $e$. If $e = e_0$, such a span would start before $e_0$ and so be the straddler of $W$. If $e = i^{*}$, it would overlap $s^{*}$, which disjointness rules out.
+
+\emph{Emission.} The pass emits $T[p{:}e]$ with the window spans contained in it. By the safe region these are exactly the spans of $\Pi(T)$ contained in $[p, e)$. The final pass has $q = |T|$, so the right-hand clause of \ref{as:ctx} holds for every span, and it emits exactly the spans of $\Pi(T)$ inside $[p, |T|)$. The emitted segments partition $T$, and no span of $\Pi(T)$ crosses a segment boundary. Every span of $\Pi(T)$ is therefore emitted exactly once, with the type and confidence it has in $\Pi(T)$, and nothing else is emitted.
+\end{proof}
+
+\begin{theorem}[Parallel identity with fail-safe fallback]\label{thm:par}
+(i) Under the conditions of Theorem~\ref{thm:stream}, and with ranges of at least $4w$ characters, every seam report agrees and $P_{w,k}(T)$ equals the sequential output byte for byte. (ii) Without any assumption on the detectors, the output is either assembled from parts whose seam reports all agree, so that every character of $T$ is emitted exactly once, or it is the sequential output.
+\end{theorem}
+
+\begin{theorem}[Bounded working buffer]\label{thm:mem}
+Let $c$ be the length of the longest input chunk. Under the conditions of Theorem~\ref{thm:stream}, the unemitted buffer of $S_w$ never exceeds $w + m + c$ characters, and each detection window never exceeds $2w + m + c$, independent of $|T|$. Each parallel worker additionally holds back at most $2w$ characters plus one segment, so the parallel engine needs $O\bigl(k\,(w + m + c)\bigr)$ characters.
+\end{theorem}
+
+Because redaction acts on each span separately (Definition~\ref{def:det}), Theorem~\ref{thm:stream} implies byte-identical redacted output. The proofs of Theorems~\ref{thm:par} and~\ref{thm:mem} are in Appendix~\ref{app:proofs}, and Online Resource~1 maps each step to the implementation. For \texttt{redact\_file}, $c = m = 65{,}536$ and $w = 8192$, so the buffer stays below 139,264 characters and each window below 147,456 characters. The proofs were not machine-checked.
+
+\subsection{What is derived and what is assumed}\label{sec:derived}
+
+\begin{table}[t]
+\caption{Declared streaming bounds of the evaluated detectors, in characters, at the evaluated commit. The requirement of a detector is $\max(L_d + C_{\mathrm{right},d},\, C_{\mathrm{left},d})$; the pipeline requirement $w^{\star}$ is the largest requirement among active detectors.}\label{tab:bounds}
+\footnotesize
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lrrrr}
+\toprule
+Detector $d$ & $L_d$ & $C_{\mathrm{left},d}$ & $C_{\mathrm{right},d}$ & Requirement \\
+\midrule
+Deterministic patterns & 8192 & 0 & 0 & 8192 \\
+Label-anchored identifiers & 64 & 96 & 8 & 96 \\
+Entropy tier & 8192 & 32 & 0 & 8192 \\
+Compound entropy tier & 8192 & 0 & 0 & 8192 \\
+Contextual scorer & 9 & 48 & 0 & 48 \\
+spaCy named-entity tier (optional) & 256 & 256 & 256 & 512 \\
+\midrule
+Default pipeline, $w^{\star}$ & & & & 8192 \\
+Default pipeline with spaCy, $w^{\star}$ & & & & 8192 \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+Each detector declares $(L_d, C_{\mathrm{left},d}, C_{\mathrm{right},d})$. The engine computes $w^{\star}$ from Eq.~\eqref{eq:wstar} over the active detectors and refuses to start with a smaller overlap unless the caller explicitly overrides it. Table~\ref{tab:bounds} lists the declarations. The detectors that emit the longest spans (private-key blocks and entropy candidates, $L_d = 8192$) read no right context. The only detector with right context among the default tiers, the label-anchored tier, emits spans of at most 64 characters. Hence $w^{\star} = 8192$, and the default overlap $w = 8192$ satisfies Theorem~\ref{thm:stream} exactly, with or without the spaCy tier. The pipeline-wide Corollary~\ref{cor:coarse} would ask for $8192 + 8 = 8200$ characters; that is why the per-detector form is the one the engine enforces. A regression test fails if any declaration changes, and a differential test probes each detector to check that its real context dependency does not exceed its declaration.
+
+Two parts of \ref{as:span} and \ref{as:ctx} are \emph{not} derived from declarations. They should be read as assumptions corroborated by tests rather than proven properties of the code. (i) The confidence adjustment and threshold must not reach beyond the declared context of the detector whose span they adjust. The contextual scorer's 48-character left window is within $w$ for every detector, but it is not added to the other detectors' declarations. (ii) Overlap resolution must not propagate decisions along chains of overlapping candidates beyond the declared contexts, and the named-entity union rule must not create spans longer than the declared bounds. For the pattern tiers, whose spans are bounded and whose overlaps are short, the equivalence tests in Section~\ref{sec:equiv} found no counterexample. A statistical model's output can depend on its whole input window, so for the spaCy tier the declared bounds of 256 characters are declarations only, and the theorems should not be read as covering it. Empirically, its streamed output matched the whole-document output in every chunking we tried (Section~\ref{sec:equiv}).
+
+\paragraph{Failure modes}
+Lowering the overlap below $w^{\star}$ is refused by default. If a caller overrides that, the parallel engine still cannot lose or duplicate characters (Theorem~\ref{thm:par}(ii)), but the sequential engine can split a long span. A detector that understates its context, or one that needs document-wide context, is outside the guarantee.

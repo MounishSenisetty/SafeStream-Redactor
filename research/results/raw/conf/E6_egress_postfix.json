@@ -1,0 +1,118 @@
+{
+ "code": {
+  "code_root": "/home/user/SafeStream-Redactor",
+  "commit": "f9c7735e7c17d6c009b7a2cee84db93dee107696",
+  "src_dirty": false
+ },
+ "min_len": 4,
+ "results": {
+  "pattern|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 5250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "pattern|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 976,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "pattern|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 0,
+   "values_checked": 15092,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "gazetteer|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 5250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "gazetteer|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 976,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "gazetteer|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 0,
+   "values_checked": 15092,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "onnx|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 5250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "onnx|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 976,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "onnx|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 0,
+   "values_checked": 15092,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "spacy|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 5250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "spacy|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 976,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "spacy|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 0,
+   "values_checked": 15092,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  }
+ }
+}

@@ -1,0 +1,32 @@
+%% Plain article: the default, readable PDF. Build from the paper folder (see
+%% ../make_submission.sh). \def\anonymousbuild{} before \input gives the blind build.
+\newif\ifanonymous\ifdefined\anonymousbuild\anonymoustrue\fi
+\RequirePackage{amsmath}\RequirePackage{amsthm}
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\input{meta}
+\input{content/preamble}
+\usepackage[hidelinks]{hyperref}
+\title{\ssTitle}
+\ifanonymous
+  \author{Anonymous authors}
+\else
+  \def\ssSep{}
+  \def\ssAuthor#1#2#3#4{\ssSep#1~#2\def\ssSep{, }}
+  \author{\ssAuthorList\\[2pt]\small\ssDept, \ssOrg, \ssCity, \ssCountry\\
+    \small Corresponding author: \ssCorresponding}
+\fi
+\date{}
+\begin{document}
+\maketitle
+\begin{abstract}
+\input{content/abstract}
+\end{abstract}
+\noindent\textbf{Keywords:} \input{content/keywords}
+\input{content/body}
+\input{content/end}
+\bibliographystyle{unsrt}
+\bibliography{refs}
+\end{document}

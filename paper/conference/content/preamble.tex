@@ -1,0 +1,24 @@
+%% Packages and macros the content needs, in any document class. Loaded by every
+%% wrapper after its \documentclass. The conference paper defines no theorems.
+\usepackage{graphicx}
+\usepackage{multirow}
+\ifdefined\Bbbk\else\usepackage{amssymb,amsfonts}\fi
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{adjustbox}
+\usepackage{xurl}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
+\graphicspath{{figures/}}
+
+\emergencystretch=2em
+\hyphenation{anon-y-mi-za-tion boot-strap-ping}
+\newcommand{\ns}{$^{\dagger}$}
+%% point estimate with its interval stacked underneath, so no interval wraps or clips
+\newcommand{\pc}[2]{\begin{tabular}[t]{@{}l@{}}#1\\[-1pt]{[}#2{]}\end{tabular}}
+\newcommand{\MISSING}[1]{\textcolor{red}{[MISSING: #1]}}

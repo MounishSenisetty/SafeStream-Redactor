@@ -1,33 +1,38 @@
-%% Cover letter -- compile with pdfLaTeX (Overleaf: set it as the main document, or
-%% put it in its own project). Red [MISSING] items must be completed by the authors.
-\documentclass[11pt]{letter}
-\usepackage[a4paper,margin=2.5cm]{geometry}
+%% Cover letter, venue-neutral. Set the three macros below once a venue is chosen;
+%% red text marks what is still to fill. Build from this folder: pdflatex cover_letter
+\documentclass[10pt]{letter}
+\usepackage[a4paper,margin=2cm]{geometry}
 \usepackage{xcolor}
 \usepackage[hidelinks]{hyperref}
-\newcommand{\MISSING}[1]{\textcolor{red}{[MISSING: #1]}}
-\setlength{\parskip}{0.6em}
+\setlength{\parskip}{0.35em}
+\newif\ifanonymous
+\input{meta}
+\newcommand{\Venue}{\textcolor{red}{[journal name]}}
+\newcommand{\Editor}{\textcolor{red}{[Editor-in-Chief]}}
+\newcommand{\ArticleType}{original research article}
 
-\signature{Mounish Senisetty\\ \MISSING{affiliation}\\ senisettymounish@gmail.com}
-\address{\MISSING{Department, Institution}\\ \MISSING{City, Country}}
+\signature{\ssCorresponding{} (corresponding author), on behalf of all authors\\ \ssDept, \ssOrg}
+\address{\ssDept\\ \ssOrg\\ \ssCity, \ssCountry}
 \date{\today}
 
 \begin{document}
-\begin{letter}{The Editors\\ \emph{Computers \& Security}\\ Elsevier}
+\begin{letter}{\Editor\\ \emph{\Venue}}
 
-\opening{Dear Editors,}
+\opening{Dear \Editor,}
 
-Please consider the enclosed manuscript, ``Bounded-memory streaming redaction of personal data and credentials with a whole-document equivalence guarantee,'' for publication in \emph{Computers \& Security}.
+We submit ``\ssTitle'' for consideration as an \ArticleType{} in \emph{\Venue}.
 
-Tools that remove personal data and credentials from logs and exports are widely deployed, but the artefacts they process are routinely larger than memory, so they must be processed in chunks. We could find no system in the redaction, de-identification or secret-scanning literature that states any relationship between its chunked output and its whole-document output. The gap matters operationally: a value straddling a chunk boundary can be written out in the clear, and nothing in the output signals that it happened.
+Logs, database exports and packet captures must be stripped of personal data and credentials before they are shared, and they are routinely too large to process in one pass. Chunked processing introduces a silent leak: a secret that straddles a chunk boundary is missed and written out in the clear. We found no redaction, de-identification or secret-scanning system that states when its chunked output equals its whole-document output.
 
-The paper closes that gap. Given bounds on span length and context that each detector declares and that regression tests enforce, we prove the streamed output equals the whole-document output, the parallel output equals the sequential output byte for byte, and working memory is independent of input size. We then measure what this costs and what it buys, on held-out test splits against Microsoft Presidio in three configurations and against gitleaks and TruffleHog, with bootstrap confidence intervals, a component ablation, and a memory scaling curve from 8\,MiB to 2\,GiB.
+The paper closes that gap for context-dependent redaction. Each detector declares the longest span it emits and the context it reads; we show that an overlap as long as the longest span can still leak, and prove that an overlap covering every detector's span plus its right context makes streamed output equal to whole-document output, that the parallel engine is byte-identical to the sequential one or falls back to it, and that working memory is independent of input size. All proofs are in the paper (Section~5 and Appendix~A); Online Resource~1 maps each step to the implementation and holds supplementary tables. The default overlap meets the requirement exactly. Measured memory stays between 8.4 and 8.54\,MiB from 8\,MiB to 2\,GiB of input, against 904.6\,MiB for whole-document redaction of a 32\,MiB file.
 
-We have tried to report the evaluation as a referee would want to see it. Where we lose, we say so: free-text recall without a named-entity model is low, and against Presidio's larger model our entity coverage is not significantly better. One corpus was inspected during rule development, and rather than drop it we report pre-exposure and post-exposure results side by side and bound the contamination. All code, split manifests, the evaluation harness and the raw results underlying every number are public.
+The condition is not tied to our detectors: wrapped around Presidio's recognisers, our engine made their chunked output identical to their whole-document output, and the same check exposed a Presidio pattern whose output depends on arbitrarily distant text. On the test corpora naive chunking leaked up to 237 values a whole-document pass redacts, while SafeStream matched the whole-document output under every chunking tried.
 
-\MISSING{Keep the next paragraph unless the FTNCT'09 paper was never submitted anywhere; if it was submitted, accepted or published, complete it and attach a copy.}
-An earlier version of part of this work appeared as \MISSING{full citation} at \MISSING{venue, date}. A copy is enclosed. That paper presented the streaming architecture, the equivalence theorems, parallel seam safety and the calibrated ensemble. The present article adds: evaluation on held-out test splits, which the conference paper did not report; secret-scanner baselines (gitleaks, TruffleHog); a component ablation; a contamination analysis of RedactionBench; a peak-RSS memory curve across a 256-fold range of input sizes (added memory below 8.6\,MiB throughout); benign-shape suppression in the entropy tier, which reduced the false-alarm rate on generated non-secrets from 0.794 to 0.010; and parity results for the native core. We estimate the new technical content at \MISSING{X}\% of the article.
+Every real-data evaluation was pre-registered, with its protocol and manifest committed before any run, and is reported whatever its direction. On 14,626 real credentials from 337 repositories (CredData), the pattern tiers fully redacted more values than gitleaks (0.55 against 0.40, robust to resampling by repository) at a higher false-alarm rate. An opt-in tier built from documented log formats redacted all 618 user names in held-out Linux logs. On court judgments, Presidio first detected more personal data than our named-entity configuration; a free-text configuration designed on development data then reached character F1 0.67 against 0.54 on 1,014 held-out judgments, and 0.76 against 0.63 on Wikipedia biographies. Intervals are paired bootstrap at the document, cluster and two-stage levels; margins that do not survive clustering, disabled scanner filters or contamination checks are reported as such. Code, protocols, manifests, raw results and per-document predictions are public.
 
-The manuscript is not under consideration elsewhere, and all authors have approved the submission. We disclose in the Methods section that an AI assistant was used to implement evaluation scripts and to draft the manuscript; the authors reviewed every result and every sentence and are accountable for the content.
+The work concerns data protection, privacy-enhancing technologies and secure data handling, and should interest readers who build or deploy data-loss-prevention and secret-scanning pipelines.
+
+The manuscript is not under consideration elsewhere, and all authors approve the submission. A separate manuscript by the same authors, ``Content-Free by Contract? Auditing What an LLM Agent Learns Through an On-Device Redaction Tool'', is under review at a conference. It studies a different question, what an AI agent learns through the tool's agent interface, on different corpora, and reports no result of this manuscript; we will gladly send it to you. As stated in the manuscript, an AI assistant was used to implement evaluation scripts and to draft text; the authors reviewed every result and every sentence and take full responsibility for the content. The authors declare no competing interests.
 
 \closing{Yours sincerely,}
 

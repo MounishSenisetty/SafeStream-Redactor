@@ -18,6 +18,17 @@ Notable changes to this project. The format follows
 
 ### Fixed
 
+- **`explain_detection` no longer returns input text through detector metadata.** Its
+  `notes` passed on every metadata key except `context`. With the gazetteer tier that
+  included `norm`, the case-folded name it detected ("maria gonzalez"). The cue of a
+  labelled identifier, the key of a structured field and the ONNX model path also got
+  through. `notes` now carries only an allow-list of value-free keys
+  (`mcp_server.VALUE_FREE_META`), and a property test checks every content-free reply
+  (MCP, REST `/scan`, SARIF) for planted names (`tests/test_mcp_egress.py`).
+- **REST API: about 40 ms less per request on a kept-alive connection.** The handler
+  writes the headers and the body separately, so with Nagle's algorithm on, the body
+  waited for the client's delayed ACK. A 256-byte `/scan` took a median of 44 ms on
+  loopback, against 0.6 ms with `TCP_NODELAY`, which the handler now sets.
 - **`--types` / `types=` now scopes every tier.** The labeled-identifier, structured-field
   and checksum-ID tiers each emit several types and ran when any one of them was
   requested, so `--types email,ssn` still redacted a labelled card number
