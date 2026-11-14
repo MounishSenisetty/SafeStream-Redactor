@@ -9,14 +9,17 @@
 \begin{table}[t]
 \caption{What each interface returns. Only \texttt{redact} returns input text, by design: the input with every detected value replaced.}\label{tab:contract}
 \centering\footnotesize
-\setlength{\tabcolsep}{3pt}\begin{tabular}{@{}p{0.36\columnwidth} p{0.6\columnwidth}@{}}
+\setlength{\tabcolsep}{3pt}\begin{tabular}{@{}l p{0.6\columnwidth}@{}}
 \toprule
 Interface & Fields returned \\
 \midrule
-MCP \texttt{scan} & per finding: type, start, end, length, confidence, severity, detector \\
-MCP \texttt{explain\_\allowbreak detection} & as \texttt{scan}, plus a context note and detector \texttt{notes} \\
-MCP \texttt{detectors}, \texttt{health} & tier names and declared bounds; version, settings \\
-MCP \texttt{redact} & redacted text; counts by type \\
+\multicolumn{2}{@{}l}{\emph{MCP tools}} \\
+\texttt{scan} & per finding: type, start, end, length, confidence, severity, detector \\
+\texttt{explain\_detection} & as \texttt{scan}, plus a context note and detector \texttt{notes} \\
+\texttt{detectors} & tier names and declared bounds \\
+\texttt{health} & version, tiers, settings \\
+\texttt{redact} & redacted text; counts by type \\
+\midrule
 REST \texttt{/scan} & per finding: start, end, type, confidence, detector \\
 SARIF 2.1.0 \cite{sarif210} & rule per type; per finding: level, region (offsets, lines), a fixed message \\
 \bottomrule

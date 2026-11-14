@@ -8,14 +8,14 @@
   arr/.style={-{Stealth[length=2mm]}, thick},
   lab/.style={font=\scriptsize, align=center}]
 \node[box, fill=red!8] (llm) {LLM\\(provider)};
-\node[box, right=13mm of llm] (client) {Agent\\client};
-\node[box, right=13mm of client, fill=green!8] (srv) {Redaction tool\\(MCP / REST)};
-\node[box, right=13mm of srv, fill=green!8] (ws) {Workspace\\files, logs};
+\node[box, right=16mm of llm] (client) {Agent\\client};
+\node[box, right=18mm of client, fill=green!8] (srv) {Redaction tool\\(MCP / REST)};
+\node[box, right=16mm of srv, fill=green!8] (ws) {Workspace\\files, logs};
 \draw[arr] (ws) -- node[lab, above] {raw text} (srv);
 \draw[arr] (srv) -- node[lab, above] {replies} (client);
 \draw[arr] (client) -- node[lab, above] {context} (llm);
-\draw[arr, dashed] (llm) to[bend left=28] node[lab, above] {tool calls (may be\\attacker-steered)} (srv);
-\draw[dashed, thick, red!70!black] ($(client.north east)!0.5!(srv.north west)+(0,6mm)$) -- ($(client.south east)!0.5!(srv.south west)+(0,-6mm)$)
+\draw[arr, dashed] (llm.north) to[bend left=22] node[lab, above] {tool calls (may be attacker-steered)} (srv.north);
+\draw[dashed, thick, red!70!black] ($(client.east)!0.5!(srv.west)+(0,9mm)$) -- ($(client.east)!0.5!(srv.west)+(0,-9mm)$)
   node[lab, below, text=red!70!black] {trust boundary};
 \end{tikzpicture}}
 \caption{The setting. Everything the tool returns crosses the trust boundary into the model's context. The tool and the workspace are on the user's machine.}\label{fig:topology}
