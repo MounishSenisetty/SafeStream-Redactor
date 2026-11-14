@@ -2,10 +2,11 @@
 
 The optional compiled (Rust) detection core for
 [safestream-redactor](https://pypi.org/project/safestream-redactor/). You do not
-install or import this package directly. Install it through the extra:
+import this package directly, and it is not published to PyPI. Build and install
+it from source (needs a [Rust toolchain](https://rustup.rs)):
 
 ```bash
-pip install 'safestream-redactor[native]'
+pip install 'git+https://github.com/MounishSenisetty/SafeStream-Redactor#subdirectory=native'
 ```
 
 and select it:

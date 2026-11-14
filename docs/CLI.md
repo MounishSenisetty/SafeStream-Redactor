@@ -140,7 +140,7 @@ What each mode does, the large-file path, and the local-only guarantees are desc
 | Option | Meaning |
 |---|---|
 | `--types a,b,c` | Only detect these entity types (default: all) |
-| `--backend {python,native,auto}` | `native` uses the Rust core (`[native]` extra); `auto` uses it when installed |
+| `--backend {python,native,auto}` | `native` uses the Rust core (built from `native/`, see the README); `auto` uses it when installed |
 | `--regional` | Also detect IBAN, crypto addresses, UK NINO/NHS, India Aadhaar/PAN |
 | `--dates`, `--profile prose` | Also redact dates and times (off by default: logs timestamp every line) |
 | `--config FILE` | Load a TOML policy file |

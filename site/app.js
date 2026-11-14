@@ -1792,7 +1792,7 @@ function renderChoice() {
     el("div", { className: "snippet" }, pre, copy), go);
 }
 const LOCAL_ONLY = [
-  ["Native Rust core", "3–12× faster, byte-identical output.", "pip install 'safestream-redactor[native]'\nsafestream redact huge.log -o clean.log --backend native"],
+  ["Native Rust core", "3–12× faster, byte-identical output.", "pip install 'git+https://github.com/MounishSenisetty/SafeStream-Redactor#subdirectory=native'  # needs Rust\nsafestream redact huge.log -o clean.log --backend native"],
   ["Multi-core workers", "Directories fan out over files; one big file is split across cores. Output is byte-identical to one core.", "safestream redact logs/ -o logs_clean/ --workers 8\nsafestream redact huge.log -o clean.log --workers 8"],
   ["Kernel-enforced offline mode", "Linux only: a seccomp filter or an empty network namespace, on top of the in-process guard.", "safestream redact input.txt -o out.txt --offline-hard seccomp\nsafestream redact input.txt -o out.txt --offline-hard netns"],
   ["Names with spaCy", "Free-form person, organisation and location names.", "pip install 'safestream-redactor[ner]'\npython -m spacy download en_core_web_sm\nsafestream redact in.txt -o out.txt --ner"],

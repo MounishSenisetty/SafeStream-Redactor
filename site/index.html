@@ -387,7 +387,7 @@ safestream deanonymize clean.log -o restored.log</pre><button type="button" clas
           locally, the same package adds a Rust core and multi-core workers with byte-identical output.
           From the README: about 1.1–1.4 MB/s per core in pure Python and 3–17 MB/s with the native core,
           and <code>--workers N</code> scales across cores.</p>
-        <div class="snippet"><pre class="code" id="fast-cmd">pip install 'safestream-redactor[native]'
+        <div class="snippet"><pre class="code" id="fast-cmd">pip install 'git+https://github.com/MounishSenisetty/SafeStream-Redactor#subdirectory=native'  # needs Rust
 safestream redact huge.log -o clean.log --backend native --workers 8</pre><button type="button" class="btn copy" data-copy="fast-cmd">Copy</button></div>
       </div>
     </section>
@@ -591,7 +591,6 @@ pytest</pre><button type="button" class="btn copy" data-copy="i5">Copy</button><
           <h2>Optional extras</h2>
           <table class="plain-table">
             <tbody>
-              <tr><td><code>[native]</code></td><td>Rust core, 3–12× faster, byte-identical output (<code>--backend native</code>)</td></tr>
               <tr><td><code>[ui]</code></td><td>The local web playground (Streamlit), for files up to 2 GB</td></tr>
               <tr><td><code>[crypto]</code></td><td>Reversible <code>--mode encrypt</code> and <code>safestream deanonymize</code></td></tr>
               <tr><td><code>[ner]</code></td><td>spaCy names, organisations and locations (<code>--ner</code>)</td></tr>
@@ -679,7 +678,7 @@ pytest</pre><button type="button" class="btn copy" data-copy="i5">Copy</button><
 <footer class="foot">
   <span>MIT licensed · <a href="https://github.com/MounishSenisetty/SafeStream-Redactor">GitHub</a> · <a href="https://pypi.org/project/safestream-redactor/">PyPI</a> · <a href="https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/DEMO.md">Feature guide</a></span>
   <span>This page runs the published Python package in WebAssembly (Pyodide), pure-Python backend, <span id="py-version"></span>.
-    Install <code>[native]</code> locally for 3–12× the speed and files of any size.</span>
+    Install it locally, with the optional Rust core, for 3–12× the speed and files of any size.</span>
 </footer>
 
 <dialog id="help" aria-labelledby="help-title">
