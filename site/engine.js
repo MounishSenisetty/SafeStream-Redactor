@@ -6,9 +6,14 @@
 // Pyodide (CPython compiled to WebAssembly) and the safestream_redactor wheel are
 // both served from this site; nothing is fetched from anywhere else.
 //
-// Protocol: {id, op, args} in, {id, ok, result | error} out.
+// Protocol: {id, op, args} in, {id, ok, result | error, net} out. `net` is the
+// number of network requests this worker has made since the engine finished
+// starting, read from the browser's own resource timing: the page shows it.
 
 let engine = null;
+let bootRequests = 0;
+
+const requestsSoFar = () => performance.getEntriesByType("resource").length;
 
 async function boot(base) {
   const progress = (stage) => postMessage({ id: 0, progress: stage });
@@ -26,24 +31,33 @@ async function boot(base) {
   py.FS.writeFile("/home/pyodide/demo_engine.py", glue);
   progress("Starting the engine");
   engine = py.pyimport("demo_engine");
-  return JSON.parse(engine.info()).result;
+  const info = JSON.parse(engine.info()).result;
+  performance.setResourceTimingBufferSize(100000);
+  bootRequests = requestsSoFar();
+  return info;
 }
 
 const ops = {
   analyze: ({ text, settings }) => engine.analyze(text, settings),
   trace: ({ text, settings, chunk }) => engine.trace(text, settings, chunk),
+  checkPolicy: ({ toml }) => engine.check_policy(toml),
+  determinism: ({ text, settings }) => engine.determinism(text, settings),
+  bench: ({ settings, sizes }, id) =>
+    engine.bench(settings, sizes, (i, n, stage) => postMessage({ id, step: { i, n, stage } })),
   rest: ({ method, path, body, settings }) => engine.rest(method, path, body, settings),
   mcp: ({ message, settings }) => engine.mcp(message, settings),
+  cli: ({ argv, files }) => engine.run_cli(JSON.stringify(argv), JSON.stringify(files)),
 };
 
 onmessage = async ({ data: { id, op, args } }) => {
   try {
     if (op === "init") {
-      postMessage({ id, ok: true, result: await boot(args.base) });
+      postMessage({ id, ok: true, result: await boot(args.base), net: 0 });
       return;
     }
     // every Python entry point returns {"ok": ..., "result" | "error": ...} as JSON
-    postMessage({ id, ...JSON.parse(ops[op](args)) });
+    const reply = JSON.parse(ops[op](args, id));
+    postMessage({ id, ...reply, net: requestsSoFar() - bootRequests });
   } catch (err) {
     postMessage({ id, ok: false, error: String((err && err.message) || err).slice(-600) });
   }

@@ -115,8 +115,19 @@ function readSettings() {
     custom_patterns: f.custom_patterns.value,
   };
 }
+// the same settings as a policy file (what `--config policy.toml` reads)
+function readPolicy() {
+  const s = readSettings();
+  const detection = { min_confidence: s.min_confidence, use_entropy: s.use_entropy };
+  if (s.types) detection.types = s.types;
+  if (s.use_names) Object.assign(detection, { use_gazetteer: true, use_ensemble: true });
+  const mode = { replace: "replace", mask: "mask", hash: "pseudonymize" }[s.style];
+  const redaction = { mode, replacement: s.replacement, mask_keep_last: s.keep_last };
+  if (mode === "pseudonymize") redaction.hmac_key = s.hash_key;
+  return { detection, redaction, custom: { words: rules(s.custom_words), patterns: rules(s.custom_patterns) } };
+}
 // the engine caches one redactor per distinct settings string
-const settingsKey = () => JSON.stringify(readSettings());
+const settingsKey = () => JSON.stringify(readPolicy());
 
 function showStyleFields() {
   const style = form.elements.style.value;
