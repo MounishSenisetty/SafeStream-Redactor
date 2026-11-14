@@ -1,0 +1,90 @@
+{
+ "corpus": "tab_train",
+ "split": "test",
+ "pipeline": "pattern+spacy (prose profile)",
+ "profile": "prose",
+ "safestream_version": "0.5.0",
+ "stream_chars": 941155,
+ "n_docs": 161,
+ "max_chars": 950000,
+ "overlap_w": 8192,
+ "longest_declared_span": 8192,
+ "results": {
+  "4096": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 10588,
+    "missed_detections": 37,
+    "missed_chars": 315,
+    "extra_chars": 103,
+    "gold_spans": 8167,
+    "gold_spans_leaked_by_chunking": 22,
+    "gold_chars_leaked_by_chunking": 390
+   },
+   "overlap_256": {
+    "identical": false,
+    "ref_detections": 10588,
+    "missed_detections": 1,
+    "missed_chars": 14,
+    "extra_chars": 63,
+    "gold_spans": 8167,
+    "gold_spans_leaked_by_chunking": 1,
+    "gold_chars_leaked_by_chunking": 24
+   },
+   "overlap_8192": {
+    "identical": false,
+    "ref_detections": 10588,
+    "missed_detections": 1,
+    "missed_chars": 14,
+    "extra_chars": 63,
+    "gold_spans": 8167,
+    "gold_spans_leaked_by_chunking": 1,
+    "gold_chars_leaked_by_chunking": 24
+   },
+   "safestream": {
+    "chunkings": 2,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  },
+  "65536": {
+   "naive": {
+    "identical": false,
+    "ref_detections": 10588,
+    "missed_detections": 2,
+    "missed_chars": 18,
+    "extra_chars": 17,
+    "gold_spans": 8167,
+    "gold_spans_leaked_by_chunking": 1,
+    "gold_chars_leaked_by_chunking": 24
+   },
+   "overlap_256": {
+    "identical": false,
+    "ref_detections": 10588,
+    "missed_detections": 1,
+    "missed_chars": 14,
+    "extra_chars": 17,
+    "gold_spans": 8167,
+    "gold_spans_leaked_by_chunking": 1,
+    "gold_chars_leaked_by_chunking": 24
+   },
+   "overlap_8192": {
+    "identical": false,
+    "ref_detections": 10588,
+    "missed_detections": 1,
+    "missed_chars": 14,
+    "extra_chars": 17,
+    "gold_spans": 8167,
+    "gold_spans_leaked_by_chunking": 1,
+    "gold_chars_leaked_by_chunking": 24
+   },
+   "safestream": {
+    "chunkings": 2,
+    "all_identical": true,
+    "max_missed_detections": 0,
+    "max_gold_spans_leaked_by_chunking": 0
+   }
+  }
+ }
+}

@@ -1,0 +1,288 @@
+{
+ "protocol": "Score harness checkpoints on TAB (Text Anonymization Benchmark) as TAB prescribes.\n\nProtocol, fixed before any system was run on TAB (see PROTOCOL below; the commit\nthat adds this file precedes every TAB checkpoint):\n\n* Data: TAB's test split only (127 ECHR judgments). No SafeStream rule, threshold\n  or configuration was developed or chosen with TAB in view, and none is changed\n  after scoring.\n* Gold: per annotator, the mentions whose identifier type is DIRECT or QUASI (TAB's\n  masking decision). Documents annotated by several people are scored against each\n  annotator separately and the counts pooled, as in TAB's own evaluation.\n* Metrics (type-agnostic: a character is protected whatever label it receives):\n  - char recall: masked gold characters / gold characters, pooled over\n    (document, annotator) pairs;\n  - char precision: redacted characters that some annotator marked DIRECT or QUASI\n    / redacted characters (TAB counts a masked token as correct if any annotator\n    masked it); char F1 from these two;\n  - entity recall, direct and quasi (TAB's ER_di, ER_qi): for each annotator, an\n    entity's DIRECT (QUASI) mentions are grouped by entity id, and the entity is\n    protected only if every one of those mentions is fully redacted;\n  - direct-protected rate: share of (document, annotator) pairs in which every\n    DIRECT mention is fully redacted;\n  - char recall by TAB entity type (descriptive, no intervals).\n  TAB's information-weighted precision is not computed (it needs a language\n  model); precision here is unweighted.\n* Intervals: 95% percentile bootstrap over documents, 2,000 resamples, seed 0, one\n  shared resample matrix for all systems, so differences are paired.\n* Planned comparisons: SafeStream +spaCy minus Presidio sm (same spaCy model) and\n  minus Presidio lg, and SafeStream pattern minus Presidio regex, each on char F1,\n  char recall and direct entity recall. Every other difference is descriptive.\n\n    python -m benchmarks.tab_score --system NAME=CHECKPOINT ... --json OUT\n",
+ "corpus": "tab",
+ "n_docs": 127,
+ "annotator_pairs": 555,
+ "resamples": 2000,
+ "seed": 0,
+ "point": {
+  "safestream-prose": {
+   "char_precision": 0.658464461960579,
+   "char_recall": 0.8249550045913683,
+   "char_f1": 0.7323667586789351,
+   "er_direct": 0.9293712316968131,
+   "er_quasi": 0.8098889638672474,
+   "direct_protected": 0.8592057761732852
+  },
+  "presidio-sm": {
+   "char_precision": 0.5249219188744495,
+   "char_recall": 0.679801652892562,
+   "char_f1": 0.5924060862642405,
+   "er_direct": 0.06718346253229975,
+   "er_quasi": 0.660327587264585,
+   "direct_protected": 0.0036101083032490976
+  },
+  "presidio-lg": {
+   "char_precision": 0.5338122053814548,
+   "char_recall": 0.6973002754820936,
+   "char_f1": 0.6047008760842033,
+   "er_direct": 0.07665805340223945,
+   "er_quasi": 0.6733329243604687,
+   "direct_protected": 0.0036101083032490976
+  }
+ },
+ "ci95": {
+  "safestream-prose": {
+   "char_precision": [
+    0.6336407755266337,
+    0.6821521592236591
+   ],
+   "char_recall": [
+    0.803356361429389,
+    0.8456254354511683
+   ],
+   "char_f1": [
+    0.7148519569774453,
+    0.7478976633836975
+   ],
+   "er_direct": [
+    0.895208659934133,
+    0.9577828773193833
+   ],
+   "er_quasi": [
+    0.7845167877192656,
+    0.8334546251746519
+   ],
+   "direct_protected": [
+    0.7919843845768095,
+    0.9164017122329275
+   ]
+  },
+  "presidio-sm": {
+   "char_precision": [
+    0.5034016215585849,
+    0.5444377220135299
+   ],
+   "char_recall": [
+    0.6563567470145862,
+    0.7032114830745889
+   ],
+   "char_f1": [
+    0.5750124801603491,
+    0.6084164349689137
+   ],
+   "er_direct": [
+    0.039143644890927365,
+    0.10054699785371242
+   ],
+   "er_quasi": [
+    0.6271017758870628,
+    0.6953243031336407
+   ],
+   "direct_protected": [
+    0.0,
+    0.009157929226736564
+   ]
+  },
+  "presidio-lg": {
+   "char_precision": [
+    0.5125526771880199,
+    0.5532881574965939
+   ],
+   "char_recall": [
+    0.6719230215164742,
+    0.7225641447893619
+   ],
+   "char_f1": [
+    0.5871732191213807,
+    0.6208408564039509
+   ],
+   "er_direct": [
+    0.04718465649060464,
+    0.11141737102885456
+   ],
+   "er_quasi": [
+    0.6334895548172951,
+    0.7125086898213582
+   ],
+   "direct_protected": [
+    0.0,
+    0.009157929226736564
+   ]
+  }
+ },
+ "char_recall_by_type": {
+  "safestream-prose": {
+   "CODE": 0.9497455968688845,
+   "DATETIME": 0.9193496709742612,
+   "DEM": 0.34010889292196006,
+   "LOC": 0.8711001061195613,
+   "MISC": 0.11517038007863696,
+   "ORG": 0.7799651659893386,
+   "PERSON": 0.898897672864937,
+   "QUANTITY": 0.5931972789115646
+  },
+  "presidio-sm": {
+   "CODE": 0.12054794520547946,
+   "DATETIME": 0.9760686148057475,
+   "DEM": 0.4416515426497278,
+   "LOC": 0.7752387690130881,
+   "MISC": 0.14195609436435125,
+   "ORG": 0.2069193012086346,
+   "PERSON": 0.7225995620383773,
+   "QUANTITY": 0.0528344671201814
+  },
+  "presidio-lg": {
+   "CODE": 0.06528375733855186,
+   "DATETIME": 0.9868307550750475,
+   "DEM": 0.47014519056261345,
+   "LOC": 0.7570569508312699,
+   "MISC": 0.14588794233289645,
+   "ORG": 0.21610281311025492,
+   "PERSON": 0.7930074601937424,
+   "QUANTITY": 0.04217687074829932
+  }
+ },
+ "counts": {
+  "safestream-prose": {
+   "gold": 272250.0,
+   "gold_hit": 224594.0,
+   "red": 103143.0,
+   "red_ok": 67916.0,
+   "ent_d": 1161.0,
+   "ent_d_ok": 1079.0,
+   "ent_q": 16301.0,
+   "ent_q_ok": 13202.0,
+   "pairs_d": 554.0,
+   "pairs_d_ok": 476.0
+  },
+  "presidio-sm": {
+   "gold": 272250.0,
+   "gold_hit": 185076.0,
+   "red": 101497.0,
+   "red_ok": 53278.0,
+   "ent_d": 1161.0,
+   "ent_d_ok": 78.0,
+   "ent_q": 16301.0,
+   "ent_q_ok": 10764.0,
+   "pairs_d": 554.0,
+   "pairs_d_ok": 2.0
+  },
+  "presidio-lg": {
+   "gold": 272250.0,
+   "gold_hit": 189840.0,
+   "red": 102463.0,
+   "red_ok": 54696.0,
+   "ent_d": 1161.0,
+   "ent_d_ok": 89.0,
+   "ent_q": 16301.0,
+   "ent_q_ok": 10976.0,
+   "pairs_d": 554.0,
+   "pairs_d_ok": 2.0
+  }
+ },
+ "paired_diff_p2.5_p50_p97.5": {
+  "presidio-sm - safestream-prose": {
+   "char_precision": [
+    -0.15515491982221916,
+    -0.1334188420443967,
+    -0.11269658182122219
+   ],
+   "char_recall": [
+    -0.17085002211073821,
+    -0.14468953734186207,
+    -0.12063410952620457
+   ],
+   "char_f1": [
+    -0.157967725242001,
+    -0.13968262707050533,
+    -0.12203460239663887
+   ],
+   "er_direct": [
+    -0.9021314862130037,
+    -0.861323600973236,
+    -0.8162343381677105
+   ],
+   "er_quasi": [
+    -0.1923861313467231,
+    -0.14862269723113009,
+    -0.1095551870488463
+   ],
+   "direct_protected": [
+    -0.912299771167048,
+    -0.8560209222722203,
+    -0.7891004330190381
+   ]
+  },
+  "presidio-lg - safestream-prose": {
+   "char_precision": [
+    -0.14687019085785594,
+    -0.12452146214285154,
+    -0.10312713348054028
+   ],
+   "char_recall": [
+    -0.15706778542164726,
+    -0.1270895641192849,
+    -0.10153996293921955
+   ],
+   "char_f1": [
+    -0.1476881353376578,
+    -0.12746363895981522,
+    -0.1088414909822744
+   ],
+   "er_direct": [
+    -0.896728752943267,
+    -0.8522349594749739,
+    -0.8035694791016844
+   ],
+   "er_quasi": [
+    -0.18772197841306115,
+    -0.134749123389465,
+    -0.09080767226692699
+   ],
+   "direct_protected": [
+    -0.912299771167048,
+    -0.8560209222722203,
+    -0.7891004330190381
+   ]
+  },
+  "presidio-lg - presidio-sm": {
+   "char_precision": [
+    0.005490422549371693,
+    0.008814973812158344,
+    0.012376107969365018
+   ],
+   "char_recall": [
+    0.008326908400074374,
+    0.017516392185870533,
+    0.026290928995739225
+   ],
+   "char_f1": [
+    0.007122736291399481,
+    0.01223478813383666,
+    0.017312646678487073
+   ],
+   "er_direct": [
+    -0.003640339647158615,
+    0.008833055340751867,
+    0.024461098061395847
+   ],
+   "er_quasi": [
+    -0.001657198743665472,
+    0.01356504083296789,
+    0.025143048885384548
+   ],
+   "direct_protected": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "planned": {},
+ "commits": {
+  "safestream-prose": "4d7a0dd404c75a0bbaa1273b05d568471e60f604",
+  "presidio-sm": "17b80c4e6ae3ae12f20d218cf5ff465772c780a9",
+  "presidio-lg": "17b80c4e6ae3ae12f20d218cf5ff465772c780a9"
+ }
+}
