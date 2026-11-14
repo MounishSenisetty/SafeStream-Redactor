@@ -1,7 +1,6 @@
 # Conference paper
 
-*Content-Free by Contract? Auditing What an LLM Agent Learns Through an On-Device
-Redaction Tool*: a differential egress audit of the tool's content-free replies (and
+*The Agent Holds the Key: Auditing What LLM Agents Learn Through Redaction Tools*: a differential egress audit of the tool's content-free replies (and
 the fix), the regex-gated neural name tier, and the per-call cost of the guardrail.
 Pre-registered in `PROTOCOL.md`, with its departures. See `../README.md` for the
 layout, the build and how to move it to a venue.

@@ -1,7 +1,6 @@
 # Journal paper
 
-*Bounded-memory streaming redaction of personal data and credentials with a
-whole-document equivalence guarantee*: the streaming engine's equivalence theorems,
+*Chunking Without Leaking: Provably Equivalent, Bounded-Memory Redaction of Personal Data and Credentials*: the streaming engine's equivalence theorems,
 its memory and throughput, and the detection evaluation of the pattern tiers
 (RQ1–RQ7). Written once and kept separate from any template; see `../README.md` for
 the layout, the build and how to move it to a venue.

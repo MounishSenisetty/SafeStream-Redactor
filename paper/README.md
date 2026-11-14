@@ -6,8 +6,8 @@ result (`check_disjoint.py` enforces this).
 
 | Folder | Paper | Question |
 |---|---|---|
-| `journal/` | *Bounded-memory streaming redaction of personal data and credentials with a whole-document equivalence guarantee* | Is chunked redaction provably correct and bounded in memory, and how well do the pattern tiers detect on held-out and real data? |
-| `conference/` | *Content-Free by Contract? Auditing What an LLM Agent Learns Through an On-Device Redaction Tool* | What does an LLM agent learn through the tool: egress through content-free replies, the gated neural tier, and the cost per tool call? |
+| `journal/` | *Chunking Without Leaking: Provably Equivalent, Bounded-Memory Redaction of Personal Data and Credentials* | Is chunked redaction provably correct and bounded in memory, and how well do the pattern tiers detect on held-out and real data? |
+| `conference/` | *The Agent Holds the Key: Auditing What LLM Agents Learn Through Redaction Tools* | What does an LLM agent learn through the tool: egress through content-free replies, the gated neural tier, and the cost per tool call? |
 | `archive/` | Earlier drafts (Elsevier, IEEE conference, FTNCT'09) | Superseded. Never submit them. |
 
 ## Layout (both papers)
