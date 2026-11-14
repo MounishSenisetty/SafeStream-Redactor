@@ -1834,7 +1834,9 @@ function showTourStep() {
   const target = $(s.at);
   target.classList.add("tour-target");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  target.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  // the header is sticky: for a target there, show the top of the page instead
+  if (target.closest(".topbar")) scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  else target.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
   $("tour-step").textContent = `Step ${tourAt + 1} of ${TOUR.length}`;
   $("tour-title").textContent = s.title;
   $("tour-body").textContent = s.body;

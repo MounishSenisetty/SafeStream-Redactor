@@ -367,8 +367,8 @@ mark[data-fam="secrets"] { border-bottom-style: dashed; }
 mark[data-fam="names"], mark[data-fam="optin"] { border-bottom-style: dotted; }
 .backdrop mark { border: 0; }
 mark[data-tag]::before {
-  content: attr(data-tag); display: inline-block; font: 700 9px/1.35 var(--sans); letter-spacing: 0.03em;
-  padding: 0 3px; margin-right: 3px; border-radius: 3px; vertical-align: 1px;
+  content: attr(data-tag); display: inline; font: 700 9px/1.35 var(--sans); letter-spacing: 0.03em;
+  padding: 1px 3px; margin-right: 3px; border-radius: 3px; vertical-align: 1px;
   background: var(--fam); color: var(--tag-ink);
 }
 mark[tabindex]:focus-visible, mark.linked { outline: 2px solid var(--accent); outline-offset: 1px; }
