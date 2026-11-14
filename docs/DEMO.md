@@ -11,6 +11,26 @@ runnable, and the output shown was captured from an actual run.
 
 ---
 
+## Live demo — nothing to install
+
+[mounishsenisetty.github.io/SafeStream-Redactor](https://mounishsenisetty.github.io/SafeStream-Redactor/)
+runs the real package in your browser (CPython in WebAssembly, via Pyodide). A
+Content-Security-Policy stops the page and its engine from contacting any other site, and
+a counter in the header shows the network requests made since the engine started.
+
+| Tab | What it runs |
+|---|---|
+| **Playground** | Seven samples (including look-alikes that must not be flagged), typing, paste and drag-and-drop; findings coloured by type and linked to a sortable, filterable table; replace, mask, pseudonymize, hash and fictionalize; entity types grouped PII / Secrets / Opt-in; custom words, regexes and per-type replacements; a `policy.toml` editor checked by the same loader as `--config`; the matching CLI, Python, REST and MCP calls, with a button that runs the CLI in the page and compares its bytes; a determinism check |
+| **Streaming** | The streaming engine pass by pass, a secret split across a chunk boundary, and a generated input of up to 16 MiB streamed through `redact_stream` with throughput and `tracemalloc` peak measured in the page |
+| **REST API** / **MCP server** | Every endpoint and every tool, answered by the same `dispatch()` and `MCPServer` the CLI serves |
+| **CI gate** | `safestream detect --fail-on-detect` (text, JSON or SARIF) on a pasted file or diff, with its exit code, and the pre-commit and GitHub Action configuration |
+| **Install**, **How it works** | A "which one do I need" chooser, the parts that need a local machine (native core, workers, `--offline-hard`, NER, encrypt, fanotify) with their commands, and the limitations |
+
+Encrypt mode, the spaCy and ONNX tiers, the native core and multi-core workers are not in
+the browser build; the page labels them and gives the command to run them locally. The
+site is built by `python scripts/build_site.py --out _site` and tested in Chromium by
+`node site/smoke.mjs URL`.
+
 ## 0. Fastest path — one command
 
 From a clone (or anywhere the package is installed), run the bundled demo. It
