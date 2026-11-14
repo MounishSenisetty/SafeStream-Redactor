@@ -327,3 +327,16 @@ turn limit) is reported as such and not dropped.
 **Data and ethics.** Only generated AgentTrace values are sent to the API, never
 corpus text from people. Transcripts are kept in the git-ignored folder; the
 repository holds pseudonymised counts only.
+
+### Amendment 2: departure before any agent run (2026-11-14)
+
+- **Agent model.** The study environment cannot call the Claude API: no API key is
+  available to scripts, and the environment does not store keys for Anthropic's own
+  hosts. The authors chose to run the pre-registered design on a local open-weight
+  model instead: Qwen2.5-7B-Instruct, `Q4_K_M` GGUF from `Qwen/Qwen2.5-7B-Instruct-GGUF`
+  at revision `bb5d59e06d95`, run with llama.cpp (`llama-cpp-python` 0.3.16) on the
+  study machine. Settings: temperature 0 (each run reproducible), 16,384-token
+  context, at most 512 tokens per turn. Tools are given to the model through its own
+  chat template, and calls are parsed from its `<tool_call>` blocks. A 2-run smoke
+  test checked only that tool calls parse; no outcome was looked at. Everything else
+  in Amendment 2 is unchanged. A run on Claude can follow later as a replication.
