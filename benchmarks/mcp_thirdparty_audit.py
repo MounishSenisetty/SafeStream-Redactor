@@ -24,6 +24,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -32,15 +33,18 @@ from benchmarks import corpora
 from benchmarks.mcp_egress_audit import MIN_LEN, forms, found, leaves, mask
 
 TEXT_ARGS = ("text", "content", "input", "input_text", "prompt", "data", "message", "document")
-# fields whose value is the redacted text the tool exists to return
-REDACTED_TEXT_HINTS = ("redacted", "anonymized", "anonymised", "scrubbed", "sanitized",
-                       "masked", "cleaned", "output", "result", "text")  # fmt: skip
+
+
+RESTORE_HINTS = ("reveal", "deanonym", "restore", "unmask", "get_mapping")
 
 
 def text_tools(tools: list[Any]) -> list[tuple[str, str, dict[str, Any]]]:
-    """(tool, text argument, fixed extra arguments) for each tool a document can feed."""
+    """(tool, text argument, fixed extra arguments) for each tool a document can feed.
+    Restore tools are left out: they are probed by ``restore_probe``."""
     out = []
     for t in tools:
+        if any(h in t.name.lower() for h in RESTORE_HINTS):
+            continue
         schema = t.input_schema or {}
         props: dict[str, Any] = schema.get("properties", {})
         arg = next((a for a in TEXT_ARGS if props.get(a, {}).get("type") == "string"), None)
@@ -61,12 +65,75 @@ def reply_payload(result: Any) -> dict[str, Any]:
     return {"content": texts, "structured": result.structured_content, "error": result.is_error}
 
 
-def classify(path: str) -> str:
-    """'redacted_text' for the field a redaction tool returns its output in, else 'other'."""
-    last = path.split(".")[-1].split("<")[0].lower()
-    if path.startswith("content[]") and "<json>" not in path:
-        return "redacted_text"  # a plain-text reply is the tool's output
-    return "redacted_text" if any(h in last for h in REDACTED_TEXT_HINTS) else "other"
+def classify(path: str, outputs: list[str]) -> str:
+    """'redacted_text' if ``path`` is one of the tool's declared output fields, else
+    'other'. ``outputs`` holds the last JSON key of each output field, or "content[]"
+    for a tool that returns its redacted text as a plain-text reply."""
+    last = re.split(r"[.]", path.replace("<json>", ""))[-1].replace("[]", "")
+    if path.endswith("content[]"):
+        last = "content[]"
+    return "redacted_text" if last in outputs else "other"
+
+
+def _find(obj: Any, keys: tuple[str, ...]) -> Any:
+    """First value under any of ``keys``, searching nested dicts and JSON text."""
+    if isinstance(obj, str) and obj[:1] in "{[":
+        try:
+            obj = json.loads(obj)
+        except ValueError:
+            return None
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k in keys:
+                return v
+        for v in obj.values():
+            hit = _find(v, keys)
+            if hit is not None:
+                return hit
+    if isinstance(obj, list):
+        for v in obj:
+            hit = _find(v, keys)
+            if hit is not None:
+                return hit
+    return None
+
+
+REDACTED_KEYS = ("anonymized_text", "anonymized", "scrubbedText", "redacted_text", "redacted")
+
+
+def _fill(template: Any, env: dict[str, Any]) -> Any:
+    if isinstance(template, str) and template.startswith("$"):
+        return env.get(template[1:])
+    if isinstance(template, dict):
+        return {k: _fill(v, env) for k, v in template.items() if _fill(v, env) is not None}
+    return template
+
+
+async def restore_probe(session: Any, spec: dict[str, Any], docs: list[corpora.Doc]) -> dict:
+    """Can the agent itself turn a reply's placeholders back into the original values?
+
+    ``spec``: the anonymising call and the restore calls, with $TEXT, $REDACTED,
+    $SESSION and $MAP filled from the document and the anonymising reply."""
+    out: dict[str, Any] = {"values_hidden": 0, "recovered": {c["tool"]: 0 for c in spec["calls"]}}
+    for i, doc in enumerate(docs):
+        vals = {doc.text[g.start : g.end] for g in doc.spans}
+        vals = {v for v in vals if len(v) >= MIN_LEN and any(c.isalpha() for c in v)}
+        env: dict[str, Any] = {"TEXT": doc.text, "SESSION_IN": f"audit-{i}"}
+        first = await session.call_tool(spec["tool"], _fill(spec["args"], env))
+        payload = reply_payload(first)
+        redacted = _find(payload, REDACTED_KEYS) or "\n".join(payload["content"])
+        env |= {
+            "REDACTED": redacted,
+            "SESSION": _find(payload, ("session_id", "sessionId")) or env["SESSION_IN"],
+            "MAP": _find(payload, ("entityMap", "tokenMap", "mapping")),
+        }
+        hidden = {v for v in vals if v not in redacted}
+        out["values_hidden"] += len(hidden)
+        for call in spec["calls"]:
+            res = await session.call_tool(call["tool"], _fill(call["args"], env))
+            text = json.dumps(reply_payload(res), ensure_ascii=False)
+            out["recovered"][call["tool"]] += sum(1 for v in hidden if v in text)
+    return out
 
 
 async def audit(server: dict[str, Any], docs: list[corpora.Doc]) -> dict[str, Any]:
@@ -88,6 +155,7 @@ async def audit(server: dict[str, Any], docs: list[corpora.Doc]) -> dict[str, An
         report["tools_audited"] = {n: a for n, a, _ in callable_tools}
         results: dict[str, Any] = {}
         for name, arg, extra in callable_tools:
+            outputs = server.get("outputs", {}).get(name, [])
             by_kind: Counter[str] = Counter()
             by_path: Counter[str] = Counter()
             errors = values_checked = 0
@@ -116,7 +184,7 @@ async def audit(server: dict[str, Any], docs: list[corpora.Doc]) -> dict[str, An
                             continue
                         for path, leaf in real_leaves:
                             if not path.endswith("#key") and found(leaf, enc, needle):
-                                kind = classify(path)
+                                kind = classify(path, outputs)
                                 hit_kinds.add(kind)
                                 by_kind[f"{kind}|{enc}"] += 1
                                 by_path[path] += 1
@@ -138,6 +206,9 @@ async def audit(server: dict[str, Any], docs: list[corpora.Doc]) -> dict[str, An
                 flush=True,
             )
         report["results"] = results
+        if server.get("restore") and docs and docs[0].doc_id.startswith("trace-"):
+            report["restore"] = await restore_probe(session, server["restore"], docs)
+            print(f"{server['name']} restore: {report['restore']}", flush=True)
     return report
 
 

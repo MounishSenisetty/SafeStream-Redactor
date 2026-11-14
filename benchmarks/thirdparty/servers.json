@@ -1,9 +1,179 @@
 [
-  {
-    "name": "safestream",
-    "version": "0.5.0",
-    "source": "this repository",
-    "command": "python",
-    "args": ["-m", "safestream_redactor", "mcp-serve"]
+ {
+  "name": "safestream",
+  "version": "0.5.0",
+  "source": "this repository",
+  "command": "python",
+  "args": [
+   "-m",
+   "safestream_redactor",
+   "mcp-serve"
+  ],
+  "outputs": {
+   "redact": [
+    "redacted_text"
+   ]
   }
+ },
+ {
+  "name": "privacyscrubber-py",
+  "version": "2.5.0.post1 (PyPI, --native Python engine)",
+  "source": "pypi:privacyscrubber-mcp",
+  "command": "benchmarks/data/external/mcp_servers/privacyscrubber-mcp/.venv/bin/python",
+  "args": [
+   "-m",
+   "privacyscrubber_mcp",
+   "--native"
+  ],
+  "restore": {
+   "tool": "sanitize_text",
+   "args": {
+    "text": "$TEXT"
+   },
+   "calls": [
+    {
+     "tool": "reveal_text",
+     "args": {
+      "text": "$REDACTED"
+     }
+    }
+   ]
+  },
+  "outputs": {
+   "sanitize_text": [
+    "content[]"
+   ]
+  }
+ },
+ {
+  "name": "privacyscrubber-node",
+  "version": "2.5.0 (npm)",
+  "source": "npm:@privacyscrubber/mcp-server",
+  "command": "node",
+  "args": [
+   "benchmarks/data/external/mcp_servers/npm-privacyscrubber_mcp-server_2.5.0/node_modules/@privacyscrubber/mcp-server/index.js"
+  ],
+  "restore": {
+   "tool": "sanitize_text",
+   "args": {
+    "text": "$TEXT",
+    "session_id": "$SESSION_IN"
+   },
+   "calls": [
+    {
+     "tool": "reveal_text",
+     "args": {
+      "text": "$REDACTED",
+      "session_id": "$SESSION"
+     }
+    },
+    {
+     "tool": "guard_unmask_args",
+     "args": {
+      "tool_args": {
+       "text": "$REDACTED"
+      },
+      "session_id": "$SESSION"
+     }
+    }
+   ]
+  },
+  "outputs": {
+   "sanitize_text": [
+    "content[]",
+    "scrubbedText"
+   ]
+  },
+  "excluded": "free tier allows 10 requests a day; more need a commercial key (fails the no-account criterion)"
+ },
+ {
+  "name": "mcp-presidio",
+  "version": "git b875094d6a16",
+  "source": "github:cmalpass/mcp-presidio",
+  "command": "benchmarks/data/external/mcp_servers/git-mcp-presidio/.venv/bin/mcp-presidio",
+  "args": [],
+  "outputs": {
+   "anonymize_text": [
+    "anonymized_text"
+   ],
+   "anonymize_structured_data": [
+    "anonymized_data",
+    "anonymized_text"
+   ]
+  }
+ },
+ {
+  "name": "pii-shield",
+  "version": "git e2e0fed96c93 (nodejs-v2 server bundle)",
+  "source": "github:gregmos/PII-Shield",
+  "command": "node",
+  "args": [
+   "benchmarks/data/external/mcp_servers/git-PII-Shield/nodejs-v2/dist/server.bundle.mjs"
+  ],
+  "restore": {
+   "tool": "anonymize_text",
+   "args": {
+    "text": "$TEXT"
+   },
+   "calls": [
+    {
+     "tool": "deanonymize_text",
+     "args": {
+      "text": "$REDACTED",
+      "session_id": "$SESSION"
+     }
+    },
+    {
+     "tool": "get_mapping",
+     "args": {
+      "session_id": "$SESSION"
+     }
+    }
+   ]
+  },
+  "outputs": {
+   "anonymize_text": [
+    "anonymized_text"
+   ]
+  }
+ },
+ {
+  "name": "pii-anonymizer-mcp",
+  "version": "git 176ab59353e1",
+  "source": "github:kofi-sketch/pii-anonymizer-mcp",
+  "command": "node",
+  "args": [
+   "benchmarks/data/external/mcp_servers/git-pii-anonymizer-mcp/server.js"
+  ],
+  "restore": {
+   "tool": "anonymize_text",
+   "args": {
+    "text": "$TEXT"
+   },
+   "calls": [
+    {
+     "tool": "deanonymize_text",
+     "args": {
+      "anonymizedText": "$REDACTED",
+      "entityMap": "$MAP"
+     }
+    }
+   ]
+  },
+  "outputs": {
+   "anonymize_text": [
+    "anonymized"
+   ]
+  }
+ },
+ {
+  "name": "anonymize-mcp",
+  "version": "0.10.4 (PyPI, ANONYMIZE_MCP_LOCAL=1)",
+  "source": "pypi:anonymize-mcp",
+  "command": "benchmarks/data/external/mcp_servers/anonymize-mcp/.venv/bin/anonymize-mcp",
+  "args": [],
+  "env": {
+   "ANONYMIZE_MCP_LOCAL": "1"
+  }
+ }
 ]

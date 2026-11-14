@@ -239,3 +239,31 @@ maintainers are told privately, with the reproducer, before any public version o
 paper. The paper names the tool, version and finding only after a 30-day notice, or
 earlier if the maintainer agrees. Expected behaviour, such as a documented restore tool
 or a documented entity list, is reported as a design property, not a vulnerability.
+
+### Amendment 1: install outcomes and departures (2026-11-14, before the full run)
+
+These were recorded after installation and a 10-document smoke test on AgentTrace.
+None of the corpora used for the reported results had been run.
+- **pii-mcp 1.13.0: excluded** under the stated rule. The package is FastMCP
+  middleware with no server and no tool.
+- **privacyscrubber-mcp, npm engine 2.5.0: excluded.** Its free tier answers 10 requests
+  a day and returns an error demanding a commercial key after that, so it fails the
+  "no account or API key" criterion. The PyPI package's own Python engine
+  (`--native`) has no quota and is audited.
+- **anonymize-mcp 0.10.4: excluded.** Its offline model is hosted on
+  lindat.mff.cuni.cz, which reset every connection from the study environment, even
+  after the host was allowed. It is retried once before the write-up and included if
+  it then installs.
+- **mcp-presidio**: its dependencies resolve to MCP SDK 2.x, which removed the API the
+  server imports. `mcp<2` (1.30.0) was installed in its isolated environment. Nothing
+  else was changed.
+- **PII-Shield**: the npm package ships only a command-line tool, so the stdio MCP
+  server was built from the pinned commit (`npm run build:server`). Its GLiNER model
+  was downloaded from the project's v2.2.0 GitHub release (SHA-256 `7bfbfbc8…`).
+- **Output fields.** The redacted-text field of each tool is named explicitly in
+  `benchmarks/thirdparty/servers.json` (for example `anonymized_text`). The smoke test
+  showed that a name-based guess misfiled entity lists whose field is called `text`.
+  Every other field counts as "other".
+- **Restore probe.** The agent-callable restore calls are those each README documents.
+  `get_mapping` (PII-Shield) and `guard_unmask_args` (privacyscrubber npm, excluded)
+  are probed as well.
