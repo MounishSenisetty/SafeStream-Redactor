@@ -1,0 +1,285 @@
+{
+ "min_len": 4,
+ "results": {
+  "safestream|ai4privacy": {
+   "server": {
+    "name": "safestream",
+    "version": "0.5.0",
+    "source": "this repository"
+   },
+   "tools_listed": [
+    "detectors",
+    "explain_detection",
+    "health",
+    "redact",
+    "scan"
+   ],
+   "tools_audited": {
+    "explain_detection": "text",
+    "redact": "text",
+    "scan": "text"
+   },
+   "results": {
+    "explain_detection": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    },
+    "redact": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 1039,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 2074,
+      "redacted_text|raw": 2072,
+      "redacted_text|whitespace": 2076
+     },
+     "events_by_json_path": {
+      ".content[]<json>.redacted_text": 3093,
+      ".content[]<json>.redacted_text<json>.date_of_birth": 3,
+      ".content[]<json>.redacted_text<json>.student_name": 9,
+      ".content[]<json>.redacted_text<json>.submitted_date": 3,
+      ".content[]<json>.redacted_text<json>.title": 3,
+      ".structured.redacted_text": 3093,
+      ".structured.redacted_text<json>.date_of_birth": 3,
+      ".structured.redacted_text<json>.student_name": 9,
+      ".structured.redacted_text<json>.submitted_date": 3,
+      ".structured.redacted_text<json>.title": 3
+     }
+    },
+    "scan": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    }
+   }
+  },
+  "T4|ai4privacy": {
+   "server": {
+    "name": "T4",
+    "version": "T4 (version withheld)",
+    "source": "T4 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 1699,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 1697,
+      "redacted_text|raw": 1698,
+      "redacted_text|whitespace": 1698
+     },
+     "events_by_json_path": {
+      ".content[]": 5093
+     }
+    }
+   }
+  },
+  "T1|ai4privacy": {
+   "server": {
+    "name": "T1",
+    "version": "T1 (version withheld)",
+    "source": "T1 (source withheld)"
+   },
+   "tools_audited": {
+    "detect": "text",
+    "anonymize": "text",
+    "detect_structured": "data",
+    "anonymize_structured": "data"
+   },
+   "results": {
+    "detect": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 766,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 1642,
+      "other|raw": 1630,
+      "other|whitespace": 1642
+     },
+     "events_by_json_path": {
+      ".content[]<json>[].text": 2457,
+      ".structured.result<json>[].text": 2457
+     }
+    },
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 955,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 1908,
+      "redacted_text|raw": 1904,
+      "redacted_text|whitespace": 1908
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized_text": 2851,
+      ".content[]<json>.anonymized_text<json>.student_name": 9,
+      ".structured.result<json>.anonymized_text": 2851,
+      ".structured.result<json>.anonymized_text<json>.student_name": 9
+     }
+    },
+    "detect_structured": {
+     "text_argument": "data",
+     "values_checked": 1916,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 12,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 40,
+      "other|raw": 40,
+      "other|whitespace": 40
+     },
+     "events_by_json_path": {
+      ".content[]<json>.findings[].entities[].text": 24,
+      ".content[]<json>.findings[].value": 36,
+      ".structured.result<json>.findings[].entities[].text": 24,
+      ".structured.result<json>.findings[].value": 36
+     }
+    },
+    "anonymize_structured": {
+     "text_argument": "data",
+     "values_checked": 1916,
+     "values_in_redacted_text": 1,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 2,
+      "redacted_text|raw": 2,
+      "redacted_text|whitespace": 2
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized_data": 3,
+      ".structured.result<json>.anonymized_data": 3
+     }
+    }
+   }
+  },
+  "T3|ai4privacy": {
+   "server": {
+    "name": "T3",
+    "version": "T3 (version withheld)",
+    "source": "T3 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text",
+    "detect": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 1393,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 1389,
+      "redacted_text|raw": 1392,
+      "redacted_text|whitespace": 1390
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized_text": 4153,
+      ".content[]<json>.anonymized_text<json>.date_of_birth": 3,
+      ".content[]<json>.anonymized_text<json>.student_name": 9,
+      ".content[]<json>.anonymized_text<json>.submitted_date": 3,
+      ".content[]<json>.anonymized_text<json>.title": 3
+     }
+    },
+    "detect": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 496,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 506,
+      "other|raw": 500,
+      "other|whitespace": 506
+     },
+     "events_by_json_path": {
+      ".content[]<json>.entities[].text": 1512
+     }
+    }
+   }
+  },
+  "T2|ai4privacy": {
+   "server": {
+    "name": "T2",
+    "version": "T2 (version withheld)",
+    "source": "T2 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 1916,
+     "values_in_redacted_text": 1594,
+     "values_in_other_fields": 232,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 232,
+      "other|raw": 227,
+      "other|whitespace": 232,
+      "redacted_text|casefold": 1592,
+      "redacted_text|raw": 1593,
+      "redacted_text|whitespace": 1593
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized": 4760,
+      ".content[]<json>.anonymized<json>.date_of_birth": 3,
+      ".content[]<json>.anonymized<json>.student_name": 9,
+      ".content[]<json>.anonymized<json>.submitted_date": 3,
+      ".content[]<json>.anonymized<json>.title": 3,
+      ".content[]<json>.value_map.[DRIVER_LICENSE_1]": 6,
+      ".content[]<json>.value_map.[DRIVER_LICENSE_2]": 6,
+      ".content[]<json>.value_map.[DRIVER_LICENSE_3]": 3,
+      ".content[]<json>.value_map.[DRIVER_LICENSE_4]": 3,
+      ".content[]<json>.value_map.[EMAIL]": 184,
+      ".content[]<json>.value_map.[EMAIL_10]": 3,
+      ".content[]<json>.value_map.[EMAIL_11]": 3,
+      ".content[]<json>.value_map.[EMAIL_12]": 3,
+      ".content[]<json>.value_map.[EMAIL_1]": 123,
+      ".content[]<json>.value_map.[EMAIL_2]": 126,
+      ".content[]<json>.value_map.[EMAIL_3]": 45,
+      ".content[]<json>.value_map.[EMAIL_4]": 18,
+      ".content[]<json>.value_map.[EMAIL_5]": 18,
+      ".content[]<json>.value_map.[EMAIL_6]": 12,
+      ".content[]<json>.value_map.[EMAIL_7]": 6,
+      ".content[]<json>.value_map.[EMAIL_8]": 3,
+      ".content[]<json>.value_map.[EMAIL_9]": 3,
+      ".content[]<json>.value_map.[PASSPORT_NUMBER]": 3,
+      ".content[]<json>.value_map.[PASSPORT_NUMBER_1]": 3,
+      ".content[]<json>.value_map.[PERSON_NAME]": 33,
+      ".content[]<json>.value_map.[PERSON_NAME_2]": 3,
+      ".content[]<json>.value_map.[PERSON_NAME_3]": 3,
+      ".content[]<json>.value_map.[ZIP_CODE]": 69,
+      ".content[]<json>.value_map.[ZIP_CODE_1]": 6,
+      ".content[]<json>.value_map.[ZIP_CODE_2]": 3,
+      ".content[]<json>.value_map.[ZIP_CODE_3]": 3
+     }
+    }
+   }
+  }
+ }
+}

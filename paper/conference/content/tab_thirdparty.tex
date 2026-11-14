@@ -1,0 +1,16 @@
+\begin{table}[t]
+\caption{Third-party agent-facing redaction tools (C-RQ5), pseudonymised until their maintainers have been told. Left: share of gold values left in the tool's redacted output (a recall measure) on AgentTrace (AT), WNUT-17 (WN) and 500 ai4privacy documents (AI). Map: share returned elsewhere in the same reply. Detect: share returned by the tool's detection call. Restore: hidden values the agent got back by calling the tool's own restore call, on AgentTrace.}\label{tab:thirdparty}
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{adjustbox}{max width=\columnwidth}\begin{tabular}{@{}l rrr rr r@{}}
+\toprule
+ & \multicolumn{3}{c}{Left in output} & & & \\
+Tool & AT & WN & AI & Map & Detect & Restore \\
+\midrule
+T1 & 0.32 & 0.49 & 0.50 & 0.00 & 0.63 & -- \\
+T2 & 0.14 & 0.92 & 0.83 & 0.62 & -- & 4,489/4,489 \\
+T3 & 0.55 & 0.84 & 0.73 & 0.00 & 0.44 & 2,339/2,339 \\
+T4 & 0.48 & 0.99 & 0.89 & 0.00 & -- & 2,750/2,750 \\
+SafeStream & 0.19 & 1.00 & 0.54 & 0.00 & 0.00 & -- \\
+\bottomrule
+\end{tabular}\end{adjustbox}
+\end{table}

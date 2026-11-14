@@ -1,0 +1,472 @@
+{
+ "min_len": 4,
+ "results": {
+  "safestream|agent_traces": {
+   "server": {
+    "name": "safestream",
+    "version": "0.5.0",
+    "source": "this repository"
+   },
+   "tools_listed": [
+    "detectors",
+    "explain_detection",
+    "health",
+    "redact",
+    "scan"
+   ],
+   "tools_audited": {
+    "explain_detection": "text",
+    "redact": "text",
+    "scan": "text"
+   },
+   "results": {
+    "explain_detection": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    },
+    "redact": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 1000,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 2000,
+      "redacted_text|raw": 2000,
+      "redacted_text|whitespace": 2000
+     },
+     "events_by_json_path": {
+      ".content[]<json>.redacted_text": 3000,
+      ".structured.redacted_text": 3000
+     }
+    },
+    "scan": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    }
+   }
+  },
+  "safestream|wnut17": {
+   "server": {
+    "name": "safestream",
+    "version": "0.5.0",
+    "source": "this repository"
+   },
+   "tools_listed": [
+    "detectors",
+    "explain_detection",
+    "health",
+    "redact",
+    "scan"
+   ],
+   "tools_audited": {
+    "explain_detection": "text",
+    "redact": "text",
+    "scan": "text"
+   },
+   "results": {
+    "explain_detection": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    },
+    "redact": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 972,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 1922,
+      "redacted_text|raw": 1944,
+      "redacted_text|whitespace": 1922
+     },
+     "events_by_json_path": {
+      ".content[]<json>.redacted_text": 2894,
+      ".structured.redacted_text": 2894
+     }
+    },
+    "scan": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    }
+   }
+  },
+  "T4|agent_traces": {
+   "server": {
+    "name": "T4",
+    "version": "T4 (version withheld)",
+    "source": "T4 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 2500,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 2500,
+      "redacted_text|raw": 2500,
+      "redacted_text|whitespace": 2500
+     },
+     "events_by_json_path": {
+      ".content[]": 7500
+     }
+    }
+   },
+   "restore": {
+    "values_hidden": 2750,
+    "recovered": {
+     "restore": 2750
+    }
+   }
+  },
+  "T4|wnut17": {
+   "server": {
+    "name": "T4",
+    "version": "T4 (version withheld)",
+    "source": "T4 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 970,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 949,
+      "redacted_text|raw": 970,
+      "redacted_text|whitespace": 949
+     },
+     "events_by_json_path": {
+      ".content[]": 2868
+     }
+    }
+   }
+  },
+  "T1|agent_traces": {
+   "server": {
+    "name": "T1",
+    "version": "T1 (version withheld)",
+    "source": "T1 (source withheld)"
+   },
+   "tools_audited": {
+    "detect": "text",
+    "anonymize": "text",
+    "detect_structured": "data",
+    "anonymize_structured": "data"
+   },
+   "results": {
+    "detect": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 3327,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 6742,
+      "other|raw": 6742,
+      "other|whitespace": 6742
+     },
+     "events_by_json_path": {
+      ".content[]<json>[].text": 10113,
+      ".structured.result<json>[].text": 10113
+     }
+    },
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 1660,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 3320,
+      "redacted_text|raw": 3320,
+      "redacted_text|whitespace": 3320
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized_text": 4980,
+      ".structured.result<json>.anonymized_text": 4980
+     }
+    },
+    "detect_structured": {
+     "text_argument": "data",
+     "values_checked": 5250,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    },
+    "anonymize_structured": {
+     "text_argument": "data",
+     "values_checked": 5250,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    }
+   }
+  },
+  "T1|wnut17": {
+   "server": {
+    "name": "T1",
+    "version": "T1 (version withheld)",
+    "source": "T1 (source withheld)"
+   },
+   "tools_audited": {
+    "detect": "text",
+    "anonymize": "text",
+    "detect_structured": "data",
+    "anonymize_structured": "data"
+   },
+   "results": {
+    "detect": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 457,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 930,
+      "other|raw": 958,
+      "other|whitespace": 930
+     },
+     "events_by_json_path": {
+      ".content[]<json>[].text": 1409,
+      ".structured.result<json>[].text": 1409
+     }
+    },
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 475,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 946,
+      "redacted_text|raw": 948,
+      "redacted_text|whitespace": 946
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized_text": 1420,
+      ".structured.result<json>.anonymized_text": 1420
+     }
+    },
+    "detect_structured": {
+     "text_argument": "data",
+     "values_checked": 976,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    },
+    "anonymize_structured": {
+     "text_argument": "data",
+     "values_checked": 976,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {},
+     "events_by_json_path": {}
+    }
+   }
+  },
+  "T3|agent_traces": {
+   "server": {
+    "name": "T3",
+    "version": "T3 (version withheld)",
+    "source": "T3 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text",
+    "detect": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 2911,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 2911,
+      "redacted_text|raw": 2911,
+      "redacted_text|whitespace": 2911
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized_text": 8733
+     }
+    },
+    "detect": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 2299,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 2299,
+      "other|raw": 2299,
+      "other|whitespace": 2299
+     },
+     "events_by_json_path": {
+      ".content[]<json>.entities[].text": 6897
+     }
+    }
+   },
+   "restore": {
+    "values_hidden": 2339,
+    "recovered": {
+     "restore": 2339,
+     "mapping": 0
+    }
+   }
+  },
+  "T3|wnut17": {
+   "server": {
+    "name": "T3",
+    "version": "T3 (version withheld)",
+    "source": "T3 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text",
+    "detect": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 823,
+     "values_in_other_fields": 0,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "redacted_text|casefold": 819,
+      "redacted_text|raw": 823,
+      "redacted_text|whitespace": 819
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized_text": 2461
+     }
+    },
+    "detect": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 0,
+     "values_in_other_fields": 143,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 140,
+      "other|raw": 146,
+      "other|whitespace": 140
+     },
+     "events_by_json_path": {
+      ".content[]<json>.entities[].text": 426
+     }
+    }
+   }
+  },
+  "T2|agent_traces": {
+   "server": {
+    "name": "T2",
+    "version": "T2 (version withheld)",
+    "source": "T2 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 5250,
+     "values_in_redacted_text": 761,
+     "values_in_other_fields": 3242,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 3242,
+      "other|raw": 3242,
+      "other|whitespace": 3242,
+      "redacted_text|casefold": 761,
+      "redacted_text|raw": 761,
+      "redacted_text|whitespace": 761
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized": 2283,
+      ".content[]<json>.value_map.[ACCESS_TOKEN]": 1476,
+      ".content[]<json>.value_map.[API_KEY]": 3000,
+      ".content[]<json>.value_map.[EMAIL]": 4500,
+      ".content[]<json>.value_map.[EMAIL_2]": 750
+     }
+    }
+   },
+   "restore": {
+    "values_hidden": 4489,
+    "recovered": {
+     "restore": 4489
+    }
+   }
+  },
+  "T2|wnut17": {
+   "server": {
+    "name": "T2",
+    "version": "T2 (version withheld)",
+    "source": "T2 (source withheld)"
+   },
+   "tools_audited": {
+    "anonymize": "text"
+   },
+   "results": {
+    "anonymize": {
+     "text_argument": "text",
+     "values_checked": 976,
+     "values_in_redacted_text": 902,
+     "values_in_other_fields": 30,
+     "calls_failed": 0,
+     "events_by_kind_encoding": {
+      "other|casefold": 30,
+      "other|raw": 29,
+      "other|whitespace": 30,
+      "redacted_text|casefold": 881,
+      "redacted_text|raw": 902,
+      "redacted_text|whitespace": 881
+     },
+     "events_by_json_path": {
+      ".content[]<json>.anonymized": 2664,
+      ".content[]<json>.value_map.[PERSON_NAME]": 30,
+      ".content[]<json>.value_map.[PERSON_NAME_1]": 32,
+      ".content[]<json>.value_map.[PERSON_NAME_2]": 24,
+      ".content[]<json>.value_map.[PERSON_NAME_4]": 3
+     }
+    }
+   }
+  }
+ }
+}
