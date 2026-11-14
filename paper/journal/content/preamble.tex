@@ -1,0 +1,37 @@
+%% Packages and macros the content needs, in any document class. Loaded by every
+%% wrapper after its \documentclass. Theorem environments are defined only if the
+%% class has not defined them already (acmart, llncs and others do).
+\usepackage{graphicx}
+\usepackage{multirow}
+\ifdefined\Bbbk\else\usepackage{amssymb,amsfonts}\fi
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xurl}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit}
+\graphicspath{{figures/}}
+
+\providecommand{\ssThmStyle}{plain}
+\providecommand{\ssDefStyle}{definition}
+\makeatletter
+\newcommand{\ssNewThm}[2]{\@ifundefined{#1}{\newtheorem{#1}{#2}}{}}
+\makeatother
+\theoremstyle{\ssThmStyle}
+\ssNewThm{theorem}{Theorem}
+\ssNewThm{lemma}{Lemma}
+\ssNewThm{corollary}{Corollary}
+\theoremstyle{\ssDefStyle}
+\ssNewThm{definition}{Definition}
+\ssNewThm{assumption}{Assumption}
+\renewcommand{\theassumption}{A\arabic{assumption}}
+
+\emergencystretch=2em
+\hyphenation{anon-y-mi-za-tion boot-strap-ping}
+\newcommand{\ns}{$^{\dagger}$}
+%% point estimate with its interval stacked underneath, so no interval wraps or clips
+\newcommand{\pc}[2]{\begin{tabular}[t]{@{}l@{}}#1\\[-1pt]{[}#2{]}\end{tabular}}

@@ -10,7 +10,8 @@ from safestream_redactor.config import load_config, redactor_kwargs_from_config
 from safestream_redactor.engine import DEFAULT_OVERLAP
 
 ROOT = Path(__file__).resolve().parent.parent
-# AUDIT_FINDINGS.md quotes the *old* wording on purpose; CHANGELOG records the 4096 -> 8192 change.
+# AUDIT_FINDINGS.md quotes the *old* wording on purpose; CHANGELOG records the 4096 -> 8192
+# change. paper/archive/ holds superseded drafts and is not current.
 CURRENT_DOCS = [
     "README.md",
     "SYSTEM_DESIGN.md",
@@ -19,7 +20,7 @@ CURRENT_DOCS = [
         for p in (ROOT / "docs").glob("*.md")
         if p.name != "AUDIT_FINDINGS.md"
     ),
-    "paper/ftnct09/safestream-redactor-ftnct09.tex",
+    *sorted(str(p.relative_to(ROOT)) for p in (ROOT / "paper").glob("*/content/*.tex")),
 ]
 STALE = re.compile(
     r"overlap[^\n|]{0,60}\b(?:4 ?KiB|4 ?KB|4096)\b|DEFAULT_OVERLAP\W+4096", re.IGNORECASE

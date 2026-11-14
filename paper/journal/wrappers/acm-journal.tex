@@ -1,0 +1,24 @@
+%% ACM journals (acmart.cls, acmsmall). The anonymous build uses acmart's own option.
+\newif\ifanonymous\ifdefined\anonymousbuild\anonymoustrue\fi
+\ifanonymous
+  \documentclass[acmsmall,anonymous,review,nonacm]{acmart}
+\else
+  \documentclass[acmsmall,nonacm]{acmart}
+\fi
+\input{meta}
+\input{content/preamble}
+\begin{document}
+\title{\ssTitle}
+\def\ssAuthor#1#2#3#4{\author{#1 #2}\email{#3}%
+  \affiliation{\institution{\ssOrg}\department{\ssDept}\city{\ssCity}\country{\ssCountry}}}
+\ssAuthorList
+\begin{abstract}
+\input{content/abstract}
+\end{abstract}
+\keywords{\input{content/keywords}}
+\maketitle
+\input{content/body}
+\input{content/end}
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+\end{document}

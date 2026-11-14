@@ -2,10 +2,12 @@
 %% "Bounded-memory streaming redaction of personal data and credentials with a
 %%  whole-document equivalence guarantee", International Journal of Information Security.
 %% Build: pdflatex supplementary && pdflatex supplementary
+\newif\ifanonymous\ifdefined\anonymousbuild\anonymoustrue\fi
 \documentclass[11pt,a4paper]{article}
 \usepackage[margin=2.2cm]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
+\graphicspath{{figures/}}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{float}
@@ -21,16 +23,23 @@
 \newcommand{\ns}{$^{\dagger}$}
 \newcommand{\pc}[2]{\begin{tabular}[t]{@{}l@{}}#1\\[-1pt]{[}#2{]}\end{tabular}}
 
+\input{meta}
 \title{Online Resource 1\\[4pt]\large Supplementary results for ``Bounded-memory streaming redaction of personal data and credentials with a whole-document equivalence guarantee''}
-\author{Mounish Senisetty, Sandhiya Kennedy, Ashrith Reddy N, Parvathy R\\
-\small Amrita School of Computing, Amrita Vishwa Vidyapeetham, Amritapuri, India\\
-\small Corresponding author: Parvathy R, \texttt{parvathyr@am.amrita.edu}}
+\ifanonymous
+\author{Anonymous authors}
+\else
+\def\ssSep{}
+\def\ssAuthor#1#2#3#4{\ssSep#1~#2\def\ssSep{, }}
+\author{\ssAuthorList\\
+\small \ssDept, \ssOrg, \ssCity, \ssCountry\\
+\small Corresponding author: \ssCorresponding}
+\fi
 \date{}
 
 \begin{document}
 \maketitle
 
-\noindent This resource holds detail that the article summarises: the full chunking-leak table, throughput and scaling, a figure of the held-out accuracy results, the scanner sensitivity table, the false-alarm analysis behind the entropy fix, the analysis of where RedactionBench leaks occur, the ablation, TAB results by entity type (test and held-out splits), CredData results by category and the mapping of proof steps to code. Section, table and equation numbers without an ``S'' refer to the article. Every number here comes from the result files in the public repository (\url{https://github.com/MounishSenisetty/SafeStream-Redactor}, \texttt{research/results/}).
+\noindent This resource holds detail that the article summarises: the full chunking-leak table, throughput and scaling, a figure of the held-out accuracy results, the scanner sensitivity table, the false-alarm analysis behind the entropy fix, the analysis of where RedactionBench leaks occur, the ablation, TAB results by entity type (test and held-out splits), CredData results by category and the mapping of proof steps to code. Section, table and equation numbers without an ``S'' refer to the article. Every number here comes from the result files in the public repository (\repolink{}, \texttt{research/results/}).
 
 %% ===================================================================
 \section{Leaks caused by chunking alone: all chunk sizes}\label{s:chunk}

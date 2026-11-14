@@ -103,7 +103,7 @@ Every command below runs from the repository root.
    tables for the manuscript:
 
    ```bash
-   python -m benchmarks.realworld score --system safestream=CKPT/realworld_test_safestream-native.json --system gitleaks=CKPT/realworld_test_gitleaks.json --pair safestream:gitleaks --name safestream=SafeStream --name gitleaks=gitleaks --latex-dir paper/ijis/generated
+   python -m benchmarks.realworld score --system safestream=CKPT/realworld_test_safestream-native.json --system gitleaks=CKPT/realworld_test_gitleaks.json --pair safestream:gitleaks --name safestream=SafeStream --name gitleaks=gitleaks --latex-dir paper/journal/content/generated
    ```
 
 ## Outputs
@@ -119,7 +119,7 @@ Every command below runs from the repository root.
   `_credential_leaks` counts leaked spans of the types in `--credential-types`
   (default `SECRET`), for zero-tolerance acceptance criteria.
 - `tab_realworld_{main,types,pairs}.tex`: tables that use the `\pc` and `\ns`
-  macros of `paper/ijis/main.tex`.
+  macros of `paper/journal/content/preamble.tex`.
 
 The harness checkpoints hold character offsets and types only. The real-world
 corpus has no development split, so the harness's `--errors` option, which

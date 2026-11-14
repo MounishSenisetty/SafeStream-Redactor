@@ -225,7 +225,7 @@ covered (§5).
 > 8192 + 8 = 8200, whereas `w* = 8192` because the 8192-character detectors read no
 > right context. `w*` is exactly what `engine.required_overlap` computes. The full
 > proof, and proofs of Theorems 2 and 3, are in Section 5 and Appendix A of the
-> manuscript (`paper/ijis/main.tex`).
+> journal manuscript (`paper/journal/content/05-formal-analysis.tex` and `appendix.tex`).
 
 **Proof obligations, each mapped to code.**
 

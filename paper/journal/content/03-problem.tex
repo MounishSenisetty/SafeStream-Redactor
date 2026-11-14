@@ -1,0 +1,18 @@
+\section{Problem statement and threat model}\label{sec:problem}
+
+\begin{definition}[Detections and redaction]\label{def:det}
+A text $T$ is a finite character string, and $T[a{:}b]$ is its half-open substring. A \emph{detection} is a tuple $(i, j, \tau, c)$ with $0 \le i < j \le |T|$: a half-open span, an entity type and a confidence in $[0,1]$. Each detection is produced by one detector $d$ of a finite set $\mathcal{D}$. A \emph{pipeline} $\Pi$ maps $T$ to a set of pairwise-disjoint detections. \emph{Redaction} rewrites $T$ by replacing each span in $\Pi(T)$ according to a policy (replace, mask, hash, keyed pseudonym or encryption). The replacement of a span depends only on its type and its text, so redaction is a deterministic function of $T$ and $\Pi(T)$ that acts on each span separately.
+\end{definition}
+
+\begin{definition}[Leak]
+Given a set $G$ of gold sensitive spans for $T$, a \emph{leak} is any character of a span in $G$ that is not covered by a span in $\Pi(T)$. A gold span with at least one uncovered character is \emph{leaked}, because a partly visible card number or key can often be reconstructed or narrowed.
+\end{definition}
+
+\paragraph{Adversary and setting}
+The adversary is a later reader of the redacted output, for example the recipient of a shared log. The input may be larger than memory and arrive as an arbitrary sequence of chunks. The system runs locally and makes no network calls, so the unredacted text does not leave the host.
+
+\paragraph{What is in scope}
+(i) That chunked and parallel processing introduce no leak beyond those of the whole-document pipeline; (ii) bounded working memory; (iii) the detection quality of the whole-document pipeline, measured empirically.
+
+\paragraph{What is out of scope}
+Detection completeness: the pipeline misses values its detectors do not recognise, and the guarantee does not change that. Adversarial evasion: an author who encodes, splits or obfuscates a secret on purpose is not modelled. Inference from residual text: quasi-identifiers and context that remain after redaction may still allow re-identification \cite{lison2021anonymisation,sweeney2002kanonymity}. Side channels such as output length. Bounded memory is a resource property, not a security property.

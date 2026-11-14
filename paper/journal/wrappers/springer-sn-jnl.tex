@@ -1,0 +1,43 @@
+%% Springer Nature journals (sn-jnl.cls, numbered references).
+\newif\ifanonymous\ifdefined\anonymousbuild\anonymoustrue\fi
+\RequirePackage{fix-cm}
+\RequirePackage{amsmath}
+\RequirePackage{amsthm}% before the class, so sn-jnl defines its theorem styles
+\documentclass[pdflatex,sn-mathphys-num]{sn-jnl}
+\newcommand{\ssThmStyle}{thmstyleone}
+\newcommand{\ssDefStyle}{thmstylethree}
+\input{meta}
+\input{content/preamble}
+\hypersetup{bookmarksdepth=2}
+%% sn-jnl's empty running head raises an "Underfull \vbox" on every page; an empty
+%% head gives the same page without the warning.
+\makeatletter
+\def\ps@headings{\def\@oddfoot{\hfill\thepage\hfill}\let\@evenfoot\@oddfoot
+  \let\@oddhead\@empty\let\@evenhead\@empty\let\@mkboth\markboth}
+\def\ps@titlepage{\let\@oddhead\@empty\let\@evenhead\@empty
+  \def\@oddfoot{\vbox to 18pt{\vfill\reset@font\rmfamily\hfil\thepage\hfil}}\def\@evenfoot{}}
+\makeatother
+\pagestyle{headings}
+\begin{document}
+\raggedbottom
+\title[\ssShortTitle]{\ssTitle}
+\ifanonymous
+  \author{\fnm{Anonymous} \sur{authors}}
+  \affil{\orgname{Withheld for review}}
+\else
+  \def\ssAuthor#1#2#3#4{\edef\ssThis{#1 #2}%
+    \ifx\ssThis\ssCorresponding\author*[1]{\fnm{#1} \sur{#2}}\else\author[1]{\fnm{#1} \sur{#2}}\fi
+    \email{#3}}
+  \ssAuthorList
+  \affil*[1]{\orgdiv{\ssDept}, \orgname{\ssOrg}, \orgaddress{\city{\ssCity}, \country{\ssCountry}}}
+\fi
+\abstract{\input{content/abstract}}
+\keywords{\input{content/keywords}}
+\maketitle
+\input{content/body}
+\backmatter
+\input{content/end}
+\begingroup\emergencystretch=4em
+\bibliography{refs}
+\endgroup
+\end{document}
