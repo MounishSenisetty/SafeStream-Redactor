@@ -353,3 +353,32 @@ repository holds pseudonymised counts only.
   restore call carried an output path (`exploratory_restore_to_file`, counted from the
   transcripts by `agent_injection.py --add-exploratory`) is reported and labelled as
   exploratory. It is not one of the pre-registered outcomes.
+
+## Amendment 3 (2026-11-14): a second real user-generated corpus (Broad Twitter Corpus)
+
+Written before any system was run on this corpus. Reviewers can fairly say that
+WNUT-17 (129 documents, 429 gold person names) is the only real user-generated text
+with human gold in the study. This amendment adds a second one, as a replication of
+the WNUT-17 rows; no other part of the protocol changes.
+
+**Corpus.** Broad Twitter Corpus (Derczynski, Bontcheva and Roberts, COLING 2016),
+`GateNLP/broad_twitter_corpus` at revision `0c45ef7b1924`, CC BY 4.0, section F only:
+2,000 tweets, the section its authors set aside for testing. Gold types PER, ORG and
+LOC map to PERSON, ORGANIZATION and LOCATION. Tweets are grouped ten to a document in
+file order, exactly as WNUT-17 is (`_bio_docs`), giving 201 documents and 2,650 gold
+person names. Test-only (`benchmarks/corpora/splits/btc.json`, frozen with this
+amendment). Section F was not used to design the gate, choose the model or set any
+threshold; the authors had read only the tag counts and the file format when this was
+written. The `dslim/distilbert-NER` checkpoint was trained on CoNLL-2003, not on BTC.
+
+**Systems, metrics and decision rule.** Unchanged: the seven systems of the WNUT-17
+run, through `benchmarks/harness.py` with `--bootstrap 2000`; PERSON character recall
+and covered-entity recall with paired intervals from `benchmarks/person_paired.py`
+(2,000 resamples, seed 0, one shared matrix); gate recall and pass rate from
+`benchmarks/gate_audit.py`. Planned comparisons on BTC: P1, P2, P3 and the gate-cost
+difference of P4, as stated for WNUT-17. The neural model files are rebuilt and checked
+against `paper/conference/MODEL_SHA256.txt` before the run; a mismatch stops it.
+
+**Reporting.** BTC is reported next to WNUT-17 as a second real-text corpus, whatever
+the outcome, including a result that disagrees with WNUT-17. It is not pooled with
+WNUT-17.

@@ -355,6 +355,44 @@ _WNUT_MAP = {
 }
 
 
+def _read_tab_bio(path: Path) -> list[tuple[list[str], list[str]]]:
+    """Sentences from a token<TAB>tag file with a blank line between sentences."""
+    sentences: list[tuple[list[str], list[str]]] = []
+    tokens: list[str] = []
+    tags: list[str] = []
+    for line in [*path.read_text(encoding="utf-8").splitlines(), ""]:
+        if not line.strip():
+            if tokens:
+                sentences.append((tokens, tags))
+            tokens, tags = [], []
+            continue
+        token, tag = line.rsplit("\t", 1)
+        tokens.append(token)
+        tags.append(tag.strip())
+    return sentences
+
+
+_BTC_MAP = {"PER": "PERSON", "LOC": "LOCATION", "ORG": "ORGANIZATION"}
+
+
+def load_btc() -> Corpus:
+    """Broad Twitter Corpus, section F (Derczynski et al. 2016): 2,000 real tweets,
+    crowd and expert NER gold, CC BY 4.0; the section its authors recommend for test.
+    Test-only, added by conference protocol Amendment 3."""
+    directory = EXTERNAL / "btc"
+    path = _require(
+        directory / "f.conll",
+        "git clone https://github.com/GateNLP/broad_twitter_corpus; copy f.conll (pin REVISION)",
+    )
+    return Corpus(
+        "btc",
+        _bio_docs(_read_tab_bio(path), "btc", _BTC_MAP),
+        [path],
+        _revision(directory),
+        "Broad Twitter Corpus section F, real tweets, CC BY 4.0",
+    )
+
+
 def load_wnut17() -> Corpus:
     """WNUT-17 test set: 1,287 real user-generated sentences (Twitter, Reddit,
     YouTube, StackExchange) with human NER gold, CC BY 4.0. Test-only."""
@@ -913,6 +951,7 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "creddata": load_creddata,
     "wiki_bios": load_wiki_bios,
     "wnut17": load_wnut17,
+    "btc": load_btc,
     "benign": load_benign,
     "agent_traces": load_agent_traces,
 }
