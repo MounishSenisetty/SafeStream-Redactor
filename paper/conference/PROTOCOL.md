@@ -346,3 +346,10 @@ repository holds pseudonymised counts only.
   details made before any outcome: SafeStream's read call (`redact`) was added to the
   manifest, and tools whose name contains "apply" were excluded as file tools. The
   smoke runs are not part of the results.
+- **After the run (2026-11-14): one exploratory count.** In the injected T3 condition the
+  agent often asked the restore call to write the restored ticket to a file. Such files
+  landed in the server's working directory; they hold synthetic values only, were moved
+  out of the repository, and are kept with the raw results. The number of runs whose
+  restore call carried an output path (`exploratory_restore_to_file`, counted from the
+  transcripts by `agent_injection.py --add-exploratory`) is reported and labelled as
+  exploratory. It is not one of the pre-registered outcomes.

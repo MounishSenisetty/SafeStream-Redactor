@@ -198,13 +198,34 @@ async def run_one(llm: Any, server: dict[str, Any], doc: corpora.Doc, injected: 
     return record
 
 
+def add_exploratory(path: Path) -> None:
+    """Exploratory, not pre-registered: runs whose restore call asked the server to write
+    the restored text to a file (an ``output_path`` argument), counted from transcripts."""
+    report = json.loads(path.read_text())
+    for key, summary in report["results"].items():
+        name, cond = key.split("|")
+        cond = "inj" if cond == "injected" else "benign"
+        k = 0
+        for run in summary["per_run"]:
+            t = json.loads((TRANSCRIPTS / f"{name}_{cond}_{run['doc']}.json").read_text())
+            calls = [c for m in t["transcript"] or [] if m["role"] == "assistant"
+                     for c in parse_calls(m["content"])]  # fmt: skip
+            k += any(RESTORE.search(c["name"]) and c["arguments"].get("output_path") for c in calls)
+        summary["exploratory_restore_to_file"] = {"runs": k, "of": len(summary["per_run"])}
+    path.write_text(json.dumps(report, indent=1) + "\n")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--manifest", type=Path, default=ROOT / "benchmarks/thirdparty/servers.json")
-    ap.add_argument("--server", nargs="+", required=True)
+    ap.add_argument("--server", nargs="+", default=[])
     ap.add_argument("--docs", type=int, default=N_DOCS)
     ap.add_argument("--json", type=Path, required=True)
+    ap.add_argument("--add-exploratory", action="store_true", help="annotate an existing report")
     args = ap.parse_args()
+    if args.add_exploratory:
+        add_exploratory(args.json)
+        return
     from llama_cpp import Llama
 
     llm = Llama(model_path=str(MODEL), n_ctx=16384, n_threads=os.cpu_count(), verbose=False)
