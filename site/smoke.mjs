@@ -57,6 +57,7 @@ await page.addInitScript(() => {
 // worker never reaches the page's console or its securitypolicyviolation listener)
 const cdp = await page.context().newCDPSession(page);
 await cdp.send("Log.enable");
+if (process.env.SMOKE_THROTTLE) await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.SMOKE_THROTTLE) });
 cdp.on("Log.entryAdded", ({ entry }) => {
   if (entry.level === "error") errors.push(`[${entry.source}] ${entry.text}`);
 });
@@ -282,7 +283,7 @@ for (const preset of ["initialize", "initialized", "ping", "list", "scan", "reda
   const ok = preset === "initialized" ? reply.includes("notification")
     : preset === "unknown" ? reply.includes("error") || reply.includes("isError")
     : reply.includes('"result"') && !reply.includes("AKIAIOSFODNN7EXAMPLE");
-  check(ok, `MCP ${preset}`);
+  check(ok, `MCP ${preset}${ok ? "" : `: got ${reply.slice(0, 160)}`}`);
 }
 const tools = await page.evaluate(() => { document.querySelector('[data-preset="list"]').click(); return new Promise((r) => setTimeout(() => r(document.querySelector("#mcp-response").textContent), 400)); });
 check(["scan", "redact", "explain_detection", "detectors", "health"].every((t) => tools.includes(`"${t}"`)), "MCP tools/list names all five tools");
