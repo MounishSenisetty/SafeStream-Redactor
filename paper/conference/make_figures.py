@@ -282,6 +282,67 @@ def table_cost() -> str:
     )
 
 
+def table_thirdparty() -> str:
+    a = load("E11_thirdparty_traces_wnut.json")
+    b = load("E11_thirdparty_ai4privacy500.json")
+    if not a or not b:
+        return missing("E11 third-party audit") + "\n"
+    rows = []
+    tools = sorted({k.split("|")[0] for k in a["results"]}, key=lambda t: (t == "safestream", t))
+    for t in tools:
+        role = ("redact", "scan") if t == "safestream" else ("anonymize", "detect")
+
+        def frac(r: dict, tool: str, field: str) -> str:
+            x = r["results"].get(tool)
+            return f"{x[field] / x['values_checked']:.2f}" if x else "--"
+
+        at, wn = a["results"][f"{t}|agent_traces"], a["results"][f"{t}|wnut17"]
+        ai = b["results"][f"{t}|ai4privacy"]
+        rest = at.get("restore")
+        restore = "--"
+        if rest:
+            got = max(rest["recovered"].values())
+            restore = f"{got:,}/{rest['values_hidden']:,}"
+        label = "SafeStream" if t == "safestream" else t
+        rows.append(
+            f"{label} & {frac(at, role[0], 'values_in_redacted_text')} & "
+            f"{frac(wn, role[0], 'values_in_redacted_text')} & "
+            f"{frac(ai, role[0], 'values_in_redacted_text')} & "
+            f"{frac(at, role[0], 'values_in_other_fields')} & "
+            f"{frac(at, role[1], 'values_in_other_fields')} & {restore} \\\\"
+        )
+    return (
+        r"\begin{table}[t]"
+        "\n"
+        r"\caption{Third-party agent-facing redaction tools (C-RQ5), pseudonymised until their "
+        r"maintainers have been told. Left: share of gold values left in the tool's "
+        r"redacted output (a recall measure) on AgentTrace (AT), WNUT-17 (WN) and 500 "
+        r"ai4privacy documents (AI). Map: share returned elsewhere in the same reply. "
+        r"Detect: share returned by the tool's detection call. Restore: hidden values the "
+        r"agent got back by calling the tool's own restore call, on AgentTrace.}"
+        r"\label{tab:thirdparty}"
+        "\n"
+        r"\centering\footnotesize\setlength{\tabcolsep}{3pt}"
+        "\n"
+        r"\begin{adjustbox}{max width=\columnwidth}\begin{tabular}{@{}l rrr rr r@{}}"
+        "\n"
+        r"\toprule"
+        "\n"
+        r" & \multicolumn{3}{c}{Left in output} & & & \\"
+        "\n"
+        r"Tool & AT & WN & AI & Map & Detect & Restore \\"
+        "\n"
+        r"\midrule"
+        "\n" + "\n".join(rows) + "\n"
+        r"\bottomrule"
+        "\n"
+        r"\end{tabular}\end{adjustbox}"
+        "\n"
+        r"\end{table}"
+        "\n"
+    )
+
+
 def figure_recall_cost() -> None:
     import matplotlib
 
@@ -329,6 +390,7 @@ def main() -> None:
         ("tab_gate", table_gate),
         ("tab_egress", table_egress),
         ("tab_cost", table_cost),
+        ("tab_thirdparty", table_thirdparty),
     ]:
         (OUT_TEX / f"{name}.tex").write_text(fn(), encoding="utf-8")
         print("wrote", name)

@@ -24,7 +24,6 @@ import argparse
 import asyncio
 import json
 import os
-import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -69,10 +68,11 @@ def classify(path: str, outputs: list[str]) -> str:
     """'redacted_text' if ``path`` is one of the tool's declared output fields, else
     'other'. ``outputs`` holds the last JSON key of each output field, or "content[]"
     for a tool that returns its redacted text as a plain-text reply."""
-    last = re.split(r"[.]", path.replace("<json>", ""))[-1].replace("[]", "")
-    if path.endswith("content[]"):
-        last = "content[]"
-    return "redacted_text" if last in outputs else "other"
+    # any segment counts: a document that is itself JSON is parsed inside the output
+    segments = {seg.replace("[]", "") for seg in path.replace("<json>", ".").split(".")}
+    if path.endswith("content[]") or ".content[]." in path.replace("<json>", "."):
+        segments.add("content[]")
+    return "redacted_text" if segments & set(outputs) else "other"
 
 
 def _find(obj: Any, keys: tuple[str, ...]) -> Any:

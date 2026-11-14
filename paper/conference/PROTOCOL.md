@@ -267,3 +267,14 @@ None of the corpora used for the reported results had been run.
 - **Restore probe.** The agent-callable restore calls are those each README documents.
   `get_mapping` (PII-Shield) and `guard_unmask_args` (privacyscrubber npm, excluded)
   are probed as well.
+- **2026-11-14, output classification (after the full run).** Some ai4privacy
+  documents are themselves JSON. The audit parses JSON text, so values inside a tool's
+  redacted output were filed under paths such as `anonymized_text<json>.student_name`
+  and counted as "other fields". The classifier now treats any path that passes
+  through a declared output field as output. Only the ai4privacy run was affected,
+  because AgentTrace and WNUT-17 contain no document that is JSON, and it was
+  repeated. The first file is kept, unpublished, with the raw results.
+- **anonymize-mcp**: retried at the end; lindat.mff.cuni.cz still reset every
+  connection, so it stays excluded.
+- **Raw results naming tools stay out of git** until disclosure. The repository holds
+  only the pseudonymised copies (`benchmarks/thirdparty/pseudonymize.py`).
