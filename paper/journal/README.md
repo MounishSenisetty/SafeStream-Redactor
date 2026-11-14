@@ -9,8 +9,10 @@ the layout, the build and how to move it to a venue.
 |---|---|
 | `content/` | The text: `01-introduction.tex` … `09-conclusion.tex`, `abstract.tex`, `keywords.tex`, `declarations.tex`, `acknowledgements.tex`, `appendix.tex` (proofs), `preamble.tex` |
 | `meta.tex` | Title, authors, affiliation, repository link |
-| `wrappers/` | `generic` (plain article), `springer-sn-jnl`, `elsevier-elsarticle`, `ieee-journal`, `acm-journal`; the Springer class files are here |
-| `supplement/supplementary.tex` | Online Resource 1 (supplementary tables and figures), a plain article |
+| `wrappers/` | `generic` (plain article), `springer-sn-jnl`, `elsevier-elsarticle`, `ieee-journal`, `acm-journal` |
+| `main.tex` | Overleaf entry point: loads one format from `wrappers/` (Springer by default) |
+| `supplementary.tex` | Online Resource 1 (supplementary tables and figures), a plain article; compile it as a second document |
+| `sn-jnl.cls`, `sn-mathphys-num.bst` | Springer Nature class files (kept at the top level so Overleaf finds them) |
 | `figures/` | Figures; `make_figures.py` rebuilds the plotted ones from the raw results |
 | `cover_letter.tex` | Venue-neutral cover letter; set `\Venue` and `\Editor` |
 | `SUBMISSION.md` | What to upload and what the authors must confirm |

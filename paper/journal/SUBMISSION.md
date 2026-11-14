@@ -7,7 +7,7 @@ No venue has been chosen. Once one is:
    or copy the closest one and change its `\documentclass` line.
 2. Run `../make_submission.sh journal <wrapper>`. Upload
    `build/<wrapper>/main.pdf` (or `build/<wrapper>-anon/` for a double-blind venue),
-   `build/<wrapper>/source.zip`, `build/supplement/supplementary.pdf` as the electronic
+   `build/<wrapper>/source.zip`, `build/supplement/supplementary.pdf` (from `supplementary.tex`) as the electronic
    supplementary material ("Online Resource 1"), and `cover_letter.pdf`.
 3. Check the page count in the build summary against the venue's limit. The generic
    build is 28 pages including references and the proofs appendix.

@@ -10,6 +10,22 @@ result (`check_disjoint.py` enforces this).
 | `conference/` | *The Agent Holds the Key: Auditing What LLM Agents Learn Through Redaction Tools* | What does an LLM agent learn through the tool: egress through content-free replies, the gated neural tier, and the cost per tool call? |
 | `archive/` | Earlier drafts (Elsevier, IEEE conference, FTNCT'09) | Superseded. Never submit them. |
 
+## Overleaf
+
+Each of `journal/` and `conference/` is a complete Overleaf project:
+
+1. Download the repository (GitHub: Code, Download ZIP), unzip it, and zip only the
+   folder you want, `paper/journal` or `paper/conference`. Do not include `build/`.
+2. Overleaf: New Project, Upload Project, then choose that zip.
+3. Compile. The main document is `main.tex`; the compiler is pdfLaTeX (Overleaf's default).
+
+`main.tex` loads one publisher format from `wrappers/`: Springer for the journal, IEEE
+for the conference. To change format, edit its `\input` line. For a double-blind
+submission, uncomment `\def\anonymousbuild{}` at the top. The journal's supplement is
+`supplementary.tex`: set it as the main document (Menu, Main document) to compile it.
+Every format was test-compiled from a clean copy of each folder with `latexmk`, with no
+other search paths, as Overleaf does.
+
 ## Layout (both papers)
 
 ```
@@ -18,6 +34,7 @@ meta.tex      title, authors, affiliation, repository link (entered once)
 refs.bib      bibliography
 figures/      figures, built by make_figures.py from research/results/raw/
 wrappers/     one thin main file per document class; no text of its own
+main.tex      the Overleaf entry point: \input of one wrapper
 ```
 
 ## Build
