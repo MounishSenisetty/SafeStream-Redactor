@@ -428,3 +428,14 @@ tool results come back in `<tool_response>` blocks (`--tool-prompt hermes`). A
 one-ticket smoke test (SafeStream, benign) checked only that the calls parse; it is not
 part of the results. All Hermes-3 cells are then run from the start. Nothing else
 changes.
+
+### Amendments 3 and 4: runs restarted in a second environment (2026-11-14)
+
+The session that wrote Amendments 3 and 4 stopped before committing any of their
+results. Its BTC results and partial Hermes-3 runs were never committed and are not
+used. Both amendments are run again from the start in the study's second environment,
+with the same frozen manifest (`btc.json`, source SHA-256 verified on load), the same
+model files (neural NER files checked against `MODEL_SHA256.txt`; Hermes-3 checked
+against the SHA-256 above) and the same harness code at the commit that adds this
+note. T3 is installed in this environment, but Amendment 4 names only SafeStream, T2
+and T4, so T3 stays out of it as written.
