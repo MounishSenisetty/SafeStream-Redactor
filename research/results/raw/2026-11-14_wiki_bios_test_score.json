@@ -1,0 +1,656 @@
+{
+ "protocol": "Score harness checkpoints on TAB (Text Anonymization Benchmark) as TAB prescribes.\n\nProtocol, fixed before any system was run on TAB (see PROTOCOL below; the commit\nthat adds this file precedes every TAB checkpoint):\n\n* Data: TAB's test split only (127 ECHR judgments). No SafeStream rule, threshold\n  or configuration was developed or chosen with TAB in view, and none is changed\n  after scoring.\n* Gold: per annotator, the mentions whose identifier type is DIRECT or QUASI (TAB's\n  masking decision). Documents annotated by several people are scored against each\n  annotator separately and the counts pooled, as in TAB's own evaluation.\n* Metrics (type-agnostic: a character is protected whatever label it receives):\n  - char recall: masked gold characters / gold characters, pooled over\n    (document, annotator) pairs;\n  - char precision: redacted characters that some annotator marked DIRECT or QUASI\n    / redacted characters (TAB counts a masked token as correct if any annotator\n    masked it); char F1 from these two;\n  - entity recall, direct and quasi (TAB's ER_di, ER_qi): for each annotator, an\n    entity's DIRECT (QUASI) mentions are grouped by entity id, and the entity is\n    protected only if every one of those mentions is fully redacted;\n  - direct-protected rate: share of (document, annotator) pairs in which every\n    DIRECT mention is fully redacted;\n  - char recall by TAB entity type (descriptive, no intervals).\n  TAB's information-weighted precision is not computed (it needs a language\n  model); precision here is unweighted.\n* Intervals: 95% percentile bootstrap over documents, 2,000 resamples, seed 0, one\n  shared resample matrix for all systems, so differences are paired.\n* Planned comparisons: SafeStream +spaCy minus Presidio sm (same spaCy model) and\n  minus Presidio lg, and SafeStream pattern minus Presidio regex, each on char F1,\n  char recall and direct entity recall. Every other difference is descriptive.\n\n    python -m benchmarks.tab_score --system NAME=CHECKPOINT ... --json OUT\n",
+ "corpus": "wiki_bios",
+ "n_docs": 553,
+ "annotator_pairs": 573,
+ "resamples": 2000,
+ "seed": 0,
+ "point": {
+  "safestream-prose": {
+   "char_precision": 0.8269451118092774,
+   "char_recall": 0.7099569313868912,
+   "char_f1": 0.7639984820172017,
+   "er_direct": 0.6599496221662469,
+   "er_quasi": 0.6170250264363765,
+   "direct_protected": 0.5846422338568935
+  },
+  "safestream+spacy": {
+   "char_precision": 0.8448692924945365,
+   "char_recall": 0.5352272611021882,
+   "char_f1": 0.6553122333835346,
+   "er_direct": 0.5163727959697733,
+   "er_quasi": 0.3595347197744096,
+   "direct_protected": 0.493891797556719
+  },
+  "presidio-regex": {
+   "char_precision": 0.42500948047023135,
+   "char_recall": 0.04800973903080275,
+   "char_f1": 0.08627384851091979,
+   "er_direct": 0.0012594458438287153,
+   "er_quasi": 0.01709552344025379,
+   "direct_protected": 0.0
+  },
+  "presidio-sm": {
+   "char_precision": 0.746909504138577,
+   "char_recall": 0.5150126341418502,
+   "char_f1": 0.6096538281136168,
+   "er_direct": 0.5591939546599496,
+   "er_quasi": 0.48078956644342613,
+   "direct_protected": 0.4607329842931937
+  },
+  "presidio-lg": {
+   "char_precision": 0.7532070861331704,
+   "char_recall": 0.5479841638448711,
+   "char_f1": 0.6344118211733788,
+   "er_direct": 0.6889168765743073,
+   "er_quasi": 0.5045823052520267,
+   "direct_protected": 0.6178010471204188
+  }
+ },
+ "ci95": {
+  "safestream-prose": {
+   "char_precision": [
+    0.8137942590131055,
+    0.8394322209396952
+   ],
+   "char_recall": [
+    0.6917212980986343,
+    0.7276942976826968
+   ],
+   "char_f1": [
+    0.7524946737892855,
+    0.7758639854762643
+   ],
+   "er_direct": [
+    0.6246752394587041,
+    0.6941375167832662
+   ],
+   "er_quasi": [
+    0.6003032277757174,
+    0.6344466413168715
+   ],
+   "direct_protected": [
+    0.5448272831949579,
+    0.6263210710021125
+   ]
+  },
+  "safestream+spacy": {
+   "char_precision": [
+    0.8280273255498609,
+    0.8596418361371351
+   ],
+   "char_recall": [
+    0.5167342129660745,
+    0.5535622650214997
+   ],
+   "char_f1": [
+    0.6405505678482192,
+    0.6707792183828472
+   ],
+   "er_direct": [
+    0.4828410243407708,
+    0.5509159042421311
+   ],
+   "er_quasi": [
+    0.3414582095236752,
+    0.37708494057547953
+   ],
+   "direct_protected": [
+    0.4547038327526132,
+    0.5359064401393828
+   ]
+  },
+  "presidio-regex": {
+   "char_precision": [
+    0.38543448830063737,
+    0.46864603335968974
+   ],
+   "char_recall": [
+    0.04234379728631338,
+    0.05395070085158468
+   ],
+   "char_f1": [
+    0.07649641100447906,
+    0.09649732847674844
+   ],
+   "er_direct": [
+    0.0,
+    0.0038513389604532084
+   ],
+   "er_quasi": [
+    0.013384426972306383,
+    0.020949013991069926
+   ],
+   "direct_protected": [
+    0.0,
+    0.0
+   ]
+  },
+  "presidio-sm": {
+   "char_precision": [
+    0.7327635603055404,
+    0.761964745229152
+   ],
+   "char_recall": [
+    0.4979444016600619,
+    0.5325757983441359
+   ],
+   "char_f1": [
+    0.5962180462823156,
+    0.6240435859334472
+   ],
+   "er_direct": [
+    0.5260434697088906,
+    0.5961812401863626
+   ],
+   "er_quasi": [
+    0.46491080890144826,
+    0.4965815633031607
+   ],
+   "direct_protected": [
+    0.42185672118717504,
+    0.5034605079777009
+   ]
+  },
+  "presidio-lg": {
+   "char_precision": [
+    0.7391758002819987,
+    0.7686211429252721
+   ],
+   "char_recall": [
+    0.5297398559270917,
+    0.5676236483579162
+   ],
+   "char_f1": [
+    0.6201027542316246,
+    0.6496970153847378
+   ],
+   "er_direct": [
+    0.6561684713071414,
+    0.7216655262235797
+   ],
+   "er_quasi": [
+    0.4886796187922006,
+    0.5216369844233827
+   ],
+   "direct_protected": [
+    0.5778498402748842,
+    0.6573925078983
+   ]
+  }
+ },
+ "char_recall_by_type": {
+  "safestream-prose": {
+   "DATETIME": 0.9144632630681125,
+   "DEM": 0.3008695652173913,
+   "LOC": 0.9176771759633522,
+   "MISC": 0.33356409368870427,
+   "ORG": 0.7870816403468354,
+   "PERSON": 0.8524160524160524,
+   "QUANTITY": 0.09817671809256662
+  },
+  "safestream+spacy": {
+   "DATETIME": 0.0004873888144267089,
+   "DEM": 0.12260869565217392,
+   "LOC": 0.9147130153597413,
+   "MISC": 0.3113534094842506,
+   "ORG": 0.7772797721275081,
+   "PERSON": 0.8475839475839476,
+   "QUANTITY": 0.03576437587657784
+  },
+  "presidio-regex": {
+   "DATETIME": 0.005178506153283782,
+   "DEM": 0.0927536231884058,
+   "LOC": 0.06345998383185125,
+   "MISC": 0.05492096457828545,
+   "ORG": 0.06601600134042643,
+   "PERSON": 0.03927108927108927,
+   "QUANTITY": 0.0070126227208976155
+  },
+  "presidio-sm": {
+   "DATETIME": 0.9517485073717559,
+   "DEM": 0.31043478260869567,
+   "LOC": 0.78887092427917,
+   "MISC": 0.19072343371408793,
+   "ORG": 0.21283458300171743,
+   "PERSON": 0.7441441441441441,
+   "QUANTITY": 0.12342215988779803
+  },
+  "presidio-lg": {
+   "DATETIME": 0.9608261240404533,
+   "DEM": 0.3017391304347826,
+   "LOC": 0.8620317973592023,
+   "MISC": 0.18703126802815276,
+   "ORG": 0.21350479621329535,
+   "PERSON": 0.8515561015561015,
+   "QUANTITY": 0.13464235624123422
+  }
+ },
+ "counts": {
+  "safestream-prose": {
+   "gold": 97751.0,
+   "gold_hit": 69399.0,
+   "red": 81165.0,
+   "red_ok": 67119.0,
+   "ent_d": 794.0,
+   "ent_d_ok": 524.0,
+   "ent_q": 5674.0,
+   "ent_q_ok": 3501.0,
+   "pairs_d": 573.0,
+   "pairs_d_ok": 335.0
+  },
+  "safestream+spacy": {
+   "gold": 97751.0,
+   "gold_hit": 52319.0,
+   "red": 59943.0,
+   "red_ok": 50644.0,
+   "ent_d": 794.0,
+   "ent_d_ok": 410.0,
+   "ent_q": 5674.0,
+   "ent_q_ok": 2040.0,
+   "pairs_d": 573.0,
+   "pairs_d_ok": 283.0
+  },
+  "presidio-regex": {
+   "gold": 97751.0,
+   "gold_hit": 4693.0,
+   "red": 10548.0,
+   "red_ok": 4483.0,
+   "ent_d": 794.0,
+   "ent_d_ok": 1.0,
+   "ent_q": 5674.0,
+   "ent_q_ok": 97.0,
+   "pairs_d": 573.0,
+   "pairs_d_ok": 0.0
+  },
+  "presidio-sm": {
+   "gold": 97751.0,
+   "gold_hit": 50343.0,
+   "red": 65119.0,
+   "red_ok": 48638.0,
+   "ent_d": 794.0,
+   "ent_d_ok": 444.0,
+   "ent_q": 5674.0,
+   "ent_q_ok": 2728.0,
+   "pairs_d": 573.0,
+   "pairs_d_ok": 264.0
+  },
+  "presidio-lg": {
+   "gold": 97751.0,
+   "gold_hit": 53566.0,
+   "red": 68754.0,
+   "red_ok": 51786.0,
+   "ent_d": 794.0,
+   "ent_d_ok": 547.0,
+   "ent_q": 5674.0,
+   "ent_q_ok": 2863.0,
+   "pairs_d": 573.0,
+   "pairs_d_ok": 354.0
+  }
+ },
+ "paired_diff_p2.5_p50_p97.5": {
+  "safestream+spacy - safestream-prose": {
+   "char_precision": [
+    0.011648074687893209,
+    0.01788195760851158,
+    0.024086740662293278
+   ],
+   "char_recall": [
+    -0.18401224802320895,
+    -0.17489013910331358,
+    -0.165535494084024
+   ],
+   "char_f1": [
+    -0.11647863803813975,
+    -0.10878352928826363,
+    -0.10145509401508539
+   ],
+   "er_direct": [
+    -0.16983692642770132,
+    -0.1430395913154534,
+    -0.1178719229178206
+   ],
+   "er_quasi": [
+    -0.27242638485366577,
+    -0.25785000097885896,
+    -0.24352575787116942
+   ],
+   "direct_protected": [
+    -0.11546134430214075,
+    -0.09059233449477355,
+    -0.06829824072599903
+   ]
+  },
+  "presidio-regex - safestream-prose": {
+   "char_precision": [
+    -0.4428185183367811,
+    -0.40229719799303454,
+    -0.35753714497992345
+   ],
+   "char_recall": [
+    -0.6800983050568724,
+    -0.6622558703400498,
+    -0.6432415644374219
+   ],
+   "char_f1": [
+    -0.6923943212139848,
+    -0.6779202409245983,
+    -0.6624319129962258
+   ],
+   "er_direct": [
+    -0.6925087294408295,
+    -0.6593469107320702,
+    -0.6233457659897776
+   ],
+   "er_quasi": [
+    -0.6179883127305588,
+    -0.6001330170588932,
+    -0.5830308777302201
+   ],
+   "direct_protected": [
+    -0.6263210710021125,
+    -0.5858146347448658,
+    -0.5448272831949579
+   ]
+  },
+  "presidio-regex - safestream+spacy": {
+   "char_precision": [
+    -0.46208696559462353,
+    -0.4207023469106176,
+    -0.37408748712381074
+   ],
+   "char_recall": [
+    -0.5054409360918105,
+    -0.48739919739321613,
+    -0.4689200501747658
+   ],
+   "char_f1": [
+    -0.5860359561876906,
+    -0.5690386799378979,
+    -0.5522109719380294
+   ],
+   "er_direct": [
+    -0.5496130302522985,
+    -0.5159235668789809,
+    -0.48048572353612284
+   ],
+   "er_quasi": [
+    -0.3600424420070606,
+    -0.34221579194562446,
+    -0.3246247722811532
+   ],
+   "direct_protected": [
+    -0.5359064401393828,
+    -0.4939446185528746,
+    -0.4547038327526132
+   ]
+  },
+  "presidio-regex - presidio-sm": {
+   "char_precision": [
+    -0.3577931106364272,
+    -0.32234282219068633,
+    -0.2837234936589703
+   ],
+   "char_recall": [
+    -0.48425104836090205,
+    -0.46682605270521454,
+    -0.44967378500389693
+   ],
+   "char_f1": [
+    -0.5395414970155382,
+    -0.5233806273734436,
+    -0.5073744886087006
+   ],
+   "er_direct": [
+    -0.5946986227612785,
+    -0.5570635875108465,
+    -0.5240430273761038
+   ],
+   "er_quasi": [
+    -0.47904148358749027,
+    -0.4634504542476707,
+    -0.44809968857806354
+   ],
+   "direct_protected": [
+    -0.5034605079777009,
+    -0.4603174603174603,
+    -0.42185672118717515
+   ]
+  },
+  "presidio-sm - safestream-prose": {
+   "char_precision": [
+    -0.09291800708399675,
+    -0.08007178391186515,
+    -0.06686569042017361
+   ],
+   "char_recall": [
+    -0.21401550986116372,
+    -0.1948712336029621,
+    -0.1772503947299909
+   ],
+   "char_f1": [
+    -0.1683430189370115,
+    -0.1542663838236159,
+    -0.1411710184701196
+   ],
+   "er_direct": [
+    -0.12689000286777605,
+    -0.10147607058994407,
+    -0.07568056648308419
+   ],
+   "er_quasi": [
+    -0.15371755899540965,
+    -0.13638288743628632,
+    -0.12005718501098224
+   ],
+   "direct_protected": [
+    -0.15734265734265734,
+    -0.12499999999999997,
+    -0.09201388888888895
+   ]
+  },
+  "presidio-sm - safestream+spacy": {
+   "char_precision": [
+    -0.11328068403261414,
+    -0.09800469319549293,
+    -0.08138457054659579
+   ],
+   "char_recall": [
+    -0.04270102806625066,
+    -0.020019326690156103,
+    0.001133408758007702
+   ],
+   "char_f1": [
+    -0.06425340892620061,
+    -0.04543657757693065,
+    -0.02764138564077917
+   ],
+   "er_direct": [
+    0.006385086718727168,
+    0.04174574725151631,
+    0.07636187120204228
+   ],
+   "er_quasi": [
+    0.1001528479358997,
+    0.12131065206936129,
+    0.14205153900640713
+   ],
+   "direct_protected": [
+    -0.06830122591943955,
+    -0.03457219522981397,
+    0.0017332529575766551
+   ]
+  },
+  "presidio-lg - safestream-prose": {
+   "char_precision": [
+    -0.08676638116457426,
+    -0.07351524016151395,
+    -0.059260829419982085
+   ],
+   "char_recall": [
+    -0.18151282723488482,
+    -0.16203845208314288,
+    -0.1429986290587997
+   ],
+   "char_f1": [
+    -0.14412845583525252,
+    -0.12933840472609576,
+    -0.11475781363127754
+   ],
+   "er_direct": [
+    -0.0037314594524264916,
+    0.02941176470588236,
+    0.060769048466471826
+   ],
+   "er_quasi": [
+    -0.13045256411057551,
+    -0.11259287435084686,
+    -0.09458384656099873
+   ],
+   "direct_protected": [
+    -0.006908761675959612,
+    0.033158813263525266,
+    0.07180385288966729
+   ]
+  },
+  "presidio-lg - safestream+spacy": {
+   "char_precision": [
+    -0.10725928725080837,
+    -0.09142832391053174,
+    -0.0741373155948787
+   ],
+   "char_recall": [
+    -0.010357101286942413,
+    0.013145888960238383,
+    0.03674022520092708
+   ],
+   "char_f1": [
+    -0.04009667225843734,
+    -0.020770695572706055,
+    -0.0006639290664662772
+   ],
+   "er_direct": [
+    0.1340075853350189,
+    0.17235009290363856,
+    0.21132254597563882
+   ],
+   "er_quasi": [
+    0.12277744442722399,
+    0.14502176925410581,
+    0.16795862897226224
+   ],
+   "direct_protected": [
+    0.08231173380035028,
+    0.12347826086956526,
+    0.16434339057822595
+   ]
+  },
+  "presidio-lg - presidio-regex": {
+   "char_precision": [
+    0.29007354635467464,
+    0.32860102490568716,
+    0.36518398997864915
+   ],
+   "char_recall": [
+    0.48182442450081536,
+    0.5002342821486544,
+    0.5196648242524237
+   ],
+   "char_f1": [
+    0.5311308319560057,
+    0.5484580738556754,
+    0.5660927788271032
+   ],
+   "er_direct": [
+    0.65409242365585,
+    0.6880964652947965,
+    0.7210151351629149
+   ],
+   "er_quasi": [
+    0.4717879320345286,
+    0.4874619021837213,
+    0.5037028709272809
+   ],
+   "direct_protected": [
+    0.5778498402748842,
+    0.6191304347826087,
+    0.6573925078983
+   ]
+  },
+  "presidio-lg - presidio-sm": {
+   "char_precision": [
+    0.002244674766950258,
+    0.006357468608850503,
+    0.01078150745233238
+   ],
+   "char_recall": [
+    0.025235429639195957,
+    0.03322384353760599,
+    0.04107169323759983
+   ],
+   "char_f1": [
+    0.018560741781947467,
+    0.024944849993405294,
+    0.031177023027009903
+   ],
+   "er_direct": [
+    0.09898267975679145,
+    0.13018477850039756,
+    0.16316560136290567
+   ],
+   "er_quasi": [
+    0.015117624378682087,
+    0.0240764459556497,
+    0.03316710399518412
+   ],
+   "direct_protected": [
+    0.11958215178808021,
+    0.1576182136602452,
+    0.195171536047889
+   ]
+  }
+ },
+ "planned": {
+  "safestream+spacy - presidio-sm": {
+   "char_f1": [
+    0.027641385640779156,
+    0.04543657757693065,
+    0.0642534089262006
+   ],
+   "char_recall": [
+    -0.0011334087580077061,
+    0.020019326690156103,
+    0.042701028066250646
+   ],
+   "er_direct": [
+    -0.07636187120204233,
+    -0.04174574725151631,
+    -0.0063850867187271705
+   ]
+  },
+  "safestream+spacy - presidio-lg": {
+   "char_f1": [
+    0.0006639290664662679,
+    0.020770695572706055,
+    0.040096672258437334
+   ],
+   "char_recall": [
+    -0.03674022520092711,
+    -0.013145888960238383,
+    0.010357101286942411
+   ],
+   "er_direct": [
+    -0.21132254597563882,
+    -0.17235009290363856,
+    -0.1340075853350189
+   ]
+  }
+ },
+ "commits": {
+  "safestream-prose": "365f5ad5cf0ebdc7691358c741c19d8b8f2ba64d",
+  "safestream+spacy": "365f5ad5cf0ebdc7691358c741c19d8b8f2ba64d",
+  "presidio-regex": "365f5ad5cf0ebdc7691358c741c19d8b8f2ba64d",
+  "presidio-sm": "365f5ad5cf0ebdc7691358c741c19d8b8f2ba64d",
+  "presidio-lg": "365f5ad5cf0ebdc7691358c741c19d8b8f2ba64d"
+ }
+}

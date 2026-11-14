@@ -291,4 +291,95 @@ Empirical corroboration & \texttt{tests/test\_streaming.py}, \texttt{test\_prope
 \end{tabular*}
 \end{table}
 
+%% ===================================================================
+\section{Planned paired comparisons under three bootstrap schemes}
+
+Moved from the article to keep it short; every number is also in the article's text or in the result files.
+
+\begin{table}[ht]
+\caption{Planned paired comparisons under three bootstrap schemes: median paired difference and 95\% interval (2,000 resamples, seed 0, one shared resample matrix per corpus). \ns\ marks an interval that includes zero. Pre-exposure SafeStream on RedactionBench is compared with every baseline because it never saw the benchmark.}\label{t:cluster}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lllll}
+\toprule
+Comparison & Metric & Document & Cluster & Two-stage \\
+\midrule
+\multicolumn{5}{@{}l}{\emph{secrets: clusters are 96 rules and 5 negative templates}}\\
+Pattern $-$ gitleaks & FR & \pc{$+.128$}{$+.073$, $+.183$} & \pc{$+.123$}{$+.033$, $+.206$} & \pc{$+.125$}{$+.025$, $+.209$} \\
+Pattern $-$ gitleaks & Char F1 & \pc{$+.233$}{$+.043$, $+.441$} & \pc{$+.215$}{$+.013$, $+.527$} & \pc{$+.226$}{$+.011$, $+.538$} \\
+Pattern $-$ TruffleHog & FR & \pc{$+.167$}{$+.079$, $+.250$} & \pc{$+.178$\ns}{$-.010$, $+.350$} & \pc{$+.184$\ns}{$-.008$, $+.363$} \\
+Pattern $-$ TruffleHog & Char F1 & \pc{$+.536$}{$+.310$, $+.685$} & \pc{$+.529$}{$+.192$, $+.740$} & \pc{$+.530$}{$+.192$, $+.742$} \\
+\midrule
+\multicolumn{5}{@{}l}{\emph{presidio-research: clusters are 200 templates}}\\
++spaCy $-$ Presidio sm & Char F1 & \pc{$+.051$}{$+.027$, $+.076$} & \pc{$+.052$}{$+.013$, $+.092$} & \pc{$+.052$}{$+.013$, $+.093$} \\
++spaCy $-$ Presidio sm & FR & \pc{$+.031$}{$+.004$, $+.060$} & \pc{$+.032$\ns}{$-.015$, $+.077$} & \pc{$+.033$\ns}{$-.014$, $+.080$} \\
++spaCy $-$ Presidio lg & Char F1 & \pc{$+.036$}{$+.011$, $+.064$} & \pc{$+.036$\ns}{$-.000$, $+.075$} & \pc{$+.037$\ns}{$-.003$, $+.080$} \\
+\midrule
+\multicolumn{5}{@{}l}{\emph{RedactionBench, pre-exposure SafeStream: clusters are 11 domains}}\\
++spaCy $-$ Presidio lg & Mand.\ recall & \pc{$+.262$}{$+.091$, $+.436$} & \pc{$+.252$}{$+.085$, $+.348$} & \pc{$+.255$}{$+.026$, $+.453$} \\
++spaCy $-$ Presidio sm & Mand.\ recall & \pc{$+.265$}{$+.093$, $+.441$} & \pc{$+.256$}{$+.104$, $+.345$} & \pc{$+.259$}{$+.037$, $+.454$} \\
++spaCy $-$ Presidio lg & Char F1 & \pc{$+.129$}{$+.033$, $+.223$} & \pc{$+.124$}{$+.006$, $+.221$} & \pc{$+.123$\ns}{$-.024$, $+.242$} \\
++spaCy $-$ Presidio sm & Char F1 & \pc{$+.138$}{$+.047$, $+.230$} & \pc{$+.132$}{$+.031$, $+.219$} & \pc{$+.132$}{$+.002$, $+.242$} \\
++spaCy $-$ Presidio lg & No-leak & \pc{$+.032$\ns}{$-.042$, $+.102$} & \pc{$+.036$\ns}{$-.096$, $+.157$} & \pc{$+.031$\ns}{$-.110$, $+.169$} \\
+Pattern $-$ Presidio lg & Char F1 & \pc{$+.176$}{$+.052$, $+.289$} & \pc{$+.167$\ns}{$-.051$, $+.298$} & \pc{$+.169$\ns}{$-.068$, $+.319$} \\
+Pattern $-$ Presidio lg & Mand.\ recall & \pc{$+.176$\ns}{$-.001$, $+.353$} & \pc{$+.168$\ns}{$-.252$, $+.266$} & \pc{$+.164$\ns}{$-.239$, $+.373$} \\
+Pattern $-$ gitleaks & Mand.\ recall & \pc{$+.342$}{$+.263$, $+.419$} & \pc{$+.340$}{$+.217$, $+.468$} & \pc{$+.335$}{$+.191$, $+.479$} \\
+Pattern $-$ TruffleHog & Mand.\ recall & \pc{$+.571$}{$+.456$, $+.666$} & \pc{$+.560$}{$+.304$, $+.642$} & \pc{$+.563$}{$+.315$, $+.677$} \\
++spaCy $-$ gitleaks & Mand.\ recall & \pc{$+.427$}{$+.350$, $+.510$} & \pc{$+.433$}{$+.320$, $+.561$} & \pc{$+.439$}{$+.297$, $+.589$} \\
++spaCy $-$ TruffleHog & Mand.\ recall & \pc{$+.656$}{$+.548$, $+.749$} & \pc{$+.651$}{$+.591$, $+.713$} & \pc{$+.662$}{$+.526$, $+.751$} \\
+\midrule
+\multicolumn{5}{@{}l}{\emph{RedactionBench, contamination: exposed minus pre-exposure pattern tiers}}\\
+Exposed $-$ pre-exposure & Mand.\ recall & \pc{$+.091$}{$+.044$, $+.163$} & \pc{$+.094$}{$+.064$, $+.159$} & \pc{$+.089$}{$+.043$, $+.198$} \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+%% ===================================================================
+\section{Real OpenSSH logs}
+
+Moved from the article to keep it short; every number is also in the article's text or in the result files.
+
+\begin{table}[ht]
+\caption{Real OpenSSH logs (2,000 lines; Loghub), all gold mandatory. IP and user-name columns give the gold values fully redacted by any detection, whatever its type. FA: share of the 148 lines without gold that received a detection. Point values; the paired differences in the text carry 95\% intervals, including two-stage intervals by template (27 clusters).}\label{t:ssh}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lrrrrrr}
+\toprule
+System & Char P & Char R & Char F1 & IP addresses & User names & FA \\
+\midrule
+SafeStream pattern & .730 & .786 & .757 & 1,349 / 1,349 & 0 / 1,142 & .000 \\
+SafeStream +spaCy (sm) & .548 & .790 & .647 & 1,349 / 1,349 & 21 / 1,142 & .155 \\
+Presidio regex & .661 & .787 & .719 & 1,349 / 1,349 & 4 / 1,142 & .034 \\
+Presidio sm & .331 & .790 & .466 & 1,349 / 1,349 & 18 / 1,142 & 1.000 \\
+Presidio lg & .421 & .789 & .549 & 1,349 / 1,349 & 14 / 1,142 & .993 \\
+gitleaks & .000 & .000 & .000 & 0 / 1,349 & 0 / 1,142 & .000 \\
+TruffleHog & .000 & .000 & .000 & 0 / 1,349 & 0 / 1,142 & .000 \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
+%% ===================================================================
+\section{TAB test split, evaluated configurations}
+
+Moved from the article to keep it short; every number is also in the article's text or in the result files.
+
+\begin{table}[ht]
+\caption{TAB test split: 127 real ECHR judgments, scored against each of 555 document--annotator pairs. Gold is every mention marked \textsc{direct} or \textsc{quasi}. ER: entity recall, the share of entities all of whose mentions are fully redacted. The protocol was committed before any system was run. Character F1 with 95\% document-level intervals.}\label{t:tabtest}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lrrlrr}
+\toprule
+System & Char P & Char R & Char F1 & ER direct & ER quasi \\
+\midrule
+SafeStream pattern & .683 & .004 & \pc{.008}{.003, .015} & .000 & .002 \\
+SafeStream +dates & .978 & .394 & \pc{.561}{.532, .594} & .003 & .439 \\
+SafeStream +spaCy (sm) & .456 & .325 & \pc{.380}{.356, .404} & .071 & .159 \\
+Presidio regex & .090 & .034 & \pc{.050}{.043, .057} & .000 & .005 \\
+Presidio sm & .525 & .680 & \pc{.592}{.575, .608} & .067 & .660 \\
+Presidio lg & .534 & .697 & \pc{.605}{.587, .621} & .077 & .673 \\
+gitleaks, TruffleHog & .000 & .000 & .000 & .000 & .000 \\
+\bottomrule
+\end{tabular*}
+\end{table}
+
 \end{document}
