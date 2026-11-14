@@ -648,8 +648,8 @@ def tab_annotations(doc: dict[str, Any]) -> dict[str, list[tuple[int, int, str, 
     return out
 
 
-def load_tab() -> Corpus:
-    """Text Anonymization Benchmark (Pilan et al., 2022), test split only.
+def _load_tab(split: str, name: str) -> Corpus:
+    """One split of the Text Anonymization Benchmark (Pilan et al., 2022).
 
     127 real ECHR judgments, annotated by one to ten people each. Every document is
     test data (no development half), scored once with frozen code. Each Doc carries
@@ -660,9 +660,9 @@ def load_tab() -> Corpus:
     """
     directory = EXTERNAL / "tab"
     path = _require(
-        directory / "echr_test.json",
+        directory / f"echr_{split}.json",
         "git clone https://github.com/NorskRegnesentral/text-anonymization-benchmark "
-        "and copy echr_test.json, LICENSE.txt and README.md here, with the commit in REVISION",
+        "and copy its echr_*.json files, LICENSE.txt and README.md here (commit in REVISION)",
     )
     raw = json.loads(path.read_text(encoding="utf-8"))
     docs, skipped = [], []
@@ -685,15 +685,31 @@ def load_tab() -> Corpus:
         gold = [Gold(a, b, t, "mandatory") for a, b, t in merged]
         docs.append(Doc(f"tab-{d['doc_id']}", text, gold))
     corpus = Corpus(
-        "tab",
+        name,
         docs,
         [path],
         _revision(directory),
-        "real ECHR judgments (TAB test split, MIT licence); gold = DIRECT and QUASI "
+        f"real ECHR judgments (TAB {split} split, MIT licence); gold = DIRECT and QUASI "
         "mentions, union over annotators here; primary scores per annotator",
     )
     corpus.skipped.extend(skipped)
     return corpus
+
+
+def load_tab() -> Corpus:
+    """TAB test split: 127 judgments; held out until scored once (results exposed since)."""
+    return _load_tab("test", "tab")
+
+
+def load_tab_dev() -> Corpus:
+    """TAB development split: 127 judgments; the only TAB data used to design configurations."""
+    return _load_tab("dev", "tab_dev")
+
+
+def load_tab_train() -> Corpus:
+    """TAB training split used as a held-out confirmation set: 1,014 judgments, never
+    inspected or scored before the free-text configuration was frozen."""
+    return _load_tab("train", "tab_train")
 
 
 def load_realworld() -> Corpus:
@@ -716,6 +732,8 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "loghub_ssh": load_loghub_ssh,
     "loghub_linux": load_loghub_linux,
     "tab": load_tab,
+    "tab_dev": load_tab_dev,
+    "tab_train": load_tab_train,
 }
 
 

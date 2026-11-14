@@ -68,7 +68,12 @@ def _validate_streaming_args(chunk_size: object, overlap: object, min_confidence
 # noise in logs (every date and time of day) but sensitive in documents.
 PROFILES: dict[str, dict[str, bool]] = {
     "default": {},
-    "prose": {"use_dates": True, "use_prose_fields": True, "use_urls": True},
+    "prose": {
+        "use_dates": True,
+        "use_prose_fields": True,
+        "use_urls": True,
+        "use_prose_values": True,
+    },
 }
 
 
@@ -118,6 +123,12 @@ class Redactor:
         Also redact sex/gender and honorific/job-title fields (``"Gender": "F"``)
         and nationality / religious-group words (``EntityType.NRP``). Off by
         default; on in the prose profile.
+    use_prose_values:
+        Redact bare years, sums of money and number/year references such as case
+        or application numbers (``detectors/prose_values.py``). Off by default
+        because logs and code are full of such shapes; on in the prose profile.
+        With the prose profile the optional spaCy tier also keeps a person's
+        title with the name and skips generic institution words.
     profile:
         ``"default"`` or ``"prose"`` (see :data:`PROFILES`). A profile only sets
         the tiers you leave unset (``None``): ``profile="prose", use_dates=False``
@@ -175,6 +186,7 @@ class Redactor:
         use_dates: bool | None = None,
         use_prose_fields: bool | None = None,
         use_urls: bool | None = None,
+        use_prose_values: bool | None = None,
         use_log_usernames: bool = False,
         profile: str = "default",
         calibrator: Calibrator | None = None,
@@ -198,6 +210,8 @@ class Redactor:
             use_prose_fields = PROFILES[profile].get("use_prose_fields", False)
         if use_urls is None:
             use_urls = PROFILES[profile].get("use_urls", False)
+        if use_prose_values is None:
+            use_prose_values = PROFILES[profile].get("use_prose_values", False)
         self.profile = profile
         _validate_streaming_args(chunk_size, overlap, min_confidence)
         self.policy = policy or RedactionPolicy()
@@ -254,7 +268,7 @@ class Redactor:
         if use_ner:
             from safestream_redactor.detectors.ner import NERDetector
 
-            self._detectors.append(NERDetector(ner_model))
+            self._detectors.append(NERDetector(ner_model, prose=profile == "prose"))
         if use_gazetteer:
             from safestream_redactor.detectors.gazetteer_ner import GazetteerNameDetector
 
@@ -312,6 +326,10 @@ class Redactor:
             from safestream_redactor.detectors.deterministic import PostcodeDetector
 
             self._detectors.append(PostcodeDetector())
+        if use_prose_values or (resolved_types is not None and EntityType.MONEY in resolved_types):
+            from safestream_redactor.detectors.prose_values import ProseValueDetector
+
+            self._detectors.append(ProseValueDetector(years=bool(use_dates)))
         if use_prose_fields or (resolved_types is not None and EntityType.NRP in resolved_types):
             from safestream_redactor.detectors.deterministic import NrpDetector
 

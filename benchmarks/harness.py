@@ -78,6 +78,10 @@ SYSTEMS: dict[str, tuple[str, dict[str, Any] | None]] = {
     "safestream-native": ("pattern", {"backend": "native"}),
     "safestream-native-dates": ("pattern", {"backend": "native", "use_dates": True}),
     "safestream-python-dates": ("pattern", {"backend": "python", "use_dates": True}),
+    "safestream-python-prose-spacy": (
+        "ner",
+        {"backend": "python", "profile": "prose", "use_ner": True},
+    ),
     # the "prose" detection profile (documents rather than logs)
     "safestream-native-prose": ("pattern", {"backend": "native", "profile": "prose"}),
     "safestream-native-onnx": ("ner", {"backend": "native", **_ONNX}),

@@ -1,0 +1,266 @@
+{
+ "corpus": "tab_train",
+ "split": "test",
+ "n_docs": 1014,
+ "source_revision": "558e09e26d6b36f5f78440074e6a233946d98bd9",
+ "previously_exposed": null,
+ "corpus_notes": "real ECHR judgments (TAB train split, MIT licence); gold = DIRECT and QUASI mentions, union over annotators here; primary scores per annotator",
+ "corpus_skipped": [],
+ "has_necessity": true,
+ "has_negatives": false,
+ "has_scope": true,
+ "environment": {
+  "date": "2026-11-14T05:32:25+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.18",
+  "versions": {
+   "safestream-redactor": "0.5.0",
+   "safestream-redactor-native": null,
+   "presidio-analyzer": null,
+   "spacy": null,
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": null,
+   "en-core-web-lg": null,
+   "onnxruntime": "1.29.0",
+   "tokenizers": null,
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.5.3"
+  },
+  "commit": "9c109757c6de9d5da5789b13b85388b934f1160a",
+  "dirty": false
+ },
+ "isolated_venvs": "/tmp/claude-0/venvs-frozen",
+ "systems": {
+  "safestream-python-prose-spacy": "ner"
+ },
+ "runs": {
+  "safestream-python-prose-spacy": {
+   "system": "safestream-python-prose-spacy",
+   "load_s": 0.8807738450000215,
+   "bytes": 8328627,
+   "peak_rss_mb": 271.62890625,
+   "tool_rss_mb": 234.9453125,
+   "python": "/tmp/claude-0/venvs-frozen/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": null,
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 115.05640749399936,
+   "mb_s": 0.07238733749299768,
+   "p50_ms": 75.56946700003664,
+   "p99_ms": 402.6962850000473
+  }
+ },
+ "scores": {
+  "systems": {
+   "safestream-python-prose-spacy": {
+    "point": {
+     "char_p": 0.567502067350598,
+     "char_r": 0.8119328225246257,
+     "char_f1": 0.6680613325275692,
+     "entity_recall_covered": 0.796966673993541,
+     "ent_p_partial": 0.5957143375110284,
+     "ent_r_partial": 0.8334037840488308,
+     "ent_f1_partial": 0.6947929294353133,
+     "ent_p_strict": 0.5009608295766307,
+     "ent_r_strict": 0.7008437177687976,
+     "ent_f1_strict": 0.5842801161512221,
+     "mandatory_recall": 0.8119328225246257,
+     "no_leak_doc_rate": 0.03451676528599606,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.1816627007733492,
+     "scope_char_r": 0.8711323740258968,
+     "scope_char_f1": 0.30063259903988515,
+     "scope_fully_redacted": 0.8217407137654771
+    },
+    "ci95": {},
+    "per_type": {
+     "CODE": {
+      "gold": 1963,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATETIME": {
+      "gold": 26985,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 29559,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DEM": {
+      "gold": 2190,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 1985,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "IP_ADDRESS": {
+      "gold": 0,
+      "pred": 1,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOC": {
+      "gold": 3968,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 8761,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 2385,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MONEY": {
+      "gold": 0,
+      "pred": 968,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 3870,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORG": {
+      "gold": 8750,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 25085,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 10984,
+      "pred": 12509,
+      "p_partial": 0.6263490286993365,
+      "r_partial": 0.7133102694828842,
+      "f1_partial": 0.6670071936321458,
+      "p_strict": 0.5859780957710449,
+      "r_strict": 0.6673343044428259,
+      "f1_strict": 0.6240156642404121
+     },
+     "QUANTITY": {
+      "gold": 1918,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 3,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {}
+ },
+ "command": "python3 -m benchmarks.harness --corpus tab_train --split test --systems safestream-python-prose-spacy --venv-root /tmp/claude-0/venvs-frozen --bootstrap 0 --checkpoint-dir /tmp/claude-0/runs/ck-tabtrain --json /tmp/claude-0/runs/tabtrain_frozen.json"
+}

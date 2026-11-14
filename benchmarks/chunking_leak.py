@@ -114,6 +114,7 @@ def main() -> None:
     ap.add_argument("--corpus", required=True)
     ap.add_argument("--split", default="test")
     ap.add_argument("--spacy", action="store_true", help="add the spaCy tier")
+    ap.add_argument("--profile", default="default", help="Redactor detection profile")
     ap.add_argument("--chunks", type=int, nargs="+", default=[1024, 4096, 16384, 65536])
     ap.add_argument("--seeds", type=int, default=5)
     ap.add_argument(
@@ -128,7 +129,7 @@ def main() -> None:
     import safestream_redactor
     from safestream_redactor.redactor import Redactor
 
-    redactor = Redactor(backend="python", use_ner=args.spacy)
+    redactor = Redactor(backend="python", use_ner=args.spacy, profile=args.profile)
     corpus = corpora.load(args.corpus, args.split)
     docs = corpus.docs
     if args.max_chars:
@@ -146,7 +147,9 @@ def main() -> None:
     out: dict[str, Any] = {
         "corpus": args.corpus,
         "split": args.split,
-        "pipeline": "pattern+spacy" if args.spacy else "pattern",
+        "pipeline": ("pattern+spacy" if args.spacy else "pattern")
+        + ("" if args.profile == "default" else f" ({args.profile} profile)"),
+        "profile": args.profile,
         "safestream_version": safestream_redactor.__version__,
         "stream_chars": n,
         "n_docs": len(docs),
