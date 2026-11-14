@@ -6,6 +6,8 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-14
+
 ### Added
 
 - **Live demo: a complete, guided playground.** The browser demo now offers every

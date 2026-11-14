@@ -206,7 +206,7 @@ reports `file:line:col` and the type, never the secret. As a pre-commit hook:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/MounishSenisetty/SafeStream-Redactor
-    rev: v0.5.0
+    rev: v1.0.0
     hooks:
       - id: safestream-detect
 ```
@@ -214,7 +214,7 @@ repos:
 As a GitHub Action, with an optional SARIF report for code scanning:
 
 ```yaml
-- uses: MounishSenisetty/SafeStream-Redactor@v0.5.0
+- uses: MounishSenisetty/SafeStream-Redactor@v1.0.0
   with:
     paths: "."
     sarif-file: results.sarif

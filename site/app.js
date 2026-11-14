@@ -1741,7 +1741,7 @@ async function runGate() {
 }
 $("ci-run").addEventListener("click", runGate);
 function renderCiSnippets() {
-  const v = info ? `v${info.version}` : "v0.5.0";
+  const v = info ? `v${info.version}` : "v1.0.0";
   const cfg = Object.keys(policy).length;
   $("ci-precommit").textContent = `# .pre-commit-config.yaml
 repos:
