@@ -1,0 +1,151 @@
+{
+ "code": {
+  "code_root": "/tmp/claude-0/-home-user-SafeStream-Redactor/04b0f226-507e-5845-9a14-3cc8ba7cc7e9/scratchpad/wt_pre",
+  "commit": "21778c1fafc116dcdd369e945a6a6a0b74075112",
+  "src_dirty": false
+ },
+ "min_len": 4,
+ "results": {
+  "pattern|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 5250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "pattern|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 976,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "pattern|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 0,
+   "values_checked": 15092,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "gazetteer|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 701,
+   "values_checked": 5250,
+   "values_egressed": 701,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 1402,
+    "mcp.explain_detection|whitespace": 1402
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.norm": 1402,
+    "mcp.explain_detection.structuredContent.explanations[].notes.norm": 1402
+   },
+   "events_by_gold_type": {
+    "PERSON": 2804
+   }
+  },
+  "gazetteer|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 24,
+   "values_checked": 976,
+   "values_egressed": 25,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 52,
+    "mcp.explain_detection|raw": 2,
+    "mcp.explain_detection|whitespace": 52
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.norm": 53,
+    "mcp.explain_detection.structuredContent.explanations[].notes.norm": 53
+   },
+   "events_by_gold_type": {
+    "CREATIVE_WORK": 4,
+    "ORGANIZATION": 16,
+    "PERSON": 82,
+    "PRODUCT": 4
+   }
+  },
+  "gazetteer|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 119,
+   "values_checked": 15092,
+   "values_egressed": 199,
+   "events_by_tool_encoding": {
+    "mcp.explain_detection|casefold": 410,
+    "mcp.explain_detection|raw": 2,
+    "mcp.explain_detection|whitespace": 410
+   },
+   "events_by_json_path": {
+    "mcp.explain_detection.content[].text<json>.explanations[].notes.norm": 411,
+    "mcp.explain_detection.structuredContent.explanations[].notes.norm": 411
+   },
+   "events_by_gold_type": {
+    "LOCATION": 40,
+    "PERSON": 696,
+    "SEX": 24,
+    "TITLE": 56,
+    "USERNAME": 6
+   }
+  },
+  "onnx|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 5250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "onnx|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 976,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "onnx|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 0,
+   "values_checked": 15092,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "spacy|agent_traces": {
+   "docs": 2000,
+   "docs_with_egress": 0,
+   "values_checked": 5250,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "spacy|wnut17": {
+   "docs": 129,
+   "docs_with_egress": 0,
+   "values_checked": 976,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  },
+  "spacy|ai4privacy": {
+   "docs": 3973,
+   "docs_with_egress": 0,
+   "values_checked": 15092,
+   "values_egressed": 0,
+   "events_by_tool_encoding": {},
+   "events_by_json_path": {},
+   "events_by_gold_type": {}
+  }
+ }
+}
