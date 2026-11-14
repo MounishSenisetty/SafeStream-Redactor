@@ -7,6 +7,7 @@ checked by one author. This script lets a second person label the same templates
 blind and measures agreement with the frozen labels.
 
     python -m benchmarks.loghub_agreement sheet -o second_annotator.csv
+        (a ready copy is committed as benchmarks/corpora/loghub_second_annotator_sheet.csv)
         Writes a blind labelling sheet: every template of both corpora, one row per
         <*> slot plus one ``literal`` row per template, with the template text only.
         It contains none of the frozen labels.

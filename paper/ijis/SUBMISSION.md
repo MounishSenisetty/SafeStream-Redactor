@@ -19,7 +19,7 @@ The manuscript cites Online Resource 1 by that name; upload it with that title.
 
 ## Ready in the files
 
-- Title, abstract (237 words), keywords, numbered sections, numbered references.
+- Title, abstract (236 words), keywords, numbered sections, numbered references.
 - Declarations section: funding, competing interests, ethics, consent, data and code
   availability, author contributions, use of generative AI.
 - Every result traceable to `research/results/raw/`; real-data evaluations
@@ -44,7 +44,10 @@ These are facts only the authors can check; nothing in the files is a placeholde
 
 ## Optional, strengthens the paper
 
-- A second person labels the Loghub templates blind
-  (`python -m benchmarks.loghub_agreement sheet`, then `agree`); report the
-  agreement in the threats paragraph. The paper currently states that the labels
-  were checked by one author and that the tool is released.
+- A second person labels the Loghub templates blind: give them
+  `benchmarks/corpora/loghub_second_annotator_sheet.csv` (instructions at its top;
+  they must not open `benchmarks/corpora/loghub_slots*.json`), then run
+  `python -m benchmarks.loghub_agreement agree <filled sheet> --annotator "<name>"`
+  and add the reported kappa to the threats paragraph. The paper currently states
+  that one author checked the labels, that an independent audit against the slot
+  values found one disclosed defect, and that the sheet and tool are released.
