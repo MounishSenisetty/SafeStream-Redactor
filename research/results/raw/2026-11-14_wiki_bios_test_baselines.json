@@ -1,0 +1,794 @@
+{
+ "corpus": "wiki_bios",
+ "split": "test",
+ "n_docs": 553,
+ "source_revision": "5df8a0dbf337a7aab975d24f63d3b4f21e8690f1",
+ "previously_exposed": null,
+ "corpus_notes": "Wikipedia biographies (Papadopoulou et al. 2022); gold = DIRECT and QUASI mentions, union over annotators here; primary scores per annotator",
+ "corpus_skipped": [],
+ "has_necessity": true,
+ "has_negatives": false,
+ "has_scope": true,
+ "environment": {
+  "date": "2026-11-14T06:23:52+00:00",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "physical_cores": 4,
+  "logical_cores": 4,
+  "power": "no battery (AC)",
+  "power_plan": null,
+  "os": "Linux-6.18.44-fc-v470-x86_64-with-glibc2.39",
+  "multiprocessing_start_method": "fork",
+  "python": "3.13.18",
+  "versions": {
+   "safestream-redactor": "0.5.0",
+   "safestream-redactor-native": null,
+   "presidio-analyzer": null,
+   "spacy": null,
+   "spacy-huggingface-pipelines": null,
+   "en-core-web-sm": null,
+   "en-core-web-lg": null,
+   "onnxruntime": "1.29.0",
+   "tokenizers": null,
+   "transformers": null,
+   "torch": null,
+   "numpy": "2.5.3"
+  },
+  "commit": "365f5ad5cf0ebdc7691358c741c19d8b8f2ba64d",
+  "dirty": false
+ },
+ "isolated_venvs": "/tmp/claude-0/venvs",
+ "systems": {
+  "abl-full-spacy": "ner",
+  "presidio-regex": "pattern",
+  "presidio-sm": "ner",
+  "presidio-lg": "ner"
+ },
+ "runs": {
+  "abl-full-spacy": {
+   "system": "abl-full-spacy",
+   "load_s": 1.3957502960000028,
+   "bytes": 270206,
+   "peak_rss_mb": 142.68359375,
+   "tool_rss_mb": 121.5625,
+   "python": "/tmp/claude-0/venvs/safestream/bin/python",
+   "versions": {
+    "safestream-redactor": "0.4.0",
+    "safestream-redactor-native": null,
+    "presidio-analyzer": null,
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": null,
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 4.8859693400001305,
+   "mb_s": 0.05530243462395382,
+   "p50_ms": 6.499602999994636,
+   "p99_ms": 32.907897000001185
+  },
+  "presidio-regex": {
+   "system": "presidio-regex",
+   "load_s": 1.6194523890000028,
+   "bytes": 270206,
+   "peak_rss_mb": 103.14453125,
+   "tool_rss_mb": 82.09375,
+   "python": "/tmp/claude-0/venvs/presidio/bin/python",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 1.6494774659999223,
+   "mb_s": 0.16381308964181554,
+   "p50_ms": 2.075167000000988,
+   "p99_ms": 13.790229999997905
+  },
+  "presidio-sm": {
+   "system": "presidio-sm",
+   "load_s": 1.0813987790000112,
+   "bytes": 270206,
+   "peak_rss_mb": 164.34765625,
+   "tool_rss_mb": 143.26171875,
+   "python": "/tmp/claude-0/venvs/presidio/bin/python",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 10.131297767000433,
+   "mb_s": 0.026670423297606792,
+   "p50_ms": 12.868718000021317,
+   "p99_ms": 84.12404200001333
+  },
+  "presidio-lg": {
+   "system": "presidio-lg",
+   "load_s": 3.183719400000001,
+   "bytes": 270206,
+   "peak_rss_mb": 758.421875,
+   "tool_rss_mb": 737.296875,
+   "python": "/tmp/claude-0/venvs/presidio/bin/python",
+   "versions": {
+    "safestream-redactor": null,
+    "safestream-redactor-native": null,
+    "presidio-analyzer": "2.2.355",
+    "spacy": "3.8.13",
+    "spacy-huggingface-pipelines": null,
+    "en-core-web-sm": "3.8.0",
+    "en-core-web-lg": "3.8.0",
+    "onnxruntime": null,
+    "tokenizers": null,
+    "transformers": null,
+    "torch": null,
+    "numpy": "2.5.4"
+   },
+   "heavy_modules_loaded": [
+    "spacy"
+   ],
+   "threads": 1,
+   "power_at_end": "no battery (AC)",
+   "analyze_s": 10.849597630999853,
+   "mb_s": 0.02490470238527168,
+   "p50_ms": 14.011334000002762,
+   "p99_ms": 84.1245219999962
+  }
+ },
+ "scores": {
+  "systems": {
+   "abl-full-spacy": {
+    "point": {
+     "char_p": 0.8448692924945365,
+     "char_r": 0.5346706081081081,
+     "char_f1": 0.6548948358689537,
+     "entity_recall_covered": 0.4412116381028298,
+     "ent_p_partial": 0.7807860262008733,
+     "ent_r_partial": 0.475089677162216,
+     "ent_f1_partial": 0.5907326340133806,
+     "ent_p_strict": 0.6089519650655022,
+     "ent_r_strict": 0.3705327487710907,
+     "ent_f1_strict": 0.4607252002973486,
+     "mandatory_recall": 0.5346706081081081,
+     "no_leak_doc_rate": 0.0054249547920434,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.6831902425729082,
+     "scope_char_r": 0.8466182555095837,
+     "scope_char_f1": 0.7561748180549794,
+     "scope_fully_redacted": 0.7749057619816909
+    },
+    "ci95": {},
+    "per_type": {
+     "DATETIME": {
+      "gold": 1730,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DEM": {
+      "gold": 576,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 3,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOC": {
+      "gold": 701,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 1298,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 1001,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORG": {
+      "gold": 1359,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 1592,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 1857,
+      "pred": 1687,
+      "p_partial": 0.7279193835210432,
+      "r_partial": 0.6612816370490038,
+      "f1_partial": 0.6930022573363431,
+      "p_strict": 0.6508595139300534,
+      "r_strict": 0.5912762520193862,
+      "f1_strict": 0.6196388261851016
+     },
+     "QUANTITY": {
+      "gold": 303,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-regex": {
+    "point": {
+     "char_p": 0.42500948047023135,
+     "char_r": 0.047328969594594594,
+     "char_f1": 0.08517308203822624,
+     "entity_recall_covered": 0.016075461671316595,
+     "ent_p_partial": 0.25629077353215285,
+     "ent_r_partial": 0.03653514016208317,
+     "ent_f1_partial": 0.06395348837209303,
+     "ent_p_strict": 0.097856477166822,
+     "ent_r_strict": 0.013949780789159028,
+     "ent_f1_strict": 0.024418604651162794,
+     "mandatory_recall": 0.047328969594594594,
+     "no_leak_doc_rate": 0.0,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.13034126756524234,
+     "scope_char_r": 0.038377100396858904,
+     "scope_char_f1": 0.059295499021526414,
+     "scope_fully_redacted": 0.006462035541195477
+    },
+    "ci95": {},
+    "per_type": {
+     "DATETIME": {
+      "gold": 1730,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 3,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DEM": {
+      "gold": 576,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 989,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOC": {
+      "gold": 701,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 1001,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORG": {
+      "gold": 1359,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 1857,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "QUANTITY": {
+      "gold": 303,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 81,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-sm": {
+    "point": {
+     "char_p": 0.746909504138577,
+     "char_r": 0.5134923986486486,
+     "char_f1": 0.6085873910622563,
+     "entity_recall_covered": 0.5146804835924007,
+     "ent_p_partial": 0.6288242351529694,
+     "ent_r_partial": 0.5570612461804172,
+     "ent_f1_partial": 0.5907713983797112,
+     "ent_p_strict": 0.5275944811037793,
+     "ent_r_strict": 0.46738408396439485,
+     "ent_f1_strict": 0.49566748855230713,
+     "mandatory_recall": 0.5134923986486486,
+     "no_leak_doc_rate": 0.05605786618444846,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.5170827473042663,
+     "scope_char_r": 0.745039263700076,
+     "scope_char_f1": 0.6104749714601999,
+     "scope_fully_redacted": 0.6521270866989769
+    },
+    "ci95": {},
+    "per_type": {
+     "DATETIME": {
+      "gold": 1730,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 1965,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DEM": {
+      "gold": 576,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 989,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOC": {
+      "gold": 701,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 1201,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 1001,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 745,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORG": {
+      "gold": 1359,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 1857,
+      "pred": 1687,
+      "p_partial": 0.7279193835210432,
+      "r_partial": 0.6612816370490038,
+      "f1_partial": 0.6930022573363431,
+      "p_strict": 0.6502667457024304,
+      "r_strict": 0.5907377490576198,
+      "f1_strict": 0.6190744920993229
+     },
+     "QUANTITY": {
+      "gold": 303,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 81,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   },
+   "presidio-lg": {
+    "point": {
+     "char_p": 0.7532070861331704,
+     "char_r": 0.546727195945946,
+     "char_f1": 0.633568640884789,
+     "entity_recall_covered": 0.5566626810150126,
+     "ent_p_partial": 0.6322320011542346,
+     "ent_r_partial": 0.5821708516009034,
+     "ent_f1_partial": 0.606169594688062,
+     "ent_p_strict": 0.5413360265473958,
+     "ent_r_strict": 0.49847216686594925,
+     "ent_f1_strict": 0.5190206114262,
+     "mandatory_recall": 0.546727195945946,
+     "no_leak_doc_rate": 0.0867992766726944,
+     "fp_doc_rate": 0.0,
+     "scope_char_p": 0.5432939466530293,
+     "scope_char_r": 0.8521911677784345,
+     "scope_char_f1": 0.6635546277880965,
+     "scope_fully_redacted": 0.7700592353257943
+    },
+    "ci95": {},
+    "per_type": {
+     "DATETIME": {
+      "gold": 1730,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DATE_TIME": {
+      "gold": 0,
+      "pred": 1934,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "DEM": {
+      "gold": 576,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ID": {
+      "gold": 0,
+      "pred": 989,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOC": {
+      "gold": 701,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "LOCATION": {
+      "gold": 0,
+      "pred": 1310,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "MISC": {
+      "gold": 1001,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "NRP": {
+      "gold": 0,
+      "pred": 777,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORG": {
+      "gold": 1359,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "ORGANIZATION": {
+      "gold": 0,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "PERSON": {
+      "gold": 1857,
+      "pred": 1840,
+      "p_partial": 0.7907608695652174,
+      "r_partial": 0.7835218093699515,
+      "f1_partial": 0.7871246956992156,
+      "p_strict": 0.7195652173913043,
+      "r_strict": 0.7129779213785676,
+      "f1_strict": 0.7162564241276711
+     },
+     "QUANTITY": {
+      "gold": 303,
+      "pred": 0,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     },
+     "URL": {
+      "gold": 0,
+      "pred": 81,
+      "p_partial": 0.0,
+      "r_partial": 0.0,
+      "f1_partial": 0.0,
+      "p_strict": 0.0,
+      "r_strict": 0.0,
+      "f1_strict": 0.0
+     }
+    }
+   }
+  },
+  "paired_diff_ci95": {}
+ },
+ "command": "python3 -m benchmarks.harness --corpus wiki_bios --split test --systems abl-full-spacy presidio-regex presidio-sm presidio-lg --venv-root /tmp/claude-0/venvs --bootstrap 0 --checkpoint-dir /tmp/claude-0/runs/ck-wiki --json /tmp/claude-0/runs/wiki_base.json"
+}
