@@ -65,6 +65,8 @@ class EntityType(str, Enum):
     TITLE = "title"
     # nationality / religious-group words (prose profile only)
     NRP = "nrp"
+    # a sum of money with its currency (prose profile only)
+    MONEY = "money"
     # generic sensitive identifier caught only via an adjacent label cue
     # (student/employee/member/patient/account/MRN/licence/passport/... numbers)
     ID_NUMBER = "id_number"

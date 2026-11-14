@@ -61,7 +61,7 @@ def test_ner_detects_via_model(fake_spacy):
 def test_getstate_carries_config_not_the_model(fake_spacy):
     det = _detector()
     state = det.__getstate__()
-    assert state == {"model": "fake-model", "confidence": 0.7}
+    assert state == {"model": "fake-model", "confidence": 0.7, "prose": False}
     assert "_nlp" not in state  # the heavy model object is not serialized
 
 
@@ -69,6 +69,7 @@ def test_pickle_roundtrip_reloads_model(fake_spacy):
     det = _detector()
     restored = pickle.loads(pickle.dumps(det))
     assert restored._model == "fake-model"
+    assert restored._prose is False
     # the reloaded detector is fully functional
     assert restored.detect("ping Alice")[0].entity_type is EntityType.PERSON
 

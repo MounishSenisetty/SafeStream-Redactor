@@ -6,6 +6,16 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Prose profile: years, money and reference numbers; spaCy prose mode.** `profile="prose"`
+  now also redacts bare years (with the date tier), sums of money with their currency
+  (`EntityType.MONEY`) and number/year references such as case or application numbers
+  (`detectors/prose_values.py`, `use_prose_values`). With the prose profile the optional
+  spaCy tier keeps a person's title with the name ("Mr Eric Oldham", which spaCy splits)
+  and no longer redacts generic institution words ("the Court", "Government"). All of
+  it is off in the default profile, and the declared bounds leave the overlap at 8192.
+
 ### Fixed
 
 - **`--types` / `types=` now scopes every tier.** The labeled-identifier, structured-field

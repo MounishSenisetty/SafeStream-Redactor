@@ -57,3 +57,23 @@ The streamed output of the frozen configuration is compared with its
 whole-document output on `tab_train` under random chunkings.
 
 Results are reported whatever their direction.
+
+## Frozen configuration (added in the freeze commit, before the confirmation run)
+
+`Redactor(profile="prose", use_ner=True)` with spaCy `en_core_web_sm`
+(harness system `safestream-python-prose-spacy`). Developed on `tab_dev` only:
+the prose profile's date tier, a new prose-values tier (bare years, money,
+number/year references), and a prose mode of the spaCy tier (titles kept with
+person names, generic institution words skipped). A rule treating all-capital
+words as headings was tried on `tab_dev` and removed because it would drop
+acronym organisations; a document-level consistency pass was not needed and was
+not built.
+
+Development-split scores (for reference only; not evidence):
+
+| System | Char P | Char R | Char F1 | ER direct | ER quasi |
+|---|---|---|---|---|---|
+| frozen configuration | .665 | .838 | .742 | .944 | .826 |
+| SafeStream +spaCy (current code, default profile) | .455 | .324 | .378 | .123 | .160 |
+| Presidio sm | .547 | .683 | .607 | .116 | .646 |
+| Presidio lg | .550 | .688 | .612 | .132 | .644 |
