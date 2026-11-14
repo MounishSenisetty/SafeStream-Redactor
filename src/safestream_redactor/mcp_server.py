@@ -45,6 +45,24 @@ PROTOCOL_VERSION = "2024-11-05"
 # whole files go through the streaming CLI, not the tool boundary.
 MAX_TEXT_BYTES = 4 * 1024 * 1024
 
+# Detector metadata keys whose values are fixed vocabulary or numbers, never input
+# text. Everything else (gazetteer "norm", labelled-ID "cue", structured "field",
+# the ONNX "model" path) stays out of explain_detection.
+VALUE_FREE_META = frozenset(
+    {
+        "signal",
+        "entropy",
+        "shape",
+        "phone_shape",
+        "spacy_label",
+        "onnx_label",
+        "onnx_score",
+        "policy",
+        "score",
+        "evidence",
+    }
+)
+
 # JSON-RPC 2.0 error codes.
 PARSE_ERROR = -32700
 INVALID_REQUEST = -32600
@@ -255,10 +273,12 @@ class MCPServer:
                 "confidence": round(det.confidence, 3),
                 "severity": severity_for(det.entity_type),
                 "detector": det.source,
-                # meta may carry an entropy figure or a "boosted"/"suppressed"
-                # context note; none of it is the secret text.
+                # "boosted"/"suppressed"/"embedded": fixed vocabulary, no input text
                 "context": det.meta.get("context"),
-                "notes": {k: v for k, v in det.meta.items() if k != "context"},
+                # allow-list, not deny-list: detector metadata may hold input text
+                # (the gazetteer's normalised name, a label cue, a model path), and
+                # a new detector's keys must not reach the agent by default
+                "notes": {k: v for k, v in det.meta.items() if k in VALUE_FREE_META},
             }
             for det in detections
         ]
