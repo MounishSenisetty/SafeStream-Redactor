@@ -313,7 +313,7 @@ def figure_recall_cost() -> None:
     axes[0].set_ylabel("person-name char. recall", fontsize=7)
     fig.tight_layout()
     OUT_FIG.mkdir(exist_ok=True)
-    fig.savefig(OUT_FIG / "fig_recall_cost.pdf")
+    fig.savefig(OUT_FIG / "fig_recall_cost.pdf", metadata={"CreationDate": None})
 
 
 def main() -> None:
