@@ -790,6 +790,24 @@ def load_benign() -> Corpus:
     return Corpus("benign", docs, paths, None, "public prose with no personal data (gold-free)")
 
 
+def load_agent_traces() -> Corpus:
+    """AgentTrace: generated agent tool outputs with planted values (fixed seed).
+    Plumbing only (egress, latency, policy cost), never a detection-accuracy corpus."""
+    from benchmarks import generate_agent_traces as gen
+
+    docs = [
+        Doc(str(d["id"]), str(d["text"]), [Gold(s, e, t) for s, e, t in d["spans"]])  # type: ignore[attr-defined]
+        for d in gen.generate(2000)
+    ]
+    return Corpus(
+        "agent_traces",
+        docs,
+        [Path(gen.__file__)],
+        None,
+        "generated agent tool outputs (seed 20261114); plumbing only, never accuracy",
+    )
+
+
 def load_creddata() -> Corpus:
     """CredData (Samsung): lines of real open-source files labelled by people as holding
     a credential (T) or not (F, X), with real values obfuscated by its builder.
@@ -889,6 +907,7 @@ LOADERS: dict[str, Callable[[], Corpus]] = {
     "wiki_bios": load_wiki_bios,
     "wnut17": load_wnut17,
     "benign": load_benign,
+    "agent_traces": load_agent_traces,
 }
 
 
