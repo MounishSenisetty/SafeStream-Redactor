@@ -1,17 +1,17 @@
 \begin{table*}[t]
-\caption{Accuracy and cost (C-RQ1). PER R: person-name character recall; Scope F1: character F1 over gold of the types Presidio can detect; 95\% document-level intervals. kB/s and p50 (median ms per document) from the WNUT-17 run; FA: share of the 55 benign documents with any detection. $^\ast$CoNLL-2003 is the neural model's training distribution: an upper bound, not independent evidence.}\label{tab:accuracy}
+\caption{Accuracy and cost (C-RQ1). PER R: person-name character recall; Scope F1: character F1 over gold of the types Presidio can detect; 95\% document-level intervals. BTC: Broad Twitter Corpus section F, a second real corpus run as a replication. kB/s and p50 (median ms per document) from the WNUT-17 run; FA: share of the 55 benign documents with any detection. $^\ast$CoNLL-2003 is the neural model's training distribution: an upper bound, not independent evidence.}\label{tab:accuracy}
 \centering\footnotesize\setlength{\tabcolsep}{4pt}
-\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}l llllll rrr@{}}
+\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}l llllllll rrr@{}}
 \toprule
- & \multicolumn{2}{c}{ai4privacy (synthetic)} & \multicolumn{2}{c}{WNUT-17 (real)} & CoNLL$^\ast$ & & \multicolumn{3}{c}{Cost and false alarms}\\
-System & PER R & Scope F1 & PER R & Scope F1 & PER R & & kB/s & p50 & FA \\
+ & \multicolumn{2}{c}{ai4privacy (synthetic)} & \multicolumn{2}{c}{WNUT-17 (real)} & \multicolumn{2}{c}{BTC (real)} & CoNLL$^\ast$ & & \multicolumn{3}{c}{Cost and false alarms}\\
+System & PER R & Scope F1 & PER R & Scope F1 & PER R & Scope F1 & PER R & & kB/s & p50 & FA \\
 \midrule
-T0 & \pc{0.361}{0.328, 0.396} & \pc{0.732}{0.721, 0.743} & \pc{0.000}{0.000, 0.000} & \pc{0.000}{0.000, 0.000} & \pc{0.002}{0.000, 0.007} &  & 1461.6 & 0.6 & 0.00 \\
-T0+NN & \pc{0.697}{0.666, 0.729} & \pc{0.742}{0.733, 0.752} & \pc{0.481}{0.419, 0.548} & \pc{0.382}{0.325, 0.447} & \pc{0.919}{0.891, 0.941} &  & 32.6 & 29.3 & 0.56 \\
-T0+NN ungated & \pc{0.937}{0.921, 0.951} & \pc{0.752}{0.744, 0.761} & \pc{0.707}{0.659, 0.757} & \pc{0.463}{0.409, 0.524} & \pc{0.992}{0.986, 0.997} &  & 10.5 & 94.1 & 0.58 \\
-T0+spaCy & \pc{0.606}{0.577, 0.636} & \pc{0.694}{0.684, 0.704} & \pc{0.456}{0.400, 0.519} & \pc{0.338}{0.294, 0.391} & \pc{0.807}{0.754, 0.858} &  & 66.5 & 14.0 & 0.58 \\
-Presidio sm & \pc{0.380}{0.352, 0.407} & \pc{0.690}{0.681, 0.698} & \pc{0.464}{0.408, 0.528} & \pc{0.216}{0.185, 0.250} & \pc{0.804}{0.752, 0.855} &  & 34.9 & 27.2 & 0.78 \\
-Presidio lg & \pc{0.481}{0.454, 0.510} & \pc{0.709}{0.701, 0.716} & \pc{0.529}{0.474, 0.590} & \pc{0.229}{0.198, 0.264} & \pc{0.864}{0.809, 0.914} &  & 33.3 & 28.3 & 0.80 \\
+T0 & \pc{0.361}{0.328, 0.396} & \pc{0.732}{0.721, 0.743} & \pc{0.000}{0.000, 0.000} & \pc{0.000}{0.000, 0.000} & \pc{0.000}{0.000, 0.000} & \pc{0.001}{0.000, 0.003} & \pc{0.002}{0.000, 0.007} &  & 1461.6 & 0.6 & 0.00 \\
+T0+NN & \pc{0.697}{0.666, 0.729} & \pc{0.742}{0.733, 0.752} & \pc{0.481}{0.419, 0.548} & \pc{0.382}{0.325, 0.447} & \pc{0.369}{0.341, 0.398} & \pc{0.563}{0.541, 0.585} & \pc{0.919}{0.891, 0.941} &  & 32.6 & 29.3 & 0.56 \\
+T0+NN ungated & \pc{0.937}{0.921, 0.951} & \pc{0.752}{0.744, 0.761} & \pc{0.707}{0.659, 0.757} & \pc{0.463}{0.409, 0.524} & \pc{0.634}{0.610, 0.659} & \pc{0.714}{0.697, 0.729} & \pc{0.992}{0.986, 0.997} &  & 10.5 & 94.1 & 0.58 \\
+T0+spaCy & \pc{0.606}{0.577, 0.636} & \pc{0.694}{0.684, 0.704} & \pc{0.456}{0.400, 0.519} & \pc{0.338}{0.294, 0.391} & \pc{0.307}{0.280, 0.335} & \pc{0.456}{0.434, 0.478} & \pc{0.807}{0.754, 0.858} &  & 66.5 & 14.0 & 0.58 \\
+Presidio sm & \pc{0.380}{0.352, 0.407} & \pc{0.690}{0.681, 0.698} & \pc{0.464}{0.408, 0.528} & \pc{0.216}{0.185, 0.250} & \pc{0.306}{0.278, 0.334} & \pc{0.322}{0.304, 0.342} & \pc{0.804}{0.752, 0.855} &  & 34.9 & 27.2 & 0.78 \\
+Presidio lg & \pc{0.481}{0.454, 0.510} & \pc{0.709}{0.701, 0.716} & \pc{0.529}{0.474, 0.590} & \pc{0.229}{0.198, 0.264} & \pc{0.348}{0.321, 0.375} & \pc{0.350}{0.331, 0.369} & \pc{0.864}{0.809, 0.914} &  & 33.3 & 28.3 & 0.80 \\
 \bottomrule
 \end{tabular}\end{adjustbox}
 \end{table*}

@@ -48,7 +48,12 @@ def ci(lo: float, hi: float) -> str:
 
 def table_accuracy() -> str:
     rows = []
-    corp = [("ai4privacy", "ai4privacy"), ("wnut17", "WNUT-17"), ("conll2003", "CoNLL$^\\ast$")]
+    corp = [
+        ("ai4privacy", "ai4privacy"),
+        ("wnut17", "WNUT-17"),
+        ("btc", "BTC"),
+        ("conll2003", "CoNLL$^\\ast$"),
+    ]
     data = {c: (load(f"E2_{c}_test.json"), load(f"E2_{c}_person.json")) for c, _ in corp}
     benign = load("E2_benign_test.json")
     for sys, label in SYSTEMS:
@@ -80,20 +85,24 @@ def table_accuracy() -> str:
         "\n"
         r"\caption{Accuracy and cost (C-RQ1). PER R: person-name character recall; Scope F1: "
         r"character F1 over gold of the types Presidio can detect; 95\% document-level "
-        r"intervals. kB/s and p50 (median ms per document) from the WNUT-17 run; FA: share of "
+        r"intervals. BTC: Broad Twitter Corpus section F, a second real corpus run as a "
+        r"replication. "
+        r"kB/s and p50 (median ms per document) from the WNUT-17 run; FA: share of "
         r"the 55 benign documents with any detection. $^\ast$CoNLL-2003 is the neural model's "
         r"training distribution: an upper bound, not independent evidence.}\label{tab:accuracy}"
         "\n"
         r"\centering\footnotesize\setlength{\tabcolsep}{4pt}"
         "\n"
-        r"\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}l llllll rrr@{}}"
+        r"\begin{adjustbox}{max width=\textwidth}\begin{tabular}{@{}l llllllll rrr@{}}"
         "\n"
         r"\toprule"
         "\n"
         r" & \multicolumn{2}{c}{ai4privacy (synthetic)} & \multicolumn{2}{c}{WNUT-17 (real)} & "
-        r"CoNLL$^\ast$ & & \multicolumn{3}{c}{Cost and false alarms}\\"
+        r"\multicolumn{2}{c}{BTC (real)} & CoNLL$^\ast$ & & "
+        r"\multicolumn{3}{c}{Cost and false alarms}\\"
         "\n"
-        r"System & PER R & Scope F1 & PER R & Scope F1 & PER R & & kB/s & p50 & FA \\"
+        r"System & PER R & Scope F1 & PER R & Scope F1 & PER R & Scope F1 & PER R & & kB/s & p50 "
+        r"& FA \\"
         "\n"
         r"\midrule"
         "\n"
@@ -112,7 +121,7 @@ def table_accuracy() -> str:
 
 def _insert_gap(row: str) -> str:
     cells = row.removesuffix(r" \\").split(" & ")
-    return " & ".join([*cells[:6], "", *cells[6:]]) + r" \\"
+    return " & ".join([*cells[:8], "", *cells[8:]]) + r" \\"
 
 
 def table_gate() -> str:
@@ -123,6 +132,7 @@ def table_gate() -> str:
     names = [
         ("ai4privacy", "ai4privacy"),
         ("wnut17", "WNUT-17"),
+        ("btc", "BTC"),
         ("conll2003", "CoNLL$^\\ast$"),
         ("benign", "Benign prose"),
         ("loghub", "Loghub logs"),

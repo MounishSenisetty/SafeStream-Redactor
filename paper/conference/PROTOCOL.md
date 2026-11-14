@@ -439,3 +439,19 @@ model files (neural NER files checked against `MODEL_SHA256.txt`; Hermes-3 check
 against the SHA-256 above) and the same harness code at the commit that adds this
 note. T3 is installed in this environment, but Amendment 4 names only SafeStream, T2
 and T4, so T3 stays out of it as written.
+
+### Amendment 4: departure on the recorded model hashes (2026-11-14)
+
+The abbreviated SHA-256 values written into Amendment 4 were transcribed wrongly; none
+matches a real file. Before any Amendment 4 run, each file was hashed and compared with
+the SHA-256 Hugging Face publishes for it (the LFS object id) at the stated revision.
+All three match the published values, so they are the files Amendment 4 names:
+
+| File | Revision | SHA-256 (full) |
+|---|---|---|
+| `Hermes-3-Llama-3.1-8B.Q4_K_M.gguf` | `307a5dfb59aa` | `d4403ce5a6e930f4c2509456388c20d633a15ff08dd52ef3b142ff1810ec3553` |
+| `qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf` | `bb5d59e06d95` | `dfce12e3862a5283ccfb88221b48480e58745165de856439950d0f22590580db` |
+| `qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf` | `bb5d59e06d95` | `539cf93f78e887edea1c04e2d7d8cdaca9d01dae9c9025bcb8accbe29df3d72a` |
+
+The Qwen files are the ones used in Amendment 2. These full values replace the
+abbreviations above; nothing else changes.
