@@ -30,7 +30,7 @@ keywords = [
   "data-loss-prevention", "log-sanitization", "gdpr", "hipaa", "mcp",
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Intended Audience :: Information Technology",
@@ -70,7 +70,7 @@ onnx = ["onnxruntime>=1.16", "numpy>=1.21", "tokenizers>=0.15"]
 # released in lockstep from one commit, and scripts/set_version.py writes this pin
 # (tests/test_packaging.py checks it). A runtime spec-guard still falls back to
 # Python if a mismatched wheel is ever installed by hand.
-native = ["safestream-redactor-native==0.5.0"]
+native = ["safestream-redactor-native==1.0.0"]
 # ruff is pinned to a minor series: its formatter output changes between minors,
 # and an unpinned CI once failed `ruff format --check` on code that was clean
 # locally. Bump it together with the ruff rev in .pre-commit-config.yaml.
