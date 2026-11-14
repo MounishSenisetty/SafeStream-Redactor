@@ -57,3 +57,20 @@ character F1 and FA. Everything else is descriptive.
   name or wider context see less than they would in a repository scan.
 
 Results are reported whatever their direction.
+
+## Correction (after scoring, disclosed)
+
+The first loader treated 1,091 line ranges as gold-free although their only rows
+were credential (`T`) rows without a value position. The protocol above counts a
+range as gold-free only when all its rows are `F` or `X`, so these ranges are
+neither gold nor gold-free; the loader now leaves them out (they are listed in the
+corpus's `skipped` notes) and the manifest was re-frozen. Gold is unchanged
+(14,626 values in 14,189 ranges); the gold-free set shrinks from 50,608 to 49,517
+ranges. Every system flagged almost all of the dropped ranges (they hold
+credentials), so the correction lowers every system's false-alarm rate. Results
+are recomputed from the same per-document predictions, filtered to the corrected
+document set; no detector was re-run or changed.
+
+Also reported, descriptively: false alarms split by CredData's label (`F`, not a
+credential; `X`, a test value, example or placeholder), and SafeStream's fully
+redacted rate across confidence thresholds compared at matched false-alarm rates.

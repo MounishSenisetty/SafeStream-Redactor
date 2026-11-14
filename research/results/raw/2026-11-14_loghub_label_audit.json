@@ -1,0 +1,92 @@
+[
+ {
+  "system": "OpenSSH",
+  "slots_checked": 56,
+  "lines": 2000,
+  "flags": [
+   {
+    "template": "E10",
+    "slot": 1,
+    "label": "USER",
+    "issue": "values not shaped like account names",
+    "examples": [
+     " 0101",
+     "0",
+     "123",
+     "1234",
+     "123456"
+    ],
+    "count": 8
+   },
+   {
+    "template": "E12",
+    "slot": 1,
+    "label": "USER",
+    "issue": "values not shaped like account names",
+    "examples": [
+     " 0101",
+     "0",
+     "123",
+     "1234",
+     "123456"
+    ],
+    "count": 10
+   },
+   {
+    "template": "E13",
+    "slot": 1,
+    "label": "USER",
+    "issue": "values not shaped like account names",
+    "examples": [
+     " 0101",
+     "0",
+     "123",
+     "1234",
+     "123456"
+    ],
+    "count": 10
+   },
+   {
+    "template": "E20",
+    "slot": 3,
+    "label": "HOST",
+    "issue": "values that are neither IPs nor host names",
+    "examples": [
+     "103.207.39.16 ",
+     "103.207.39.212 ",
+     "103.99.0.122 ",
+     "104.192.3.34 ",
+     "106.5.5.195 "
+    ],
+    "count": 384
+   },
+   {
+    "template": "E8",
+    "slot": 1,
+    "label": "USER",
+    "issue": "values not shaped like account names",
+    "examples": [
+     "0"
+    ],
+    "count": 3
+   }
+  ]
+ },
+ {
+  "system": "Linux",
+  "slots_checked": 147,
+  "lines": 2000,
+  "flags": [
+   {
+    "template": "E29",
+    "slot": 2,
+    "label": "HOST",
+    "issue": "values that are neither IPs nor host names",
+    "examples": [
+     ""
+    ],
+    "count": 617
+   }
+  ]
+ }
+]
