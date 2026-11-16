@@ -142,6 +142,19 @@ await page.evaluate(() => {
 await until(() => document.querySelector("#output").textContent.includes("dropped mail [REDACTED]"));
 check(true, "a dropped file is read and redacted");
 
+// a UTF-16 file (what Windows PowerShell writes) is decoded by its BOM, not refused as binary
+await page.evaluate(() => {
+  const body = "wide mail bob@corp.io\n";
+  const bytes = new Uint8Array(2 + body.length * 2);
+  bytes.set([0xff, 0xfe]);
+  for (let i = 0; i < body.length; i++) bytes[2 + 2 * i] = body.charCodeAt(i);
+  const dt = new DataTransfer();
+  dt.items.add(new File([bytes], "wide.txt", { type: "text/plain" }));
+  document.getElementById("editor").dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+});
+await until(() => document.querySelector("#output").textContent.includes("wide mail [REDACTED]"));
+check(true, "a dropped UTF-16 file is decoded and redacted");
+
 // live as you type, and the address never carries the text
 const marker = "zq-live-marker";
 await page.fill("#input", `token for ${marker}: AKIAIOSFODNN7EXAMPLE and bob@corp.io\n`);
@@ -154,7 +167,8 @@ const modeOut = async (mode, expect) => {
   await until((re) => new RegExp(re).test(document.querySelector("#output").textContent), expect.source);
   check(true, `mode ${mode}: ${expect}`);
 };
-await modeOut("mask", /\*+MPLE/);
+// a key is a secret: masked in full (only numbers such as cards keep a tail)
+await modeOut("mask", /token for zq-live-marker: \*{20} and/);
 await page.fill('input[name="mask_char"]', "#");
 await until(() => document.querySelector("#output").textContent.includes("#####"));
 check(true, "mask character is applied");

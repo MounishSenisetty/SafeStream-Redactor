@@ -55,7 +55,7 @@ const familyOf = (type) => FAMILY_OF[type] || "secrets";
 const MODES = {
   replace: { label: "Replace", what: "Swap each finding for fixed text such as [REDACTED].",
     when: "Sharing logs or documents where nobody needs the values." },
-  mask: { label: "Mask", what: "Hide all but the last few characters, e.g. ***************1111. Never more than half of a value stays visible.",
+  mask: { label: "Mask", what: "Hide the value, keeping the last few digits of a number, e.g. ***************1111 (at most 4, never more than half). Secrets, names and emails are masked in full.",
     when: "Support and billing screens where the last digits help find a record." },
   pseudonymize: { label: "Pseudonymize", what: "A keyed token such as <EMAIL_75e802c7c314f5a2>. Equal values get equal tokens.",
     when: "Analytics and debugging across files: count and join on a value without seeing it. Anyone with the key can test guesses, so keep it secret." },
