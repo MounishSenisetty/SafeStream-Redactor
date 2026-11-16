@@ -255,8 +255,9 @@ order:
 
 1. **Per-type override** — `replacements[EntityType]` (e.g. `email → "<EMAIL>"`).
 2. **`replace`** (default) — a fixed string, default `[REDACTED]`.
-3. **`mask`** — keep the last *N* chars, star out the rest (`mask_keep_last`,
-   `mask_char`) — e.g. card → `************1111`.
+3. **`mask`** — star out the value, keeping the last *N* chars of a number type
+   (card, phone, SSN, ID, IBAN; at most four digits and half the value) —
+   e.g. card → `************1111`. Secrets, names and emails are masked in full.
 4. **`pseudonymize`** — deterministic, one-way `<TYPE_HMACSHA256[:10]>` token so
    the same input always maps to the same pseudonym. **Requires an `hmac_key`**;
    enforced at construction.

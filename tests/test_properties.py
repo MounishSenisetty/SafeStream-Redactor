@@ -284,8 +284,16 @@ def test_line_tracker_matches_naive_positions(text, cuts, picks):
 def test_mask_never_reveals_more_than_half(value, keep):
     from safestream_redactor.policy import RedactionPolicy
 
-    det = Detection(0, len(value), value, EntityType.CUSTOM, 1.0)
-    out = RedactionPolicy(mode="mask", mask_keep_last=keep).render(det)
+    policy = RedactionPolicy(mode="mask", mask_keep_last=keep)
+    # a number type keeps a tail: at most half the value and at most 4 letters/digits
+    out = policy.render(Detection(0, len(value), value, EntityType.ID_NUMBER, 1.0))
     assert len(out) == len(value)  # shape preserved
-    visible = min(max(0, keep), len(value) // 2)
-    assert out == "*" * (len(value) - visible) + value[len(value) - visible :]
+    n = len(value)
+    # the output is some masked head plus the value's own tail of length k
+    k = next(k for k in range(n + 1) if out == "*" * (n - k) + value[n - k :])
+    assert k <= max(0, min(keep, n // 2))
+    assert sum(c.isalnum() for c in value[n - k :]) <= 4
+    # anything else (a secret, a name, a custom word) is masked in full
+    assert policy.render(Detection(0, len(value), value, EntityType.CUSTOM, 1.0)) == (
+        "*" * len(value)
+    )

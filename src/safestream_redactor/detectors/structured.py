@@ -34,6 +34,7 @@ value at most ``_MAX_VALUE``, so the tier declares a fixed streaming requirement
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
 from safestream_redactor.detectors.base import StreamingRequirements, is_placeholder
 from safestream_redactor.detectors.labeled_id import dob_value_pattern
@@ -52,8 +53,18 @@ _PERSON = {
     "familyname", "surname", "middlename", "additionalname", "maidenname",
     "patientname", "customername", "clientname", "employeename", "contactname",
     "cardholdername", "cardholder", "accountholder", "accountholdername", "nameoncard",
-    "spousename", "nextofkin", "emergencycontactname",
+    "spousename", "nextofkin", "emergencycontactname", "fathersname", "fathername",
+    "mothersname", "mothername", "guardianname", "parentname", "nomineename", "nominee",
+    "studentname", "applicantname", "beneficiaryname", "holdername", "nameofcustomer",
+    "customer", "patient", "applicant", "beneficiary", "insured", "policyholder",
 }  # fmt: skip
+# Keys that can only hold a person's name, so a lower-case value is still a name
+# ("first_name: suresh"). Bare "name" is not one of them: "name: web" in a
+# Kubernetes manifest names a container.
+_PERSON_ONLY = frozenset(k for k in _PERSON if "name" in k and k != "name")
+# Keys whose value is usually a person but can be a word ("name: web",
+# "patient: stable"): a lower-case value counts unless it is a common word.
+_PERSON_LOWER_CHECKED = frozenset(_PERSON - _PERSON_ONLY)
 _ADDRESS = {
     "address", "streetaddress", "street", "addressline", "addr", "adr", "homeaddress",
     "mailingaddress", "billingaddress", "shippingaddress", "postaladdress",
@@ -61,12 +72,15 @@ _ADDRESS = {
     "housenumber", "houseno", "apartment", "apt", "suite", "flat", "secondaryaddress",
     "postcode", "postalcode", "zip", "zipcode", "city", "town", "village",
     "addresslocality", "addressregion", "state", "province", "county", "country",
-    "addresscountry", "countryname", "birthplace", "placeofbirth",
+    "addresscountry", "countryname", "birthplace", "placeofbirth", "pincode",
+    "landmark", "locality", "district", "taluk", "tehsil", "mandal",
 }  # fmt: skip
 _PHONE = {
     "phone", "phonenumber", "phoneno", "telephone", "telephonenumber", "tel", "mobile",
     "mobilenumber", "mobilephone", "cell", "cellphone", "cellnumber", "fax", "faxnumber",
-    "homephone", "workphone", "contactnumber", "telecom",
+    "homephone", "workphone", "contactnumber", "telecom", "ph", "phno", "mob", "mobno",
+    "mobileno", "cellno", "telno", "contactno", "whatsapp", "whatsappnumber",
+    "alternatenumber", "alternatemobile",
 }  # fmt: skip
 _DOB = {"dob", "dateofbirth", "birthdate", "birthday", "bday"}
 _ID = {
@@ -78,9 +92,13 @@ _ID = {
     "taxid", "taxnumber", "tin", "nin", "ninumber", "nationalinsurancenumber",
     "nhsnumber", "medicalrecordnumber", "mrn", "patientid", "memberid", "employeeid",
     "studentid", "accountnumber", "bankaccount", "bankaccountnumber", "iban",
-    "insurancenumber", "policynumber", "voterid", "aadhaar", "pan",
+    "insurancenumber", "policynumber", "voterid", "aadhaar", "pan", "aadhar",
+    "aadhaarnumber", "aadhaarno", "pannumber", "panno", "vehicleno", "vehiclenumber",
+    "registrationno", "regno", "rationcard", "epicno", "uan",
 }  # fmt: skip
-_USERNAME = {"username", "user", "login", "handle", "loginname", "userlogin"}
+_USERNAME = {
+    "username", "user", "login", "handle", "loginname", "userlogin", "upi", "upiid", "vpa",
+}  # fmt: skip
 _PROSE_ONLY = {"sex": EntityType.SEX, "gender": EntityType.SEX}
 _PROSE_ONLY |= dict.fromkeys(("honorific", "salutation", "jobtitle"), EntityType.TITLE)
 
@@ -114,9 +132,11 @@ _SECRET_SUFFIXES = (
     "password", "passwd", "passphrase", "pwd", "pass", "pswd", "secret", "token",
     "apikey", "accesskey", "secretkey", "privatekey", "signingkey", "encryptionkey",
     "masterkey", "authkey", "accountkey", "sharedaccesskey", "credential",
-    "credentials", "connectionstring", "connstring", "dsn",
+    "credentials", "connectionstring", "connstring", "dsn", "sessionid", "sessid",
+    "sessiontoken", "sessionkey", "sessioncookie", "authcookie",
 )  # fmt: skip
 _SECRET_EXACT = frozenset({"pw", "pin", "otp", "cvv", "cvc"})
+_SECRET_SUFFIX_SET = frozenset(_SECRET_SUFFIXES)
 # Field names that mean something else in a URL query (OAuth "state" is a CSRF
 # nonce, not a place), so they are not personal data there.
 _QUERY_NOT_PII = frozenset({"state"})
@@ -160,56 +180,144 @@ def field_type(key: str, prose: bool = False) -> EntityType | None:
 
 # --- value validators ------------------------------------------------------------
 
-_PERSON_VALUE = re.compile(r"\A[A-Z][A-Za-z'.-]*(?:[ ,][ ]?[A-Z][A-Za-z'.-]*){0,3}\Z")
+# One word of a name, in any script: letters (incl. combining accents, so a
+# decomposed "José" stays whole) with internal apostrophes, dots and hyphens.
+_NAME_WORD = re.compile(r"[^\W\d_](?:[^\W\d_]|[\u0300-\u036f'\u2019.\-])*")
+_NAME_GAP = re.compile(r", ?| ")
+_MAX_NAME_WORDS = 6
+# lower-case words that belong inside a name: "Anne-Marie d'Arc", "Ludwig van Beethoven"
+_PARTICLES = frozenset(
+    {
+        "de", "da", "di", "do", "du", "del", "della", "der", "den", "des", "dos", "das", "van",
+        "von", "la", "le", "bin", "binti", "bint", "ibn", "al", "el", "y", "e", "ter", "ten", "zu"
+    }
+)  # fmt: skip
+# lower-case single words that a bare "name:" field holds in machine text
+_NOT_A_NAME = frozenset(
+    {
+        "web", "api", "app", "apps", "nginx", "redis", "postgres", "postgresql", "mysql", "mongo",
+        "mongodb", "db", "database", "server", "service", "services", "worker", "workers",
+        "frontend", "backend", "default", "main", "master", "primary", "secondary", "replica",
+        "test", "tests", "testing", "prod", "production", "staging", "stage", "dev", "develop",
+        "development", "local", "localhost", "admin", "root", "system", "kube", "kubernetes",
+        "cache", "proxy", "gateway", "http", "https", "tcp", "udp", "grpc", "data", "config",
+        "metrics", "logs", "logging", "monitor", "monitoring", "sidecar", "init", "job", "cron",
+        "queue", "broker", "kafka", "rabbitmq", "elastic", "elasticsearch", "node", "nodes", "pod",
+        "pods", "container", "containers", "volume", "volumes", "network", "networks", "storage",
+        "public", "private", "internal", "external", "bucket", "cluster", "demo", "example",
+        "sample", "template", "base", "core", "common", "shared", "utils", "lib", "build",
+        "release", "deploy", "deployment", "ingress", "egress", "auth", "health", "status",
+        "version", "latest", "stable", "debug", "info", "warn", "warning", "error", "none", "null",
+        "true", "false", "unknown", "name", "user", "users", "team", "group", "guest", "anonymous",
+        "operator", "owner", "the", "a", "an", "of", "critical", "premium", "standard",
+        "regular", "vip", "new", "existing", "returning"
+    }
+)  # fmt: skip
+
+
+# words that continue a log message after a name, not the name itself
+_SENTENCE_WORDS = frozenset(
+    {
+        "logged", "in", "out", "at", "is", "was", "has", "had", "have", "the", "to", "from", "for",
+        "with", "and", "or", "on", "by", "said", "signed", "created", "updated", "deleted",
+        "removed", "added", "failed", "succeeded", "joined", "left", "connected", "disconnected",
+        "started", "stopped", "sent", "received", "requested", "approved", "rejected", "submitted",
+        "via", "using", "as", "of"
+    }
+)  # fmt: skip
+
+
+def _name_word_ok(word: str, first: bool, lenient: bool) -> bool:
+    """Whether ``word`` can be part of a name at this position."""
+    head = word[0]
+    if not head.islower():  # upper case, or a script without case (CJK, Devanagari)
+        return True
+    if lenient:
+        return True
+    if first:
+        return False
+    # "d'Arc", "O'Neil" written lower-case-first, and particles inside a name
+    return word.lower() in _PARTICLES or bool(re.match(r"[a-z]['\u2019]\w", word))
+
+
+def _person_prefix(value: str, lenient: bool) -> str:
+    """The longest leading run of ``value`` that reads as a person's name.
+
+    The first word must be capitalised (or uncased script) unless ``lenient``.
+    Further words may be capitalised words, particles, or, when they run to the
+    end of the value, lower-case words ("Name: Suresh kumar" is one name).
+    """
+    words: list[re.Match[str]] = []
+    pos = 0
+    while len(words) < _MAX_NAME_WORDS:
+        m = _NAME_WORD.match(value, pos)
+        if m is None:
+            break
+        words.append(m)
+        gap = _NAME_GAP.match(value, m.end())
+        if gap is None:
+            break
+        pos = gap.end()
+    if not words or not _name_word_ok(words[0].group(), True, lenient):
+        return ""
+    # a name-only key accepts lower case for a value written in lower case
+    # ("first_name: suresh kumar"); after a capitalised first word, lower-case words
+    # are the rest of a sentence ("Patient Name: James Wilson arrived.")
+    lenient = lenient and words[0].group()[0].islower()
+    keep = 1
+    while keep < len(words) and _name_word_ok(words[keep].group(), False, lenient):
+        keep += 1
+    rest = value[words[-1].end() :].strip(" \t,;")
+    tail = [w.group().lower() for w in words[keep:]]
+    if (
+        len(tail) == 1
+        and not rest
+        and not tail[0].endswith(".")  # "James Wilson arrived." ends a sentence
+        and tail[0] not in _SENTENCE_WORDS
+    ):
+        # one lower-case surname that ends the value: "Name: Suresh kumar"
+        keep = len(words)
+    return value[: words[keep - 1].end()]
+
+
+def _person_ok(value: str, key: str, line: bool = False) -> bool:
+    """Whether a whole field value is a person's name for the field ``key``.
+
+    ``line`` marks a ``Label: value`` line (a form, a config file), where a
+    single lower-case word is accepted; in JSON or logfmt (``"name": "payments"``)
+    a single lower-case word is far more often a service than a person.
+    """
+    norm = _norm(key)
+    lenient = norm in _PERSON_ONLY
+    if value.lower() in _STATUS_WORDS:
+        return False
+    if not lenient and all(w.lower() in _NOT_A_NAME for w in value.split()):
+        return False  # "Name: Production", "Name: Default Service", "Name: Admin"
+    if _person_prefix(value, lenient) == value:
+        return True
+    # bare "name: suresh": lower-case words, not an infrastructure name
+    words = value.split()
+    return (
+        norm in _PERSON_LOWER_CHECKED
+        and 1 <= len(words) <= 4
+        and all(w.isalpha() and w.islower() for w in words)
+        and (len(words) > 1 or (line and len(value) >= 3 and value not in _NOT_A_NAME))
+    )
+
+
 _PHONE_VALUE = re.compile(r"\A\+?[\d\s().\-/x]{7,40}\Z")
 _HAS_DIGIT = re.compile(r"\d")
 _USERNAME_VALUE = re.compile(r"\A[^\s\"'<>]{2,64}\Z")
 _PLACE_VALUE = re.compile(r"\A[^\s\"<>{}][^\"<>{}]{0,127}\Z")
 _STATUS_WORDS = frozenset(
-    [
-        "running",
-        "stopped",
-        "active",
-        "inactive",
-        "pending",
-        "failed",
-        "failure",
-        "error",
-        "success",
-        "succeeded",
-        "ok",
-        "okay",
-        "open",
-        "closed",
-        "enabled",
-        "disabled",
-        "true",
-        "false",
-        "yes",
-        "no",
-        "ready",
-        "done",
-        "new",
-        "idle",
-        "up",
-        "down",
-        "unknown",
-        "started",
-        "starting",
-        "stopping",
-        "complete",
-        "completed",
-        "healthy",
-        "unhealthy",
-        "online",
-        "offline",
-        "valid",
-        "invalid",
-        "default",
-        "any",
-        "all",
-    ]
-)
+    {
+        "running", "stopped", "active", "inactive", "pending", "failed", "failure", "error",
+        "success", "succeeded", "ok", "okay", "open", "closed", "enabled", "disabled", "true",
+        "false", "yes", "no", "ready", "done", "new", "idle", "up", "down", "unknown", "started",
+        "starting", "stopping", "complete", "completed", "healthy", "unhealthy", "online",
+        "offline", "valid", "invalid", "default", "any", "all"
+    }
+)  # fmt: skip
 
 
 _SWITCH_WORDS = frozenset(
@@ -217,11 +325,11 @@ _SWITCH_WORDS = frozenset(
 )
 
 
-def _valid(etype: EntityType, value: str) -> bool:
+def _valid(etype: EntityType, value: str, key: str = "", line: bool = False) -> bool:
     if is_placeholder(value):
         return False
     if etype is EntityType.PERSON:
-        return bool(_PERSON_VALUE.match(value)) and value.lower() not in _STATUS_WORDS
+        return _person_ok(value, key, line)
     if etype is EntityType.PHONE:
         return bool(_PHONE_VALUE.match(value)) and sum(c.isdigit() for c in value) >= 7
     if etype is EntityType.DOB:
@@ -263,12 +371,34 @@ def _next_label(value: str) -> int | None:
                 break
             words.append((m.start(), m.group()))
             head = head[: m.start()]
-        for n in range(len(words), 0, -1):
-            start = words[n - 1][0]
-            label = " ".join(w for _, w in reversed(words[:n]))
-            if start > 0 and (field_type(label, prose=True) or _norm(label) in _OTHER_LABELS):
-                return start
+        labels = [
+            (words[n - 1][0], " ".join(w for _, w in reversed(words[:n])))
+            for n in range(len(words), 0, -1)
+        ]
+        known = [
+            (start, label)
+            for start, label in labels
+            if start > 0 and (field_type(label, prose=True) or _norm(label) in _OTHER_LABELS)
+        ]
+        if known:
+            # an exact field name beats a longer label that only matched by its
+            # suffix: "Name: Suresh Kumar password: x" ends the name before
+            # "password", not before "Kumar password"
+            exact = [k for k in known if _is_exact_label(k[1])]
+            return (exact or known)[0][0]
     return None
+
+
+def _is_exact_label(label: str) -> bool:
+    """True when ``label`` is itself a vocabulary entry, not a suffix match."""
+    norm = _norm(label)
+    return (
+        norm in _TYPE_OF
+        or norm in _SECRET_EXACT
+        or norm in _SECRET_SUFFIX_SET
+        or norm in _PROSE_ONLY
+        or norm in _OTHER_LABELS
+    )
 
 
 _TOKEN = re.compile(r"\S+")
@@ -286,7 +416,6 @@ def _id_prefix(value: str) -> str:
 
 
 _LINE_PREFIX: dict[EntityType, re.Pattern[str]] = {
-    EntityType.PERSON: re.compile(r"[A-Z][A-Za-z'.-]*(?: [A-Z][A-Za-z'.-]*){0,3}"),
     EntityType.PHONE: re.compile(r"\+?[\d(][\d\s().\-/x]{6,39}\d"),
     # the same date shapes the label-anchored DOB rule accepts
     EntityType.DOB: re.compile(_DOB_VALUE, re.IGNORECASE),
@@ -294,7 +423,7 @@ _LINE_PREFIX: dict[EntityType, re.Pattern[str]] = {
 }
 
 
-def _line_value(etype: EntityType, value: str) -> str:
+def _line_value(etype: EntityType, value: str, key: str = "") -> str:
     cut = _next_label(value)
     if cut is not None:
         value = value[:cut]
@@ -307,11 +436,17 @@ def _line_value(etype: EntityType, value: str) -> str:
         return _id_prefix(value)
     if etype is EntityType.SECRET:
         # an unquoted secret is one token: "password = abuser1234  # comment"
-        return value.split()[0] if value.split() else ""
+        # (a closing quote or bracket after it belongs to the enclosing string)
+        return value.split()[0].rstrip("\"'}])") if value.split() else ""
     if etype is EntityType.USERNAME and any(c.isspace() for c in value):
         # a username field holds one token; "User1: Thank you, User2" is a
         # transcript speaker label followed by a sentence, not a username
         return ""
+    if etype is EntityType.PERSON:
+        prefix_text = _person_prefix(value, _norm(key) in _PERSON_ONLY)
+        if not prefix_text and _person_ok(value, key, line=True):
+            return value  # bare lower-case "name: suresh kumar"
+        return prefix_text
     prefix = _LINE_PREFIX.get(etype)
     if prefix is None:
         return value
@@ -334,7 +469,7 @@ _XML = re.compile(rf"<({_KEY})>([^<>\n]{{1,{_V}}})</({_KEY})>")
 # Label: value / key = value at the start of a line, after optional indentation,
 # a list bullet and markdown emphasis; the value runs to the end of the line
 _LINE = re.compile(
-    rf"(?m)^[ \t]*(?:[-*>][ \t]+|\d{{1,3}}[.)][ \t]+)?(?:\*\*|__)?({_KEY}?)(?:\*\*|__)?"
+    rf"(?m)^\ufeff?[ \t]*(?:[-*>][ \t]+|\d{{1,3}}[.)][ \t]+)?(?:\*\*|__)?({_KEY}?)(?:\*\*|__)?"
     rf"[ \t]*[:=][ \t]*(?:\*\*|__)?[ \t]*([^\n]{{1,{_V}}})"
 )
 # key=value pairs inside a line (logfmt, .env, query strings)
@@ -361,6 +496,86 @@ _PROSE_SECRET = re.compile(
 # the user part of a URI's userinfo (scheme://user:password@host): a username
 # field; the password is the deterministic tier's url_credentials
 _USERINFO = re.compile(r"\b[a-z][a-z0-9+.-]{1,15}://([^\s:/@\"'<>]{1,64}):[^\s/@\"'<>]{1,128}@")
+# HTTP credentials anywhere on a line (a curl -H argument, a quoted header in code,
+# a log line): the scheme names the credential, so it needs no entropy to qualify.
+_AUTH_HEADER = re.compile(
+    r"(?i)\b(?:proxy-)?authorization[\"']?[ \t]*[:=][ \t]*[\"']?"
+    r"(?:bearer|basic|token|digest|negotiate|apikey|api-key|sso-key)[ \t]+"
+    r"([A-Za-z0-9\-._~+/=]{4,512})"
+)
+# a bare "Bearer <token>" (no header name before it): the token must hold a digit
+_BEARER = re.compile(r"\bBearer[ \t]+([A-Za-z0-9\-._~+/]*\d[A-Za-z0-9\-._~+/]*=*)")
+# Cookie / Set-Cookie headers: every value is a session or tracking identifier
+_COOKIE_HEADER = re.compile(r"(?i)\b(?:set-)?cookie[ \t]*:[ \t]*([^\n\"]{1,1024})")
+_COOKIE_PAIR = re.compile(r"(?:^|;)[ \t]*([^=;\s]{1,64})=([^;\s\"]{1,512})")
+_COOKIE_ATTRS = frozenset(
+    {"path", "domain", "expires", "max-age", "samesite", "priority", "partitioned", "version"}
+)
+# prose without quotes: "the password is hunter2", "password is: x1y2", "passwd hunter2".
+# The value must mix letters with digits or symbols, so "the password is incorrect"
+# and "password reset" are not secrets.
+_PROSE_SECRET_BARE = re.compile(
+    r"(?i)\b(?:password|passwd|passphrase|passcode|pwd)[ \t]+(?:(?:is|was|of)[ \t]*:?[ \t]+)?"
+    r"([^\s\"'<>,;]{4,64})"
+)
+# A field separator in the middle of a line: ":" or "=" followed by a blank.
+_INLINE_SEP = re.compile(r"[ \t]*[:=][ \t]+")
+# a JSON-escaped line break ends an unquoted value inside a string ("…\npassword: x")
+_ESCAPE = re.compile(r"\\[nrt\"']")
+
+
+def _mixed(value: str) -> bool:
+    """True when ``value`` has a letter and also a digit or symbol."""
+    return any(c.isalpha() for c in value) and not value.isalpha()
+
+
+# a word before "name" that makes it the name of a thing
+_THING_QUALIFIERS = frozenset(
+    {
+        "service", "host", "hostname", "app", "application", "file", "project", "team", "product",
+        "cluster", "container", "db", "database", "table", "column", "field", "queue", "topic",
+        "bucket", "image", "repo", "repository", "branch", "server", "node", "pod", "namespace",
+        "domain", "device", "company", "org", "organization", "organisation", "business", "brand",
+        "event", "job", "task", "model", "package", "module", "class", "function", "method",
+        "variable", "key", "tag", "category", "type", "group", "role", "channel", "room", "item",
+        "plan", "region", "zone", "index", "schema", "stream", "pipeline", "deployment", "resource",
+        "instance", "volume", "network", "dataset", "report"
+    }
+)  # fmt: skip
+
+
+def _label_before(head: str) -> str | None:
+    """The known field label that ends ``head`` (one to four words, longest first).
+
+    A trailing ``#`` marker belongs to the label ("Cell #").
+    """
+    head = head.rstrip()
+    if head.endswith("#"):
+        head = head[:-1].rstrip()
+    words: list[str] = []
+    while len(words) < 4:
+        m = _WORD_BEFORE.search(head)
+        if m is None:
+            break
+        words.append(m.group())
+        head = head[: m.start()].rstrip()
+    known = [
+        label
+        for n in range(len(words), 0, -1)
+        if field_type(label := " ".join(reversed(words[:n]))) is not None
+    ]
+    exact = [label for label in known if _is_exact_label(label)]
+    candidates = exact or known
+    if not candidates:
+        return None
+    chosen = candidates[0]
+    if _norm(chosen) == "name" and len(words) > 1 and _norm(words[1]) in _THING_QUALIFIERS:
+        return None  # "service name: Payment Gateway" names a thing, not a person
+    return chosen
+
+
+# emit(key, start, end, line=False, query=False): records one field value
+_Emit = Callable[..., None]
 
 
 class StructuredFieldDetector:
@@ -389,11 +604,11 @@ class StructuredFieldDetector:
             if etype is None:
                 return
             raw = text[start:end]
-            value = _line_value(etype, raw) if line else raw.rstrip(_TRIM)
+            value = _line_value(etype, raw, key) if line else raw.rstrip(_TRIM)
             # a line value may be quoted: emit only what is inside the quotes
             if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
                 start, value = start + 1, value[1:-1]
-            if not value or not _valid(etype, value):
+            if not value or not _valid(etype, value, key, line):
                 return
             end = start + len(value)
             if (start, end) not in found:
@@ -444,4 +659,58 @@ class StructuredFieldDetector:
         if "://" in text:
             for m in _USERINFO.finditer(text):
                 emit("username", m.start(1), m.end(1))
+        if ":" in text or "=" in text:
+            self._inline_fields(text, emit)
+        self._credentials(text, emit)
         return sorted(found.values(), key=lambda d: (d.start, d.end))
+
+    @staticmethod
+    def _inline_fields(text: str, emit: _Emit) -> None:
+        """``Label: value`` fields that do not start their line.
+
+        Log lines lead with a timestamp or level, config comments with ``#`` or
+        ``//``, and one line often holds several fields
+        (``user=bob password: hunter2``). Only a *known* field label directly
+        before the separator counts, and the value is cut exactly as a line value.
+        """
+        for m in _INLINE_SEP.finditer(text):
+            # both searches are bounded (key and value caps), so a long line full
+            # of separators stays linear
+            key_from = max(0, m.start() - _MAX_KEY)
+            newline = text.rfind("\n", key_from, m.start())
+            label = _label_before(text[key_from if newline < 0 else newline + 1 : m.start()])
+            if label is None:
+                continue
+            end = min(len(text), m.end() + _MAX_VALUE)
+            line_end = text.find("\n", m.end(), end)
+            if line_end >= 0:
+                end = line_end
+            if end <= m.end():
+                continue
+            esc = _ESCAPE.search(text, m.end(), end)
+            if esc is not None:
+                end = esc.start()
+            emit(label, m.end(), end, line=True)
+
+    @staticmethod
+    def _credentials(text: str, emit: _Emit) -> None:
+        """HTTP auth headers, cookies and unquoted prose passwords, anywhere."""
+        lowered = text.lower()
+        if "authorization" in lowered:
+            for m in _AUTH_HEADER.finditer(text):
+                emit("password", m.start(1), m.end(1))
+        if "Bearer" in text:
+            for m in _BEARER.finditer(text):
+                emit("password", m.start(1), m.end(1))
+        if "cookie" in lowered:
+            for m in _COOKIE_HEADER.finditer(text):
+                base = m.start(1)
+                for pair in _COOKIE_PAIR.finditer(m.group(1)):
+                    if pair.group(1).lower() in _COOKIE_ATTRS:
+                        continue
+                    emit("sessioncookie", base + pair.start(2), base + pair.end(2))
+        if "pass" in lowered or "pwd" in lowered:
+            for m in _PROSE_SECRET_BARE.finditer(text):
+                value = m.group(1).rstrip(".!?)")
+                if len(value) >= 4 and _mixed(value) and not is_placeholder(value):
+                    emit("password", m.start(1), m.start(1) + len(value))

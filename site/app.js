@@ -55,7 +55,7 @@ const familyOf = (type) => FAMILY_OF[type] || "secrets";
 const MODES = {
   replace: { label: "Replace", what: "Swap each finding for fixed text such as [REDACTED].",
     when: "Sharing logs or documents where nobody needs the values." },
-  mask: { label: "Mask", what: "Hide all but the last few characters, e.g. ***************1111. Never more than half of a value stays visible.",
+  mask: { label: "Mask", what: "Hide the value, keeping the last few digits of a number, e.g. ***************1111 (at most 4, never more than half). Secrets, names and emails are masked in full.",
     when: "Support and billing screens where the last digits help find a record." },
   pseudonymize: { label: "Pseudonymize", what: "A keyed token such as <EMAIL_75e802c7c314f5a2>. Equal values get equal tokens.",
     when: "Analytics and debugging across files: count and join on a value without seeing it. Anyone with the key can test guesses, so keep it secret." },
@@ -718,6 +718,18 @@ async function readFile(file) {
     return;
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
+  // UTF-16 (what Windows PowerShell and Notepad save) is text with a NUL in every
+  // other byte: decode it by its byte-order mark instead of calling it binary
+  const utf16 = bytes[0] === 0xff && bytes[1] === 0xfe ? "utf-16le" : bytes[0] === 0xfe && bytes[1] === 0xff ? "utf-16be" : null;
+  if (utf16) {
+    setInput(new TextDecoder(utf16).decode(bytes));
+    $("sample-hint").textContent = `Scanning ${file.name} (UTF-16), in this tab only.`;
+    fileName = file.name;
+    markSample(null);
+    writeHash();
+    runAnalyze();
+    return;
+  }
   if (bytes.subarray(0, 8192).includes(0)) {
     toast(`${file.name} looks like a binary file. Open a text file instead.`);
     return;

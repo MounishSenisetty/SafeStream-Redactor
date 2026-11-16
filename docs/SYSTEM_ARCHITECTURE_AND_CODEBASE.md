@@ -201,9 +201,11 @@ into a warning.
 `RedactionPolicy.render` (`policy.py:63`), in priority order:
 
 1. `replacements[entity_type]`: a fixed per-type string, if one is set.
-2. `MASK`: `keep = min(max(0, mask_keep_last), n // 2)`; output
-   `mask_char * (n - keep) + text[n-keep:]`. Never more than half is shown, so a
-   4-character PIN with `keep_last=4` shows 2.
+2. `MASK`: only number types (card, phone, SSN, ID number, IBAN, Aadhaar, NHS
+   number) keep a tail: `keep = min(max(0, mask_keep_last), n // 2)`, further capped
+   at four letters/digits; output `mask_char * (n - keep) + text[n-keep:]`. Never
+   more than half is shown, so a 4-character ID with `keep_last=4` shows 2. Every
+   other type (secrets, names, emails, addresses, custom rules) is masked in full.
 3. `PSEUDONYMIZE`: `HMAC-SHA256(key, text)`, hex, truncated to `pseudonym_length`
    (default 16, allowed 8–64) and rendered `<TYPE_hex>`. Deterministic by design, so
    it reveals equality and can be brute-forced over small domains (all SSNs) by

@@ -109,6 +109,47 @@ def _embedded_number(text: str, det: Detection) -> bool:
     )
 
 
+# A version string, not a host: "v10.4.2.1", "version 1.2.3.4", "Release 2.0.0.1"
+_VERSION_BEFORE = re.compile(r"(?:\b(?:version|ver|release|build|rev)\b[ \t:=#(]*v?|\bv)\Z", re.I)
+# A build number is not a card, even when it happens to pass Luhn
+_BUILD_BEFORE = re.compile(r"\b(?:build|version|ver|release|rev)\b[ \t:=#(-]*\Z", re.I)
+# Correlation identifiers are random by design but carry no secret: OpenTelemetry
+# trace/span ids, request ids, message ids
+_TRACE_ID_BEFORE = re.compile(
+    r"\b(?:trace|span|parent|request|req|correlation|transaction|message|event|x-request)"
+    r"[_.-]?id[\"']?[ \t]*[:=][ \t]*[\"']?\Z",
+    re.I,
+)
+# Subresource-integrity and content digests: "sha512-<base64>" names a public hash
+_DIGEST = re.compile(r"(?:sha(?:1|224|256|384|512)|md5)[-:]", re.I)
+# A filesystem path whose segments are mostly words: a UUID or hash inside one
+# directory name makes the whole token look random, but the path is not a secret
+_PATH = re.compile(r"/(?:[A-Za-z0-9_.@-]+/){2,}[A-Za-z0-9_.@-]*")
+_ENTROPY_SOURCES = frozenset({"entropy", "compound_secret"})
+
+
+def benign_context(text: str, det: Detection) -> bool:
+    """True for a shape-only match that its surroundings show is not sensitive.
+
+    Reads at most the 48 characters left of the match (the scorer's declared
+    context), so the decision is the same in every streaming window.
+    """
+    left = text[max(0, det.start - 48) : det.start]
+    if det.entity_type is EntityType.IPV4 and det.source == "deterministic":
+        return bool(_VERSION_BEFORE.search(left))
+    if det.entity_type is EntityType.CREDIT_CARD and det.source == "deterministic":
+        return bool(_BUILD_BEFORE.search(left))
+    if det.entity_type is EntityType.SECRET and det.source in _ENTROPY_SOURCES:
+        value = det.text
+        if _DIGEST.match(value) or _TRACE_ID_BEFORE.search(left):
+            return True
+        if _PATH.fullmatch(value):
+            segments = [seg for seg in value.split("/") if seg]
+            wordy = sum(seg.replace("-", "").replace("_", "").isalpha() for seg in segments)
+            return wordy * 2 >= len(segments)
+    return False
+
+
 # Detections whose ``text`` is exactly ``text[start:end]``: the built-in tiers.
 # The native ``adjust`` reads the span from the text, so only these may use it;
 # a plugin's detection is adjusted in Python.
@@ -182,6 +223,9 @@ class ContextualScorer(NativeBacked):
             if _embedded_number(text, det):  # shared Python check, both backends
                 det.confidence = 0.0
                 det.meta["context"] = "embedded"
+            elif benign_context(text, det):  # shared Python check, both backends
+                det.confidence = 0.0
+                det.meta["context"] = "benign"
         return detections
 
     def detect(self, text: str) -> list[Detection]:

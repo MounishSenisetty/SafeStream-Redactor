@@ -90,7 +90,7 @@ app.log:3:16: aws_key  conf=0.98
 app.log:3:43: github_token  conf=0.98
 -- 6 detection(s) (matched text hidden; --show-text reveals it)
 $ safestream redact app.log -o - --types email,ssn --mode mask --keep-last 4
-login ok user=*********************.com ip=10.20.30.40
+login ok user=************************* ip=10.20.30.40
 payment card=4111 1111 1111 1111 ssn=*******6789
 deploy aws_key=AKIAIOSFODNN7EXAMPLE token=ghp_1234567890abcdefghijklmnopqrstuvwxyz
 ```

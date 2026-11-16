@@ -8,6 +8,25 @@ from collections.abc import Iterable
 from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
 
+# Whitespace between the words of a custom phrase: any run of blanks or line
+# breaks, bounded so a phrase's span stays bounded for the streaming engine.
+_GAP = r"\s{1,16}"
+
+
+def _word_pattern(word: str) -> str:
+    """A literal custom word as a regex: whole words only, any whitespace inside.
+
+    ``ann`` must not redact the middle of ``annual`` or ``banner``, and the phrase
+    ``Project Falcon`` must still match ``Project  Falcon`` or a line-wrapped
+    ``Project\nFalcon``. A boundary is only required on an edge that is a word
+    character, so a word such as ``#tag`` or ``a.b*c`` still matches next to
+    punctuation.
+    """
+    body = _GAP.join(re.escape(part) for part in word.split())
+    head = r"\b" if re.match(r"\w", word) else ""
+    tail = r"\b" if re.search(r"\w\Z", word) else ""
+    return f"{head}{body}{tail}"
+
 
 class CustomDetector:
     name = "custom"
@@ -30,13 +49,15 @@ class CustomDetector:
         # with ``Jo|John`` the text "John" matched only "Jo" and "hn" leaked
         # through unredacted. Sorting (and de-duplicating) makes a longer phrase
         # always win over any word that is its prefix.
-        words = sorted({w for w in words if w}, key=lambda w: (-len(w), w))
+        words = sorted({w.strip() for w in words if w.strip()}, key=lambda w: (-len(w), w))
         if words:
-            joined = "|".join(re.escape(w) for w in words)
+            joined = "|".join(_word_pattern(w) for w in words)
             self._regexes.append(re.compile(joined, flags))
         for p in patterns:
             try:
-                self._regexes.append(re.compile(p, flags))
+                # ^ and $ mean the start and end of a line, as people expect when
+                # they write a rule for a line-oriented log
+                self._regexes.append(re.compile(p, flags | re.MULTILINE))
             except re.error as exc:
                 # Surface a clear configuration error (which pattern, why) rather
                 # than a bare re.error, so a mistyped --custom-regex fails loudly

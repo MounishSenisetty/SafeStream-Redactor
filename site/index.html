@@ -75,13 +75,13 @@
           <input type="text" name="replacement" value="[REDACTED]" maxlength="60">
         </label>
         <div class="row2" data-for="mask" hidden>
-          <label class="field">Characters left visible
+          <label class="field">Digits left visible on numbers
             <input type="number" name="mask_keep_last" value="4" min="0" max="32">
           </label>
           <label class="field">Mask character
             <input type="text" name="mask_char" value="*" maxlength="1">
           </label>
-          <small class="full">Never more than half of a value stays visible.</small>
+          <small class="full">Only numbers (cards, phones, IDs) keep a tail: at most 4 digits and never more than half. Secrets, names and emails are masked in full.</small>
         </div>
         <div data-for="pseudonymize fictionalize" hidden>
           <label class="field"><span data-term="hmac">HMAC key</span>

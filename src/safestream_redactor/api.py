@@ -82,6 +82,16 @@ def dispatch(
         if not isinstance(data, dict) or not isinstance(data.get("text"), str):
             return 400, {"error": "body must be a JSON object with a string 'text' field"}
         text: str = data["text"]
+        # Settings are the server's, fixed at start-up. A caller sending
+        # {"types": [...]} or {"mode": ...} must learn they were not applied rather
+        # than trust output that was redacted differently than they asked.
+        extra: dict[str, object] = {}
+        unknown = sorted(k for k in data if k != "text")
+        if unknown:
+            extra["warnings"] = [
+                f"unknown field {k!r} ignored: this server's own settings apply"
+                for k in unknown[:16]
+            ]
 
         detections = redactor.detect(text)
         by_type: dict[str, int] = {}
@@ -93,9 +103,11 @@ def dispatch(
                 "redacted": redactor.policy.apply(text, detections),
                 "total_detections": len(detections),
                 "detections_by_type": dict(sorted(by_type.items())),
+                **extra,
             }
         # /scan — content-free: offsets + types only, never the matched text
         return 200, {
+            **extra,
             "total_detections": len(detections),
             "detections_by_type": dict(sorted(by_type.items())),
             "detections": [

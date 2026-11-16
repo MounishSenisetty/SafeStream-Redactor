@@ -3,6 +3,7 @@
 import pytest
 
 from safestream_redactor import EntityType, RedactionMode, RedactionPolicy, Redactor
+from safestream_redactor.entities import Detection
 
 TEXT = "mail bob@x.io, ssn: 123-45-6789"
 
@@ -78,20 +79,48 @@ def test_adjacent_text_is_preserved():
 # --------------------------------------------------------------------------
 
 
+def _det(value: str, etype: EntityType) -> Detection:
+    return Detection(0, len(value), value, etype, 1.0, source="test")
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        ("Bob", "**b"),  # was "Bob": keep_last=4 >= len revealed it whole
-        ("Alice", "***ce"),  # was "*lice"
-        ("abcd", "**cd"),
+        ("1234", "**34"),  # was "1234": keep_last=4 >= len revealed it whole
+        ("12345", "***45"),
         ("123-45-6789", "*******6789"),  # long values keep the full keep_last
     ],
 )
 def test_mask_reveals_at_most_half(value, expected):
     policy = RedactionPolicy(mode="mask", mask_keep_last=4)
-    assert Redactor(custom_words=[value], policy=policy).redact(f"x {value} y") == (
-        f"x {expected} y"
-    )
+    assert policy.render(_det(value, EntityType.ID_NUMBER)) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "etype"),
+    [
+        ("hunter2", EntityType.SECRET),
+        ("Suresh Kumar", EntityType.PERSON),
+        ("suresh@example.com", EntityType.EMAIL),
+        ("Bob", EntityType.CUSTOM),
+        ("12 MG Road", EntityType.ADDRESS),
+    ],
+)
+def test_mask_never_reveals_secrets_or_names(value, etype):
+    # any visible tail of a password, a name or an email is a leak
+    policy = RedactionPolicy(mode="mask", mask_keep_last=4)
+    assert policy.render(_det(value, etype)) == "*" * len(value)
+
+
+def test_mask_card_tail_is_capped_at_four_digits():
+    policy = RedactionPolicy(mode="mask", mask_keep_last=100)
+    card = "4111 1111 1111 1111"
+    assert policy.render(_det(card, EntityType.CREDIT_CARD)) == "*" * 15 + "1111"
+
+
+def test_mask_char_must_be_one_character():
+    with pytest.raises(ValueError, match="single character"):
+        RedactionPolicy(mode="mask", mask_char="ab")
 
 
 def test_mask_single_char_is_fully_masked():
