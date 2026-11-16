@@ -718,6 +718,18 @@ async function readFile(file) {
     return;
   }
   const bytes = new Uint8Array(await file.arrayBuffer());
+  // UTF-16 (what Windows PowerShell and Notepad save) is text with a NUL in every
+  // other byte: decode it by its byte-order mark instead of calling it binary
+  const utf16 = bytes[0] === 0xff && bytes[1] === 0xfe ? "utf-16le" : bytes[0] === 0xfe && bytes[1] === 0xff ? "utf-16be" : null;
+  if (utf16) {
+    setInput(new TextDecoder(utf16).decode(bytes));
+    $("sample-hint").textContent = `Scanning ${file.name} (UTF-16), in this tab only.`;
+    fileName = file.name;
+    markSample(null);
+    writeHash();
+    runAnalyze();
+    return;
+  }
   if (bytes.subarray(0, 8192).includes(0)) {
     toast(`${file.name} looks like a binary file. Open a text file instead.`);
     return;

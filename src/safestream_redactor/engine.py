@@ -21,6 +21,7 @@ detected even when it is split across chunk boundaries.
 
 from __future__ import annotations
 
+import codecs
 import logging
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
@@ -94,6 +95,39 @@ def required_overlap(detectors: Iterable[object]) -> int:
     engine derives from the detectors actually in use.
     """
     return max((requirements_of(d).required_overlap for d in detectors), default=DEFAULT_OVERLAP)
+
+
+# Byte-order marks that name a wider encoding than UTF-8. UTF-32 LE first: its BOM
+# begins with the UTF-16 LE one.
+_WIDE_BOMS = (
+    (codecs.BOM_UTF32_LE, "utf-32"),
+    (codecs.BOM_UTF32_BE, "utf-32"),
+    (codecs.BOM_UTF16_LE, "utf-16"),
+    (codecs.BOM_UTF16_BE, "utf-16"),
+)
+
+
+def sniff_encoding(path: str, encoding: str = "utf-8") -> str:
+    """``encoding``, or the UTF-16/32 codec a byte-order mark at the start of ``path`` names.
+
+    Read as UTF-8, a UTF-16 file (what Windows PowerShell and Notepad write) decodes
+    to text with a NUL between every character, so no detector matches anything and
+    the "redacted" output still holds every secret. Only the UTF-8 default is
+    overridden: an explicitly chosen other encoding is left alone. The returned
+    codec reads the BOM and writes one back, so the output keeps the input's
+    encoding.
+    """
+    try:
+        if codecs.lookup(encoding).name != "utf-8":
+            return encoding
+        with open(path, "rb") as f:
+            head = f.read(4)
+    except (LookupError, OSError):
+        return encoding
+    for bom, name in _WIDE_BOMS:
+        if head.startswith(bom):
+            return name
+    return encoding
 
 
 def read_chunks(

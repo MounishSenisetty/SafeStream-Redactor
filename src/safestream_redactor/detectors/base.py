@@ -105,6 +105,8 @@ _PLACEHOLDER = re.compile(
     r"|\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%"  # ${VAR} $VAR %VAR%
     r"|\{\{[^}]*\}\}|\{[A-Za-z_][A-Za-z0-9_.]*\}"  # {{ var }} {var}
     r"|<[^>]*>|\[[^\]]*redacted[^\]]*\]|redacted|masked"
+    r"|(?:your|insert|enter|replace)[_-]?[a-z_-]*(?:[_-]here)?"  # YOUR_API_KEY_HERE
+    r"|[a-z_-]*[_-]here"  # API_KEY_HERE
     r"|(?:os\.environ|process\.env|env)[\[.(].*|(?:os\.)?getenv\(.*\)"
     r")\Z"
 )

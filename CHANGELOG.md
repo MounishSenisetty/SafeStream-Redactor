@@ -6,6 +6,55 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Fields anywhere on a line.** `Label: value` fields are now found after a log
+  timestamp or level, a comment marker (`#`, `//`, `--`, `;`), a UTF-8 byte-order mark,
+  or another field on the same line. `user=bob password: hunter2`,
+  `[2024-01-01] password: hunter2` and `# password: hunter2` used to leak the password.
+- **HTTP credentials.** `Authorization: Basic/Bearer/Token …` is redacted anywhere on a
+  line (e.g. inside a quoted `curl -H` argument), as are `Cookie`/`Set-Cookie` values
+  (attributes such as `Path` are kept) and unquoted prose passwords
+  (`the password is hunter2`, `passwd hunter2`).
+- **`types=["secret"]`** no longer turns off password/token field detection.
+- **Mask mode** never shows any part of a secret, name, email or address; only
+  numbers (cards, phones, SSNs, IDs, IBANs) keep a tail, capped at four digits.
+  `mask_char` must be a single character.
+- **UTF-16/UTF-32 files** are decoded by their byte-order mark (and written back in the
+  same encoding) instead of being scanned as UTF-8, which matched nothing. The
+  playground opens them instead of rejecting them as binary.
+- **Names.** Field values in any script (`Müller`, `Nguyễn Văn An`, `Иван Петров`,
+  `李明`, decomposed accents) are redacted whole instead of being cut at the first
+  non-ASCII letter; names of up to six words, `d'`/`van` particles and a lower-case
+  surname (`Suresh kumar`) are kept together; name-only keys (`first_name`,
+  `lastName`, `customer_name`) accept lower-case values, and a bare `name:` accepts a
+  lower-case name unless it is a common infrastructure word (`name: web`). A name no
+  longer ends early at a field whose label merely ends in a secret word
+  (`Name: Suresh Kumar password: …`). `Name: Production`, `Name: Admin` and
+  `service name: Payment Gateway` are no longer redacted as people.
+- **More field labels:** `Mobile No.`, `Ph`, `Cell #`, `Pincode`, `UPI`, `Father's Name`,
+  Aadhaar/PAN/vehicle-number variants and others.
+- **Evasion.** Zero-width characters, soft hyphens, no-break spaces and full-width
+  ASCII are normalised before detection (`a​@example.com`, a card number split by
+  NBSPs); offsets still point at the original text.
+- **False positives:** subresource-integrity digests (`sha512-…`), trace/span/request
+  ids, filesystem paths holding a UUID, version strings (`v10.4.2.1`), build numbers
+  that pass Luhn, and `YOUR_API_KEY_HERE`-style placeholders are no longer redacted.
+- **Custom words** match whole words only (`ann` no longer redacts part of `annual`)
+  and match a phrase across any whitespace or a line break; `^`/`$` in custom regexes
+  match at line boundaries.
+- **Pseudonyms** of an email address ignore its case, so one mailbox gets one token.
+- **`--workers N`** on a file too small to split now says it ran as one process
+  instead of silently ignoring the request.
+- **REST API** responses carry a `warnings` list naming request fields it ignored
+  (`types`, `mode`, …): the server's own settings always apply.
+
+### Added
+
+- `SAFESTREAM_HMAC_KEY` and `SAFESTREAM_HASH_SALT` environment variables, so the
+  pseudonymize key and hash salt can stay out of the process list and shell history
+  (as `SAFESTREAM_ENCRYPT_KEY` already did for encrypt mode).
+
 ## [1.0.0] - 2026-11-14
 
 ### Changed

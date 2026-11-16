@@ -43,7 +43,7 @@ from safestream_redactor.entities import Detection, EntityType
 # A single name token: starts uppercase (Latin incl. accented/extended), then
 # name characters. Bounded length keeps a runaway match from crossing sentences.
 # the class includes both apostrophe forms (U+0027 and U+2019), real name chars
-_NT = r"[A-ZÀ-ɏ][A-Za-zÀ-ɏ'’.\-]{0,30}"  # noqa: RUF001
+_NT = r"[A-ZÀ-ɏḀ-ỿ][A-Za-zÀ-ɏḀ-ỿ'’.\-]{0,30}"  # noqa: RUF001
 # 1..4 capitalized tokens on the SAME line — the separator is horizontal
 # whitespace only (``[^\S\r\n]``), so a name never runs across a line break into
 # the next form field (e.g. "Melissa\n\nAddress").

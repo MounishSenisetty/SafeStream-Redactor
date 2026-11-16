@@ -41,6 +41,50 @@ class RedactionMode(str, Enum):
     FICTIONALIZE = "fictionalize"
 
 
+# Types whose last few characters may stay visible in mask mode: numbers people
+# recognise by their tail ("card ending 1111"). A secret, name, email or address
+# is masked in full: any visible part of a password or a name is a leak.
+_MASK_TAIL_TYPES = frozenset(
+    {
+        EntityType.CREDIT_CARD,
+        EntityType.PHONE,
+        EntityType.SSN,
+        EntityType.ID_NUMBER,
+        EntityType.IBAN,
+        EntityType.IN_AADHAAR,
+        EntityType.NHS_NUMBER,
+    }
+)
+# At most this many letters/digits of a tail are shown, whatever keep_last says
+# (PCI DSS allows the last four digits of a card number).
+_MASK_MAX_TAIL = 4
+
+
+def _mask_keep(detection: Detection, keep_last: int) -> int:
+    """How many trailing characters of ``detection`` mask mode leaves visible."""
+    if detection.entity_type not in _MASK_TAIL_TYPES:
+        return 0
+    text = detection.text
+    # never more than half the value, so a short value is never shown in full
+    limit = min(max(0, keep_last), len(text) // 2)
+    keep = shown = 0
+    while keep < limit and shown < _MASK_MAX_TAIL:
+        keep += 1
+        shown += text[-keep].isalnum()
+    return keep
+
+
+def _canonical(detection: Detection) -> str:
+    """The form a value is pseudonymised by: equal values must get equal tokens.
+
+    An email address is case-insensitive in practice, so ``Bob@X.io`` and
+    ``bob@x.io`` (the same mailbox) map to one pseudonym and stay linkable.
+    """
+    if detection.entity_type is EntityType.EMAIL:
+        return detection.text.lower()
+    return detection.text
+
+
 @dataclass(slots=True)
 class RedactionPolicy:
     """Controls the replacement text for each detection.
@@ -88,10 +132,10 @@ class RedactionPolicy:
             require_crypto()  # fail now, not on the first match mid-stream
         if self.mode is RedactionMode.FICTIONALIZE and not self.hmac_key:
             raise ValueError("fictionalize mode requires an hmac_key")
-        if not self.mask_char:
+        if len(self.mask_char) != 1:
             # an empty mask char would delete the masked span instead of hiding
-            # it, silently changing the output length and shape
-            raise ValueError("mask_char must be a non-empty string")
+            # it, and a longer one would change the output length and shape
+            raise ValueError("mask_char must be a single character")
         if self.mode is RedactionMode.PSEUDONYMIZE and not self.hmac_key:
             raise ValueError("pseudonymize mode requires an hmac_key")
         if not 8 <= self.pseudonym_length <= 64:
@@ -104,21 +148,20 @@ class RedactionPolicy:
             return override
         if self.mode is RedactionMode.MASK:
             n = len(detection.text)
-            # Never reveal more than half the value: with a fixed keep_last a
-            # short entity (a 3-letter name, a 4-digit PIN) would otherwise be
-            # rendered entirely unmasked — a redaction that redacts nothing.
-            keep = min(max(0, self.mask_keep_last), n // 2)
+            keep = _mask_keep(detection, self.mask_keep_last)
             visible = detection.text[n - keep :] if keep else ""
             return self.mask_char * (n - keep) + visible
         if self.mode is RedactionMode.PSEUDONYMIZE:
             assert isinstance(self.hmac_key, bytes)
-            digest = hmac.new(self.hmac_key, detection.text.encode(), hashlib.sha256)
+            digest = hmac.new(self.hmac_key, _canonical(detection).encode(), hashlib.sha256)
             token = digest.hexdigest()[: self.pseudonym_length]
             return f"<{detection.entity_type.value.upper()}_{token}>"
         kind, text = detection.entity_type.value, detection.text
         if self.mode is RedactionMode.HASH:
             salt = self.hash_salt if isinstance(self.hash_salt, bytes) else b""
-            return hash_token(self.hash_algorithm, salt, kind, text, self.pseudonym_length)
+            return hash_token(
+                self.hash_algorithm, salt, kind, _canonical(detection), self.pseudonym_length
+            )
         if self.mode is RedactionMode.ENCRYPT:
             assert isinstance(self.encrypt_key, bytes)
             return encrypt_token(self.encrypt_key, kind, text)

@@ -113,9 +113,11 @@ def test_ipv4_shape_plus_validator_matches_old_alternation():
     ]
     blob = "  ".join(samples)
     old_spans = [(m.start(), m.end()) for m in old.finditer(blob)]
+    # the pattern tier alone: the contextual scorer then drops "v1.2.3.4" as a
+    # version string, which is a context rule, not part of the IPv4 shape
     new_spans = [
         (d.start, d.end)
-        for d in Redactor(types=["ipv4"], use_entropy=False, load_plugins=False).detect(blob)
+        for d in DeterministicDetector([EntityType.IPV4]).detect(blob)
         if d.entity_type is EntityType.IPV4
     ]
     assert new_spans == old_spans

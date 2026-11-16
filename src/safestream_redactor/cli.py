@@ -31,6 +31,10 @@ from safestream_redactor.redactor import Redactor
 from safestream_redactor.report import RedactionStats
 
 _ENCRYPT_KEY_ENV = "SAFESTREAM_ENCRYPT_KEY"
+# Secrets given as flags are visible to every user in `ps` and land in shell
+# history; each also has an environment variable that keeps it out of both.
+_HMAC_KEY_ENV = "SAFESTREAM_HMAC_KEY"
+_HASH_SALT_ENV = "SAFESTREAM_HASH_SALT"
 
 
 def _add_backend_arg(parser: argparse.ArgumentParser) -> None:
@@ -245,10 +249,19 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="TYPE=TEXT",
         help="per-type replacement, e.g. --replace-type email='<EMAIL>' (repeatable)",
     )
-    redact.add_argument("--keep-last", type=int, default=None, help="mask mode: chars to keep")
+    redact.add_argument(
+        "--keep-last",
+        type=int,
+        default=None,
+        help="mask mode: trailing characters to keep on numbers (cards, phones, IDs; at most 4 "
+        "digits). Secrets, names and emails are always masked in full",
+    )
     redact.add_argument("--mask-char", default=None)
     redact.add_argument(
-        "--hmac-key", default=None, help="secret for pseudonymize / fictionalize mode"
+        "--hmac-key",
+        default=None,
+        help=f"secret for pseudonymize / fictionalize mode; or set {_HMAC_KEY_ENV} "
+        "so it stays out of the process list",
     )
     redact.add_argument(
         "--encrypt-key",
@@ -256,7 +269,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="secret (>= 16 bytes) for encrypt mode; or set SAFESTREAM_ENCRYPT_KEY "
         "so it stays out of the process list",
     )
-    redact.add_argument("--hash-salt", default=None, help="secret salt for hash mode")
+    redact.add_argument(
+        "--hash-salt",
+        default=None,
+        help=f"secret salt for hash mode; or set {_HASH_SALT_ENV} "
+        "so it stays out of the process list",
+    )
 
     deanon = sub.add_parser(
         "deanonymize",
@@ -514,13 +532,16 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         replacements[EntityType.from_name(type_name)] = replacement
     if replacements:
         policy_kwargs["replacements"] = replacements
-    if policy_kwargs.get("mode") == "encrypt" and not policy_kwargs.get("encrypt_key"):
-        env_key = os.environ.get(_ENCRYPT_KEY_ENV)
-        if env_key:
-            policy_kwargs["encrypt_key"] = env_key
+    for key, env in (
+        ("encrypt_key", _ENCRYPT_KEY_ENV),
+        ("hmac_key", _HMAC_KEY_ENV),
+        ("hash_salt", _HASH_SALT_ENV),
+    ):
+        if not policy_kwargs.get(key) and (env_value := os.environ.get(env)):
+            policy_kwargs[key] = env_value
     for mode, option, needed in (
-        ("pseudonymize", "--hmac-key", "hmac_key"),
-        ("fictionalize", "--hmac-key", "hmac_key"),
+        ("pseudonymize", f"--hmac-key (or {_HMAC_KEY_ENV})", "hmac_key"),
+        ("fictionalize", f"--hmac-key (or {_HMAC_KEY_ENV})", "hmac_key"),
         ("encrypt", f"--encrypt-key (or {_ENCRYPT_KEY_ENV})", "encrypt_key"),
     ):
         if policy_kwargs.get("mode") == mode and not policy_kwargs.get(needed):
@@ -676,15 +697,31 @@ def _atomic_write_stream(path: str, pieces: Iterator[str], encoding: str) -> Non
             out.write(piece)
 
 
+def _file_encoding(path: str | None, encoding: str) -> str:
+    """The encoding to read (and write) ``path`` with: a UTF-16/32 BOM overrides UTF-8."""
+    if path in (None, "-"):
+        return encoding
+    from safestream_redactor.engine import sniff_encoding
+
+    return sniff_encoding(path, encoding)
+
+
 def _write_stdout(pieces: Iterator[str], encoding: str) -> None:
     """Write output to stdout in ``encoding`` with line endings untouched."""
+    import codecs
+
     sys.stdout.flush()
     raw = getattr(sys.stdout, "buffer", None)
+    # one incremental encoder for the whole stream: a BOM-writing codec (utf-16)
+    # must emit its byte-order mark once, not before every piece
+    encoder = codecs.getincrementalencoder(encoding)()
     for piece in pieces:
         if raw is None:
             sys.stdout.write(piece)
         else:
-            raw.write(piece.encode(encoding))
+            raw.write(encoder.encode(piece))
+    if raw is not None:
+        raw.write(encoder.encode("", True))
     (raw or sys.stdout).flush()
 
 
@@ -752,11 +789,12 @@ def _cmd_deanonymize(args: argparse.Namespace) -> int:
         deanon = Deanonymizer(key)
     except SafeStreamError as exc:
         raise SystemExit(f"safestream: {exc}") from None
-    pieces = deanon.restore_stream(_input_chunks(args.input, args.chunk_size, args.encoding))
+    encoding = _file_encoding(args.input, args.encoding)
+    pieces = deanon.restore_stream(_input_chunks(args.input, args.chunk_size, encoding))
     if args.output == "-":
-        _write_stdout(pieces, args.encoding)
+        _write_stdout(pieces, encoding)
     else:
-        _atomic_write_stream(args.output, pieces, args.encoding)
+        _atomic_write_stream(args.output, pieces, encoding)
     if deanon.failed:
         print(
             f"safestream: {deanon.failed} token(s) could not be decrypted "
@@ -777,7 +815,7 @@ def _cmd_redact(args: argparse.Namespace) -> int:
     if args.input not in ("-", None) and os.path.isdir(args.input):
         return _redact_directory(args, redactor)
     started = time.monotonic()
-    encoding = getattr(args, "encoding", "utf-8")
+    encoding = _file_encoding(args.input, getattr(args, "encoding", "utf-8"))
     stats = RedactionStats()
     chunks = _input_chunks(args.input, redactor.chunk_size, encoding)
     if args.output == "-":
@@ -787,7 +825,7 @@ def _cmd_redact(args: argparse.Namespace) -> int:
     elif getattr(args, "workers", None) and args.workers > 1:
         from safestream_redactor.parallel import redact_file_parallel
 
-        stats = redact_file_parallel(
+        outcome = redact_file_parallel(
             redactor,
             args.input,
             args.output,
@@ -795,7 +833,19 @@ def _cmd_redact(args: argparse.Namespace) -> int:
             encoding=encoding,
             offline_guard=getattr(args, "offline_guard", True),
             worker_address_space_limit=getattr(args, "_per_worker_bytes", None),
-        ).stats
+        )
+        stats = outcome.stats
+        if outcome.ranges == 1:
+            from safestream_redactor.parallel import MIN_RANGE_BYTES
+
+            # say so: a user who asked for N workers would otherwise assume they ran
+            reason = outcome.fallback_reason or (
+                f"each worker needs at least {MIN_RANGE_BYTES // (1024 * 1024)} MiB of input"
+            )
+            print(
+                f"safestream: note: --workers {args.workers} ran as one process ({reason})",
+                file=sys.stderr,
+            )
     else:
         stats = redactor.redact_file(args.input, args.output, encoding=encoding)
     _finish_run(args, stats, files=1, started=started)
@@ -903,7 +953,7 @@ def _cmd_detect(args: argparse.Namespace) -> int:
         uri = path if path != "-" else "stdin"
         lines = LineTracker()
         for segment, detections in redactor.detect_stream(
-            _input_chunks(path, redactor.chunk_size, encoding)
+            _input_chunks(path, redactor.chunk_size, _file_encoding(path, encoding))
         ):
             for det in detections:
                 count += 1

@@ -424,6 +424,9 @@ def redact_file_parallel(
     set, caps each worker's address space (``RLIMIT_AS``) at its current size
     plus that many bytes, so a runaway worker fails closed at the kernel level.
     """
+    from safestream_redactor.engine import sniff_encoding
+
+    encoding = sniff_encoding(os.fspath(input_path), encoding)
     from concurrent.futures import ProcessPoolExecutor
 
     in_path, out_path = os.fspath(input_path), os.fspath(output_path)

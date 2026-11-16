@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from collections.abc import Iterable, Iterator
 
 from safestream_redactor._atomic import atomic_output
@@ -18,6 +19,7 @@ from safestream_redactor.engine import (
     WindowConfigurationError,
     WindowObserver,
     read_chunks,
+    sniff_encoding,
     stream_transform,
     stream_windows,
 )
@@ -75,6 +77,37 @@ PROFILES: dict[str, dict[str, bool]] = {
         "use_prose_values": True,
     },
 }
+
+
+# Characters used to break a value apart or disguise it without changing how it
+# reads: zero-width space/joiners, word joiner, BOM, soft hyphen (removed);
+# no-break and narrow spaces, the ideographic space and full-width ASCII (mapped to
+# their ASCII equivalent).
+_EVASION_CHARS = re.compile(
+    "[\u200b-\u200d\u2060\ufeff\u00ad\u00a0\u2007\u202f\u3000\uff01-\uff5e]"
+)
+_INVISIBLE = frozenset("\u200b\u200c\u200d\u2060\ufeff\u00ad")
+_SPACES = frozenset("\u00a0\u2007\u202f\u3000")
+
+
+def _normalize_evasion(text: str) -> tuple[str, list[int]]:
+    """``text`` with evasion characters normalised, and each output char's source offset.
+
+    ``index[i]`` is the offset in ``text`` of normalised character ``i``. The map is
+    per character, so it is the same in every streaming window.
+    """
+    out: list[str] = []
+    index: list[int] = []
+    for i, ch in enumerate(text):
+        if ch in _INVISIBLE:
+            continue
+        if ch in _SPACES:
+            ch = " "
+        elif "\uff01" <= ch <= "\uff5e":
+            ch = chr(ord(ch) - 0xFEE0)
+        out.append(ch)
+        index.append(i)
+    return "".join(out), index
 
 
 class Redactor:
@@ -257,6 +290,10 @@ class Redactor:
             EntityType.USERNAME,
             EntityType.SEX,
             EntityType.TITLE,
+            # password/token fields, auth headers and cookies: without SECRET here,
+            # `types=["secret"]` silently dropped every `password: …` field
+            EntityType.SECRET,
+            EntityType.EMAIL,  # ?email= query parameters
         }
         if resolved_types is None or _field_types.intersection(resolved_types):
             multi_type.append(StructuredFieldDetector(prose=use_prose_fields))
@@ -442,7 +479,25 @@ class Redactor:
     # ------------------------------------------------------------------
 
     def detect(self, text: str) -> list[Detection]:
-        """All detections in ``text``, scored, filtered, and non-overlapping."""
+        """All detections in ``text``, scored, filtered, and non-overlapping.
+
+        Invisible and look-alike characters (zero-width spaces, soft hyphens,
+        non-breaking spaces, full-width ASCII) are normalised before detection, so
+        ``a\u200b@example.com`` or a card number split by NBSPs cannot slip past a
+        pattern. Offsets are mapped back: a detection covers the original
+        characters, invisible ones included.
+        """
+        if _EVASION_CHARS.search(text) is None:
+            return self._detect(text)
+        normalized, index = _normalize_evasion(text)
+        mapped: list[Detection] = []
+        for det in self._detect(normalized):
+            start, end = index[det.start], index[det.end - 1] + 1
+            det.start, det.end, det.text = start, end, text[start:end]
+            mapped.append(det)
+        return mapped
+
+    def _detect(self, text: str) -> list[Detection]:
         raw: list[Detection] = []
         for detector in self._detectors:
             found = detector.detect(text)
@@ -543,6 +598,7 @@ class Redactor:
         Returns the run's :class:`~safestream_redactor.report.RedactionStats`
         (per-type counts, characters in/out).
         """
+        encoding = sniff_encoding(os.fspath(input_path), encoding)
         if workers is not None and workers > 1:
             from safestream_redactor.parallel import redact_file_parallel
 
