@@ -307,7 +307,9 @@ def _person_ok(value: str, key: str, line: bool = False) -> bool:
         norm in _PERSON_LOWER_CHECKED
         and 1 <= len(words) <= 4
         and all(w.isalpha() and w.islower() for w in words)
-        and (len(words) > 1 or (line and len(value) >= 3 and value not in _NOT_A_NAME))
+        # "patient: ok thanks" is a chat line, not a lower-case name
+        and not any(w in _NAME_STOP or w in _NOT_A_NAME for w in words)
+        and (len(words) > 1 or (line and len(value) >= 3))
     )
 
 
