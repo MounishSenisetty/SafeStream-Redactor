@@ -122,8 +122,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--regional",
         action="store_true",
         default=False,
-        help="enable the regional tier: IBAN, crypto addresses, UK NINO/NHS, India "
-        "Aadhaar/PAN (checksum-validated; off by default)",
+        help="enable the regional tier: crypto addresses and UK NINO (off by default; "
+        "IBAN, NHS, Aadhaar, PAN and Indian mobiles are always on)",
     )
     common.add_argument(
         "--profile",

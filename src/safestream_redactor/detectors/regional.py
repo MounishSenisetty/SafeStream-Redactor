@@ -1,9 +1,10 @@
 """Region-specific and checksum-validated identifiers (an opt-in detection tier).
 
 IBAN, cryptocurrency addresses, UK National Insurance and NHS numbers, and India's
-Aadhaar and PAN. These are **off by default** (``Redactor(use_regional=True)``,
-``--regional``, or naming one of their types in ``types``) because turning them on
-changes what an existing deployment redacts.
+Aadhaar and PAN. The checksum-validated ones (IBAN, NHS, Aadhaar), the PAN and Indian
+mobile numbers run by default in :class:`ChecksumIdDetector`; the rest (crypto
+addresses, NINO) are **off by default** (``Redactor(use_regional=True)``,
+``--regional``, or naming one of their types in ``types``).
 
 Precision comes from validating, not from clever regexes:
 
@@ -217,6 +218,16 @@ _ITIN_CUE = re.compile(r"(?:\bitin|taxpayer id)[^\n]{0,32}$", re.IGNORECASE)
 
 _NHS_CUE = re.compile(r"nhs[^\n]{0,32}$", re.IGNORECASE)
 _AADHAAR_CUE = re.compile(r"(?:aadhaar|aadhar|uidai|uid)[^\n]{0,32}$", re.IGNORECASE)
+# An Indian mobile number: ten digits starting 6-9 (TRAI numbering), bare or split
+# 5+5 the way people write it; an optional 0 trunk prefix. A "+91" number is already
+# a phone in the pattern tier.
+_IN_MOBILE = re.compile(rf"{_B}0?([6-9]\d{{4}}[ -]?\d{{5}}){_E}")
+# words before a 10-digit run that make it a reference, not a phone number
+_NOT_PHONE_CUE = re.compile(
+    r"(?:order|invoice|txn|transaction|ticket|ref|reference|tracking|awb|build|version"
+    r"|pid|uid|gid|port|serial|batch|lot|sku|isbn|epoch|timestamp|ts)[^\n]{0,12}$",
+    re.IGNORECASE,
+)
 
 
 def _iban_at(text: str, start: int) -> int | None:
@@ -303,8 +314,9 @@ class RegionalDetector:
 class ChecksumIdDetector(RegionalDetector):
     """Identifiers with a published checksum, on by default: IBAN, UK NHS, India
     Aadhaar, Australian ABN/ACN/TFN/Medicare, Singapore NRIC/FIN, and the US ITIN
-    (IRS-assigned group ranges). Shape-only identifiers (NINO, PAN, crypto
-    addresses) stay in the opt-in regional tier."""
+    (IRS-assigned group ranges); also India's PAN (a strict structure) and Indian
+    mobile numbers (ten digits starting 6-9). Shape-only identifiers with weaker
+    structure (NINO, crypto addresses) stay in the opt-in regional tier."""
 
     name = "checksum_id"
 
@@ -323,10 +335,15 @@ class ChecksumIdDetector(RegionalDetector):
                 out.append(emit(text, m.start(), m.end(), EntityType.NHS_NUMBER, 0.85, "nhs"))
         for m in _AADHAAR.finditer(text):
             spaced = " " in m.group(1)
-            if verhoeff_ok(m.group(1).replace(" ", "")) and (
-                spaced or cued(text, m.start(), _AADHAAR_CUE)
-            ):
-                out.append(emit(text, m.start(), m.end(), EntityType.IN_AADHAAR, 0.85, "aadhaar"))
+            if verhoeff_ok(m.group(1).replace(" ", "")):
+                # a bare 12-digit run passes Verhoeff one time in ten by chance, so
+                # without the spaced shape or a cue it is a weaker candidate
+                strong = spaced or cued(text, m.start(), _AADHAAR_CUE)
+                conf, rule = (0.85, "aadhaar") if strong else (0.55, "aadhaar_bare")
+                out.append(emit(text, m.start(), m.end(), EntityType.IN_AADHAAR, conf, rule))
+        for m in _PAN.finditer(text):
+            # the PAN's structure is strict (holder-type letter in 4th place)
+            out.append(emit(text, m.start(), m.end(), EntityType.IN_PAN, 0.75, "pan"))
         for m in _ABN.finditer(text):
             spaced = " " in m.group(1)
             if abn_ok(m.group(1).replace(" ", "")) and (spaced or cued(text, m.start(), _ABN_CUE)):
@@ -350,4 +367,14 @@ class ChecksumIdDetector(RegionalDetector):
         for m in _ITIN.finditer(text):
             if cued(text, m.start(), _ITIN_CUE):
                 out.append(emit(text, m.start(), m.end(), EntityType.ID_NUMBER, 0.8, "us_itin"))
+        # last: a checksum-validated id (an NHS number is ten digits too) is the
+        # better reading of a span both rules match
+        claimed = [(d.start, d.end) for d in out]
+        for m in _IN_MOBILE.finditer(text):
+            if cued(text, m.start(), _NOT_PHONE_CUE) or any(
+                a < m.end() and m.start() < b for a, b in claimed
+            ):
+                continue
+            conf = 0.6 if m.group(1).isdigit() else 0.8
+            out.append(emit(text, m.start(), m.end(), EntityType.PHONE, conf, "in_mobile"))
         return out

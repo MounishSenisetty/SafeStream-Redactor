@@ -558,7 +558,7 @@ const SAMPLES = {
   },
   csv: {
     label: "Customers CSV",
-    hint: "A customer export. Turn on Name heuristics to catch the names column too.",
+    hint: "A customer export. The header row names each column, so the names column is redacted too.",
     file: "customers.csv",
     text: `customer_id,name,email,phone,card_number,ssn,signup_ip,plan
 1001,Maria Garcia,maria.garcia@corpmail.com,+1 415 555 0132,4111 1111 1111 1111,123-45-6789,10.20.30.40,pro

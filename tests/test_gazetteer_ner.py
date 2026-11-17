@@ -60,10 +60,15 @@ def test_accented_names() -> None:
 
 
 def test_cjk_names_are_a_documented_limitation() -> None:
-    # non-Latin scripts need the neural NER tier; the gazetteer should simply not
-    # fire (no crash, no false positive), which is the documented behaviour.
-    got = _names("Dear 村上 健二, your parcel shipped.")
+    # non-Latin scripts need the neural NER tier; the gazetteer itself should simply
+    # not fire (no crash, no false positive), which is the documented behaviour.
+    got = [d.text for d in GazetteerNameDetector().detect("Dear 村上 健二, your parcel shipped.")]
     assert all("村上" not in n for n in got)
+
+
+def test_cjk_name_after_a_salutation_is_found_by_the_default_tiers() -> None:
+    # the structured tier's salutation cue reads a name in any script
+    assert "村上 健二" in _names("Dear 村上 健二, your parcel shipped.")
 
 
 def test_organization_names() -> None:

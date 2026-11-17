@@ -141,7 +141,7 @@ What each mode does, the large-file path, and the local-only guarantees are desc
 |---|---|
 | `--types a,b,c` | Only detect these entity types (default: all) |
 | `--backend {python,native,auto}` | `native` uses the Rust core (built from `native/`, see the README); `auto` uses it when installed |
-| `--regional` | Also detect IBAN, crypto addresses, UK NINO/NHS, India Aadhaar/PAN |
+| `--regional` | Also detect crypto addresses and UK NINO (IBAN, NHS, Aadhaar, PAN and Indian mobile numbers are on by default) |
 | `--dates`, `--profile prose` | Also redact dates and times (off by default: logs timestamp every line) |
 | `--config FILE` | Load a TOML policy file |
 | `--min-confidence X` | Drop detections scoring below `X` (default 0.5) |
