@@ -8,6 +8,25 @@ Notable changes to this project. The format follows
 
 ### Fixed
 
+- **False positives in code, config and prose** (found by running the redactor over
+  this repository):
+  - `name:` in CI and config files (`- name: Build wheel`, `name = "onnx"`,
+    `name: SafeStream secret/PII scan`) and type annotations (`name: str`,
+    `fn: Callable[...]`) are no longer people;
+  - code is not a field value: `state = dict(...)`, `address: Any = None`,
+    `token = r.redact(...)`, `secret = SECRETS[name]`, templates (`user=${u}@…`) and a
+    value naming its own key (`USERNAME = "username"`);
+  - ordinary words mid-sentence are not address labels (`stays flat: 42.8 MB`,
+    `persistent state: the tool's`), and an address needs a number or a proper name;
+  - an identifier needs at least three digits (`ssn=2`, `Passport number: 6-9`);
+  - prose-name cues: only personal titles (`12th Gen Intel`, `MS Teams`, `DR plan` are
+    not), a sign-off needs a comma or line break and its own line (`best Tier-0`),
+    and a word glued to a digit (`Tier-0`) is not a name;
+  - entropy no longer flags URL and file paths, model ids or query strings made of
+    words (`com/Owner/Repo`, `docs/SYSTEM_DESIGN.md`, `#tab=ci&mode=hash`); random
+    secrets with slashes are still found;
+  - a bare `::` is not an IPv6 address (`Operating System :: OS Independent`), and a
+    run of one repeated digit (`9999999999`) is not a mobile number.
 - **Names in running text**, with default settings: self-introductions (`my name is
   suresh`, `I am Suresh`), salutations (`Dear Suresh,`, `Hi Priya!`), sign-offs
   (`Thanks, Suresh`, `Regards,⏎Suresh Kumar`), honorifics (`Mr`, `Dr`, `Shri`, `Smt`…),

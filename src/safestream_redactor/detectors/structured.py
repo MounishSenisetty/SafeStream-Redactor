@@ -198,22 +198,34 @@ _PARTICLES = frozenset(
 # lower-case single words that a bare "name:" field holds in machine text
 _NOT_A_NAME = frozenset(
     {
-        "web", "api", "app", "apps", "nginx", "redis", "postgres", "postgresql", "mysql", "mongo",
-        "mongodb", "db", "database", "server", "service", "services", "worker", "workers",
-        "frontend", "backend", "default", "main", "master", "primary", "secondary", "replica",
-        "test", "tests", "testing", "prod", "production", "staging", "stage", "dev", "develop",
-        "development", "local", "localhost", "admin", "root", "system", "kube", "kubernetes",
-        "cache", "proxy", "gateway", "http", "https", "tcp", "udp", "grpc", "data", "config",
-        "metrics", "logs", "logging", "monitor", "monitoring", "sidecar", "init", "job", "cron",
-        "queue", "broker", "kafka", "rabbitmq", "elastic", "elasticsearch", "node", "nodes", "pod",
-        "pods", "container", "containers", "volume", "volumes", "network", "networks", "storage",
-        "public", "private", "internal", "external", "bucket", "cluster", "demo", "example",
-        "sample", "template", "base", "core", "common", "shared", "utils", "lib", "build",
-        "release", "deploy", "deployment", "ingress", "egress", "auth", "health", "status",
-        "version", "latest", "stable", "debug", "info", "warn", "warning", "error", "none", "null",
-        "true", "false", "unknown", "name", "user", "users", "team", "group", "guest", "anonymous",
-        "operator", "owner", "the", "a", "an", "of", "critical", "premium", "standard",
-        "regular", "vip", "new", "existing", "returning"
+        "web", "api", "app", "apps", "nginx", "redis", "postgres", "postgresql", "mysql",
+        "mongo", "mongodb", "db", "database", "server", "service", "services", "worker",
+        "workers", "frontend", "backend", "default", "main", "master", "primary", "secondary",
+        "replica", "test", "tests", "testing", "prod", "production", "staging", "stage", "dev",
+        "develop", "development", "local", "localhost", "admin", "root", "system", "kube",
+        "kubernetes", "cache", "proxy", "gateway", "http", "https", "tcp", "udp", "grpc",
+        "data", "config", "metrics", "logs", "logging", "monitor", "monitoring", "sidecar",
+        "init", "job", "cron", "queue", "broker", "kafka", "rabbitmq", "elastic",
+        "elasticsearch", "node", "nodes", "pod", "pods", "container", "containers", "volume",
+        "volumes", "network", "networks", "storage", "public", "private", "internal",
+        "external", "bucket", "cluster", "demo", "example", "sample", "template", "base",
+        "core", "common", "shared", "utils", "lib", "build", "release", "deploy", "deployment",
+        "ingress", "egress", "auth", "health", "status", "version", "latest", "stable", "debug",
+        "info", "warn", "warning", "error", "none", "null", "true", "false", "unknown", "name",
+        "user", "users", "team", "group", "guest", "anonymous", "operator", "owner", "the", "a",
+        "an", "of", "critical", "premium", "standard", "regular", "vip", "new", "existing",
+        "returning", "install", "scan", "smoke", "bug", "feature", "question", "package",
+        "publish", "docker", "lint", "check", "run", "setup", "upload", "download", "checkout",
+        "compile", "format", "generate", "sync", "report", "docs", "documentation", "coverage",
+        "benchmark", "benchmarks", "wheel", "wheels", "sdist", "dist", "native", "pages",
+        "site", "ci", "cd", "workflow", "step", "steps", "matrix", "crate", "alpine", "ubuntu",
+        "windows", "macos", "linux", "python", "rust", "java", "golang", "npm", "pip", "cargo",
+        "tox", "nox", "str", "int", "float", "bool", "bytes", "list", "dict", "set", "tuple",
+        "callable", "sequence", "optional", "object", "path", "number", "string", "text",
+        "value", "values", "field", "fields", "label", "labels", "type", "types", "entity",
+        "entities", "person", "persons", "people", "loc", "location", "org", "organization",
+        "organisation", "misc", "gpe", "date", "time", "email", "phone", "address", "username",
+        "password", "secret", "token", "key", "id", "uuid", "hash"
     }
 )  # fmt: skip
 
@@ -254,8 +266,8 @@ def _person_prefix(value: str, lenient: bool) -> str:
     pos = 0
     while len(words) < _MAX_NAME_WORDS:
         m = _NAME_WORD.match(value, pos)
-        if m is None:
-            break
+        if m is None or (m.end() < len(value) and value[m.end()].isdigit()):
+            break  # "Tier-0" is an identifier, not a name word
         words.append(m)
         gap = _NAME_GAP.match(value, m.end())
         if gap is None:
@@ -263,8 +275,10 @@ def _person_prefix(value: str, lenient: bool) -> str:
         pos = gap.end()
     if not words or not _name_word_ok(words[0].group(), True, lenient):
         return ""
-    if words[0].group().rstrip(".").lower() in _NAME_STOP:
-        # a transcript line after a role label: "Customer: Hi, I was charged twice"
+    first = words[0].group().rstrip(".").lower()
+    if first in _NAME_STOP or first in _NOT_A_NAME:
+        # a transcript line after a role label ("Customer: Hi, I was charged"), a
+        # CI step ("- name: Build wheel"), a type ("name: str")
         return ""
     # a name-only key accepts lower case for a value written in lower case
     # ("first_name: suresh kumar"); after a capitalised first word, lower-case words
@@ -283,7 +297,23 @@ def _person_prefix(value: str, lenient: bool) -> str:
     ):
         # one lower-case surname that ends the value: "Name: Suresh kumar"
         keep = len(words)
-    return value[: words[keep - 1].end()]
+    end = words[keep - 1].end()
+    if value[end:].lstrip()[:1] in _CODE_AFTER:
+        return ""  # "fn: Callable[[str], int]", "name: Optional[str] = None"
+    return value[:end]
+
+
+# a character right after a name that makes the value code, not a name
+_CODE_AFTER = frozenset("([{=<|")
+# A value that is code, not data: a call or an index at its start
+# (``dict(self.__dict__)``, ``SECRETS[name]``, ``r.redact("x")``) or an assignment
+# or annotation inside it (``Any = None``). Literal secrets in code are quoted and
+# are never judged by this.
+_CODE_VALUE = re.compile(r"[A-Za-z_][\w.]*[(\[]|.*\s=\s|.*\s->\s")
+# an identifier called or indexed: ``get_password()``, ``SECRETS[name]``
+_CODE_CALL = re.compile(r"[A-Za-z_][\w.]*(?:\(.*\)|\[.*\])")
+# "${user}", "{user}", "{{ user }}": a template that is filled in elsewhere
+_TEMPLATE = re.compile(r"\$\{|\{\{|\{[A-Za-z_]\w*\}")
 
 
 def _person_ok(value: str, key: str, line: bool = False) -> bool:
@@ -336,6 +366,11 @@ _SWITCH_WORDS = frozenset(
 def _valid(etype: EntityType, value: str, key: str = "", line: bool = False) -> bool:
     if is_placeholder(value):
         return False
+    if etype is not EntityType.SECRET and (
+        _norm(value) == _norm(key) or _TEMPLATE.search(value) or _CODE_VALUE.match(value)
+    ):
+        # ``USERNAME = "username"``, ``user=${u}@corp.com``, ``state = dict(...)``
+        return False
     if etype is EntityType.PERSON:
         return _person_ok(value, key, line)
     if etype is EntityType.PHONE:
@@ -343,15 +378,24 @@ def _valid(etype: EntityType, value: str, key: str = "", line: bool = False) -> 
     if etype is EntityType.DOB:
         return bool(_DOB_FULL.match(value))
     if etype is EntityType.ID_NUMBER:
-        return bool(_HAS_DIGIT.search(value)) and len(value) <= 64
+        # an identifier has a few digits: "ssn=2" is a count, "6-9" a range
+        return sum(c.isdigit() for c in value) >= 3 and len(value) <= 64
     if etype is EntityType.USERNAME:
-        return bool(_USERNAME_VALUE.match(value)) and value.lower() not in _STATUS_WORDS
+        return (
+            bool(_USERNAME_VALUE.match(value))
+            and any(c.isalnum() for c in value)
+            and value.lower() not in _STATUS_WORDS
+        )
     if etype is EntityType.EMAIL:
         return "@" in value or "%40" in value.lower()
     if etype is EntityType.SECRET:
         # any non-placeholder value of 3+ characters, letters-only included
         # ("open sesame"); a bare boolean or switch word is configuration
         return 3 <= len(value) <= _MAX_VALUE and value.lower() not in _SWITCH_WORDS
+    if etype is EntityType.ADDRESS and not any(c.isdigit() or c.isupper() for c in value):
+        # a place has a number or a proper name: "address: a stable device identifier"
+        # in a code comment is prose
+        return False
     # ADDRESS, SEX, TITLE: free text, but never a status word or a bare boolean
     return bool(_PLACE_VALUE.match(value)) and value.lower() not in _STATUS_WORDS
 
@@ -431,7 +475,7 @@ _LINE_PREFIX: dict[EntityType, re.Pattern[str]] = {
 }
 
 
-def _line_value(etype: EntityType, value: str, key: str = "") -> str:
+def _line_value(etype: EntityType, value: str, key: str = "", inline: bool = False) -> str:
     cut = _next_label(value)
     if cut is not None:
         value = value[:cut]
@@ -445,7 +489,11 @@ def _line_value(etype: EntityType, value: str, key: str = "") -> str:
     if etype is EntityType.SECRET:
         # an unquoted secret is one token: "password = abuser1234  # comment"
         # (a closing quote or bracket after it belongs to the enclosing string)
-        return value.split()[0].rstrip("\"'}])") if value.split() else ""
+        # a whole call or index is code, not a literal: "token = r.redact(x)",
+        # "secret = SECRETS[name]" (but "pwd: a(b)c" is a password)
+        if _CODE_CALL.fullmatch(value.split("#")[0].strip()):
+            return ""
+        return value.split()[0].rstrip("\"'}])`") if value.split() else ""
     if etype is EntityType.USERNAME and any(c.isspace() for c in value):
         # a username field holds one token; "User1: Thank you, User2" is a
         # transcript speaker label followed by a sentence, not a username
@@ -454,6 +502,15 @@ def _line_value(etype: EntityType, value: str, key: str = "") -> str:
         prefix_text = _person_prefix(value, _norm(key) in _PERSON_ONLY)
         if not prefix_text and _person_ok(value, key, line=True):
             return value  # bare lower-case "name: suresh kumar"
+        if (
+            prefix_text
+            and not inline
+            and _norm(key) == "name"
+            and any(c.isalpha() for c in value[len(prefix_text) :])
+        ):
+            # a "name:" line holds one thing: "name: SafeStream secret/PII scan"
+            # names a tool; a log line ("INFO name: Bob logged in") is inline
+            return ""
         return prefix_text
     prefix = _LINE_PREFIX.get(etype)
     if prefix is None:
@@ -563,6 +620,24 @@ _THING_QUALIFIERS = frozenset(
 )  # fmt: skip
 
 
+# address words that are ordinary English mid-sentence; only a line that starts with
+# them ("State: Karnataka") is read as a field
+_AMBIGUOUS_INLINE = frozenset(
+    {
+        "flat", "state", "suite", "building", "residence", "apartment", "apt", "town",
+        "village", "county", "country", "province", "street", "district", "locality",
+        "landmark", "city", "mandal", "taluk", "tehsil",
+    }
+)  # fmt: skip
+
+
+def _yaml_list_name(key: str, before: str) -> bool:
+    """``- name: Build wheel``: a lower-case ``name`` key on a YAML list item names a
+    CI step, a container or a column, not a person ("- Name: Suresh" in a markdown
+    list keeps its capital)."""
+    return key.strip() == "name" and before.strip() == "-"
+
+
 def _label_before(head: str) -> str | None:
     """The known field label that ends ``head`` (one to four words, longest first).
 
@@ -618,15 +693,17 @@ _PROSE_NAME_CUES: tuple[tuple[re.Pattern[str], bool], ...] = (
         re.compile(
             r"(?im)^[ \t]*(?:thanks|thank you|many thanks|regards|best regards|kind regards"
             r"|warm regards|best wishes|cheers|sincerely|yours sincerely|yours truly|yours"
-            r"|best|cordially|respectfully)[ \t]*,?[ \t]*(?:\r?\n[ \t]*)?"
+            r"|best|cordially|respectfully)(?:[ \t]*,[ \t]*(?:\r?\n[ \t]*)?|[ \t]*\r?\n[ \t]*)"
         ),
         False,
     ),
     # honorific, capitalised ("500 ms" is a duration): "Mr Suresh Kumar", "Smt. Lakshmi"
     (
         re.compile(
-            r"\b(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof|Shri|Sri|Smt|Kumari|Mister|Madam|Sir|Dame|Lady"
-            r"|Lord|Hon|Rev|Capt|Col|Maj|Gen|Sgt|Lt|MR|MRS|MS|DR|SHRI|SMT)\.?[ \t]+"
+            # personal titles only: "Gen" (12th Gen Intel), "Rev" (Rev B), "Col"
+            # (column) and the all-caps MS/DR/MR (Microsoft, disaster recovery,
+            # merge request) name other things far more often
+            r"\b(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof|Shri|Sri|Smt|Kumari|Mister|MRS|SHRI|SMT)\.?[ \t]+"
         ),
         False,
     ),
@@ -641,6 +718,9 @@ _PROSE_NAME_CUES: tuple[tuple[re.Pattern[str], bool], ...] = (
     # email header lines naming a person: "From: Suresh Kumar"
     (re.compile(r"(?im)^[ \t]*(?:from|to|cc|bcc|reply-to|sender)[ \t]*:[ \t]*\"?"), False),
 )
+_SIGN_OFF = _PROSE_NAME_CUES[3][0]
+# what may follow a name that ends its line: punctuation, blanks, the line break
+_LINE_TAIL = re.compile(r"[ \t.!,]*(?:\r?\n|\Z)")
 # a display name before an email address: "Suresh Kumar <suresh@example.com>". The
 # address is capped (64 + 56 characters) so the whole "<…>" a name needs to see on its
 # right stays inside this tier's declared right context (_MAX_VALUE).
@@ -695,6 +775,8 @@ def _prose_name(text: str, pos: int, lenient: bool) -> int:
         m = _NAME_WORD.match(text, end if i == 0 else end + 1)
         if m is None or (i > 0 and text[end] != " "):
             break
+        if m.end() < len(text) and text[m.end()].isdigit():
+            break  # "Tier-0", "Gen2": an identifier
         word = m.group().rstrip(".'\u2019")
         if not word:
             break
@@ -733,7 +815,14 @@ class StructuredFieldDetector:
     def detect(self, text: str) -> list[Detection]:
         found: dict[tuple[int, int], Detection] = {}
 
-        def emit(key: str, start: int, end: int, line: bool = False, query: bool = False) -> None:
+        def emit(
+            key: str,
+            start: int,
+            end: int,
+            line: bool = False,
+            query: bool = False,
+            inline: bool = False,
+        ) -> None:
             etype = field_type(key, self.prose)
             if query and _norm(key) in _QUERY_NOT_PII:
                 etype = None
@@ -742,10 +831,11 @@ class StructuredFieldDetector:
             if etype is None:
                 return
             raw = text[start:end]
-            value = _line_value(etype, raw, key) if line else raw.rstrip(_TRIM)
+            value = _line_value(etype, raw, key, inline) if line else raw.rstrip(_TRIM)
             # a line value may be quoted: emit only what is inside the quotes
             if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-                start, value = start + 1, value[1:-1]
+                # a quoted value is code or config ("name = \"onnx\""), not a form
+                start, value, line = start + 1, value[1:-1], False
             if not value or not _valid(etype, value, key, line):
                 return
             end = start + len(value)
@@ -777,7 +867,8 @@ class StructuredFieldDetector:
                     emit(m.group(1), m.start(2), m.end(2))
         if ":" in text or "=" in text:
             for m in _LINE.finditer(text):
-                emit(m.group(1), m.start(2), m.end(2), line=True)
+                if not _yaml_list_name(m.group(1), text[m.start() : m.start(1)]):
+                    emit(m.group(1), m.start(2), m.end(2), line=True)
         if "=" in text:
             for m in _PAIR.finditer(text):
                 span = first_group(m, range(2, 5))
@@ -832,8 +923,11 @@ class StructuredFieldDetector:
             for m in cue.finditer(text):
                 lenient = strong or bool(_DOTTED_HONORIFIC.search(m.group()))
                 end = _prose_name(text, m.end(), lenient)
-                if end > m.end():
-                    spans.append((m.end(), end))
+                if end <= m.end():
+                    continue
+                if cue is _SIGN_OFF and _LINE_TAIL.match(text, end) is None:
+                    continue  # a sign-off name stands alone on its line
+                spans.append((m.end(), end))
         if "<" in text and "@" in text:
             for m in _DISPLAY_NAME.finditer(text):
                 name = m.group(1).rstrip()
@@ -859,8 +953,13 @@ class StructuredFieldDetector:
             # of separators stays linear
             key_from = max(0, m.start() - _MAX_KEY)
             newline = text.rfind("\n", key_from, m.start())
-            label = _label_before(text[key_from if newline < 0 else newline + 1 : m.start()])
-            if label is None:
+            head = text[key_from if newline < 0 else newline + 1 : m.start()]
+            label = _label_before(head)
+            if label is None or _yaml_list_name(label, head[: len(head.rstrip()) - len(label)]):
+                continue
+            if head.strip() != label and _norm(label) in _AMBIGUOUS_INLINE:
+                # mid-line, "flat", "state" or "street" are ordinary words:
+                # "RSS stays flat: 42.8 MB", "no persistent state: the tool's"
                 continue
             end = min(len(text), m.end() + _MAX_VALUE)
             line_end = text.find("\n", m.end(), end)
@@ -871,7 +970,7 @@ class StructuredFieldDetector:
             esc = _ESCAPE.search(text, m.end(), end)
             if esc is not None:
                 end = esc.start()
-            emit(label, m.end(), end, line=True)
+            emit(label, m.end(), end, line=True, inline=head.strip() != label)
 
     @staticmethod
     def _credentials(text: str, emit: _Emit) -> None:

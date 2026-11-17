@@ -223,3 +223,102 @@ def test_url_password_with_at_sign(redactor, url, out):
 )
 def test_a_role_label_before_a_chat_line_is_not_a_name(redactor, text):
     assert redactor.redact(text) == text
+
+
+# --- round 4: code, config and prose false positives (found by scanning this repo) ---
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # CI and config files
+        "- name: Install safestream-redactor",
+        "  - name: Build wheel",
+        "- name: Scan for secrets and PII",
+        "name: SafeStream secret/PII scan",
+        'name = "onnx"',
+        '    name = "deterministic"',
+        # type annotations and code
+        "    name: str",
+        "fn: Callable[[str], int]",
+        "flat: Sequence[Finding],",
+        "state = dict(self.__dict__)",
+        "address: Any = None,",
+        'token = r.redact("mail bob")',
+        "secret = SECRETS[name]",
+        'USERNAME = "username"',
+        '"username": "USERNAME",',
+        'line = f"login ok user=${u}@corpmail.com"',
+        # prose
+        "RSS stays flat: 42.8 MB for the parent",
+        "There is no persistent state: the tool's privacy",
+        "# hardware (EUI-48/EUI-64) address: a stable device identifier",
+        "summary e.g. 5 detection(s): email=3, ssn=2",
+        "# Passport number: 6-9 letters/digits behind a cue",
+        "its best Tier-0 member wins",
+        "12th Gen Intel(R) Core(TM) i7-12650H",
+        "| MS Purview | MS Teams | DR plan |",
+        "Operating System :: OS Independent",
+        "see docs/SYSTEM_ARCHITECTURE_AND_CODEBASE.md",
+        "https://github.com/MounishSenisetty/SafeStream-Redactor/actions/workflows/ci.yml",
+        "research/results/raw/presidio_compare_2026-10-02.json",
+        "OpenMed/OpenMed-PII-SuperClinical-Large-434M-v1",
+        "page#tab=ci&mode=hash&conf=0.8",
+        "max_size = 9999999999",
+    ],
+)
+def test_code_config_and_prose_are_kept(redactor, text):
+    assert redactor.redact(text) == text
+
+
+@pytest.mark.parametrize(
+    ("text", "secret"),
+    [
+        ("password: P@ss[word]1", "P@ss[word]1"),
+        ("pwd: a(b)c", "a(b)c"),
+        ("password: hunter2`", "hunter2"),
+        (
+            "key wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY end",
+            "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        ),
+        ("token aB3xK9pLmQ2rT7vY4wZ8/nC1dE5fG6hJ", "aB3xK9pLmQ2rT7vY4wZ8/nC1dE5fG6hJ"),
+        ("?token=aB3xK9pLmQ2rT7vY4wZ8nC1d&x=1", "aB3xK9pLmQ2rT7vY4wZ8nC1d"),
+    ],
+)
+def test_real_secrets_near_those_rules_are_still_redacted(redactor, text, secret):
+    assert secret not in redactor.redact(text)
+
+
+def test_random_base64_secrets_with_slashes_are_still_found(redactor):
+    import base64
+    import random
+
+    rnd = random.Random(5)
+    for _ in range(200):
+        raw = base64.b64encode(rnd.randbytes(rnd.choice([24, 30, 33, 40]))).decode()
+        if "/" not in raw:
+            raw = raw[:8] + "/" + raw[8:]
+        assert raw not in redactor.redact(f"key {raw} end")
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("- Name: Suresh Kumar", "Suresh Kumar"),  # a markdown list keeps its capital
+        ("INFO name: Suresh Kumar logged in", "Suresh Kumar"),
+        ("name: suresh", "suresh"),
+        ("Regards,\nSuresh Kumar", "Suresh Kumar"),
+        ("Dr. Kiran", "Kiran"),
+        ("Ms Priya Sharma joined", "Priya Sharma"),
+    ],
+)
+def test_names_still_found_next_to_those_rules(redactor, text, name):
+    assert name in _persons(redactor, text)
+
+
+def test_a_sign_off_needs_its_own_line(redactor):
+    assert redactor.redact("best Tier-0 member and best regards to all") == (
+        "best Tier-0 member and best regards to all"
+    )
+    assert redactor.redact("Thanks, Suresh") == "Thanks, [REDACTED]"
+    assert redactor.redact("Thanks, Suresh for the help") == "Thanks, Suresh for the help"
