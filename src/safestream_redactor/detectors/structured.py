@@ -57,6 +57,9 @@ _PERSON = {
     "mothersname", "mothername", "guardianname", "parentname", "nomineename", "nominee",
     "studentname", "applicantname", "beneficiaryname", "holdername", "nameofcustomer",
     "customer", "patient", "applicant", "beneficiary", "insured", "policyholder",
+    "author", "reviewer", "reviewedby", "assignee", "assignedto", "signedby", "approvedby",
+    "createdby", "submittedby", "reportedby", "requestedby", "contactperson", "sender",
+    "recipient", "attendee", "organizer", "organiser", "cc", "bcc", "replyto",
 }  # fmt: skip
 # Keys that can only hold a person's name, so a lower-case value is still a name
 # ("first_name: suresh"). Bare "name" is not one of them: "name: web" in a
@@ -260,6 +263,9 @@ def _person_prefix(value: str, lenient: bool) -> str:
         pos = gap.end()
     if not words or not _name_word_ok(words[0].group(), True, lenient):
         return ""
+    if words[0].group().rstrip(".").lower() in _NAME_STOP:
+        # a transcript line after a role label: "Customer: Hi, I was charged twice"
+        return ""
     # a name-only key accepts lower case for a value written in lower case
     # ("first_name: suresh kumar"); after a capitalised first word, lower-case words
     # are the rest of a sentence ("Patient Name: James Wilson arrived.")
@@ -301,7 +307,9 @@ def _person_ok(value: str, key: str, line: bool = False) -> bool:
         norm in _PERSON_LOWER_CHECKED
         and 1 <= len(words) <= 4
         and all(w.isalpha() and w.islower() for w in words)
-        and (len(words) > 1 or (line and len(value) >= 3 and value not in _NOT_A_NAME))
+        # "patient: ok thanks" is a chat line, not a lower-case name
+        and not any(w in _NAME_STOP or w in _NOT_A_NAME for w in words)
+        and (len(words) > 1 or (line and len(value) >= 3))
     )
 
 
@@ -496,6 +504,17 @@ _PROSE_SECRET = re.compile(
 # the user part of a URI's userinfo (scheme://user:password@host): a username
 # field; the password is the deterministic tier's url_credentials
 _USERINFO = re.compile(r"\b[a-z][a-z0-9+.-]{1,15}://([^\s:/@\"'<>]{1,64}):[^\s/@\"'<>]{1,128}@")
+# A URL password that itself holds "@" (postgres://admin:s3cretP@ss@db.host/app):
+# the userinfo ends at the LAST "@" before the host, and the pattern tier, which
+# stops at the first one, leaves "@ss" in the clear and calls the rest an email.
+# The password class takes "@" and backtracks to the last one; the host after it
+# has none.
+_USERINFO_AT = re.compile(
+    r"\b[a-z][a-z0-9+.-]{1,15}://[^\s:/@\"'<>]{1,64}:([^\s/\"'<>]{1,128})@[A-Za-z0-9.-]{1,253}"
+)
+# above the pattern tier's url_credentials (0.97) and email (0.95), so the whole
+# password wins the overlap
+_USERINFO_AT_CONFIDENCE = 0.98
 # HTTP credentials anywhere on a line (a curl -H argument, a quoted header in code,
 # a log line): the scheme names the credential, so it needs no entropy to qualify.
 _AUTH_HEADER = re.compile(
@@ -572,6 +591,125 @@ def _label_before(head: str) -> str | None:
     if _norm(chosen) == "name" and len(words) > 1 and _norm(words[1]) in _THING_QUALIFIERS:
         return None  # "service name: Payment Gateway" names a thing, not a person
     return chosen
+
+
+# --- names in prose -----------------------------------------------------------------
+#
+# Each cue is matched case-insensitively and ends where the name begins; the name
+# itself is read by _prose_name. "Strong" cues (a self-introduction, an honorific
+# with a period) allow a lower-case name; the rest need a capitalised one.
+_PROSE_NAME_CUES: tuple[tuple[re.Pattern[str], bool], ...] = (
+    # self-introduction: "my name is suresh", "I'm called Priya"
+    (
+        re.compile(r"(?i)\b(?:my name is|my name's|my name:|i am called|i'm called|call me)[ \t]+"),
+        True,
+    ),
+    # "I am Suresh" / "I'm Suresh": capitalised only ("I am sure" is not a name)
+    (re.compile(r"\b(?:I am|I'm|I\u2019m)[ \t]+"), False),
+    # salutation at the start of a line: "Dear Suresh,", "Hi Priya!"
+    (
+        re.compile(
+            r"(?im)^[ \t]*(?:dear|hi|hello|hey|greetings|good (?:morning|afternoon|evening))[ \t]+"
+        ),
+        False,
+    ),
+    # sign-off: "Thanks, Suresh", "Regards,\nSuresh Kumar"
+    (
+        re.compile(
+            r"(?im)^[ \t]*(?:thanks|thank you|many thanks|regards|best regards|kind regards"
+            r"|warm regards|best wishes|cheers|sincerely|yours sincerely|yours truly|yours"
+            r"|best|cordially|respectfully)[ \t]*,?[ \t]*(?:\r?\n[ \t]*)?"
+        ),
+        False,
+    ),
+    # honorific, capitalised ("500 ms" is a duration): "Mr Suresh Kumar", "Smt. Lakshmi"
+    (
+        re.compile(
+            r"\b(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof|Shri|Sri|Smt|Kumari|Mister|Madam|Sir|Dame|Lady"
+            r"|Lord|Hon|Rev|Capt|Col|Maj|Gen|Sgt|Lt|MR|MRS|MS|DR|SHRI|SMT)\.?[ \t]+"
+        ),
+        False,
+    ),
+    # an action credited to a person: "created by Suresh Kumar", "signed by: Priya"
+    (
+        re.compile(
+            r"(?i)\b(?:created|submitted|approved|signed|reviewed|reported|requested|assigned"
+            r"|written|authored|sent|posted|uploaded|edited|modified|updated)[ \t]+by[ \t]*:?[ \t]+"
+        ),
+        False,
+    ),
+    # email header lines naming a person: "From: Suresh Kumar"
+    (re.compile(r"(?im)^[ \t]*(?:from|to|cc|bcc|reply-to|sender)[ \t]*:[ \t]*\"?"), False),
+)
+# a display name before an email address: "Suresh Kumar <suresh@example.com>". The
+# address is capped (64 + 56 characters) so the whole "<…>" a name needs to see on its
+# right stays inside this tier's declared right context (_MAX_VALUE).
+_DISPLAY_NAME = re.compile(
+    r"\"?([^\W\d_][^<>\"\n,;:@]{0,62}?)\"?[ \t]*<[^<>\s@]{1,64}@[^<>\s]{1,56}>"
+)
+# a cue word with a period that marks a strong honorific ("Mr. suresh")
+_DOTTED_HONORIFIC = re.compile(r"(?i)\b(?:mr|mrs|ms|dr|prof|smt|shri)\.[ \t]+\Z")
+_PROSE_NAME_CONFIDENCE = 0.75
+# words that follow a cue but are not a name ("Dear Sir", "I am sure", "Hi all")
+_NOT_PROSE_NAME = frozenset(
+    {
+        "sir", "madam", "madame", "all", "team", "everyone", "everybody", "there", "folks",
+        "guys", "friends", "colleagues", "customer", "customers", "user", "users", "member",
+        "members", "client", "valued", "hiring", "manager", "support", "admin", "system",
+        "sure", "sorry", "happy", "glad", "here", "back", "ready", "fine", "good", "not",
+        "also", "afraid", "able", "going", "trying", "writing", "calling", "working",
+        "looking", "interested", "new", "just", "still", "very", "really", "so", "the", "a",
+        "an", "in", "on", "at", "from", "with", "your", "my", "our", "their", "this", "that",
+        "unable", "available", "aware", "done", "currently", "always", "now", "excited",
+        "pleased", "delighted", "thankful", "grateful", "confused", "concerned", "unsure",
+        "attaching", "reaching", "following", "regarding", "sending", "fully", "totally",
+        "again", "today", "tomorrow", "morning", "afternoon", "evening", "night", "world",
+        "jenkins", "bot", "noreply", "no-reply", "mailer", "daemon", "postmaster", "root",
+        "unknown", "anonymous", "undisclosed", "recipients", "list",
+    }
+)  # fmt: skip
+# lower-case words that end a name read after a strong cue
+_NAME_STOP_WORDS = frozenset(
+    {
+        "i", "im", "me", "we", "you", "he", "she", "they", "it", "but", "so", "please", "how",
+        "what", "who", "can", "will", "would", "could", "should", "am", "are", "be", "been",
+        "here", "there", "and", "or", "if", "when", "where", "why", "which", "age", "aged",
+        "years", "old", "living", "work", "works", "live", "lives", "speaking", "hi", "hello",
+        "hey", "thanks", "ok", "okay", "yes", "no", "yeah", "sure", "well", "oh"
+    }
+)  # fmt: skip
+_NAME_STOP = _SENTENCE_WORDS | _NOT_PROSE_NAME | _NAME_STOP_WORDS
+
+
+def _prose_name(text: str, pos: int, lenient: bool) -> int:
+    """The end of a name (one to three words) starting at ``pos``, or ``pos`` for none.
+
+    Words are separated by single blanks. The first word must be capitalised (or of
+    an uncased script) unless ``lenient``; later words may be capitalised words,
+    name particles, or (``lenient``, lower-case name) lower-case words, and a word
+    from the stop list ends the name.
+    """
+    end = pos
+    lower_name = False
+    for i in range(3):
+        m = _NAME_WORD.match(text, end if i == 0 else end + 1)
+        if m is None or (i > 0 and text[end] != " "):
+            break
+        word = m.group().rstrip(".'\u2019")
+        if not word:
+            break
+        lowered = word.lower()
+        if lowered in _NAME_STOP or lowered in _NOT_A_NAME:
+            break
+        if word[0].islower():
+            if i == 0 and not lenient:
+                break
+            if i == 0:
+                lower_name = True
+            elif not lower_name and lowered not in _PARTICLES:
+                break
+        end = m.start() + len(word)
+    return end
 
 
 # emit(key, start, end, line=False, query=False): records one field value
@@ -659,10 +797,53 @@ class StructuredFieldDetector:
         if "://" in text:
             for m in _USERINFO.finditer(text):
                 emit("username", m.start(1), m.end(1))
+            for m in _USERINFO_AT.finditer(text):
+                if "@" in m.group(1):
+                    found[(m.start(1), m.end(1))] = Detection(
+                        start=m.start(1),
+                        end=m.end(1),
+                        text=m.group(1),
+                        entity_type=EntityType.URL_CREDENTIALS,
+                        confidence=_USERINFO_AT_CONFIDENCE,
+                        source=self.name,
+                        meta={"field": "url password"},
+                    )
         if ":" in text or "=" in text:
             self._inline_fields(text, emit)
         self._credentials(text, emit)
+        for start, end in self._prose_names(text):
+            if (start, end) not in found:
+                found[(start, end)] = Detection(
+                    start=start,
+                    end=end,
+                    text=text[start:end],
+                    entity_type=EntityType.PERSON,
+                    confidence=_PROSE_NAME_CONFIDENCE,
+                    source=self.name,
+                    meta={"field": "prose"},
+                )
         return sorted(found.values(), key=lambda d: (d.start, d.end))
+
+    @staticmethod
+    def _prose_names(text: str) -> list[tuple[int, int]]:
+        """Name spans introduced by a cue in running text (see _PROSE_NAME_CUES)."""
+        spans: list[tuple[int, int]] = []
+        for cue, strong in _PROSE_NAME_CUES:
+            for m in cue.finditer(text):
+                lenient = strong or bool(_DOTTED_HONORIFIC.search(m.group()))
+                end = _prose_name(text, m.end(), lenient)
+                if end > m.end():
+                    spans.append((m.end(), end))
+        if "<" in text and "@" in text:
+            for m in _DISPLAY_NAME.finditer(text):
+                name = m.group(1).rstrip()
+                start = m.start(1)
+                end = _prose_name(text, start, False)
+                # the whole display name must read as a name ("GitHub <noreply@…>"
+                # is fine too: an organisation's sender name is not a secret)
+                if end == start + len(name) and name.lower() not in _NOT_PROSE_NAME:
+                    spans.append((start, end))
+        return spans
 
     @staticmethod
     def _inline_fields(text: str, emit: _Emit) -> None:

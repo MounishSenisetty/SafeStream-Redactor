@@ -254,12 +254,13 @@ Only need the command? `pipx install safestream-redactor`, or run it without ins
 
 | Category | Entity types |
 |---|---|
-| Personal data | `email`, `phone`, `credit_card`, `ssn`, `ipv4`, `ipv6`, `mac_address`, `address`, `dob`, `username` |
+| Personal data | `email`, `phone` (incl. Indian mobiles), `credit_card`, `ssn`, `ipv4`, `ipv6`, `mac_address`, `address`, `dob`, `username`, `person` (field values, table columns, salutations, sign-offs, honorifics, `Name <email>`) |
+| Checksum-validated IDs | `iban`, `nhs_number`, `in_aadhaar`, `in_pan` |
 | Labelled identifiers | `id_number`: account, patient, MRN, passport, policy and case numbers after their label |
 | Cloud and service credentials | `aws_key`, `aws_secret`, `aws_account_id`, `github_token`, `slack_token`, `slack_webhook`, `stripe_key`, `google_api_key`, `sendgrid_key`, `twilio_key`, `npm_token`, `openai_key`, `anthropic_key`, `vendor_token` |
 | Other secrets | `api_key`, `jwt`, `private_key`, `url_credentials`, `password_hash`, `secret` (high entropy, no known format) |
-| Names (with `[ner]` or `[onnx]`) | `person`, `org`, `loc` |
-| Opt-in | `date` (`--dates`), `url` (`--types url`), regional IDs with `--regional`: `iban`, `crypto_address`, `uk_nino`, `nhs_number`, `in_aadhaar`, `in_pan` |
+| Names in free text (with `[ner]` or `[onnx]`) | `person`, `org`, `loc` |
+| Opt-in | `date` (`--dates`), `url` (`--types url`), regional IDs with `--regional`: `crypto_address`, `uk_nino` (and bare NHS numbers without a cue) |
 | Your own | `custom`, from `--custom-word` and `--custom-regex` |
 
 Card, IBAN, NHS and Aadhaar numbers are checksum-validated. Matches identified by

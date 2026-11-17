@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import itertools
 import logging
 import os
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 
 from safestream_redactor._atomic import atomic_output
 from safestream_redactor.calibration import Calibrator
 from safestream_redactor.detectors.base import Detector, requirements_of
+from safestream_redactor.detectors.columns import MAX_HEADER, ColumnDetector, header_spec
 from safestream_redactor.detectors.contextual import ContextualScorer
 from safestream_redactor.detectors.custom import CustomDetector
 from safestream_redactor.detectors.deterministic import DeterministicDetector
@@ -88,6 +90,20 @@ _EVASION_CHARS = re.compile(
 )
 _INVISIBLE = frozenset("\u200b\u200c\u200d\u2060\ufeff\u00ad")
 _SPACES = frozenset("\u00a0\u2007\u202f\u3000")
+
+
+def _peek_header(chunks: Iterable[str]) -> tuple[str, Iterator[str]]:
+    """The start of a stream (through its first line break, at most MAX_HEADER
+    characters) and an iterator over the whole stream, those chunks included."""
+    it = iter(chunks)
+    head: list[str] = []
+    size = 0
+    for chunk in it:
+        head.append(chunk)
+        size += len(chunk)
+        if "\n" in chunk or size >= MAX_HEADER:
+            break
+    return "".join(head), itertools.chain(head, it)
 
 
 def _normalize_evasion(text: str) -> tuple[str, list[int]]:
@@ -346,6 +362,8 @@ class Redactor:
             EntityType.IBAN,
             EntityType.NHS_NUMBER,
             EntityType.IN_AADHAAR,
+            EntityType.IN_PAN,
+            EntityType.PHONE,  # Indian mobile numbers
             EntityType.ID_NUMBER,
         }
         if resolved_types is None or _checksum_types.intersection(resolved_types):
@@ -353,7 +371,7 @@ class Redactor:
             multi_type.append(ChecksumIdDetector())
             self._detectors.append(multi_type[-1])
         if use_regional or (resolved_types is not None and REGIONAL_TYPES & set(resolved_types)):
-            # the shape-only rest (NINO, PAN, crypto addresses) stays opt-in
+            # the shape-only rest (NINO, crypto addresses) stays opt-in
             self._detectors.append(RegionalDetector())
         if use_urls or (resolved_types is not None and EntityType.URL in resolved_types):
             from safestream_redactor.detectors.deterministic import UrlDetector
@@ -481,27 +499,52 @@ class Redactor:
     def detect(self, text: str) -> list[Detection]:
         """All detections in ``text``, scored, filtered, and non-overlapping.
 
+        ``text`` is a whole input: when its first line is a table header
+        (``name,email,phone``), the columns below it are typed by that header.
+        The streaming entry points read the header from the start of the stream
+        instead, so every window of one input sees the same header.
+
         Invisible and look-alike characters (zero-width spaces, soft hyphens,
         non-breaking spaces, full-width ASCII) are normalised before detection, so
         ``a\u200b@example.com`` or a card number split by NBSPs cannot slip past a
         pattern. Offsets are mapped back: a detection covers the original
         characters, invisible ones included.
         """
+        return self._detect_for(text, self._columns_for(text))
+
+    def _columns_for(self, head: str) -> ColumnDetector | None:
+        """A column detector for the table header ``head`` starts with, if any."""
+        spec = header_spec(head)
+        if spec is None:
+            return None
+        # a row is read back at most the overlap, so the tier stays boundary-correct
+        return ColumnDetector(spec, row_window=min(MAX_HEADER, self.overlap) - 1)
+
+    def _window_detector(self, columns: ColumnDetector | None) -> Callable[[str], list[Detection]]:
+        """The per-window detect function of one run (its table header fixed)."""
+        return lambda text: self._detect_for(text, columns)
+
+    def _detect_for(self, text: str, columns: ColumnDetector | None) -> list[Detection]:
         if _EVASION_CHARS.search(text) is None:
-            return self._detect(text)
+            return self._detect(text, columns)
         normalized, index = _normalize_evasion(text)
         mapped: list[Detection] = []
-        for det in self._detect(normalized):
+        for det in self._detect(normalized, columns):
             start, end = index[det.start], index[det.end - 1] + 1
             det.start, det.end, det.text = start, end, text[start:end]
             mapped.append(det)
         return mapped
 
-    def _detect(self, text: str) -> list[Detection]:
+    def _detect(self, text: str, columns: ColumnDetector | None = None) -> list[Detection]:
         raw: list[Detection] = []
         for detector in self._detectors:
             found = detector.detect(text)
             if self._types is not None and detector in self._multi_type:
+                found = [d for d in found if d.entity_type in self._types]
+            raw.extend(found)
+        if columns is not None:
+            found = columns.detect(text)
+            if self._types is not None:
                 found = [d for d in found if d.entity_type in self._types]
             raw.extend(found)
         self._scorer.adjust(text, raw)
@@ -529,14 +572,19 @@ class Redactor:
         ``on_window`` observes every detection pass (see
         :class:`~safestream_redactor.engine.WindowTrace`).
         """
-        return stream_windows(
-            chunks,
-            self.detect,
-            self.overlap,
-            min_emit=self.chunk_size,
-            on_window=on_window,
-            strict_spans=not self.allow_unsafe_overlap,
-        )
+
+        def run() -> Iterator[tuple[str, list[Detection]]]:
+            head, rest = _peek_header(chunks)
+            yield from stream_windows(
+                rest,
+                self._window_detector(self._columns_for(head)),
+                self.overlap,
+                min_emit=self.chunk_size,
+                on_window=on_window,
+                strict_spans=not self.allow_unsafe_overlap,
+            )
+
+        return run()
 
     def redact_stream(
         self, chunks: Iterable[str], stats: RedactionStats | None = None
@@ -550,22 +598,28 @@ class Redactor:
         per-type counts and sizes while streaming.
         """
         if stats is None:
-            return stream_transform(
-                chunks,
-                self.detect,
-                self.policy.apply,
-                self.overlap,
-                min_emit=self.chunk_size,
-                strict_spans=not self.allow_unsafe_overlap,
-            )
+
+            def run() -> Iterator[str]:
+                head, rest = _peek_header(chunks)
+                yield from stream_transform(
+                    rest,
+                    self._window_detector(self._columns_for(head)),
+                    self.policy.apply,
+                    self.overlap,
+                    min_emit=self.chunk_size,
+                    strict_spans=not self.allow_unsafe_overlap,
+                )
+
+            return run()
         return self._redact_stream_with_stats(chunks, stats)
 
     def _redact_stream_with_stats(
         self, chunks: Iterable[str], stats: RedactionStats
     ) -> Iterator[str]:
+        head, rest = _peek_header(chunks)
         for segment, detections in stream_windows(
-            chunks,
-            self.detect,
+            rest,
+            self._window_detector(self._columns_for(head)),
             self.overlap,
             min_emit=self.chunk_size,
             strict_spans=not self.allow_unsafe_overlap,

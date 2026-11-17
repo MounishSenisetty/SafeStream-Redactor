@@ -263,6 +263,12 @@ def _redact_range(job: _Job) -> _RangeResult:
         both = _read_chars_before(job.input_path, job.byte_start, 2 * ov, encoding)
         left_pad, context = both[-ov:], both[:-ov]
     seam_start = len(left_pad)  # local char position of the range's first char
+    # A table header is the file's first line, which a range in the middle of the
+    # file does not hold: read it from the file so every range types the same columns.
+    from safestream_redactor.detectors.columns import MAX_HEADER
+
+    head = _read_chars_after(job.input_path, 0, MAX_HEADER, encoding)
+    detect = redactor._window_detector(redactor._columns_for(head))
 
     range_chars = 0
 
@@ -321,7 +327,7 @@ def _redact_range(job: _Job) -> _RangeResult:
         with open(fd, "w", encoding=encoding, newline="") as out:
             for segment, detections in stream_windows(
                 feed(),
-                redactor.detect,
+                detect,
                 ov,
                 initial_context=context,
                 strict_spans=not redactor.allow_unsafe_overlap,

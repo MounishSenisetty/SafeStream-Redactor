@@ -8,6 +8,24 @@ Notable changes to this project. The format follows
 
 ### Fixed
 
+- **Names in running text**, with default settings: self-introductions (`my name is
+  suresh`, `I am Suresh`), salutations (`Dear Suresh,`, `Hi Priya!`), sign-offs
+  (`Thanks, Suresh`, `Regards,⏎Suresh Kumar`), honorifics (`Mr`, `Dr`, `Shri`, `Smt`…),
+  `Name <email>` display names, `From:`/`To:`/`Cc:` lines, person labels (`Author:`,
+  `Reviewer:`, `Assignee:`, `Signed by:`) and `created by Suresh Kumar`. Common words
+  after a cue (`Dear Sir`, `I am sure`, `created by system`) are left alone.
+- **Tables typed by their header row.** In a CSV/TSV (or `;`/`|`-separated) input whose
+  first line names personal-data columns (`name,email,phone,city`), the cells of those
+  columns are redacted. The header is read once per run, so streaming, chunking and
+  `--workers` give byte-identical output.
+- **Indian identifiers on by default:** a PAN, a bare 12-digit Aadhaar that passes
+  Verhoeff, and mobile numbers (ten digits starting 6-9, bare or `98765 43210`; not
+  after `order`, `txn`, `ticket`…, and never over a checksum-validated id).
+- **Chat transcripts:** a role label before a message (`Customer: Hi, I was charged…`)
+  no longer turns the greeting into a "name".
+- **A URL password containing `@`** (`postgres://admin:s3cretP@ss@db/app`) is
+  redacted whole instead of leaving `@ss` visible and calling the host an email.
+
 - **Fields anywhere on a line.** `Label: value` fields are now found after a log
   timestamp or level, a comment marker (`#`, `//`, `--`, `;`), a UTF-8 byte-order mark,
   or another field on the same line. `user=bob password: hunter2`,
