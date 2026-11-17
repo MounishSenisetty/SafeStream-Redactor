@@ -371,8 +371,11 @@ class ChecksumIdDetector(RegionalDetector):
         # better reading of a span both rules match
         claimed = [(d.start, d.end) for d in out]
         for m in _IN_MOBILE.finditer(text):
-            if cued(text, m.start(), _NOT_PHONE_CUE) or any(
-                a < m.end() and m.start() < b for a, b in claimed
+            digits = re.sub(r"\D", "", m.group(1))
+            if (
+                cued(text, m.start(), _NOT_PHONE_CUE)
+                or any(a < m.end() and m.start() < b for a, b in claimed)
+                or len(set(digits)) == 1  # 9999999999: a sentinel, not a number
             ):
                 continue
             conf = 0.6 if m.group(1).isdigit() else 0.8

@@ -135,6 +135,13 @@ def benign_context(text: str, det: Detection) -> bool:
     context), so the decision is the same in every streaming window.
     """
     left = text[max(0, det.start - 48) : det.start]
+    if det.entity_type is EntityType.ID_NUMBER and det.source == "labeled_identifier":
+        # an identifier has a few digits: "Passport number: 6-9 letters" is a range
+        return sum(c.isdigit() for c in det.text) < 3
+    if det.entity_type is EntityType.IPV6 and det.text == "::":
+        # the unspecified address alone is far more often a separator
+        # ("Operating System :: OS Independent", C++ scope, Python slices)
+        return True
     if det.entity_type is EntityType.IPV4 and det.source == "deterministic":
         return bool(_VERSION_BEFORE.search(left))
     if det.entity_type is EntityType.CREDIT_CARD and det.source == "deterministic":
@@ -147,7 +154,36 @@ def benign_context(text: str, det: Detection) -> bool:
             segments = [seg for seg in value.split("/") if seg]
             wordy = sum(seg.replace("-", "").replace("_", "").isalpha() for seg in segments)
             return wordy * 2 >= len(segments)
+        segments = [seg for seg in re.split(r"[/&]", value) if seg]
+        if len(segments) >= 2 and all(_wordy_segment(seg) for seg in segments):
+            # a URL, file path or query string of words ("com/Owner/Repo-Name",
+            # "#tab=ci&mode=hash"): the separators made it long and varied, but no
+            # part of it is random
+            return True
     return False
+
+
+_PATH_TOKEN_SEP = re.compile(r"%[0-9A-Fa-f]{2}|[-_.~+&=#?:@,]")
+
+
+def _wordy_segment(seg: str) -> bool:
+    """A path segment made of words and numbers, not of random characters.
+
+    The segment is split at URL escapes and separators; each piece must be a run of
+    digits, a short piece (a TLD, "v1", "434M"), a word in one case
+    ("SYSTEM", "docs"), or a mostly lower-case CamelCase word ("MounishSenisetty").
+    Random base64 is about half upper case with digits mixed in, so it fails.
+    """
+    for token in _PATH_TOKEN_SEP.split(seg):
+        if not token or token.isdigit() or len(token) <= 4:
+            continue
+        if not token.isalpha():
+            return False
+        if token.isupper() or token.islower():
+            continue
+        if sum(c.isupper() for c in token) > 0.3 * len(token):
+            return False
+    return True
 
 
 # Detections whose ``text`` is exactly ``text[start:end]``: the built-in tiers.
