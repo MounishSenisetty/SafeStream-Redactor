@@ -235,3 +235,4 @@ models/
 benchmarks/data/external/
 errors_*.json
 paper/ijis/submission/
+demo_logs/

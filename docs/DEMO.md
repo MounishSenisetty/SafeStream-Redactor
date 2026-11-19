@@ -226,6 +226,25 @@ curl -s -X POST http://127.0.0.1:8000/scan -H 'Content-Type: application/json' \
 and the full reference in [`docs/rest-api.md`](rest-api.md). `/scan` stays
 content-free by design, so it is safe to log or store its responses.
 
+### Demo logs for the live UI and Postman
+
+[`examples/make_demo_logs.py`](../examples/make_demo_logs.py) writes fake logs to
+`demo_logs/` (seeded, so the same every run): `app.log`, `nginx_access.log`,
+`events.jsonl`, `prod.env`, `clean.log` (zero findings expected) and `big_app.log`
+(~1 MB, just under the live demo's 1 MiB cap). Next to each it writes
+`<name>.request.json`, a ready `{"text": …}` body for `/redact` and `/scan`.
+
+```bash
+python examples/make_demo_logs.py
+```
+
+- **Live UI:** open the [live demo](https://mounishsenisetty.github.io/SafeStream-Redactor/)
+  and drag any log into the Playground.
+- **Postman:** run `safestream serve`, import
+  [`examples/safestream.postman_collection.json`](../examples/safestream.postman_collection.json),
+  and for the "… a log file" requests choose Body → binary → a `*.request.json` file.
+- **curl:** `curl -s -X POST http://127.0.0.1:8000/redact -H 'Content-Type: application/json' --data-binary @demo_logs/app.log.request.json`
+
 ---
 
 ## Feature tour
