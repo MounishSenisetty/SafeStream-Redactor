@@ -244,6 +244,8 @@ python examples/make_demo_logs.py
   [`examples/safestream.postman_collection.json`](../examples/safestream.postman_collection.json),
   and for the "… a log file" requests choose Body → binary → a `*.request.json` file.
 - **curl:** `curl -s -X POST http://127.0.0.1:8000/redact -H 'Content-Type: application/json' --data-binary @demo_logs/app.log.request.json`
+- **Side by side with gitleaks, TruffleHog and Presidio:** `examples/compare_tools.sh` runs
+  all four on the same logs and prints findings by type, time, and each tool's redacted output.
 
 ---
 
