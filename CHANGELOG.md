@@ -6,6 +6,18 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `examples/make_demo_logs.py`: seeded fake logs (`app.log`, `nginx_access.log`,
+  `events.jsonl`, `prod.env`, a zero-findings `clean.log`, and a ~1 MB file under the
+  browser demo's cap), each with a ready `/redact` request body.
+- `examples/safestream.postman_collection.json`: every REST endpoint and error case,
+  with tests.
+- `examples/compare_tools.sh`: gitleaks, TruffleHog, Presidio and SafeStream on the
+  same files, with findings by type, time, and redacted output.
+- `docs/SafeStream-Redactor-Demo.pptx`: a deck marking each interface as deployed,
+  usable locally, or not ready yet.
+
 ### Fixed
 
 - **False positives in code, config and prose** (found by running the redactor over

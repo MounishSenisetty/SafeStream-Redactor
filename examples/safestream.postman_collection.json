@@ -1,0 +1,93 @@
+{
+  "info": {
+    "name": "SafeStream-Redactor REST API",
+    "description": "Demo of `safestream serve` (http://127.0.0.1:8000). Generate demo bodies with `python examples/make_demo_logs.py`, then use the 'Redact a log file' request and pick demo_logs/app.log.request.json under Body > binary. Postman on the web needs the Postman Desktop Agent to reach localhost.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [{ "key": "baseUrl", "value": "http://127.0.0.1:8000" }],
+  "item": [
+    {
+      "name": "Health",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('200 ok', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('ok'); });"
+      ] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "Version",
+      "request": { "method": "GET", "url": "{{baseUrl}}/version" }
+    },
+    {
+      "name": "Detectors",
+      "request": { "method": "GET", "url": "{{baseUrl}}/detectors" }
+    },
+    {
+      "name": "Redact text",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "const j = pm.response.json();",
+        "pm.test('200', () => pm.response.to.have.status(200));",
+        "pm.test('secrets gone', () => { pm.expect(j.redacted).to.not.include('bob@corp.io'); pm.expect(j.redacted).to.include('[REDACTED]'); });"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"text\": \"login user=bob@corp.io ip=10.20.30.40 card=4111 1111 1111 1111 ssn=123-45-6789 key=AKIAIOSFODNN7EXAMPLE\"\n}" },
+        "url": "{{baseUrl}}/redact"
+      }
+    },
+    {
+      "name": "Scan text (no matched values returned)",
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('content-free', () => pm.expect(pm.response.text()).to.not.include('bob@corp.io'));"
+      ] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"text\": \"mail bob@corp.io token=AKIAIOSFODNN7EXAMPLE\"\n}" },
+        "url": "{{baseUrl}}/scan"
+      }
+    },
+    {
+      "name": "Redact a log file (Body > binary > pick *.request.json)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "file", "file": { "src": "" } },
+        "url": "{{baseUrl}}/redact"
+      }
+    },
+    {
+      "name": "Scan a log file (Body > binary > pick *.request.json)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "file", "file": { "src": "" } },
+        "url": "{{baseUrl}}/scan"
+      }
+    },
+    {
+      "name": "Error: invalid JSON -> 400",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('400', () => pm.response.to.have.status(400));"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "not json" },
+        "url": "{{baseUrl}}/redact"
+      }
+    },
+    {
+      "name": "Warning: per-request settings are ignored",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"text\": \"ssn 123-45-6789\",\n  \"mode\": \"mask\"\n}" },
+        "url": "{{baseUrl}}/redact"
+      }
+    },
+    {
+      "name": "Error: unknown route -> 404",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('404', () => pm.response.to.have.status(404));"] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/nope" }
+    }
+  ]
+}
