@@ -30,8 +30,10 @@ exercises ``detect`` with the guard installed). No text ever leaves the process.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import math
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,6 +41,94 @@ from typing import Any, Protocol, runtime_checkable
 
 from safestream_redactor.detectors.base import StreamingRequirements
 from safestream_redactor.entities import Detection, EntityType
+
+# --- model discovery (auto-enable) -------------------------------------------
+# The ONNX NER tier ships no model: the base install stays pure-Python. When the
+# caller does not pin paths, the tier auto-enables only if a model is discoverable
+# AND the runtime is installed, so turning it "on by default" never changes the
+# zero-dependency, fast default for anyone who has not opted in by placing a model.
+
+#: Environment variables that point the tier at an exported model (highest priority).
+ENV_MODEL = "SAFESTREAM_ONNX_MODEL"
+ENV_VOCAB = "SAFESTREAM_ONNX_VOCAB"
+ENV_LABELS = "SAFESTREAM_ONNX_LABELS"
+#: Overrides the default search directory below.
+ENV_HOME = "SAFESTREAM_ONNX_HOME"
+
+# File names scripts/export_onnx.py writes, most-preferred first.
+_MODEL_NAMES = ("model.int8.onnx", "model.onnx")
+_VOCAB_NAMES = ("tokenizer.json", "vocab.json")
+_LABELS_NAME = "labels.json"
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveredModel:
+    """Paths to an auto-discovered ONNX NER model (``labels`` may be ``None``)."""
+
+    model: str
+    vocab: str
+    labels: str | None
+
+
+def default_model_dir() -> Path:
+    """Directory searched for an ONNX NER model when no paths are given.
+
+    ``$SAFESTREAM_ONNX_HOME`` wins; otherwise ``$XDG_CACHE_HOME`` (or ``~/.cache``)
+    ``/safestream-redactor/ner``. ``scripts/export_onnx.py`` writes here by default,
+    so an exported model is auto-discovered with no further configuration.
+    """
+    home = os.environ.get(ENV_HOME)
+    if home:
+        return Path(home).expanduser()
+    xdg = os.environ.get("XDG_CACHE_HOME")
+    root = Path(xdg).expanduser() if xdg else Path.home() / ".cache"
+    return root / "safestream-redactor" / "ner"
+
+
+def _first_existing(directory: Path, names: tuple[str, ...]) -> Path | None:
+    for name in names:
+        candidate = directory / name
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def discover_model() -> DiscoveredModel | None:
+    """Locate an ONNX NER model + vocab, or ``None`` when none is configured.
+
+    Checked in order: the ``SAFESTREAM_ONNX_MODEL`` / ``_VOCAB`` / ``_LABELS``
+    environment variables, then :func:`default_model_dir`. Never raises; a missing
+    or incomplete model yields ``None`` so auto-enable silently stays off.
+    """
+    env_model = os.environ.get(ENV_MODEL)
+    env_vocab = os.environ.get(ENV_VOCAB)
+    if env_model and env_vocab:
+        if Path(env_model).is_file() and Path(env_vocab).is_file():
+            env_labels = os.environ.get(ENV_LABELS)
+            labels = env_labels if env_labels and Path(env_labels).is_file() else None
+            return DiscoveredModel(env_model, env_vocab, labels)
+        return None
+    directory = default_model_dir()
+    model = _first_existing(directory, _MODEL_NAMES)
+    vocab = _first_existing(directory, _VOCAB_NAMES)
+    if model is None or vocab is None:
+        return None
+    labels_file = directory / _LABELS_NAME
+    labels_path = str(labels_file) if labels_file.is_file() else None
+    return DiscoveredModel(str(model), str(vocab), labels_path)
+
+
+def runtime_available(vocab: str | None = None) -> bool:
+    """True when the packages the tier imports are installed (checked, not imported).
+
+    ``onnxruntime`` and ``numpy`` are always needed; a Hugging Face
+    ``tokenizer.json`` vocab also needs ``tokenizers``.
+    """
+    needed = ["onnxruntime", "numpy"]
+    if vocab is not None and Path(vocab).name == "tokenizer.json":
+        needed.append("tokenizers")
+    return all(importlib.util.find_spec(name) is not None for name in needed)
+
 
 # --- token / model seams -----------------------------------------------------
 

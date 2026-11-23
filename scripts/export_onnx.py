@@ -7,10 +7,14 @@ Writes four files into ``--out``:
 * ``tokenizer.json``   the fast tokenizer (sub-word, with character offsets)
 * ``labels.json``      id -> BIO tag
 
-Then:
+The default ``--out`` is the ONNX NER tier's discovery directory, so after exporting,
+plain ``safestream redact`` and ``Redactor()`` auto-enable the tier with no flags:
 
-    safestream redact in.txt -o out.txt --onnx models/ner/model.int8.onnx \\
-        --onnx-vocab models/ner/tokenizer.json --onnx-labels models/ner/labels.json
+    python scripts/export_onnx.py          # writes into ~/.cache/safestream-redactor/ner
+    safestream redact in.txt -o out.txt    # tier auto-enabled from the exported model
+
+Pass ``--out DIR`` to write elsewhere and point the tier at it with ``--onnx`` or the
+``SAFESTREAM_ONNX_MODEL`` / ``_VOCAB`` / ``_LABELS`` environment variables.
 
 Needs ``torch``, ``transformers``, ``onnx`` and ``onnxruntime`` (export-time only; the
 redactor itself needs just the ``[onnx]`` extra plus ``tokenizers``). The default
@@ -23,13 +27,20 @@ import argparse
 import json
 from pathlib import Path
 
+from safestream_redactor.detectors.onnx_ner import default_model_dir
+
 DEFAULT_MODEL = "dslim/distilbert-NER"
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--model", default=DEFAULT_MODEL, help="Hugging Face id or local path")
-    ap.add_argument("--out", default="models/ner", type=Path)
+    ap.add_argument(
+        "--out",
+        default=default_model_dir(),
+        type=Path,
+        help="output directory (default: the tier's auto-discovery directory)",
+    )
     ap.add_argument("--opset", default=17, type=int)
     args = ap.parse_args()
 

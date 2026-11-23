@@ -88,8 +88,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "--onnx",
         metavar="MODEL.onnx",
         default=None,
-        help="enable the local ONNX NER tier with this model (requires the [onnx] "
-        "extra and --onnx-vocab); runs on-device, no data egress",
+        help="use this ONNX NER model (requires the [onnx] extra and --onnx-vocab); "
+        "runs on-device, no data egress. The tier auto-enables from a discovered "
+        "model even without this flag; pass it to point at a specific model",
+    )
+    common.add_argument(
+        "--no-onnx",
+        action="store_true",
+        help="disable the local ONNX NER tier even when a model is discoverable "
+        "(it otherwise auto-enables when the [onnx] extra and a model are present)",
     )
     common.add_argument(
         "--onnx-vocab",
@@ -429,9 +436,13 @@ _STARTER_CONFIG = """\
 min_confidence = 0.5
 use_ner = false                             # requires the [ner] extra + a model
 # ner_model = "en_core_web_sm"
-use_onnx = false                            # local ONNX NER tier ([onnx] extra, on-device)
-# onnx_model = "model.onnx"                 # required when use_onnx = true
-# onnx_vocab = "vocab.json"                 # required when use_onnx = true (token->id)
+# Local ONNX NER tier ([onnx] extra, on-device, no data egress). Omit use_onnx to
+# auto-enable it whenever the extra is installed and a model is discoverable (the
+# SAFESTREAM_ONNX_MODEL/_VOCAB env vars, else ~/.cache/safestream-redactor/ner);
+# set true to force on (and pin paths), or false to force off.
+# use_onnx = true
+# onnx_model = "model.onnx"                 # overrides discovery when use_onnx is on
+# onnx_vocab = "vocab.json"                 # token->id, or a tokenizer.json
 # onnx_labels = "labels.json"               # optional id->tag (default: CoNLL IOB2)
 # onnx_min_score = 0.35
 # onnx_batch_size = 1                       # >1 is faster but non-deterministic (INT8)
@@ -562,7 +573,9 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
         kwargs["custom_patterns"] = [*kwargs.get("custom_patterns", ()), *args.custom_regex]
     if args.ner:
         kwargs["use_ner"] = True
-    if args.onnx:
+    if args.no_onnx:
+        kwargs["use_onnx"] = False
+    elif args.onnx:
         kwargs.update(
             use_onnx=True,
             onnx_model=args.onnx,
@@ -571,6 +584,13 @@ def _build_redactor(args: argparse.Namespace) -> Redactor:
             onnx_min_score=args.onnx_min_score,
             onnx_batch_size=args.onnx_batch_size,
         )
+    else:
+        # neither flag: let the Redactor auto-enable when a model is discoverable,
+        # but honour the per-run ONNX scoring/batch knobs if the user set them
+        if args.onnx_min_score != 0.35:
+            kwargs["onnx_min_score"] = args.onnx_min_score
+        if args.onnx_batch_size != 1:
+            kwargs["onnx_batch_size"] = args.onnx_batch_size
     if not args.entropy:
         kwargs["use_entropy"] = False
     if getattr(args, "regional", False):

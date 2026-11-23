@@ -245,7 +245,7 @@ adds a read-only filesystem, no capabilities and a 64 MiB memory cap.
 | `pip install 'safestream-redactor[crypto]'` | Reversible `--mode encrypt` (AES-256-GCM) and `safestream deanonymize`. |
 | `pip install 'safestream-redactor[all]'` | `ui` and `crypto` together. |
 | `pip install 'safestream-redactor[ner]'` | spaCy names, organisations and locations (`--ner`). Then run `python -m spacy download en_core_web_sm`. |
-| `pip install 'safestream-redactor[onnx]'` | An on-device ONNX NER model you supply (`--onnx`); see [docs/DETECTORS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/DETECTORS.md). |
+| `pip install 'safestream-redactor[onnx]'` | An on-device ONNX NER model you supply. Auto-enables once a model is discoverable (env vars or `~/.cache/safestream-redactor/ner`), or pin one with `--onnx`; `--no-onnx` forces it off. See [docs/DETECTORS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/DETECTORS.md). |
 
 Only need the command? `pipx install safestream-redactor`, or run it without installing:
 `uvx safestream-redactor --help`.

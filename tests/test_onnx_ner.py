@@ -261,3 +261,122 @@ def test_tag_map_accepts_names_and_enum():
     )
     dets = det.detect("met John")  # mid-sentence: the gate passes it
     assert [d.entity_type for d in dets] == [EntityType.PERSON]
+
+
+# --- model discovery + auto-enable (pure: no model/onnxruntime needed) -------
+
+
+def _touch(path):
+    path.write_text("x", encoding="utf-8")
+    return str(path)
+
+
+def test_discover_model_prefers_env_vars(tmp_path, monkeypatch):
+    from safestream_redactor.detectors import onnx_ner
+
+    model = _touch(tmp_path / "m.onnx")
+    vocab = _touch(tmp_path / "v.json")
+    labels = _touch(tmp_path / "l.json")
+    monkeypatch.setenv(onnx_ner.ENV_MODEL, model)
+    monkeypatch.setenv(onnx_ner.ENV_VOCAB, vocab)
+    monkeypatch.setenv(onnx_ner.ENV_LABELS, labels)
+    found = onnx_ner.discover_model()
+    assert found == onnx_ner.DiscoveredModel(model, vocab, labels)
+
+
+def test_discover_model_env_without_labels(tmp_path, monkeypatch):
+    from safestream_redactor.detectors import onnx_ner
+
+    monkeypatch.setenv(onnx_ner.ENV_MODEL, _touch(tmp_path / "m.onnx"))
+    monkeypatch.setenv(onnx_ner.ENV_VOCAB, _touch(tmp_path / "v.json"))
+    monkeypatch.delenv(onnx_ner.ENV_LABELS, raising=False)
+    assert onnx_ner.discover_model().labels is None
+
+
+def test_discover_model_env_missing_file_yields_none(tmp_path, monkeypatch):
+    from safestream_redactor.detectors import onnx_ner
+
+    monkeypatch.setenv(onnx_ner.ENV_MODEL, str(tmp_path / "absent.onnx"))
+    monkeypatch.setenv(onnx_ner.ENV_VOCAB, _touch(tmp_path / "v.json"))
+    assert onnx_ner.discover_model() is None
+
+
+def test_discover_model_default_dir(tmp_path, monkeypatch):
+    from safestream_redactor.detectors import onnx_ner
+
+    for var in (onnx_ner.ENV_MODEL, onnx_ner.ENV_VOCAB, onnx_ner.ENV_LABELS):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv(onnx_ner.ENV_HOME, str(tmp_path))
+    model = _touch(tmp_path / "model.int8.onnx")
+    vocab = _touch(tmp_path / "tokenizer.json")
+    labels = _touch(tmp_path / "labels.json")
+    assert onnx_ner.discover_model() == onnx_ner.DiscoveredModel(model, vocab, labels)
+
+
+def test_discover_model_none_when_dir_incomplete(tmp_path, monkeypatch):
+    from safestream_redactor.detectors import onnx_ner
+
+    for var in (onnx_ner.ENV_MODEL, onnx_ner.ENV_VOCAB):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv(onnx_ner.ENV_HOME, str(tmp_path))
+    _touch(tmp_path / "model.onnx")  # model present, vocab absent
+    assert onnx_ner.discover_model() is None
+
+
+def test_runtime_available_needs_tokenizers_only_for_hf_vocab():
+    from safestream_redactor.detectors import onnx_ner
+
+    # onnxruntime + numpy are the base need; a vocab.json uses the pure WordTokenizer.
+    base = onnx_ner.runtime_available("vocab.json")
+    hf = onnx_ner.runtime_available("tokenizer.json")
+    assert isinstance(base, bool) and isinstance(hf, bool)
+    assert not hf or base  # needing tokenizers can only narrow availability
+
+
+def test_auto_enable_off_without_a_model(tmp_path, monkeypatch):
+    # The crux of "default on": with no model discoverable, the default Redactor
+    # is byte-for-byte the pure-Python pipeline, no ONNX tier, no warning.
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors import onnx_ner
+
+    for var in (onnx_ner.ENV_MODEL, onnx_ner.ENV_VOCAB, onnx_ner.ENV_HOME):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv(onnx_ner.ENV_HOME, str(tmp_path))  # empty dir
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        r = Redactor()
+    assert "onnx" not in r.detector_names
+
+
+def test_auto_enable_off_when_runtime_missing(monkeypatch):
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors import onnx_ner
+
+    monkeypatch.setattr(
+        onnx_ner, "discover_model", lambda: onnx_ner.DiscoveredModel("m.onnx", "v.json", None)
+    )
+    monkeypatch.setattr(onnx_ner, "runtime_available", lambda vocab=None: False)
+    assert "onnx" not in Redactor().detector_names
+
+
+def test_auto_enable_load_failure_warns_and_continues(monkeypatch):
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors import onnx_ner
+
+    monkeypatch.setattr(
+        onnx_ner, "discover_model", lambda: onnx_ner.DiscoveredModel("m.onnx", "v.json", None)
+    )
+    monkeypatch.setattr(onnx_ner, "runtime_available", lambda vocab=None: True)
+
+    def _boom(*a, **k):
+        raise RuntimeError("corrupt model")
+
+    monkeypatch.setattr(OnnxPiiDetector, "from_files", staticmethod(_boom))
+    with pytest.warns(RuntimeWarning, match="auto-enable failed"):
+        r = Redactor()  # auto: swallow, warn, keep the base pipeline
+    assert "onnx" not in r.detector_names
+    # explicit opt-in must surface the failure instead of hiding it
+    with pytest.raises(RuntimeError, match="corrupt model"):
+        Redactor(use_onnx=True, onnx_model="m.onnx", onnx_vocab="v.json")

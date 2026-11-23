@@ -31,14 +31,31 @@ model. `onnxruntime`/`numpy` are imported lazily and only when the tier is
 constructed, so the base install stays pure-Python; enable it with
 `pip install safestream-redactor[onnx]` and **bring your own model**.
 
+**On by default when available.** The tier auto-enables itself: with no explicit
+setting it turns on whenever the `[onnx]` extra is installed *and* a model is
+discoverable, and otherwise stays silently off — so the zero-dependency,
+constant-memory, fast default is unchanged for anyone who has not set up a model,
+and no base dependency or pretrained model is forced on them. A model is
+discovered from, in order, the `SAFESTREAM_ONNX_MODEL` / `SAFESTREAM_ONNX_VOCAB` /
+`SAFESTREAM_ONNX_LABELS` environment variables, then a default directory
+(`$SAFESTREAM_ONNX_HOME`, else `$XDG_CACHE_HOME`/`~/.cache` +
+`/safestream-redactor/ner`) holding `model.int8.onnx` (or `model.onnx`),
+`tokenizer.json` (or `vocab.json`) and an optional `labels.json` — the layout
+`scripts/export_onnx.py` writes. So once a model is exported into that directory,
+plain `safestream redact` and `Redactor()` use it with no flags.
+
 ```bash
+safestream redact in.txt -o out.txt              # auto-enabled if a model is found
+safestream redact in.txt -o out.txt --no-onnx    # force the tier off
 safestream redact in.txt -o out.txt \
-    --onnx model.onnx --onnx-vocab vocab.json      # --onnx-labels optional
+    --onnx model.onnx --onnx-vocab vocab.json     # pin a specific model (--onnx-labels optional)
 ```
 
 ```python
 from safestream_redactor import Redactor
-r = Redactor(use_onnx=True, onnx_model="model.onnx", onnx_vocab="vocab.json")
+r = Redactor()                                    # auto: on when a model is discoverable
+r = Redactor(use_onnx=False)                      # force off
+r = Redactor(use_onnx=True, onnx_model="model.onnx", onnx_vocab="vocab.json")  # pin
 ```
 
 Three seams keep it testable and pluggable (`docs`/tests cover each): a

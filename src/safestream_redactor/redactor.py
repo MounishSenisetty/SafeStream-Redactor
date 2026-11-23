@@ -143,9 +143,17 @@ class Redactor:
     use_ner:
         Enable the optional spaCy tier (requires the ``ner`` extra).
     use_onnx:
-        Enable the optional local ONNX NER tier (PERSON/ORG/LOC via an on-device
-        ONNX model, no data egress; requires the ``onnx`` extra). Needs
-        ``onnx_model`` and ``onnx_vocab``; ``onnx_labels`` (id->tag JSON) is
+        Control the optional local ONNX NER tier (PERSON/ORG/LOC via an on-device
+        ONNX model, no data egress; requires the ``onnx`` extra). Tri-state:
+        ``None`` (the default) auto-enables the tier when a model is discoverable
+        *and* the runtime is installed, and otherwise stays silently off, so the
+        zero-dependency pure-Python default is unchanged for anyone who has not set
+        up a model; ``True`` forces it on (discovering a model if paths are omitted,
+        erroring if none is found); ``False`` forces it off. When ``onnx_model`` and
+        ``onnx_vocab`` are omitted they are resolved by
+        :func:`~safestream_redactor.detectors.onnx_ner.discover_model` (the
+        ``SAFESTREAM_ONNX_MODEL`` / ``_VOCAB`` / ``_LABELS`` env vars, else
+        ``~/.cache/safestream-redactor/ner``). ``onnx_labels`` (id->tag JSON) is
         optional and defaults to the CoNLL IOB2 scheme.
     use_entropy:
         Enable the statistical tier that flags high-entropy secrets with no
@@ -224,7 +232,7 @@ class Redactor:
         use_gazetteer: bool = False,
         use_ensemble: bool = False,
         semantic_policy: str = "strict",
-        use_onnx: bool = False,
+        use_onnx: bool | None = None,
         onnx_model: str | None = None,
         onnx_vocab: str | dict[str, int] | None = None,
         onnx_labels: str | dict[int | str, str] | None = None,
@@ -330,20 +338,67 @@ class Redactor:
             from safestream_redactor.detectors.semantic_ensemble import SemanticEnsembleDetector
 
             self._detectors.append(SemanticEnsembleDetector(policy=semantic_policy))
+        # ONNX NER tier, tri-state use_onnx: None=auto, True=force on, False=off.
+        # Auto-enable turns the tier on only when a model is both discoverable and
+        # loadable, and never raises, so "on by default" leaves the pure-Python,
+        # dependency-free default untouched for anyone without a model installed.
+        onnx_auto = use_onnx is None
+        if use_onnx is not False:
+            from safestream_redactor.detectors.onnx_ner import (
+                discover_model,
+                runtime_available,
+            )
+
+            if onnx_model is None or onnx_vocab is None:
+                found = discover_model()
+                if found is not None:
+                    if onnx_model is None:
+                        onnx_model = found.model
+                    if onnx_vocab is None:
+                        onnx_vocab = found.vocab
+                    if onnx_labels is None:
+                        onnx_labels = found.labels
+            have_model = onnx_model is not None and onnx_vocab is not None
+            vocab_path = onnx_vocab if isinstance(onnx_vocab, str) else None
+            if onnx_auto:
+                # Silent unless both a model and its runtime are present.
+                use_onnx = have_model and runtime_available(vocab_path)
+            elif not have_model:
+                raise ValueError(
+                    "use_onnx=True requires onnx_model and onnx_vocab, and none were "
+                    "found via SAFESTREAM_ONNX_MODEL/_VOCAB or the default model "
+                    "directory; pass paths or set use_onnx=None to auto-enable when "
+                    "a model is available"
+                )
         if use_onnx:
             from safestream_redactor.detectors.onnx_ner import OnnxPiiDetector
 
-            if onnx_model is None or onnx_vocab is None:
-                raise ValueError("use_onnx requires onnx_model and onnx_vocab")
-            self._detectors.append(
-                OnnxPiiDetector.from_files(
+            # use_onnx is truthy only once a model+vocab are resolved (auto sets it
+            # False otherwise, explicit True raises above); narrow for the type checker.
+            assert onnx_model is not None and onnx_vocab is not None
+            try:
+                detector = OnnxPiiDetector.from_files(
                     onnx_model,
                     onnx_vocab,
                     onnx_labels,
                     min_score=onnx_min_score,
                     batch_size=onnx_batch_size,
                 )
-            )
+            except Exception as exc:
+                # An explicit opt-in must surface the failure; an auto-enable must
+                # not break the base pipeline, so it warns once and carries on.
+                if not onnx_auto:
+                    raise
+                import warnings
+
+                warnings.warn(
+                    f"ONNX NER tier auto-enable failed to load a model, continuing "
+                    f"without it: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+            else:
+                self._detectors.append(detector)
         # statistical tier: generic high-entropy secrets (on by default). The
         # compound-secret tier closes the symbol-containing-secret gap the base
         # entropy candidate splits on (see detectors/entropy.py); both are gated

@@ -134,3 +134,59 @@ def test_onnx_detect_makes_no_network_calls(tiny_model):
     finally:
         netguard.uninstall()
     assert [d.entity_type.value for d in dets] == ["person", "loc"]
+
+
+# --- auto-enable end to end (real onnxruntime, a discoverable tiny model) -----
+
+
+@pytest.fixture
+def model_dir(tmp_path):
+    """A directory laid out like ``safestream export-onnx`` writes it."""
+    _build_tiny_model(str(tmp_path / "model.int8.onnx"))
+    (tmp_path / "vocab.json").write_text(json.dumps(_VOCAB), encoding="utf-8")
+    (tmp_path / "labels.json").write_text(
+        json.dumps({str(k): v for k, v in _ID2LABEL.items()}), encoding="utf-8"
+    )
+    return tmp_path
+
+
+def test_auto_enable_from_default_dir(model_dir, monkeypatch):
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors import onnx_ner
+
+    for var in (onnx_ner.ENV_MODEL, onnx_ner.ENV_VOCAB, onnx_ner.ENV_LABELS):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv(onnx_ner.ENV_HOME, str(model_dir))
+    r = Redactor(min_confidence=0.0)  # default use_onnx=None -> auto-enable
+    assert "onnx" in r.detector_names
+    assert r.redact("John Smith works at Acme Corp in Paris") == (
+        "[REDACTED] works at [REDACTED] in [REDACTED]"
+    )
+
+
+def test_auto_enable_from_env_vars(model_dir, monkeypatch):
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors import onnx_ner
+
+    monkeypatch.delenv(onnx_ner.ENV_HOME, raising=False)
+    monkeypatch.setenv(onnx_ner.ENV_MODEL, str(model_dir / "model.int8.onnx"))
+    monkeypatch.setenv(onnx_ner.ENV_VOCAB, str(model_dir / "vocab.json"))
+    monkeypatch.setenv(onnx_ner.ENV_LABELS, str(model_dir / "labels.json"))
+    assert "onnx" in Redactor(min_confidence=0.0).detector_names
+
+
+def test_explicit_false_disables_even_with_a_model(model_dir, monkeypatch):
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors import onnx_ner
+
+    monkeypatch.setenv(onnx_ner.ENV_HOME, str(model_dir))
+    assert "onnx" not in Redactor(use_onnx=False).detector_names
+
+
+def test_explicit_true_discovers_a_model(model_dir, monkeypatch):
+    from safestream_redactor import Redactor
+    from safestream_redactor.detectors import onnx_ner
+
+    monkeypatch.setenv(onnx_ner.ENV_HOME, str(model_dir))
+    # use_onnx=True with no explicit paths resolves them via discovery
+    assert "onnx" in Redactor(use_onnx=True, min_confidence=0.0).detector_names
