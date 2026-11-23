@@ -329,6 +329,33 @@ def _build_parser() -> argparse.ArgumentParser:
         "--force", action="store_true", help="overwrite the output file if it already exists"
     )
 
+    fetch = sub.add_parser(
+        "fetch-model",
+        help="download a pre-exported ONNX NER model so the tier auto-enables (opt-in network)",
+        description="Download, verify (SHA-256, fail-closed) and install a pre-exported "
+        "ONNX NER model into the tier's auto-discovery directory, after which plain "
+        "`safestream redact` enables the tier with no flags. This is the only command "
+        "that reaches the network; redaction stays offline.",
+    )
+    fetch.add_argument("--url", default=None, help="download URL (default: the pinned model)")
+    fetch.add_argument(
+        "--sha256", default=None, metavar="HEX", help="expected SHA-256 of the .tar.gz artifact"
+    )
+    fetch.add_argument(
+        "--out",
+        default=None,
+        metavar="DIR",
+        help="install directory (default: the tier's auto-discovery directory)",
+    )
+    fetch.add_argument(
+        "--allow-unverified",
+        action="store_true",
+        help="install without a SHA-256 (unsafe: an unverified ONNX graph runs in-process)",
+    )
+    fetch.add_argument(
+        "--force", action="store_true", help="replace a model already installed in the directory"
+    )
+
     serve = sub.add_parser("serve", help="run a local REST API (stdlib only) around the redactor")
     serve.add_argument(
         "--host", default="127.0.0.1", help="bind address (default: 127.0.0.1, loopback)"
@@ -497,6 +524,42 @@ def _cmd_init_config(args: argparse.Namespace) -> int:
         raise SystemExit(f"{args.output} already exists (pass --force to overwrite)")
     _atomic_write_stream(args.output, iter([_STARTER_CONFIG]), "utf-8")
     print(f"-- wrote starter policy to {args.output}", file=sys.stderr)
+    return 0
+
+
+def _cmd_fetch_model(args: argparse.Namespace) -> int:
+    from safestream_redactor.models import (
+        DEFAULT_MODEL,
+        ModelVerificationError,
+        fetch_model,
+    )
+
+    url = args.url or os.environ.get("SAFESTREAM_MODEL_URL") or DEFAULT_MODEL.url
+    print(f"-- fetching ONNX NER model from {url}", file=sys.stderr)
+
+    def _progress(read: int, total: int) -> None:
+        if total:
+            pct = read * 100 // total
+            print(f"\r-- downloading: {pct:3d}% ({read}/{total} bytes)", end="", file=sys.stderr)
+
+    try:
+        target = fetch_model(
+            url=args.url,
+            sha256=args.sha256,
+            dest=args.out,
+            allow_unverified=args.allow_unverified,
+            force=args.force,
+            progress=_progress,
+        )
+    except ModelVerificationError as exc:
+        raise SystemExit(f"model verification failed: {exc}") from exc
+    except (ValueError, FileExistsError, OSError) as exc:
+        raise SystemExit(f"fetch-model: {exc}") from exc
+    print(f"\n-- installed model into {target}", file=sys.stderr)
+    print(
+        "-- the ONNX NER tier will now auto-enable; try: safestream detect <file>",
+        file=sys.stderr,
+    )
     return 0
 
 
@@ -1189,6 +1252,8 @@ def main(argv: list[str] | None = None) -> int:
     _surface_library_warnings()
     if args.command == "init-config":
         return _cmd_init_config(args)
+    if args.command == "fetch-model":
+        return _cmd_fetch_model(args)
     if args.command == "serve":
         return _cmd_serve(args)
     if args.command == "mcp-serve":

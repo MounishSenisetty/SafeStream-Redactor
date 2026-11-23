@@ -47,7 +47,9 @@ dependencies.
   private-key blocks, credentials in URLs, and undocumented secrets by entropy.
 - **Offline by design.** While it runs, outbound network connections are blocked in
   process (on Linux, optionally by the kernel). The REST API, MCP server and web UI bind to
-  loopback only, and nothing ever logs the matched values.
+  loopback only, and nothing ever logs the matched values. The one networked command is the
+  opt-in `safestream fetch-model`, which downloads the optional NER model; redaction never
+  fetches anything.
 - **Deterministic.** Single-core, multi-core and native (Rust) runs produce byte-identical
   output, and every redaction mode is a pure function of the value, so equal inputs always
   redact the same way.
@@ -245,7 +247,7 @@ adds a read-only filesystem, no capabilities and a 64 MiB memory cap.
 | `pip install 'safestream-redactor[crypto]'` | Reversible `--mode encrypt` (AES-256-GCM) and `safestream deanonymize`. |
 | `pip install 'safestream-redactor[all]'` | `ui` and `crypto` together. |
 | `pip install 'safestream-redactor[ner]'` | spaCy names, organisations and locations (`--ner`). Then run `python -m spacy download en_core_web_sm`. |
-| `pip install 'safestream-redactor[onnx]'` | An on-device ONNX NER model you supply. Auto-enables once a model is discoverable (env vars or `~/.cache/safestream-redactor/ner`), or pin one with `--onnx`; `--no-onnx` forces it off. See [docs/DETECTORS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/DETECTORS.md). |
+| `pip install 'safestream-redactor[onnx]'` | On-device ONNX NER (names, orgs, locations). Run `safestream fetch-model` once to download, verify and install a model; the tier then auto-enables (`--no-onnx` forces it off). See [docs/DETECTORS.md](https://github.com/MounishSenisetty/SafeStream-Redactor/blob/main/docs/DETECTORS.md). |
 
 Only need the command? `pipx install safestream-redactor`, or run it without installing:
 `uvx safestream-redactor --help`.

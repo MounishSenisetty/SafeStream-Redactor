@@ -70,15 +70,36 @@ like the spaCy tier. Labels default to the CoNLL IOB2 scheme
 another model. **No pretrained model is bundled** — the tier is the plumbing; the
 accuracy is whatever model you supply.
 
-**Getting a model.** `scripts/export_onnx.py` exports a Hugging Face
-token-classification checkpoint (default `dslim/distilbert-NER`) with dynamic
-batch/sequence axes, quantizes it to INT8 and writes the fast `tokenizer.json`
-and `labels.json` next to it (export needs `torch` + `transformers`; running
-needs only the `[onnx]` extra plus `tokenizers`). Passing that `tokenizer.json`
-as the vocab selects the sub-word `HFTokenizer`, whose offsets index the original
-text directly:
+**Getting a model — turnkey.** `safestream fetch-model` downloads a pre-exported
+model, verifies it against a pinned SHA-256 (fail-closed: a mismatch is never
+installed), and unpacks it into the auto-discovery directory, so the tier enables
+itself afterward with no flags:
 
 ```bash
+pip install 'safestream-redactor[onnx]'
+safestream fetch-model            # download + verify + install the default model
+safestream detect notes.txt       # the ONNX NER tier is now auto-enabled
+```
+
+This is the one command in the package that uses the network, and only when you
+run it; redaction itself never fetches anything and stays under the offline guard.
+Point it elsewhere with `--url` / `--sha256`, choose a directory with `--out`, and
+replace an existing model with `--force`. See [MODELS.md](MODELS.md) for publishing
+and pinning a model, and the registry in `safestream_redactor/models.py`.
+
+**Getting a model — export your own.** `scripts/export_onnx.py` exports a Hugging
+Face token-classification checkpoint (default `dslim/distilbert-NER`) with dynamic
+batch/sequence axes, quantizes it to INT8 and writes the fast `tokenizer.json`
+and `labels.json` next to it (export needs `torch` + `transformers`; running
+needs only the `[onnx]` extra plus `tokenizers`). It writes into the auto-discovery
+directory by default, so an export alone makes the tier turnkey; passing a
+`tokenizer.json` as the vocab selects the sub-word `HFTokenizer`, whose offsets
+index the original text directly:
+
+```bash
+python scripts/export_onnx.py           # writes into ~/.cache/safestream-redactor/ner
+safestream detect in.txt                # tier auto-enabled from the exported model
+# or pin a model kept elsewhere:
 python scripts/export_onnx.py --out models/ner
 safestream redact in.txt -o out.txt --onnx models/ner/model.int8.onnx \
     --onnx-vocab models/ner/tokenizer.json --onnx-labels models/ner/labels.json
