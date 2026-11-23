@@ -21,6 +21,7 @@ from safestream_redactor.models import (
     DEFAULT_MODEL,
     ModelVerificationError,
     fetch_model,
+    pack_model,
 )
 
 # The fixture model builder needs onnx; the pure fetch/verify tests do not, so
@@ -152,12 +153,46 @@ def test_fetch_respects_size_cap(tmp_path, served, good_archive, monkeypatch):
         fetch_model(url=served(name), sha256=sha, dest=tmp_path / "install")
 
 
-def test_default_model_is_registered_but_unpinned():
-    # The mechanism ships ready; the official artifact's digest is pinned by a
-    # maintainer once published. Until then an unparameterised fetch refuses.
-    assert DEFAULT_MODEL.sha256 is None
+def test_default_model_is_registered():
+    from safestream_redactor.models import REGISTRY
+
+    assert DEFAULT_MODEL.name in REGISTRY
+    assert DEFAULT_MODEL.url.endswith(".tar.gz")
+
+
+def test_unpinned_spec_refuses_before_any_download():
+    # A spec with no digest must refuse up front (no network), so an official
+    # model cannot be installed unverified; this holds whether or not the default
+    # model's digest has since been pinned by the publish workflow.
+    from safestream_redactor.models import ModelSpec
+
+    spec = ModelSpec(name="unpinned", url="http://example.invalid/x.tar.gz", sha256=None)
     with pytest.raises(ValueError, match="no SHA-256 is pinned"):
-        fetch_model()
+        fetch_model(spec)
+
+
+# --- pack_model (the publish side) -------------------------------------------
+
+
+def test_pack_model_roundtrips_through_fetch(tmp_path):
+    src = tmp_path / "ner"
+    src.mkdir()
+    _write_dummy_model_files(src)
+    archive = tmp_path / "artifact.tar.gz"
+    digest = pack_model(src, archive)
+    assert digest == hashlib.sha256(archive.read_bytes()).hexdigest()
+    # the digest pack returns is exactly what fetch verifies against
+    dest = tmp_path / "install"
+    fetch_model(url=archive.as_uri(), sha256=digest, dest=dest)
+    assert {p.name for p in dest.iterdir()} == {"model.int8.onnx", "vocab.json", "labels.json"}
+
+
+def test_pack_model_requires_model_and_vocab(tmp_path):
+    src = tmp_path / "ner"
+    src.mkdir()
+    (src / "labels.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(FileNotFoundError, match="must contain a model"):
+        pack_model(src, tmp_path / "a.tar.gz")
 
 
 # --- CLI ---------------------------------------------------------------------

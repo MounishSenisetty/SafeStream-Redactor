@@ -33,6 +33,7 @@ from urllib.request import urlopen
 from safestream_redactor.detectors.onnx_ner import (
     _MODEL_NAMES,
     _VOCAB_NAMES,
+    _first_existing,
     default_model_dir,
 )
 
@@ -82,6 +83,35 @@ REGISTRY: dict[str, ModelSpec] = {DEFAULT_MODEL.name: DEFAULT_MODEL}
 
 class ModelVerificationError(Exception):
     """A downloaded artifact did not match its expected SHA-256."""
+
+
+def pack_model(src_dir: str | os.PathLike[str], out_path: str | os.PathLike[str]) -> str:
+    """Package an exported model directory into a ``.tar.gz`` and return its SHA-256.
+
+    Writes exactly the files :func:`fetch_model` installs — a model, a vocab and
+    (if present) ``labels.json`` — at the top level of the archive, so the result is
+    a ready-to-publish release asset whose digest is the one to pin in the registry.
+    The inverse of :func:`fetch_model`; used by ``scripts/export_onnx.py --archive``
+    and the publish-model workflow.
+    """
+    src = Path(src_dir)
+    model = _first_existing(src, _MODEL_NAMES)
+    vocab = _first_existing(src, _VOCAB_NAMES)
+    if model is None or vocab is None:
+        raise FileNotFoundError(
+            f"{src} must contain a model ({'/'.join(_MODEL_NAMES)}) and a vocab "
+            f"({'/'.join(_VOCAB_NAMES)}); found {sorted(p.name for p in src.iterdir())}"
+        )
+    members = [model, vocab]
+    labels = src / "labels.json"
+    if labels.is_file():
+        members.append(labels)
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(out, "w:gz") as tar:
+        for member in members:
+            tar.add(member, arcname=member.name)
+    return _sha256(out)
 
 
 def _safe_members(tar: tarfile.TarFile) -> list[tarfile.TarInfo]:

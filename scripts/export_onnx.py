@@ -42,6 +42,13 @@ def main() -> None:
         help="output directory (default: the tier's auto-discovery directory)",
     )
     ap.add_argument("--opset", default=17, type=int)
+    ap.add_argument(
+        "--archive",
+        default=None,
+        type=Path,
+        metavar="PATH.tar.gz",
+        help="also write a publishable .tar.gz of the exported files and print its SHA-256",
+    )
     args = ap.parse_args()
 
     import onnx
@@ -88,6 +95,14 @@ def main() -> None:
     for f in (fp32, int8):
         print(f"{f}  {f.stat().st_size / 1e6:.0f} MB")
     print(f"labels: {sorted(set(labels.values()))}")
+
+    if args.archive is not None:
+        from safestream_redactor.models import pack_model
+
+        digest = pack_model(args.out, args.archive)
+        # Machine-readable line the publish-model workflow greps for the digest to pin.
+        print(f"MODEL_SHA256={digest}")
+        print(f"archive: {args.archive}")
 
 
 if __name__ == "__main__":

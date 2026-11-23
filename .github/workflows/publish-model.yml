@@ -1,0 +1,128 @@
+# One-click publish of the optional ONNX NER model, so `safestream fetch-model`
+# becomes turnkey. The package ships no model (the base install stays pure-Python,
+# offline, dependency-free); this workflow exports one on a runner — where torch
+# and Hugging Face are reachable, unlike the base CI — packages it, attaches it to
+# a GitHub release, and opens a PR pinning the artifact's SHA-256 in the registry.
+#
+#   Actions -> Publish model -> Run workflow
+#
+# Needs only the built-in GITHUB_TOKEN. Opening the pin PR requires the repo
+# setting "Allow GitHub Actions to create and approve pull requests" (Settings ->
+# Actions -> General); without it the asset is still published and the digest is
+# printed in the run summary to pin by hand. See docs/MODELS.md.
+name: Publish model
+
+on:
+  workflow_dispatch:
+    inputs:
+      checkpoint:
+        description: "Hugging Face token-classification checkpoint to export"
+        type: string
+        default: dslim/distilbert-NER
+      tag:
+        description: "Release tag that holds the model asset"
+        type: string
+        default: models-v1
+      asset_name:
+        description: "Asset file name (.tar.gz)"
+        type: string
+        default: distilbert-conll03-int8.tar.gz
+
+permissions:
+  contents: write # create the release and push the pin branch
+  pull-requests: write # open the pin PR
+
+concurrency:
+  group: publish-model-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install export toolchain
+        run: |
+          set -euo pipefail
+          python -m pip install -e '.[onnx]'
+          # CPU-only torch keeps the runner install small; export needs no GPU.
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install transformers onnx
+
+      - name: Export and package the model
+        id: build
+        run: |
+          set -euo pipefail
+          python scripts/export_onnx.py --model "${{ inputs.checkpoint }}" \
+            --out dist/ner --archive "dist/${{ inputs.asset_name }}" | tee build.log
+          sha="$(sed -n 's/^MODEL_SHA256=//p' build.log)"
+          test -n "$sha"
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Model \`${{ inputs.checkpoint }}\`"
+            echo "- asset: \`${{ inputs.asset_name }}\` on tag \`${{ inputs.tag }}\`"
+            echo "- sha256: \`$sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check the registry URL matches this release
+        env:
+          EXPECTED_TAG: ${{ inputs.tag }}
+          EXPECTED_ASSET: ${{ inputs.asset_name }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from safestream_redactor.models import DEFAULT_MODEL
+          want = f"/releases/download/{os.environ['EXPECTED_TAG']}/{os.environ['EXPECTED_ASSET']}"
+          if not DEFAULT_MODEL.url.endswith(want):
+              raise SystemExit(
+                  f"DEFAULT_MODEL.url ({DEFAULT_MODEL.url}) does not end with {want}; "
+                  "update the registry URL in models.py before publishing so that "
+                  "`safestream fetch-model` resolves this asset."
+              )
+          PY
+
+      - name: Create or update the release and upload the asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "${{ inputs.tag }}" >/dev/null 2>&1; then
+            gh release upload "${{ inputs.tag }}" "dist/${{ inputs.asset_name }}" --clobber
+          else
+            gh release create "${{ inputs.tag }}" "dist/${{ inputs.asset_name }}" \
+              --title "ONNX NER model (${{ inputs.tag }})" \
+              --notes "Exported from ${{ inputs.checkpoint }}. SHA-256: ${{ steps.build.outputs.sha256 }}"
+          fi
+
+      - name: Open a PR pinning the digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.build.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          branch="pin-model-${{ inputs.tag }}-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          python - <<'PY'
+          import os
+          import pathlib
+          path = pathlib.Path("src/safestream_redactor/models.py")
+          text = path.read_text(encoding="utf-8")
+          pinned = text.replace("sha256=None,", f'sha256="{os.environ["SHA"]}",', 1)
+          if pinned == text:
+              raise SystemExit("no `sha256=None,` to pin (already pinned?)")
+          path.write_text(pinned, encoding="utf-8")
+          PY
+          git add src/safestream_redactor/models.py
+          git commit -m "Pin ONNX NER model digest for ${{ inputs.tag }}"
+          git push -u origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "Pin ONNX NER model digest (${{ inputs.tag }})" \
+            --body "Automated by the Publish model workflow. Asset SHA-256: \`$SHA\`. Merging makes \`safestream fetch-model\` turnkey out of the box."

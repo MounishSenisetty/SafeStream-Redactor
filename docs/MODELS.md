@@ -11,17 +11,34 @@ discovers: `model.int8.onnx`, `tokenizer.json` (or `vocab.json`), and `labels.js
 The fetcher installs only those flat basenames and verifies the whole archive
 against a SHA-256, so the host only needs to serve a static file.
 
+## Easiest: the one-click workflow
+
+**Actions → Publish model → Run workflow.** The
+[`publish-model.yml`](../.github/workflows/publish-model.yml) workflow runs the whole
+pipeline on a GitHub runner — where `torch` and Hugging Face are reachable — so no
+local toolchain is needed. It exports the checkpoint (default `dslim/distilbert-NER`),
+packages the `.tar.gz`, creates/updates the release (default tag `models-v1`) with the
+asset, and opens a PR that pins the artifact's SHA-256 in the registry. Merge that PR
+and `safestream fetch-model` is turnkey.
+
+It uses only the built-in `GITHUB_TOKEN`. Opening the pin PR needs the repo setting
+**Settings → Actions → General → "Allow GitHub Actions to create and approve pull
+requests"**; without it the asset is still published and the digest is printed in the
+run summary to pin by hand (step 3 below). The manual steps below are the same pipeline
+if you would rather run it yourself.
+
 ## 1. Export the model
 
 On a machine with the export toolchain (`pip install 'safestream-redactor[onnx]'`
 plus `torch`, `transformers`, `onnx`), export and package:
 
 ```bash
-python scripts/export_onnx.py --out ./dist/ner      # model.int8.onnx + tokenizer.json + labels.json
-tar -C ./dist/ner -czf distilbert-conll03-int8.tar.gz \
-    model.int8.onnx tokenizer.json labels.json
-sha256sum distilbert-conll03-int8.tar.gz            # record this digest
+python scripts/export_onnx.py --out ./dist/ner \
+    --archive distilbert-conll03-int8.tar.gz   # exports, packages, and prints MODEL_SHA256=<digest>
 ```
+
+`--archive` writes exactly the three files the fetcher installs and prints the digest
+to pin (`MODEL_SHA256=…`); it is the same packaging the fetcher verifies against.
 
 Pick a checkpoint whose licence permits redistribution and record it in the release
 notes. The default `dslim/distilbert-NER` builds on DistilBERT (Apache-2.0); confirm
