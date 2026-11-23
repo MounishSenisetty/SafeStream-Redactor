@@ -603,6 +603,39 @@ _PATTERNS: tuple[Pattern, ...] = (
         0.95,
         anchors=("key-",),
     ),
+    Pattern(  # GitLab token family: PAT/impersonation/project/group (glpat),
+        # deploy (gldt), feed (glft), runner (glrt / glrtr), CI build (glcbt),
+        # incoming-mail (glimt), SCIM OAuth (glsoat), agent (glagent), OAuth
+        # app (gloas) — all 20-char bodies — and pipeline-trigger (glptt),
+        # which is 40 lowercase hex. Prefix + body, so no tail is left in clear.
+        EntityType.VENDOR_TOKEN,
+        re.compile(
+            r"\bgl(?:pat|dt|ft|rtr|rt|cbt|imt|soat|agent|oas)-[0-9A-Za-z_-]{20,50}\b"
+            r"|\bglptt-[0-9a-f]{40}\b"
+        ),
+        0.95,
+        anchors=(
+            "glpat-",
+            "gldt-",
+            "glft-",
+            "glrt-",
+            "glrtr-",
+            "glcbt-",
+            "glimt-",
+            "glsoat-",
+            "glagent-",
+            "gloas-",
+            "glptt-",
+        ),
+    ),
+    Pattern(  # age (age-encryption.org) X25519 secret key: Bech32 with the
+        # human-readable prefix AGE-SECRET-KEY-, 58 data+checksum characters.
+        # The whole key is the secret, so the prefix is redacted with it.
+        EntityType.VENDOR_TOKEN,
+        re.compile(r"\bAGE-SECRET-KEY-1[0-9A-Z]{58}\b"),
+        0.98,
+        anchors=("AGE-SECRET-KEY-1",),
+    ),
     # --- password hashes, whole span including the $, . and / they contain
     Pattern(  # bcrypt
         EntityType.PASSWORD_HASH,

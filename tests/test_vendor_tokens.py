@@ -35,6 +35,13 @@ VENDOR = {
     "telegram": "123456789:AA" + _repeat("aB9cD8eF7gH6_-", 33),
     "newrelic": "NRAK-" + _repeat("A1B2C3D4E5F6G7H8J9K0", 27),
     "mailgun": "key-" + _repeat(_HEX, 32),
+    "gitlab_pat": "glpat-" + _repeat("aB9cD8eF7g", 20),
+    "gitlab_deploy": "gldt-" + _repeat("aB9cD8eF7g", 20),
+    "gitlab_feed": "glft-" + _repeat("aB9cD8eF7g", 20),
+    "gitlab_runner": "glrt-" + _repeat("aB9cD8eF7g", 20),
+    "gitlab_runner_reg": "glrtr-" + _repeat("aB9cD8eF7g", 20),
+    "gitlab_trigger": "glptt-" + _repeat(_HEX, 40),
+    "age_secret": "AGE-SECRET-KEY-1" + _repeat("GFPYYSJZ9QX7ZV3", 58),
 }
 HASHES = {
     "bcrypt": "$2b$12$" + _repeat("./AbCdEf0123", 53),
@@ -79,6 +86,10 @@ def test_password_hash_is_detected_whole(name):
         "time 12:AA:01",
         "ratio $5$ to $6$",
         "visit https://outlook.office.com/mail/inbox",  # not a webhook path
+        "the global-config-value is set",  # "gl" word, not a GitLab prefix
+        "glpat-short",  # prefix without a full 20-char body
+        "glptt-0123456789abcdef",  # trigger prefix, too few hex digits
+        "AGE-RECIPIENT-KEY-1" + "A" * 58,  # age public recipient, not a secret
     ],
 )
 def test_near_misses_are_not_tokens(text):

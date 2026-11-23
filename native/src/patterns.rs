@@ -181,6 +181,18 @@ pub const PATTERNS: &[PatternSpec] = &[
         kind: Kind::Simple,
     },
     PatternSpec {
+        name: "vendor_token",
+        confidence: 0.95,
+        source: r#"\bgl(?:pat|dt|ft|rtr|rt|cbt|imt|soat|agent|oas)-[0-9A-Za-z_-]{20,50}\b|\bglptt-[0-9a-f]{40}\b"#,
+        kind: Kind::Simple,
+    },
+    PatternSpec {
+        name: "vendor_token",
+        confidence: 0.98,
+        source: r#"\bAGE-SECRET-KEY-1[0-9A-Z]{58}\b"#,
+        kind: Kind::Simple,
+    },
+    PatternSpec {
         name: "password_hash",
         confidence: 0.95,
         source: r#"\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}"#,
