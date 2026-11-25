@@ -25,8 +25,10 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
+from safestream_redactor.errors import SafeStreamError
 
-class NetworkAccessError(RuntimeError):
+
+class NetworkAccessError(SafeStreamError, RuntimeError):
     """Raised when guarded code attempts a non-loopback network connection."""
 
 

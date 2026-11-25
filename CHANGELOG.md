@@ -20,6 +20,14 @@ Notable changes to this project. The format follows
 
 ### Fixed
 
+- **A card followed by another number** (audit finding G). Both card rules are greedy,
+  so `4111111111111111 10 items` was matched with the trailing `10`, failed Luhn and
+  was not redacted at all, and `card 4111 1111 1111 1111 10.1.2.3` took the address's
+  first octet and leaked the rest (`[REDACTED].1.2.3`). They now fall back to the
+  longest space-bounded prefix that passes Luhn, in Python and the native core alike.
+- **Error hierarchy.** `NetworkAccessError`, `ResourceExhaustionError`,
+  `WatchUnavailable`, `MCPError` and the UI's `SettingsError` / `InputError` now also
+  derive from `SafeStreamError`; each keeps its previous builtin base.
 - **False positives in code, config and prose** (found by running the redactor over
   this repository):
   - `name:` in CI and config files (`- name: Build wheel`, `name = "onnx"`,

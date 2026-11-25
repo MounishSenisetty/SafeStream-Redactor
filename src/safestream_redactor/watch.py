@@ -54,6 +54,7 @@ from typing import IO, Any
 
 from safestream_redactor._atomic import atomic_output
 from safestream_redactor.engine import read_chunks
+from safestream_redactor.errors import SafeStreamError
 from safestream_redactor.redactor import Redactor
 
 MODES = ("audit", "redact", "block")
@@ -88,7 +89,7 @@ _IN_EVENT = struct.Struct("=iIII")  # wd, mask, cookie, len
 DEFAULT_MAX_SCAN_BYTES = 64 * 1024 * 1024
 
 
-class WatchUnavailable(RuntimeError):
+class WatchUnavailable(SafeStreamError, RuntimeError):
     """The requested watch mode cannot be enforced on this system or with these privileges."""
 
 

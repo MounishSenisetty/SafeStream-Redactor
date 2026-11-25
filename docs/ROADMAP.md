@@ -176,21 +176,27 @@ Still open (highest-value next):
   [docs/ZERO_COPY.md](ZERO_COPY.md). Both are worth revisiting only *after* detection
   itself is fast enough for the surrounding layers to matter.)
 
-## Phase 3 — Research-grade detection
+## Phase 3 — Research-grade detection (implemented, 0.3.0–1.0.0)
 
 - **Format-aware context**: recognise JSON/CSV/logfmt structure so field *names*
   (`"ssn":`, `password=`) feed the contextual tier with near-perfect precision.
+  *(done: structured-field and typed-column tiers, `detectors/structured.py`, `detectors/columns.py`)*
 - **Calibrated confidence**: replace hand-set per-pattern confidences with scores
   calibrated on a labelled corpus; publish the calibration methodology.
+  *(done, 0.3.0: `calibration.py`, `benchmarks/calibrate.py`)*
 - **ONNX NER option**: a transformer NER tier without the spaCy dependency chain, with
   cross-chunk-boundary accuracy tests; keeps the offline guarantee (local inference).
+  *(done, 0.4.0: `detectors/onnx_ner.py`)*
 - **Public evaluation harness**: reproducible comparisons on public PII corpora, so
   benchmark claims graduate from "our synthetic data" to independent evidence.
+  *(done: `benchmarks/`, results in `research/results/`)*
 
 ## Phase 4 — Optional ecosystem (explicitly opt-in)
 
 - Separate `safestream-server` package (REST + auth + rate limiting) for teams that
-  accept in-network redaction; the core never depends on it.
+  accept in-network redaction; the core never depends on it. *(not planned: the
+  loopback-only `safestream serve` covers local use, and no user has asked for a
+  networked server)*
 - Pre-commit hook package and GitHub Action wrapping the Phase 1 CI gate *(done, 0.4.0)*.
 
 ## Phase 5 — Resource governance, agent integration, and CI surface (0.4.0)
@@ -214,7 +220,7 @@ weakens the local-first guarantee.
 - **AI developer workflow** *(done)*: `.claude/` add-a-detector skill, agent, and
   command.
 
-### Deliberately deferred (with justification)
+### Deferred at 0.4.0 (both since shipped)
 
 - **Rust/native core**: evaluated and deferred. The bounded-memory invariant is
   already met in pure Python (the working set is `O(chunk+overlap)`, not `O(input)`),
@@ -226,11 +232,12 @@ weakens the local-first guarantee.
   semantics-preserving pattern rewrite described there, and even then must clear its
   own byte-identity + benchmark gate. Introducing PyO3/maturin, cross-platform wheels,
   and a native build matrix for a marketing bullet would be production-theatre; it is
-  scoped as its own project.
+  scoped as its own project. *(Shipped later, after that rewrite, byte-identical and
+  benchmark-gated: see [NATIVE_CORE.md](NATIVE_CORE.md). Built from source; not on PyPI.)*
 - **ONNX/local-LLM detector**: the plugin architecture and streaming-requirements
   metadata make this a drop-in `Detector`, but shipping it means shipping (or
   fetching) a model with integrity verification and calibration — work that must
-  not degrade into a fake/stub detector. Tracked as Phase 3 "ONNX NER option".
+  not degrade into a fake/stub detector. *(Shipped as Phase 3 "ONNX NER option".)*
 
 ## Self-critique iterations applied to this plan
 

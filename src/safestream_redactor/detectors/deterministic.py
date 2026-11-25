@@ -47,6 +47,21 @@ def luhn_ok(number: str) -> bool:
     return total % 10 == 0
 
 
+def luhn_prefix(number: str) -> int | None:
+    """Length of the longest prefix of ``number``, ending before a space, that passes Luhn.
+
+    The card pattern is greedy, so a valid card followed by a space and more digits
+    (``4111111111111111 10``) is matched with them and fails Luhn; the card is the
+    shorter prefix. ``match_card`` in ``native/src/digits.rs`` applies the same rule.
+    """
+    cut = number.rfind(" ")
+    while cut > 0:
+        if luhn_ok(number[:cut]):
+            return cut
+        cut = number.rfind(" ", 0, cut)
+    return None
+
+
 def ssn_ok(match_text: str) -> bool:
     """Reject SSNs with impossible area/group/serial numbers."""
     area, group, serial = re.split(r"[-\s]", match_text)
@@ -1190,11 +1205,14 @@ class DeterministicDetector(NativeBacked):
             for m in matches:
                 matched = m.group(pattern.group)
                 if pattern.validator is not None and not pattern.validator(matched):
-                    continue
+                    if pattern.validator is not luhn_ok or (cut := luhn_prefix(matched)) is None:
+                        continue
+                    matched = matched[:cut]
+                start = m.start(pattern.group)
                 found.append(
                     Detection(
-                        start=m.start(pattern.group),
-                        end=m.end(pattern.group),
+                        start=start,
+                        end=start + len(matched),
                         text=matched,
                         entity_type=pattern.entity_type,
                         confidence=pattern.confidence,

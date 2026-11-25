@@ -1,7 +1,11 @@
 # Demo & Distribution Plan
 
-Status: **proposal, nothing implemented yet.** Based on the repository at `54beccb`
-(v0.5.0) and on checks run against the live PyPI release on 2026-11-10.
+Status: **done, shipped in 1.0.0** (2026-11-14). Kept as the record of what was
+planned and why. One deviation: the Rust core is **not** published to PyPI (the
+`safestream-redactor-native` project could not be created by the workflow), so the
+`[native]` extra was dropped and the core installs from source; see
+[docs/RELEASING.md](docs/RELEASING.md). Originally written against `54beccb` (v0.5.0)
+and the live PyPI release on 2026-11-10.
 
 ## 1. What exploration found
 
