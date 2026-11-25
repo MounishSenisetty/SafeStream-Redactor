@@ -35,6 +35,7 @@ from collections.abc import Callable
 from typing import Any, TextIO
 
 from safestream_redactor import __version__
+from safestream_redactor.errors import SafeStreamError
 from safestream_redactor.redactor import Redactor
 from safestream_redactor.report import RedactionStats
 from safestream_redactor.severity import severity_for
@@ -71,7 +72,7 @@ INVALID_PARAMS = -32602
 INTERNAL_ERROR = -32603
 
 
-class MCPError(Exception):
+class MCPError(SafeStreamError):
     """A JSON-RPC error to return to the client (never leaks secret content)."""
 
     def __init__(self, code: int, message: str) -> None:

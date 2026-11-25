@@ -57,6 +57,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from safestream_redactor.errors import SafeStreamError
+
 __all__ = [
     "AddressSpaceLimit",
     "BudgetPlan",
@@ -91,7 +93,7 @@ NATIVE_PER_WORKER = 32 * 1024 * 1024
 DEFAULT_RESERVE_FRACTION = 0.15
 
 
-class ResourceExhaustionError(RuntimeError):
+class ResourceExhaustionError(SafeStreamError, RuntimeError):
     """Raised when a configuration cannot run within the requested memory budget.
 
     This is the fail-closed signal: the engine refuses to start rather than

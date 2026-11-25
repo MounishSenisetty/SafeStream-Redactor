@@ -252,6 +252,22 @@ def test_error_hierarchy_has_one_root_and_stays_backward_compatible() -> None:
     assert issubclass(MissingExtraError, SafeStreamError)
     assert issubclass(MissingExtraError, ImportError)
     assert issubclass(OperatorError, SafeStreamError) and issubclass(OperatorError, ValueError)
+    # the remaining domain errors share the root and keep their historical builtin
+    from safestream_redactor.mcp_server import MCPError
+    from safestream_redactor.memory_budget import ResourceExhaustionError
+    from safestream_redactor.netguard import NetworkAccessError
+    from safestream_redactor.ui.core import InputError, SettingsError
+    from safestream_redactor.watch import WatchUnavailable
+
+    for cls, builtin in [
+        (NetworkAccessError, RuntimeError),
+        (ResourceExhaustionError, RuntimeError),
+        (WatchUnavailable, RuntimeError),
+        (MCPError, Exception),
+        (SettingsError, ValueError),
+        (InputError, ValueError),
+    ]:
+        assert issubclass(cls, SafeStreamError) and issubclass(cls, builtin), cls
 
 
 def test_cli_reports_a_missing_extra_as_a_clean_error(tmp_path, capsys, no_cryptography) -> None:

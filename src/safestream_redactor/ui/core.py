@@ -31,6 +31,7 @@ from typing import BinaryIO
 
 from safestream_redactor.engine import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP, WindowTrace
 from safestream_redactor.entities import Detection, EntityType
+from safestream_redactor.errors import SafeStreamError
 from safestream_redactor.locate import LineTracker
 from safestream_redactor.policy import RedactionMode, RedactionPolicy
 from safestream_redactor.redactor import Redactor
@@ -83,11 +84,11 @@ class RedactStyle(str, Enum):
     HASH = "hash"  # a keyed HMAC pseudonym, stable for equal values
 
 
-class SettingsError(ValueError):
+class SettingsError(SafeStreamError, ValueError):
     """The chosen settings cannot build a redactor. The message is user-facing."""
 
 
-class InputError(ValueError):
+class InputError(SafeStreamError, ValueError):
     """The input cannot be processed (too large, binary). The message is user-facing."""
 
 

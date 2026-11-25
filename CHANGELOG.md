@@ -6,8 +6,28 @@ Notable changes to this project. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `examples/make_demo_logs.py`: seeded fake logs (`app.log`, `nginx_access.log`,
+  `events.jsonl`, `prod.env`, a zero-findings `clean.log`, and a ~1 MB file under the
+  browser demo's cap), each with a ready `/redact` request body.
+- `examples/safestream.postman_collection.json`: every REST endpoint and error case,
+  with tests.
+- `examples/compare_tools.sh`: gitleaks, TruffleHog, Presidio and SafeStream on the
+  same files, with findings by type, time, and redacted output.
+- `docs/SafeStream-Redactor-Demo.pptx`: a deck marking each interface as deployed,
+  usable locally, or not ready yet.
+
 ### Fixed
 
+- **A card followed by another number** (audit finding G). Both card rules are greedy,
+  so `4111111111111111 10 items` was matched with the trailing `10`, failed Luhn and
+  was not redacted at all, and `card 4111 1111 1111 1111 10.1.2.3` took the address's
+  first octet and leaked the rest (`[REDACTED].1.2.3`). They now fall back to the
+  longest space-bounded prefix that passes Luhn, in Python and the native core alike.
+- **Error hierarchy.** `NetworkAccessError`, `ResourceExhaustionError`,
+  `WatchUnavailable`, `MCPError` and the UI's `SettingsError` / `InputError` now also
+  derive from `SafeStreamError`; each keeps its previous builtin base.
 - **False positives in code, config and prose** (found by running the redactor over
   this repository):
   - `name:` in CI and config files (`- name: Build wheel`, `name = "onnx"`,

@@ -32,7 +32,7 @@ from __future__ import annotations
 import re
 
 from safestream_redactor.detectors.base import StreamingRequirements
-from safestream_redactor.detectors.deterministic import NativeBacked
+from safestream_redactor.detectors.deterministic import NativeBacked, luhn_ok, luhn_prefix
 from safestream_redactor.entities import Detection, EntityType
 
 # The longest value span this tier emits, and the largest gap between a cue and
@@ -198,6 +198,15 @@ class LabeledIdentifierDetector(NativeBacked):
         if vstart - start > _CUE_WINDOW:
             return None
         _pattern, etype, conf = _COMPILED[rule]
+        # The card value is greedy too: "card 4111 1111 1111 1111 10.1.2.3" must not
+        # take the address's first octet. Keep the label-only match when no prefix
+        # passes Luhn.
+        if (
+            etype is EntityType.CREDIT_CARD
+            and not luhn_ok(value := text[vstart:vend])
+            and (cut := luhn_prefix(value)) is not None
+        ):
+            vend = vstart + cut
         return Detection(
             start=vstart,
             end=vend,

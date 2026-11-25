@@ -270,7 +270,7 @@ Read line by line. Each risk below is tagged with a severity and whether it is a
 
 ---
 
-## 4. Suggested ordering for Phase 1 / Phase 2 (for your review — not yet started)
+## 4. Suggested ordering for Phase 1 / Phase 2 (done: see sections 5–8)
 
 Phase 1 (correctness first, small commits, each with regression tests):
 
@@ -305,7 +305,7 @@ differential test; report real numbers.
 
 ---
 
-## 5. Phase 1 status (correctness first) — complete, pending review
+## 5. Phase 1 status (correctness first) — complete
 
 Implemented on this branch in small, verified commits. Baseline stayed green at every
 step (343 fast tests + memory proof passing, coverage 96.24%, ruff + mypy strict clean).
@@ -338,7 +338,7 @@ warning (R-ENG-4). Flagging for your call if you'd prefer an explicit opt-in fla
 
 ---
 
-## 6. Phase 2 status (real kernel-level guarantees) — complete, pending review
+## 6. Phase 2 status (real kernel-level guarantees) — complete
 
 Implemented in small, verified commits. Baseline green at every step
 (376 fast tests + 100 MB memory proof passing, coverage ≥ 96%, ruff + mypy strict
@@ -362,7 +362,7 @@ address. README, SECURITY.md, and MEMORY_ARCHITECTURE.md were updated to match.
 feature flag, gated by the differential test, reporting real numbers — the one
 headline limitation still standing.
 
-## 7. Phase 3 status (performance backend) — complete, pending review
+## 7. Phase 3 status (performance backend) — complete
 
 Prototyped and benchmarked a compiled-regex (google-re2) backend for the
 deterministic tier, ran the differential comparison, and — as the guardrail
@@ -473,23 +473,26 @@ was fixed**, and each fix has a regression test. Fixes landed in `ac09625` (A, B
   `StreamingRequirements(stateful=True)`; the proof assumes window-pure detectors and a
   stateful one documents its own guarantees.
 
-### Open: known and tracked for a dedicated patch
+### Follow-up: resolved
 
-| ID | Finding | Evidence |
+| ID | Finding | Resolution |
 |---|---|---|
-| **C** | `fictionalize` is not a fixed point: its output is re-detected (`example.com` emails, TEST-NET addresses), so redacting the output again changes it. | `usercd7610b9@example.com` -> `user727f0a35@example.com` and `192.0.2.50` -> `203.0.113.51` on a second pass. A document should be redacted once, or the reserved ranges exempted from detection. |
-| **G** | Deterministic-tier card recall (existing code, not introduced here): a Luhn-valid card followed by a space and digits is mishandled. | `card 4111 1111 1111 1111 10.1.2.3` -> `card [REDACTED].1.2.3` (the card swallows the IP's first octet and the rest leaks); in a variant where the card follows `...example` and the address is detected first, the card itself stayed unredacted. Reproduced twice; the root cause is **not yet isolated** (suspected: the card candidate greedily absorbs the next digit group, then loses overlap resolution). Needs a regression test in `tests/test_detectors.py` before any change. |
+| **G** | A Luhn-valid card followed by a space and digits was mishandled: `card 4111 1111 1111 1111 10.1.2.3` -> `card [REDACTED].1.2.3` (the octet leaked), and `4111111111111111 10.1.2.3` left the card unredacted. | **Fixed.** Root cause: both card rules are greedy, so the candidate absorbed the next digit group; the deterministic rule then failed Luhn and dropped the card, and the label-gated rule kept the longer span and won the overlap against the address. Both now fall back to the longest space-bounded prefix that passes Luhn (`deterministic.luhn_prefix`, mirrored in `match_card` in `native/src/digits.rs`, byte-identical). Regression: `test_card_followed_by_digits_is_caught_without_swallowing_them`. |
+| **C** | `fictionalize` is not a fixed point: its output is re-detected, so redacting the output again changes it (`usercd7610b9@example.com` -> `user727f0a35@example.com`). | **Accepted, by design.** The output contains only fake values either way, so a second pass leaks nothing. Exempting fake shapes from detection is safe only for reserved ranges (`example.com`, TEST-NET, `2001:db8::`); the fake SSN (`9xx-…`) and date shapes overlap real ITINs and birth dates, so exempting them would let real values through. Redact a document once. |
+| — | `NetworkAccessError`, `ResourceExhaustionError`, `WatchUnavailable`, `MCPError`, `SettingsError` and `InputError` were not under `SafeStreamError`. | **Fixed.** Each now also derives from `SafeStreamError` and keeps its historical builtin base. Test: `test_error_hierarchy_has_one_root_and_stays_backward_compatible`. |
 
-### Open design items from the same audit (no behavioural defect)
+### Design notes from the same audit (no behavioural defect, not planned)
+
+Recorded so a future change has the context; none is scheduled, because none fixes a
+defect and each would churn a public surface.
 
 * **OCP:** adding an operator touches six places (enum, `__post_init__`, `render`, CLI
-  choices, config schema, MCP strategy enum). Recommended: an `Operator` protocol and a
-  registry, keeping the `mode="hash"` strings.
+  choices, config schema, MCP strategy enum). An `Operator` protocol and a registry
+  would cut that, keeping the `mode="hash"` strings. Worth doing if operators keep
+  being added.
 * **OCP/DIP:** `RegionalDetector.detect` hard-codes eight rule blocks and `redactor.py`
-  carries `REGIONAL_TYPES`. Recommended: a rule table and a `produces` declaration on the
-  detector.
-* **Exceptions:** `NetworkAccessError`, `ResourceExhaustionError`, `WatchUnavailable`,
-  `MCPError`, `SettingsError` and `InputError` are not yet under `SafeStreamError`.
+  carries `REGIONAL_TYPES`. A rule table and a `produces` declaration on the detector
+  would remove the duplication.
 * **ISP:** `RedactionPolicy` carries key material for every operator; `Redactor.__init__`
-  has 24 parameters.
+  has 24 parameters. Splitting either is a breaking API change, so it waits for 2.0.
 

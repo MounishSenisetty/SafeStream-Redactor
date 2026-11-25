@@ -136,8 +136,13 @@ fn phone_tail_ok(w: &Window, i: usize) -> bool {
 // a match (the next token needs a digit), so a match ending at the j-th digit of
 // the chain is unique. Greedy `{12,18}` tries j = 18 down to 12, and the first j
 // whose following character satisfies `(?![\d-])` is CPython's match.
+//
+// Returns that match end, and the end of the card within it: the match itself if
+// it passes Luhn, else the longest shorter admissible end that does (Python
+// `luhn_prefix`: a valid card followed by " 10" must not be lost to the greedy
+// match). Every shorter admissible end is followed by a space, as in Python.
 
-fn match_card(w: &Window) -> Option<usize> {
+fn match_card(w: &Window) -> Option<(usize, Option<usize>)> {
     if w.len < 13 {
         return None; // 13 digits minimum, and the window stops at the first non-digit run
     }
@@ -155,10 +160,17 @@ fn match_card(w: &Window) -> Option<usize> {
             break;
         }
     }
-    (12..n)
+    let mut ends = (12..n)
         .rev()
         .map(|j| pos[j] + 1)
-        .find(|&end| !w.at(end).is_some_and(|c| c == '-' || is_digit(c)))
+        .filter(|&end| !w.at(end).is_some_and(|c| c == '-' || is_digit(c)));
+    let end = ends.next()?;
+    let ok = if luhn_ok(w, end) {
+        Some(end)
+    } else {
+        ends.find(|&e| luhn_ok(w, e))
+    };
+    Some((end, ok))
 }
 
 /// Python `luhn_ok` over the digits of the matched span.
@@ -491,12 +503,12 @@ pub(crate) fn scan_digits(text: &str, slots: Slots, out: &mut Vec<RawMatch>) -> 
             if card_start || sphone_start || bphone_start {
                 let w = Window::fill(text, at);
                 if card_start {
-                    if let Some(end) = match_card(&w) {
+                    if let Some((end, ok)) = match_card(&w) {
                         card_from = w.byte(at, end);
-                        if luhn_ok(&w, end) {
+                        if let Some(ok) = ok {
                             let m = RawMatch {
                                 start: at,
-                                end: card_from,
+                                end: w.byte(at, ok),
                                 pattern: slots.card,
                             };
                             try_push(out, m)?;

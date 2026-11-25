@@ -756,3 +756,20 @@ def test_uuid_shaped_secret_named_by_a_key_is_redacted():
     # the identifier rule must not let a key-named UUID through (some tier redacts it)
     out = Redactor().redact("SAUCE_ACCESS_KEY=2397f603-c2c4-4897-a8ca-587ace5dc8dd")
     assert out == "SAUCE_ACCESS_KEY=[REDACTED]"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # a valid card, then a space and a short number: the greedy candidate
+        # absorbs the number, fails Luhn, and must fall back to the card itself
+        ("4111111111111111 10 items", "[REDACTED] 10 items"),
+        ("order 4111111111111111 10 items", "order [REDACTED] 10 items"),
+        # ...and must not swallow the first octet of a following address
+        ("4111111111111111 10.1.2.3", "[REDACTED] [REDACTED]"),
+        ("card 4111 1111 1111 1111 10.1.2.3", "card [REDACTED] [REDACTED]"),
+    ],
+)
+def test_card_followed_by_digits_is_caught_without_swallowing_them(text, expected):
+    # AUDIT_FINDINGS.md finding G
+    assert Redactor().redact(text) == expected
